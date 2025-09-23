@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>novel.global | terraforming</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body, #map {
+      height: 100%;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      background: #222;
+      overflow: hidden;
+      font-family: 'DIN', 'Verdana', 'Segoe UI', 'Arial', sans-serif;
+      font-size: 17px;
+      color-scheme: only dark;
+    }
+    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+    .overlay {
+      position: absolute;
+      top: 3vw; left: 3vw;
+      background: #10069F; /* b */
+      color: #ececec;
+      z-index: 9;
+      padding: 1.6vw 2vw 1.3vw 2vw;
+      text-align: left;
+      font-size: 1em;
+      font-family: 'DIN', 'Verdana', 'Segoe UI', 'Arial', sans-serif;
+      letter-spacing: 0.01em;
+      border-radius: 12px;
+      max-width: 420px;
+      min-width: 180px;
+      min-height: 50px;
+      pointer-events: none;
+      box-shadow: 0 4px 32px 0 rgba(0,0,0,0.14);
+      border: 1.5px solid #0e0578;
+    }
+    .overlay p, .overlay b, .overlay a, .overlay mark {
+      color: #ececec;
+      background: none;
+      font-family: inherit;
+      font-size: 1em;
+      font-weight: 400;
+      pointer-events: auto;
+      line-height: 1.56;
+    }
+    .overlay mark {
+      background: none;
+      color: #ececec;
+      border-radius: 3px;
+      padding: 0 0px;
+      font-weight: 500;
+      box-shadow: none;
+      transition: none;
+    }
+    .overlay a {
+      color: #ececec;
+      text-decoration: underline;
+      border-bottom: 1px dotted #ececec;
+      transition: border-bottom 0.2s;
+    }
+    .overlay a:hover {
+      color: #fff;
+      background: #333;
+      border-bottom: 2px solid #ececec;
+      transition: border-bottom 0.2s;
+    }
+    @media (max-width: 600px) {
+      .overlay { font-size: 0.97em; padding: 3vw 3vw; max-width: 98vw;}
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <p>📖🌐 novel.global is a research studio that practices on Wurundjeri land in Australia. Our work helps communities, governments, and organisations <mark>tell more equitable stories for the 21st century.</mark></p>
+    <p><b>Selected recent work, projects, etc.</b><br>
+      *<a href="https://novelglobal.github.io/island-archipelagos-/"><u>Terraforming</u></a> (Victoria)
+      <br>
+      *<a href="https://www.fifa.com/en/tournaments/womens/womensworldcup/australia-new-zealand2023"><u>FIFA WWC</u></a> / <a href="https://www.sportaus.gov.au/nationalsportplan/home"><u>Sport 2030 National Plan</u></a> (Australia)
+      <br>
+      *<a href="https://us.movember.com/"><u>Movember</u></a> / <a href="https://hoer.live"><u>HÖR (@hoer.berlin)</u></a> (Germany)
+      <br>
+      *<a href="https://www.rmit.edu.au/study-with-us/fashion"><u>Fashion AI</u></a> + <a href="https://www.rmit.edu.au/study-with-us/levels-of-study/undergraduate-study/bachelor-degrees/bachelor-of-fashion-and-textiles-sustainable-innovation-bp326"><u>Sustainable Innovation</u></a>: In progress.
+    </p>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Victoria: cleared land
+    const locations = [
+      {lat: -36.6, lng: 143.0, zoom: 10}, // Charlton - cropping
+      {lat: -36.4, lng: 142.1, zoom: 10}, // Birchip - cropping
+      {lat: -35.6, lng: 142.1, zoom: 11}, // Mildura - horticulture, almonds, citrus
+      {lat: -36.1, lng: 144.2, zoom: 12}, // Pyramid Hill - salt affected farmland
+      {lat: -36.8, lng: 144.9, zoom: 8},  // Central Victoria mixed farming
+      {lat: -36.3, lng: 143.6, zoom: 11}, // North of Bendigo grazing/erosion
+      {lat: -37.8, lng: 142.1, zoom: 13}, // Horsham, quarry/mining/agriculture
+      {lat: -36.0, lng: 146.0, zoom: 10}, // Corowa region, irrigation, clearing
+      {lat: -35.9, lng: 143.8, zoom: 10}, // Kerang - tree clearing for irrigation
+      {lat: -35.5, lng: 143.3, zoom: 11}, // Robinvale - large scale horticulture, almond/olive farms
+      {lat: -38.3, lng: 145.5, zoom: 11}, // South Gippsland dairy, cropping
+      {lat: -35.7, lng: 143.9, zoom: 11}, // Lake Boga - broadacre, irrigated farmland
+      {lat: -36.5, lng: 141.6, zoom: 10}, // Edenhope - broadacre cropping and grazing
+      {lat: -38.2, lng: 145.4, zoom: 12}, // Westernport Bay - pasture, cleared farmland
+      {lat: -36.5, lng: 145.9, zoom: 10}, // Shepparton - orchards, clearing
+      {lat: -38.1, lng: 146.3, zoom: 12}, // Morwell - open cut mine, farmland
+      {lat: -36.9, lng: 145.2, zoom: 10}, // Seymour - grazing, clearing
+      {lat: -37.8, lng: 144.9, zoom: 10}, // Bacchus Marsh - horticulture
+      {lat: -38.5, lng: 145.8, zoom: 11}, // Wilsons Prom fringe - cleared farmland
+      {lat: -36.1, lng: 144.9, zoom: 10}, // Elmore - cropping/grazing
+      {lat: -35.6, lng: 144.1, zoom: 12}, // Barmah/Moira - river red gum clearing
+      {lat: -37.0, lng: 143.4, zoom: 11}, // Ballarat - pasture
+      {lat: -38.4, lng: 146.8, zoom: 12}, // Yarram - logging/pasture
+      {lat: -36.2, lng: 145.4, zoom: 10}, // Numurkah - irrigation
+      {lat: -37.9, lng: 145.3, zoom: 11}, // Dandenong - peri-urban clearing
+      {lat: -37.2, lng: 142.9, zoom: 10}, // Ararat - broadacre
+      {lat: -37.3, lng: 144.0, zoom: 10}, // Daylesford - mixed farming
+      {lat: -38.4, lng: 145.2, zoom: 11}, // Phillip Island - clearing/pasture
+      {lat: -36.7, lng: 142.9, zoom: 9},  // St Arnaud - large scale
+      {lat: -37.1, lng: 145.9, zoom: 12}, // Alexandra - pasture, cleared forest edge
+      {lat: -37.6, lng: 144.7, zoom: 11}, // Melton - urban edge farming
+      {lat: -37.5, lng: 143.8, zoom: 10}, // Maryborough - cropping
+      {lat: -38.0, lng: 146.3, zoom: 11}, // Latrobe Valley - coal, pasture
+    ];
+    let index = 0;
+
+    // Satellite imagery (Esri World Imagery)
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false,
+      doubleClickZoom: true,
+      boxZoom: true,
+      dragging: true,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      keyboard: true,
+    }).setView([locations[0].lat, locations[0].lng], locations[0].zoom);
+
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 17,
+      minZoom: 6,
+      noWrap: true
+    }).addTo(map);
+
+    // Remove any remaining UI
+    map.on('layeradd', function() {
+      document.querySelectorAll('.leaflet-control').forEach(e => e.style.display = 'none');
+    });
+
+    // Cycle locations on click
+    map.on('click', function() {
+      index = (index + 1) % locations.length;
+      map.setView([locations[index].lat, locations[index].lng], locations[index].zoom);
+    });
+  </script>
+</body>
+</html>
