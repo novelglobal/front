@@ -115,21 +115,6 @@ The first line of each story is real. Its source is listed below. Set `DEMO: fal
 
 Update `DA_OUTLOOK` in `config.js` when the Bureau issues a new long-range forecast. There is no build step for anyone who edits these files, and there are no accounts and no trackers. What people add stays on their own device, and everything can be downloaded as CSV from the archive.
 
-## Events from a sheet
-
-Keep a Google Sheet with the columns `title, start, venue, lat, lng, tags, link`.
-
-- `start` is a date and time, for example `2026-10-09T19:30:00+11:00`.
-- `tags` are words separated by spaces: `nature`, `free`, `first-nations`, `sound`, `walk`, `kids`. Add `gig` to mark a gig with the hug icon, and `rrr` or `ra` when the gig is listed by Triple R or Resident Advisor.
-
-Publish the sheet to the web as CSV, and put the link in `EVENTS_URL` in `config.js`.
-
-## Publish on GitHub Pages
-
-1. Create a repository and upload every file in this folder.
-2. Go to Settings → Pages → Deploy from a branch → `main`, `/ (root)` → Save.
-3. Put the site's address in `PORTAL_URL` in `config.js`, so that printed QR codes lead back to it.
-
 ## Sources
 
 **The outlook**
