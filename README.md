@@ -49,9 +49,9 @@ The map carries no words. Each kind of animal has its own colour: birds blue, ma
 - **Posters:** every poster made for it, shown as the poster itself.
 - **Where it goes:** the places in the radius, by role.
 
-## A brief becomes a poster
+## A brief as a poster
 
-IMAGINE THE POSTER turns the card over. The W line ("what we know") is filled from the record. The I, S and H lines ("it would be great", "so let's create" and "here is how it works") come from the brief, filled with the suburb and the nearest business that fits. Each line stops where two lines end on the printed poster. Arrows step through the other briefs that fit. Mark places to HOST or GIVE, sign it, and the card turns into the poster.
+IMAGINE THE POSTER turns the card over. The W line ("what we know") is filled from any surprising and urgent truths. The I, S and H lines ("it would be great", "so let's create" and "here is how it works") join-up this noticing towards an action, linked to the suburb and the nearest business that fits. Each line stops where two lines end on the printed poster. Arrows step through the other briefs that fit. Mark places to HOST or GIVE, sign it, and the card turns into the poster.
 
 The poster is A4 and uses as little ink as it can. It opens with CLIMATE EMERGENCY RESPONSE and a warning sign drawn in line, with no solid band, headed by the unseasonable stretch the life faces. Then come the life as photographed (or its kind of life, drawn large in line) and its whole name. Three readings follow, without headings: its worst months and their degree; the danger in one bold sentence, said once; and the canopy where it lives against the 40% it should be, with what it is short of there. Then come the four lines, each under its name in full, as a third of the sheet. The foot holds a QR code back to the record, the project the brief follows, the places it is on show, a phone or email if one was left, and who to call.
 
