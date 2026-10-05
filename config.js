@@ -25,7 +25,7 @@ window.DA_CONFIG = {
   ],
   OVERLAY_API: 'https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/',
   RADIUS: { min: 50, max: 1500 },                                   // the radius instrument, in metres
-  PORTAL_URL: '',                                                   // where it is hosted (QR codes point here)
+  PORTAL_URL: 'http://novel.global/',                                                   // where it is hosted (QR codes point here)
   EVENTS_URL: '',                                                   // a sheet of gatherings published as CSV: title, start, venue, lat, lng, tags, link (README)
   VIDEO_URL: '',
   REPO_URL: '',
