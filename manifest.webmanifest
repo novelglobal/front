@@ -1,0 +1,17 @@
+{
+  "name": "Direct Action",
+  "short_name": "Direct Action",
+  "description": "Live sightings of the other species we live among, a heat forecast, and a four-line response that becomes a poster.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0CCBBD",
+  "theme_color": "#0CCBBD",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

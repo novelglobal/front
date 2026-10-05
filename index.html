@@ -1,160 +1,176 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en-AU">
 <head>
-  <meta charset="UTF-8">
-  <title>novel.global | terraforming</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    html, body, #map {
-      height: 100%;
-      width: 100vw;
-      margin: 0;
-      padding: 0;
-      background: #222;
-      overflow: hidden;
-      font-family: 'DIN', 'Verdana', 'Segoe UI', 'Arial', sans-serif;
-      font-size: 17px;
-      color-scheme: only dark;
-    }
-    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
-    .overlay {
-      position: absolute;
-      top: 3vw; left: 3vw;
-      background: #10069F; /* b */
-      color: #ececec;
-      z-index: 9;
-      padding: 1.6vw 2vw 1.3vw 2vw;
-      text-align: left;
-      font-size: 1em;
-      font-family: 'DIN', 'Verdana', 'Segoe UI', 'Arial', sans-serif;
-      letter-spacing: 0.01em;
-      border-radius: 12px;
-      max-width: 420px;
-      min-width: 180px;
-      min-height: 50px;
-      pointer-events: none;
-      box-shadow: 0 4px 32px 0 rgba(0,0,0,0.14);
-      border: 1.5px solid #0e0578;
-    }
-    .overlay p, .overlay b, .overlay a, .overlay mark {
-      color: #ececec;
-      background: none;
-      font-family: inherit;
-      font-size: 1em;
-      font-weight: 400;
-      pointer-events: auto;
-      line-height: 1.56;
-    }
-    .overlay mark {
-      background: none;
-      color: #ececec;
-      border-radius: 3px;
-      padding: 0 0px;
-      font-weight: 500;
-      box-shadow: none;
-      transition: none;
-    }
-    .overlay a {
-      color: #ececec;
-      text-decoration: underline;
-      border-bottom: 1px dotted #ececec;
-      transition: border-bottom 0.2s;
-    }
-    .overlay a:hover {
-      color: #fff;
-      background: #333;
-      border-bottom: 2px solid #ececec;
-      transition: border-bottom 0.2s;
-    }
-    @media (max-width: 600px) {
-      .overlay { font-size: 0.97em; padding: 3vw 3vw; max-width: 98vw;}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Direct Action</title>
+<meta name="description" content="Live sightings of the other species we live among, a heat forecast, and a four-line response that becomes a poster.">
+<meta name="theme-color" content="#0CCBBD">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="vendor/fonts/poppins-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/poppins-latin-200-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/ibm-plex-mono-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="overlay">
-    <p>📖🌐 novel.global is a research studio that practices on Wurundjeri land in Australia. Our work helps communities, governments, and organisations <mark>tell more equitable stories for the 21st century.</mark></p>
-    <p><b>Selected recent work, projects, etc.</b><br>
-      *<a href="https://novelglobal.github.io/island-archipelagos-/"><u>Terraforming</u></a> (Victoria)
-      <br>
-      *<a href="https://www.fifa.com/en/tournaments/womens/womensworldcup/australia-new-zealand2023"><u>FIFA WWC</u></a> / <a href="https://www.sportaus.gov.au/nationalsportplan/home"><u>Sport 2030 National Plan</u></a> (Australia)
-      <br>
-      *<a href="https://us.movember.com/"><u>Movember</u></a> / <a href="https://hoer.live"><u>HÖR (@hoer.berlin)</u></a> (Germany)
-      <br>
-      *<a href="https://www.rmit.edu.au/study-with-us/fashion"><u>Fashion AI</u></a> + <a href="https://www.rmit.edu.au/study-with-us/levels-of-study/undergraduate-study/bachelor-degrees/bachelor-of-fashion-and-textiles-sustainable-innovation-bp326"><u>Sustainable Innovation</u></a>: In progress.
-    </p>
+<svg class="sprite" aria-hidden="true" focusable="false"></svg>
+
+<div id="world" role="application" aria-label="Brunswick to the city, from above"></div>
+<div class="tag" id="tag" hidden></div>
+<button type="button" class="radius" id="radius" aria-label="Radius" hidden></button>
+<div class="hold" id="hold" aria-hidden="true"></div>
+
+<aside class="panel" id="panel">
+  <nav class="rail" id="rail" aria-label="Pages"></nav>
+  <div class="leaf">
+    <div class="view" id="view"></div>
+
+    <section class="record" id="record" hidden>
+      <header class="r-bar">
+        <button type="button" class="ib" id="r-back" aria-label="Back"><svg class="i" aria-hidden="true"><use href="#g-back"/></svg></button>
+        <span class="r-no mono" id="r-no"></span>
+        <span class="r-spec mono" id="r-spec" hidden>SPECIMEN</span>
+        <button type="button" class="ib" id="r-x" aria-label="Close"><svg class="i" aria-hidden="true"><use href="#g-close"/></svg></button>
+      </header>
+      <div class="r-scroll" id="r-scroll">
+
+        <div class="face front" id="r-front">
+          <figure class="r-fig" id="r-fig"><img id="r-img" alt="" decoding="async" hidden><canvas id="r-glyph" width="832" height="640" hidden></canvas><figcaption class="r-credit mono" id="r-credit"></figcaption></figure>
+          <h2 class="r-name" id="r-name"></h2>
+          <p class="r-latin" id="r-latin"></p>
+          <p class="r-when mono" id="r-when"></p>
+          <ul class="tri" id="r-tri" aria-label="Readings"></ul>
+          <p class="r-danger" id="r-danger" data-focus="heat" hidden></p>
+          <ul class="r-do" id="r-do"></ul>
+          <section class="r-brief" id="r-brief" data-focus="zone"></section>
+          <section class="r-resp" id="r-resp"></section>
+          <section class="r-orbit" id="r-orbit" data-focus="zone"></section>
+        </div>
+
+        <form class="face wish" id="r-form" autocomplete="off" novalidate hidden>
+          <div class="w-brief" id="w-brief"></div>
+          <div class="w" data-tip="W · What we know. The evidence: news, data or theory."><label for="w-w"><b>W</b>What we know</label><textarea id="w-w" rows="2" maxlength="96" aria-label="What we know"></textarea></div>
+          <div class="w" data-tip="I · It would be great. The belief: what should be true."><label for="w-i"><b>I</b>It would be great</label><textarea id="w-i" rows="2" maxlength="96" aria-label="It would be great"></textarea></div>
+          <div class="w" data-tip="S · So let's create. The principle to work by."><label for="w-s"><b>S</b>So let's create</label><textarea id="w-s" rows="2" maxlength="96" aria-label="So let's create"></textarea></div>
+          <div class="w h" data-tip="H · Here is how it works. The tactic: what someone does."><label for="w-h"><b>H</b>Here is how it works</label><textarea id="w-h" rows="2" maxlength="96" aria-label="Here is how it works"></textarea></div>
+          <section class="pat">
+            <h3 class="sh">Where it goes</h3>
+            <ol class="pat-list" id="pat-list"></ol>
+          </section>
+          <label class="sig"><svg class="i" aria-hidden="true"><use href="#g-sign"/></svg><input id="w-sign" type="text" maxlength="40" autocomplete="off" aria-label="Your name" placeholder="Your name"></label>
+        </form>
+
+        <div class="face filed" id="r-filed" hidden>
+          <div class="sheet" id="r-sheet" role="button" tabindex="0" aria-label="Open"></div>
+          <div class="acts3">
+            <button type="button" class="ib lb" id="f-print"><svg class="i" aria-hidden="true"><use href="#g-print"/></svg><small>PRINT</small></button>
+            <button type="button" class="ib lb" id="f-share"><svg class="i" aria-hidden="true"><use href="#g-share"/></svg><small>SHARE</small></button>
+          </div>
+        </div>
+
+        <div class="face place" id="r-place" hidden>
+          <div class="pl-sky" id="pl-sky">
+            <b class="pl-time thin" id="pl-time"></b>
+            <span class="pl-sw" id="pl-sw"></span>
+            <span class="pl-where mono" id="pl-where"></span>
+            <button type="button" class="pl-here" id="pl-here"><svg class="i" aria-hidden="true"><use href="#g-where"/></svg><small>HERE</small></button>
+          </div>
+          <div class="pl-card">
+            <label class="shot" id="pl-shot"><input id="pl-photo" type="file" accept="image/*" capture="environment" hidden><canvas id="pl-disc" width="240" height="240"></canvas><span class="shot-mark"><svg class="i" aria-hidden="true"><use href="#g-camera"/></svg></span></label>
+            <div class="pl-id">
+              <button type="button" class="kind" id="pl-kind" aria-label="Change the kind"></button>
+              <b class="pl-name" id="pl-name"></b>
+              <small class="pl-latin" id="pl-latin"></small>
+              <span class="pl-tags mono" id="pl-tags"></span>
+            </div>
+          </div>
+          <textarea id="pl-text" rows="2" maxlength="140" autocomplete="off" aria-label="What did you see?" placeholder="What did you see?"></textarea>
+          <p class="pl-h mono">WHAT HAPPENED · TAP TO CHANGE</p>
+          <div class="pl-kinds" id="pl-kinds" role="group" aria-label="What happened"></div>
+          <p class="pl-h mono" id="pl-lives-h">WHAT IT IS · OR SAY IT IN WORDS</p>
+          <div class="pl-lives" id="pl-lives" role="group" aria-label="What kind of life"></div>
+          <input id="pl-when" type="datetime-local" aria-label="When" hidden>
+          <div class="pl-hint" id="pl-hint"></div>
+          <label class="sig"><svg class="i" aria-hidden="true"><use href="#g-sign"/></svg><input id="pl-sign" type="text" maxlength="40" autocomplete="off" aria-label="Your name" placeholder="Your name"></label>
+          <label class="sig ctc"><svg class="i" aria-hidden="true"><use href="#g-phone"/></svg><input id="pl-contact" type="text" maxlength="60" autocomplete="off" inputmode="email" aria-label="Phone or email, optional" placeholder="Phone or email (optional)"></label>
+        </div>
+
+      </div>
+      <button type="button" class="alt" id="r-alt" hidden><span class="mono">MAKE A POSTER</span><svg class="i" aria-hidden="true"><use href="#g-next"/></svg></button>
+      <button type="button" class="hero" id="r-act" aria-label="Make a poster"></button>
+    </section>
   </div>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    // Victoria: cleared land
-    const locations = [
-      {lat: -36.6, lng: 143.0, zoom: 10}, // Charlton - cropping
-      {lat: -36.4, lng: 142.1, zoom: 10}, // Birchip - cropping
-      {lat: -35.6, lng: 142.1, zoom: 11}, // Mildura - horticulture, almonds, citrus
-      {lat: -36.1, lng: 144.2, zoom: 12}, // Pyramid Hill - salt affected farmland
-      {lat: -36.8, lng: 144.9, zoom: 8},  // Central Victoria mixed farming
-      {lat: -36.3, lng: 143.6, zoom: 11}, // North of Bendigo grazing/erosion
-      {lat: -37.8, lng: 142.1, zoom: 13}, // Horsham, quarry/mining/agriculture
-      {lat: -36.0, lng: 146.0, zoom: 10}, // Corowa region, irrigation, clearing
-      {lat: -35.9, lng: 143.8, zoom: 10}, // Kerang - tree clearing for irrigation
-      {lat: -35.5, lng: 143.3, zoom: 11}, // Robinvale - large scale horticulture, almond/olive farms
-      {lat: -38.3, lng: 145.5, zoom: 11}, // South Gippsland dairy, cropping
-      {lat: -35.7, lng: 143.9, zoom: 11}, // Lake Boga - broadacre, irrigated farmland
-      {lat: -36.5, lng: 141.6, zoom: 10}, // Edenhope - broadacre cropping and grazing
-      {lat: -38.2, lng: 145.4, zoom: 12}, // Westernport Bay - pasture, cleared farmland
-      {lat: -36.5, lng: 145.9, zoom: 10}, // Shepparton - orchards, clearing
-      {lat: -38.1, lng: 146.3, zoom: 12}, // Morwell - open cut mine, farmland
-      {lat: -36.9, lng: 145.2, zoom: 10}, // Seymour - grazing, clearing
-      {lat: -37.8, lng: 144.9, zoom: 10}, // Bacchus Marsh - horticulture
-      {lat: -38.5, lng: 145.8, zoom: 11}, // Wilsons Prom fringe - cleared farmland
-      {lat: -36.1, lng: 144.9, zoom: 10}, // Elmore - cropping/grazing
-      {lat: -35.6, lng: 144.1, zoom: 12}, // Barmah/Moira - river red gum clearing
-      {lat: -37.0, lng: 143.4, zoom: 11}, // Ballarat - pasture
-      {lat: -38.4, lng: 146.8, zoom: 12}, // Yarram - logging/pasture
-      {lat: -36.2, lng: 145.4, zoom: 10}, // Numurkah - irrigation
-      {lat: -37.9, lng: 145.3, zoom: 11}, // Dandenong - peri-urban clearing
-      {lat: -37.2, lng: 142.9, zoom: 10}, // Ararat - broadacre
-      {lat: -37.3, lng: 144.0, zoom: 10}, // Daylesford - mixed farming
-      {lat: -38.4, lng: 145.2, zoom: 11}, // Phillip Island - clearing/pasture
-      {lat: -36.7, lng: 142.9, zoom: 9},  // St Arnaud - large scale
-      {lat: -37.1, lng: 145.9, zoom: 12}, // Alexandra - pasture, cleared forest edge
-      {lat: -37.6, lng: 144.7, zoom: 11}, // Melton - urban edge farming
-      {lat: -37.5, lng: 143.8, zoom: 10}, // Maryborough - cropping
-      {lat: -38.0, lng: 146.3, zoom: 11}, // Latrobe Valley - coal, pasture
-    ];
-    let index = 0;
+</aside>
 
-    // Satellite imagery (Esri World Imagery)
-    const map = L.map('map', {
-      zoomControl: false,
-      attributionControl: false,
-      doubleClickZoom: true,
-      boxZoom: true,
-      dragging: true,
-      scrollWheelZoom: true,
-      touchZoom: true,
-      keyboard: true,
-    }).setView([locations[0].lat, locations[0].lng], locations[0].zoom);
+<div class="viewer" id="viewer" hidden>
+  <div class="v-sheet" id="v-sheet"></div>
+  <aside class="v-slip">
+    <header class="v-head" id="v-head"></header>
+    <div class="v-row">
+      <button type="button" class="v-sup" id="v-host"><svg class="i" aria-hidden="true"><use href="#g-host"/></svg><span>HOST IT</span></button>
+      <button type="button" class="v-sup" id="v-give"><svg class="i" aria-hidden="true"><use href="#g-give"/></svg><span>GIVE</span></button>
+      <button type="button" class="v-sup" id="v-did"><svg class="i" aria-hidden="true"><use href="#g-check"/></svg><span>DID IT</span></button>
+    </div>
+    <form class="v-form" id="v-form" autocomplete="off" hidden>
+      <input id="v-bn" type="text" list="v-list" maxlength="60" aria-label="Name">
+      <input id="v-ba" class="mono" type="text" inputmode="decimal" maxlength="7" placeholder="$" aria-label="Amount">
+      <button type="submit" class="ib" aria-label="Done"><svg class="i" aria-hidden="true"><use href="#g-check"/></svg></button>
+    </form>
+    <datalist id="v-list"></datalist>
+    <div class="v-acts">
+      <button type="button" class="ib lb" id="v-print"><svg class="i" aria-hidden="true"><use href="#g-print"/></svg><small>PRINT</small></button>
+      <button type="button" class="ib lb" id="v-share"><svg class="i" aria-hidden="true"><use href="#g-share"/></svg><small>SHARE</small></button>
+      <button type="button" class="ib lb" id="v-remix"><svg class="i" aria-hidden="true"><use href="#g-remix"/></svg><small>REMIX</small></button>
+      <button type="button" class="ib lb" id="v-x"><svg class="i" aria-hidden="true"><use href="#g-close"/></svg><small>CLOSE</small></button>
+    </div>
+  </aside>
+</div>
 
-    L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 17,
-      minZoom: 6,
-      noWrap: true
-    }).addTo(map);
+<div id="press" aria-hidden="true">
+  <article class="poster notice" id="poster">
+    <header class="pw-band"><svg class="pw-tri" viewBox="0 0 30 27" aria-hidden="true"><path d="M15 2.4 28 25H2z" fill="none" stroke="#000" stroke-width="2.6" stroke-linejoin="round"/><path d="M15 10v7.2" stroke="#000" stroke-width="2.8" stroke-linecap="round"/><circle cx="15" cy="21" r="1.7" fill="#000"/></svg><span class="pw-k" id="p-kicker"></span><b class="pw-h" id="p-head">Hotter, drier</b></header>
+    <figure class="pw-photo" id="p-photo"></figure>
+    <div class="pw-credit" id="p-prov"></div>
+    <section class="pw-id"><div class="pw-seen" id="p-seen"></div><div class="pw-name" id="p-name"></div><div class="pw-latin" id="p-latin"></div></section>
+    <section class="pw-why" id="p-why"></section>
+    <section class="pw-wish" id="p-wish"></section>
+    <footer class="pw-foot">
+      <div class="pw-q"><div class="p-qr" id="p-qr"></div><div class="pw-scan">SCAN TO HOST,<br>GIVE OR REMIX</div></div>
+      <div class="pw-act"><div class="pw-after" id="p-after"></div><div class="pw-host" id="p-biz"></div><div class="pw-contact" id="p-contact"></div><div class="pw-call" id="p-emerg"></div></div>
+      <div class="pw-country" id="p-country"></div>
+    </footer>
+  </article>
 
-    // Remove any remaining UI
-    map.on('layeradd', function() {
-      document.querySelectorAll('.leaflet-control').forEach(e => e.style.display = 'none');
-    });
+  <article class="poster notice measure" id="p-measure"><section class="pw-wish"><div class="pw-l"><p id="pm-w"></p></div><div class="pw-l h"><p id="pm-h"></p></div></section></article>
 
-    // Cycle locations on click
-    map.on('click', function() {
-      index = (index + 1) % locations.length;
-      map.setView([locations[index].lat, locations[index].lng], locations[index].zoom);
-    });
-  </script>
+  <article class="poster quote" id="quote">
+    <header class="q-band"><span class="q-mast">DIRECT ACTION</span><b class="q-title">Sign-up sheet</b></header>
+    <div class="q-for" id="q-for"></div>
+    <div class="q-act" id="q-act"></div>
+    <table class="q-items" id="q-items"></table>
+    <section class="q-opts" id="q-opts"></section>
+    <section class="q-sign"><div><i></i><small>NAME</small></div><div><i></i><small>SIGNED</small></div><div><i></i><small>DATE</small></div></section>
+    <p class="q-method" id="q-method"></p>
+    <footer class="q-foot"><div class="p-qr" id="q-qr"></div><div class="q-country" id="q-country"></div></footer>
+  </article>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="config.js"></script>
+<script src="demo.js"></script>
+<script src="field.js"></script>
+<script src="briefs.js"></script>
+<script src="marks.js"></script>
+<script src="vendor/maplibre-gl.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

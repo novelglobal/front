@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Field List · Direct Action</title>
+<meta name="description" content="Kinds of life between Brunswick and the city: months, heat, water, and what to do.">
+<meta name="theme-color" content="#0CCBBD">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:'Poppins';font-style:normal;font-weight:200;font-display:swap;src:url(vendor/fonts/poppins-latin-200-normal.woff2) format('woff2')}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/poppins-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Poppins';font-style:italic;font-weight:400;font-display:swap;src:url(vendor/fonts/poppins-latin-400-italic.woff2) format('woff2')}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/poppins-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2')}
+:root{--teal:#0CCBBD;--teal-lift:#7FE0D7;--teal-deep:#007A72;--white:#fff;--grey:#C8C8C8;--grey-text:#6B6B6B;--cobalt:#0067B8;--navy:#0B2545;--orange:#FF7A00;--red:#E8453C;
+  --sans:'Poppins',ui-sans-serif,system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;color-scheme:light}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;background:var(--white);color:var(--navy);font:13px/1.4 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--cobalt)}
+button,input{font:inherit;color:inherit}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+.i{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:none}
+.mono{font-family:var(--mono)}
+header{position:sticky;top:0;z-index:2;background:var(--navy);color:var(--white);padding:18px 24px 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:6px 22px}
+header .n{font-weight:200;font-size:72px;line-height:.8;letter-spacing:-.04em}
+header .t{font-weight:600;font-size:11px;letter-spacing:.24em;padding-bottom:4px}
+header .m{font:500 11px var(--mono);letter-spacing:.06em;padding-bottom:4px;text-align:right}
+.tools{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.tools button{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--white);background:none;color:var(--white);cursor:pointer}
+.tools button[aria-pressed="true"]{background:var(--white);color:var(--navy)}
+.tools .i{width:20px;height:20px}
+.tools label{display:flex;align-items:center;gap:8px;margin-left:auto;border-bottom:1.5px solid var(--white);padding:4px 0;min-width:220px}
+.tools input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--white);font-size:15px}
+.tools input::placeholder{color:var(--teal-lift)}
+main{padding:0 24px 64px}
+table{width:100%;border-collapse:collapse}
+thead th{position:sticky;top:var(--hh,150px);z-index:1;background:var(--white);border-bottom:1px solid var(--navy);padding:10px 8px 8px 0;text-align:left;font-weight:600;font-size:9px;letter-spacing:.14em;vertical-align:bottom}
+thead th .i{width:16px;height:16px;color:var(--cobalt)}
+td{border-bottom:1px dotted var(--grey);padding:9px 10px 9px 0;vertical-align:top;font-size:12px}
+td.g{width:44px}
+td.g span{width:36px;height:36px;display:grid;place-items:center;background:var(--teal-deep);color:var(--white)}
+td.g .i{width:24px;height:24px}
+tr.I td.g span{background:var(--grey-text)}
+tr.T td.g span{background:var(--navy)}
+td.nm{min-width:170px}
+td.nm b{display:block;font-weight:600;font-size:13px;line-height:1.2}
+td.nm i{display:block;color:var(--grey-text);margin-top:2px}
+td.nm small{display:inline-block;margin-top:5px;font-size:8.5px;font-weight:600;letter-spacing:.14em;border:1px solid var(--navy);padding:1px 5px}
+td.yr{width:150px}
+.yr svg{display:block;width:144px;height:30px;overflow:visible}
+.yr .on{fill:var(--navy)}.yr .off{fill:var(--grey)}.yr .ring{fill:none;stroke:var(--cobalt);stroke-width:1.1}.yr .now{fill:var(--cobalt)}.yr .tdy{stroke:var(--red);stroke-width:1.6}
+.yr text{font:500 7px var(--mono);fill:var(--grey-text);text-anchor:middle}
+td.hw{width:64px;white-space:nowrap}
+.dots{display:flex;align-items:center;gap:2px;margin-bottom:4px}
+.dots .i{width:12px;height:12px;color:var(--cobalt);margin-right:2px}
+.dots b{width:6px;height:6px;border:1px solid var(--navy)}
+.dots b.on{background:var(--navy)}
+.dots.h b.on{background:var(--orange);border-color:var(--orange)}
+.dots.h .i{color:var(--orange)}
+td.mp a{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;text-decoration:none;font:500 10px var(--mono);letter-spacing:.08em;padding:4px 7px;border:1px solid var(--cobalt)}
+td.mp a:hover{background:var(--teal-lift)}
+[data-tip]{cursor:help}
+.tip{position:fixed;z-index:9;left:0;top:0;max-width:240px;padding:6px 9px;background:var(--navy);color:var(--white);font:400 11.5px/1.4 var(--sans);pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+td.ev{font-weight:600;min-width:120px}
+td.tx{min-width:150px;line-height:1.38}
+td.cl a{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font:500 11px var(--mono);white-space:nowrap}
+td.src{white-space:nowrap}
+td.src a{display:inline-grid;place-items:center;width:22px;height:22px;margin:0 3px 3px 0;font:500 10px var(--mono);text-decoration:none;border:1px solid var(--cobalt)}
+td.src a:hover,td.cl a:hover{text-decoration:underline}
+tr.hide{display:none}
+.empty{padding:60px 0;text-align:center}
+.empty i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--navy)}
+footer{padding:16px 24px 40px;border-top:1px solid var(--navy);font:400 10.5px/1.6 var(--mono);color:var(--grey-text)}
+@media (max-width:900px){
+  header{padding:14px 16px 12px}header .n{font-size:52px}main{padding:0 16px 48px}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tr{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:4px 10px;padding:12px 0;border-bottom:1px solid var(--grey)}
+  td{border:0;padding:0}
+  td.g{grid-row:1/3}td.nm{grid-column:2}td.hw{grid-column:3;grid-row:1}td.yr{grid-column:2/4}
+  td.ev,td.tx,td.cl,td.src,td.mp{grid-column:2/4}
+  td.tx::before{display:inline-block;width:18px}
+  td.src{display:none}
+}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  header{position:static;background:none;color:#000;padding:0 0 6mm}
+  header .n{font-size:40px}.tools{display:none}
+  thead th{position:static}
+  td,th{font-size:8pt;padding:2mm 2mm 2mm 0}
+  td.g span{background:#000!important}
+  .yr .on,.yr .now{fill:#000}.yr .ring{stroke:#000}.yr .tdy{stroke:#000}
+  a{color:#000;text-decoration:none}
+  td.src{display:none}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false"></svg>
+<header id="hd">
+  <span class="n" id="count"></span><span class="t">DIRECT ACTION · FIELD LIST</span><span class="m" id="month"></span>
+  <div class="tools" id="tools"></div>
+</header>
+<main>
+  <table>
+    <thead><tr>
+      <th></th><th aria-label="Name"></th><th aria-label="Through the year" class="mono" id="months"></th>
+      <th aria-label="Heat and water" data-tip="How hard heat and drought are on it, from none to three"><svg class="i"><use href="#g-heat"/></svg><svg class="i"><use href="#g-water"/></svg></th>
+      <th aria-label="What to watch for" data-tip="What to watch for"><svg class="i"><use href="#g-day"/></svg></th>
+      <th aria-label="Notice" data-tip="Notice"><svg class="i"><use href="#g-aware"/></svg></th>
+      <th aria-label="Do no harm" data-tip="Do no harm"><svg class="i"><use href="#g-harm"/></svg></th>
+      <th aria-label="Help" data-tip="Help"><svg class="i"><use href="#g-aid"/></svg></th>
+      <th aria-label="Call" data-tip="Who to call"><svg class="i"><use href="#g-phone"/></svg></th>
+      <th aria-label="On the map" data-tip="Its latest sighting on the map"><svg class="i"><use href="#g-where"/></svg></th>
+      <th aria-label="Sources" data-tip="Sources"><svg class="i"><use href="#g-out"/></svg></th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="none" hidden><i></i></div>
+</main>
+<footer id="foot"></footer>
+<div class="tip" id="tip" hidden></div>
+<script src="field.js"></script>
+<script src="demo.js"></script>
+<script src="marks.js"></script>
+<script>
+(function () {
+  'use strict';
+  var F = window.DA_FIELD || [], M = window.DA_MARKS;
+  document.querySelector('.sprite').innerHTML = M.sprite();
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'], L = 'JFMAMJJASOND', m = new Date().getMonth();
+  var GROUPS = ['bird', 'parrot', 'waterbird', 'owl', 'raptor', 'macropod', 'possum', 'flyingfox', 'bat', 'rodent', 'fox', 'cat', 'dog', 'rabbit', 'lizard', 'snake', 'turtle', 'frog', 'butterfly', 'moth', 'bee', 'wasp', 'fly', 'beetle', 'bug', 'spider', 'orb', 'grasshopper', 'mantis', 'dragonfly', 'aquatic', 'snail', 'segmented'];
+  var CALL = { wildlife: ['tel:0384007300', '(03) 8400 7300'], '000': ['tel:000', '000'], snake: ['https://www.wildlife.vic.gov.au/__data/assets/pdf_file/0034/549178/Living-with-snakes-fact-sheet.pdf', 'SNAKE CATCHER'], council: ['https://www.merri-bek.vic.gov.au/living-in-merri-bek/animals-and-pets/problems-with-animals-and-fines/', 'COUNCIL'] };
+  var ST = { I: 'INTRODUCED', T: 'THREATENED', E: 'EDGE' };
+  var use = function (id, cls) { return '<svg class="i ' + (cls || '') + '" aria-hidden="true"><use href="#' + id + '"/></svg>'; };
+  function year(e) {
+    var g = 144 / 12, out = '<svg viewBox="0 0 144 30" aria-label="' + esc(e.act) + '"><line x1="' + g / 2 + '" y1="10" x2="' + (144 - g / 2) + '" y2="10" stroke="#0B2545" stroke-width=".8" stroke-dasharray="0 3" stroke-linecap="round"/>';
+    for (var i = 0; i < 12; i++) {
+      var c = e.act[i], x = g * i + g / 2, r = c === 'A' ? 4 : c === 'a' ? 2.4 : 1;
+      if (i === m) out += '<line class="tdy" x1="' + x + '" y1="0" x2="' + x + '" y2="4"/>';
+      out += '<circle cx="' + x + '" cy="10" r="' + r + '" class="' + (i === m && c !== '.' ? 'now' : c === '.' ? 'off' : 'on') + '"/>';
+      if (e.brd[i] === 'B') out += '<circle cx="' + x + '" cy="10" r="' + (r + 2.4) + '" class="ring"/>';
+      out += '<text x="' + x + '" y="27">' + L[i] + '</text>';
+    }
+    return out + '</svg>';
+  }
+  var WORD = { heat: 'Heat', water: 'Drought' }, LEVEL = ['none', 'low', 'high', 'severe'];
+  var dots = function (n, ic) { var s = '<span class="dots' + (ic === 'heat' ? ' h' : '') + '" data-tip="' + WORD[ic] + ': ' + LEVEL[n || 0] + '">' + use('g-' + ic); for (var i = 0; i < 3; i++) s += '<b class="' + (i < n ? 'on' : '') + '"></b>'; return s + '</span>'; };
+  var TIME = { day: 'Out by day', night: 'Out after dark', dusk: 'Out at dusk and dawn', any: 'Out at any time' };
+  /* its latest sighting on the map: from this device's last load of iNaturalist, or a specimen */
+  var seen = {};
+  try { var cache = JSON.parse(localStorage.getItem('da.obs.v3') || 'null'); (cache && cache.obs || []).forEach(function (o) { var k = o.tx && o.tx.n && o.tx.n.toLowerCase(); if (k && !o.ob && !seen[k]) seen[k] = o.id.toString(36).toUpperCase(); }); } catch (err) { /* no cache */ }
+  var D = window.DA_DEMO; if (D) { (D.stories || []).forEach(function (st) { var k = st.tx && st.tx.n && st.tx.n.toLowerCase(); if (k && !seen[k]) seen[k] = st.id; }); (D.sightings || []).forEach(function (f) { var k = f.tx && f.tx.n && f.tx.n.toLowerCase(); if (k && !f.hist && !seen[k]) seen[k] = f.id; }); }
+  document.getElementById('count').textContent = F.length;
+  document.getElementById('month').textContent = MON[m] + ' · ' + new Date().getFullYear();
+  document.getElementById('months').innerHTML = '<svg viewBox="0 0 144 10" style="width:144px;height:10px;display:block">' + L.split('').map(function (c, i) { return '<text x="' + (6 + 12 * i) + '" y="8" style="font:500 7px var(--mono);fill:' + (i === m ? '#E8453C' : '#6B6B6B') + ';text-anchor:middle">' + c + '</text>'; }).join('') + '</svg>';
+  document.getElementById('rows').innerHTML = F.map(function (e) {
+    var c = CALL[e.call];
+    return '<tr class="' + e.st + '" data-g="' + e.g + '" data-now="' + (e.act[m] === 'A' || e.brd[m] === 'B' ? 1 : 0) + '" data-q="' + esc((e.cn + ' ' + e.n + ' ' + e.where + ' ' + e.event).toLowerCase()) + '">'
+      + '<td class="g"><span data-tip="' + esc(M.KINDS[e.g] || e.g) + '">' + use('k-' + e.g) + '</span></td>'
+      + '<td class="nm"><b>' + esc(e.cn) + '</b><i>' + esc(e.n) + '</i>' + (ST[e.st] ? '<small>' + ST[e.st] + '</small>' : '') + '</td>'
+      + '<td class="yr">' + year(e) + '</td>'
+      + '<td class="hw">' + dots(e.heat, 'heat') + dots(e.water, 'water') + '<span data-tip="' + (TIME[e.time] || '') + '">' + use('g-' + e.time) + '</span></td>'
+      + '<td class="ev">' + esc(e.event) + '</td>'
+      + '<td class="tx">' + esc(e.aware) + '</td><td class="tx">' + esc(e.harm) + '</td><td class="tx">' + esc(e.help) + (e.note ? '<br><span class="mono" style="color:#6B6B6B;font-size:10.5px">' + esc(e.note) + '</span>' : '') + '</td>'
+      + '<td class="cl">' + (c ? '<a href="' + c[0] + '"' + (c[0].indexOf('http') === 0 ? ' target="_blank" rel="noopener"' : '') + '>' + use(c[0].indexOf('tel') === 0 ? 'g-phone' : 'g-out') + c[1] + '</a>' : '') + '</td>'
+      + '<td class="mp">' + (seen[e.n.toLowerCase()] ? '<a href="index.html#' + seen[e.n.toLowerCase()] + '" data-tip="Open its latest sighting on the map">' + use('g-where') + 'MAP</a>' : '') + '</td>'
+      + '<td class="src">' + (e.src || []).map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="' + esc(u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '">' + (i + 1) + '</a>'; }).join('') + '</td></tr>';
+  }).join('');
+  /* filters: by kind, this month, a word */
+  var on = new Set(), now = false, q = '';
+  var tools = document.getElementById('tools');
+  tools.innerHTML = '<button type="button" id="nowb" aria-pressed="false" aria-label="This month" data-tip="Active or with young this month">' + use('g-now') + '</button>'
+    + GROUPS.filter(function (g) { return F.some(function (e) { return e.g === g; }); }).map(function (g) { return '<button type="button" data-g="' + g + '" aria-pressed="false" aria-label="' + esc(M.KINDS[g] || g) + '" data-tip="' + esc(M.KINDS[g] || g) + '">' + use('k-' + g) + '</button>'; }).join('')
+    + '<label>' + use('g-search') + '<input type="search" id="q" aria-label="Search" autocomplete="off"></label>';
+  function apply() {
+    var shown = 0;
+    document.querySelectorAll('#rows tr').forEach(function (tr) {
+      var ok = (!on.size || on.has(tr.dataset.g)) && (!now || tr.dataset.now === '1') && (!q || tr.dataset.q.indexOf(q) >= 0);
+      tr.classList.toggle('hide', !ok); if (ok) shown++;
+    });
+    document.getElementById('count').textContent = shown; document.getElementById('none').hidden = !!shown;
+  }
+  tools.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'nowb') now = !now; else { var g = b.dataset.g; if (on.has(g)) on.delete(g); else on.add(g); }
+    b.setAttribute('aria-pressed', String(b.id === 'nowb' ? now : on.has(b.dataset.g))); apply();
+  });
+  document.getElementById('q').addEventListener('input', function (ev) { q = ev.target.value.trim().toLowerCase(); apply(); });
+  var hh = function () { document.documentElement.style.setProperty('--hh', document.getElementById('hd').offsetHeight + 'px'); };
+  addEventListener('resize', hh); hh();
+  document.getElementById('foot').textContent = 'Large point: most active. Small point: present. Ring: eggs or young. Sources on each row.';
+  /* a word on hover: every icon explains itself */
+  var tip = document.getElementById('tip');
+  var showTip = function (el) { var t = el.getAttribute('data-tip'); if (!t) return; tip.textContent = t; tip.hidden = false; var r = el.getBoundingClientRect(); var w = tip.offsetWidth, h = tip.offsetHeight; var x = Math.max(6, Math.min(innerWidth - w - 6, r.left + r.width / 2 - w / 2)), y = r.top - h - 8; if (y < 6) y = r.bottom + 8; tip.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; };
+  document.addEventListener('pointerover', function (ev) { var el = ev.target.closest('[data-tip]'); if (el) showTip(el); else tip.hidden = true; });
+  document.addEventListener('scroll', function () { tip.hidden = true; }, true);
+})();
+</script>
+</body>
+</html>
