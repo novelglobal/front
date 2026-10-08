@@ -1,37 +1,19 @@
 (() => {
 'use strict';
 const CONFIG = window.DA_CONFIG, SCALES = window.DA_SCALES, TRAITS = window.DA_TRAITS, SECTORS = window.DA_SECTORS, ROLES = window.DA_ROLES;
-const OUT = window.DA_OUTLOOK, CANOPY = window.DA_CANOPY, BRIEFS = window.DA_BRIEFS || [];
+const OUT = window.DA_OUTLOOK, CANOPY = window.DA_CANOPY, BRIEFS = window.DA_BRIEFS || [], THREAT = window.DA_THREAT || {};
 const NEEDS = window.DA_NEEDS || {}, HEROES = window.DA_HEROES || [], TRIBES = window.DA_TRIBES || [], WATERS = window.DA_WATERS || { lines: [], points: [] }, GIGS = window.DA_GIGS || {};
 const CANOPY_TARGET = (window.DA_CANOPY_TARGET || { pc: 40 }).pc;
-const HEAT = window.DA_HEAT, CONTACTS = window.DA_CONTACTS, LINKS = window.DA_LINKS, DEMO = CONFIG.DEMO ? window.DA_DEMO : null;
+const HEAT = window.DA_HEAT, CONTACTS = window.DA_CONTACTS, LINKS = window.DA_LINKS, EXAMPLES = window.DA_EXAMPLES || [];
 const M = window.DA_MARKS, C = M.C, FIELD = window.DA_FIELD || [];
-/* two pages, as two positions of a point: NOW (the situation: now, the forecast, alerts) and STORIES (the response: stories, people, the archive) */
+const PLACES = window.DA_PLACES || [], FAMILIES = window.DA_FAMILIES || {}, STATEMENT = window.DA_STATEMENT || {}, PRESSURES = window.DA_PRESSURES || {}, OUTPUTS = window.DA_OUTPUTS || [];
+const SIG = Object.assign({ line: 48, mesh: 200, pager: 80 }, CONFIG.SIGNAL || {});
 const VIEWS = [
   { k: 'now', icon: 'now', label: 'Now', w: 'NOW' },
   { k: 'stories', icon: 'stories', label: 'Stories', w: 'STORIES' },
 ];
-const WORDS = M.WORDS;
-const word = k => WORDS[k] || String(k || '').toUpperCase();
-/* how far a response has come: noticed, made right, made to work, made beautiful */
-const STAGES = ['NOTICED', 'MAKE IT RIGHT', 'MAKE IT WORK', 'MAKE IT BEAUTIFUL'];
 /* degrees of danger in the months ahead: orange, deeper as it rises. Red is kept for now. */
 const DEG = ['LOW', 'WATCH', 'HIGH', 'SEVERE', 'EXTREME'];
-const HUMAN_KINDS = ['need', 'offer', 'event', 'pulse', 'refuge'];
-const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
-/* a touch answers: a dry click of a few milliseconds when sound is on, and the smallest buzz a phone allows */
-let actx = null;
-function tick(f = 1700) {
-  buzz(3);
-  if (!prefs.sound) return;
-  try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
-    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
-    o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.035);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.06);
-  } catch (e) { /* silence is fine */ }
-}
 const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#g-${name}"/></svg>`;
 const glyphSVG = (name, cls = '') => `<svg class="i k ${cls}" aria-hidden="true"><use href="#k-${name}"/></svg>`;
 (function sprite() { const host = document.querySelector('svg.sprite'); if (host) host.innerHTML = M.sprite(); })();
@@ -41,39 +23,33 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const pad2 = n => String(n).padStart(2, '0');
-const pad3 = n => String(n).padStart(3, '0');
 const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const fmtDate = t => { const d = new Date(t); return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`; };
 const fmtClock = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const fmtDay = t => { const d = new Date(t); return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; };
-/* a day as people say it: today, tonight, tomorrow, or the day's name */
+const fmtStamp = t => { const d = new Date(t); return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${String(d.getFullYear()).slice(2)} ${fmtClock(t)}`; };
 const dayWord = t => { const d = new Date(t), a = new Date(t), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); const n = Math.round((a - b) / 864e5); return n === 0 ? (d.getHours() >= 17 ? 'TONIGHT' : 'TODAY') : n === 1 ? 'TOMORROW' : n > 1 && n < 7 ? DOW[d.getDay()] : fmtDay(t); };
 const isoDay = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const parseDay = s => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return y ? new Date(y, m - 1, d) : null; };
 const dayMonth = s => { const d = parseDay(s); return d ? `${d.getDate()} ${MON[d.getMonth()]}` : ''; };
-const daysFrom = n => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
+const ago = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60000)); return m < 60 ? `${m}M` : m < 48 * 60 ? `${Math.round(m / 60)}H` : `${Math.round(m / 1440)}D`; };
 const toCode = id => (typeof id === 'number' ? id.toString(36) : String(id)).toUpperCase();
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const coord = (lat, lng) => `${lat < 0 ? '−' : ''}${Math.abs(lat).toFixed(4)}  ${lng.toFixed(4)}`;
-const norm = s => String(s || '').toLowerCase().replace(/&/g, 'and').replace(/\b(the|hotel|bar|club|venue|cafe|café)\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-function countdown(t, now = Date.now()) {
-  const s = Math.floor((t - now) / 1000); if (s <= 0) return '00:00:00';
-  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
-  return `${d ? d + 'd ' : ''}${pad2(h)}:${pad2(m)}:${pad2(x)}`;
-}
+const norm = s => String(s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim();
+const cap = t => (t ? String(t).charAt(0).toUpperCase() + String(t).slice(1) : '');
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
 };
 const loadImage = (src, cors) => new Promise((res, rej) => { const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error('image')); im.src = src; });
 let toastT = 0;
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); }
+function toast(msg, ms = 2400) { const t = $('#toast'); t.textContent = msg; t.hidden = false; t.classList.remove('in'); void t.offsetWidth; t.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms); }
 function nudge(el) { if (!el) return; el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); el.focus({ preventScroll: true }); buzz(20); }
 const debounce = (fn, ms) => { let t = 0; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 const haversine = (a, b, c, d) => { const R = 6371000, r = Math.PI / 180; const x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+const bearing = (a, b, c, d) => { const r = Math.PI / 180; const y = Math.sin((d - b) * r) * Math.cos(c * r), x = Math.cos(a * r) * Math.sin(c * r) - Math.sin(a * r) * Math.cos(c * r) * Math.cos((d - b) * r); return (Math.atan2(y, x) / r + 360) % 360; };
+const metres = d => (d < 1000 ? `${Math.round(d / 10) * 10} M` : `${(d / 1000).toFixed(1)} KM`);
 const coarse = () => matchMedia('(pointer: coarse)').matches;
-const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 const B = CONFIG.BBOX;
 const inBox = (lat, lng) => lat >= B.s && lat <= B.n && lng >= B.w && lng <= B.e;
 const seeded = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -85,29 +61,187 @@ const licAdaptable = l => !!l && ['cc0', 'cc-by', 'cc-by-nc', 'cc-by-sa', 'cc-by
 const photoURL = (u, size) => u ? u.replace(/\/(square|thumb|small|medium|large|original)\.(\w+)(\?.*)?$/i, `/${size}.$2$3`) : '';
 const SUBURBS = ['Brunswick East', 'Brunswick West', 'Brunswick', 'Coburg North', 'Coburg', 'Pascoe Vale South', 'Parkville', 'Carlton North', 'Princes Hill', 'Fitzroy North', 'Clifton Hill', 'North Melbourne', 'West Melbourne', 'East Melbourne', 'Southbank', 'Docklands', 'Collingwood', 'Abbotsford', 'Northcote', 'Essendon', 'Moonee Ponds', 'Flemington', 'Kensington', 'Carlton', 'Fitzroy', 'Melbourne'];
 const suburbOf = pg => { const s = (pg || '').toLowerCase(); for (const n of SUBURBS) if (s.includes(n.toLowerCase())) return n.toUpperCase(); return 'BRUNSWICK'; };
-/* the suburb a point is in: the nearest suburb centre, close enough for a label and a canopy figure */
 const CENTRES = [['BRUNSWICK', -37.7667, 144.9600], ['BRUNSWICK EAST', -37.7712, 144.9790], ['BRUNSWICK WEST', -37.7650, 144.9420], ['PARKVILLE', -37.7860, 144.9500], ['PRINCES HILL', -37.7832, 144.9655],
   ['CARLTON NORTH', -37.7845, 144.9735], ['FITZROY NORTH', -37.7835, 144.9860], ['CLIFTON HILL', -37.7890, 144.9970], ['CARLTON', -37.7990, 144.9665], ['FITZROY', -37.7990, 144.9785], ['COLLINGWOOD', -37.8020, 144.9890],
   ['NORTH MELBOURNE', -37.7985, 144.9450], ['KENSINGTON', -37.7930, 144.9290], ['FLEMINGTON', -37.7835, 144.9300], ['WEST MELBOURNE', -37.8070, 144.9430], ['MELBOURNE', -37.8136, 144.9631], ['EAST MELBOURNE', -37.8130, 144.9850],
   ['DOCKLANDS', -37.8150, 144.9460], ['SOUTHBANK', -37.8225, 144.9640]];
 const suburbAt = (lat, lng) => { let best = CENTRES[0][0], bd = 1e9; for (const [n, a, b] of CENTRES) { const d = (a - lat) ** 2 + ((b - lng) * 0.79) ** 2; if (d < bd) { bd = d; best = n; } } return best; };
 const title = s => String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-/* the suburb of a record: the observer's own place name for a sighting, the nearest centre for anything else */
 const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLowerCase() : ''; if (s) for (const n of SUBURBS) if (s.includes(n.toLowerCase()) && CENTRES.some(c => c[0] === n.toUpperCase())) return n.toUpperCase(); return suburbAt(o.lat, o.lng); };
 
 /* ───────── state ───────── */
-const prefs = Object.assign({ sound: true, motion: true, base: null }, store.get('da.prefs', {}));
-const me = Object.assign({ by: '', pay: '', dev: '' }, store.get('da.me', {}));
+const prefs = Object.assign({ sound: true, motion: true, areas: false, scan: null }, store.get('da.prefs', {}));
+const savePrefs = () => store.set('da.prefs', prefs);
+const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));
 if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; store.set('da.me', me); }
 const S = {
-  obs: [], byId: new Map(), user: [], community: [], stories: [], hist: [],
-  view: 0, open: true, sel: null, bizSel: null, mode: null, place: null, filed: null, mo: 0, brief: null,
+  obs: [], byId: new Map(), user: [], community: [], hist: [],
+  view: 0, open: false, sel: null, mode: null, place: null, mo: 0, tribeSel: null, sig: null,
   wx: store.get('da.wx.v3', { t: 0, tmax: null, tmin: null, rain: null, days: [] }),
   lastVisit: store.get('da.lastVisit', 0), lastSignal: 0, stale: false, me,
-  stats: new Map(), resp: new Map(), biz: null, bizLoading: null, grids: new Map(), radius: new Map(),
-  orbit: { cell: new Map(), biz: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
-  heroes: [], tribes: [], tribeSel: null,
+  biz: null, bizLoading: null, radius: new Map(), orbit: { cell: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
+  heroes: [], tribes: [], signals: [],
+  /* the radar: where it is pinned and how far it reaches, kept between visits */
+  scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 520, min: 250, max: 1500 }; const p = prefs.scan || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: clamp(+p.r || c.r, c.min || 250, c.max || 1500) }; })(),
 };
+const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
+const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
+const snd = (() => {
+  let ctx = null, bus = null, wet = null, lastBlip = 0;
+  const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
+  function ready() {
+    if (!prefs.sound || !active()) return null;
+    try {
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.42;
+        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; bus.connect(comp); comp.connect(ctx.destination);
+        /* a small, soft room: two short delays fed back through a low-pass */
+        wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
+        wet.connect(d1); wet.connect(d2); d1.connect(lp); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(bus);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    } catch (e) { return null; }
+  }
+  /* every sound leaves through a panner: mostly dry, a little into the room */
+  function out(node, pan = 0, room = 1) {
+    let n = node; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); node.connect(p); n = p; }
+    n.connect(bus); if (room) { const r = ctx.createGain(); r.gain.value = room; n.connect(r); r.connect(wet); }
+  }
+  /* a plucked string: a burst of noise through a short delay line that loses a little each pass */
+  const KS = new Map();
+  function string(freq, dur = 1.4, damp = 0.9965) {
+    const key = `${Math.round(freq)}|${dur}|${damp}`; if (KS.has(key)) return KS.get(key);
+    const sr = ctx.sampleRate, n = Math.floor(sr * dur), buf = ctx.createBuffer(1, n, sr), d = buf.getChannelData(0);
+    const P = Math.max(2, Math.round(sr / freq)), line = new Float32Array(P); const r = seeded(key);
+    for (let i = 0; i < P; i++) line[i] = r() * 2 - 1;
+    for (let i = 0, j = 0; i < n; i++) { const a = line[j], b = line[(j + 1) % P]; d[i] = a; line[j] = damp * 0.5 * (a + b); j = (j + 1) % P; }
+    for (let i = 0; i < 48; i++) d[i] *= i / 48;
+    for (let i = 0; i < 2048; i++) d[n - 1 - i] *= i / 2048;
+    KS.set(key, buf); return buf;
+  }
+  function play(buf, gain, at = 0, pan = 0, cut = 4800) {
+    const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain(); g.gain.value = gain; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cut;
+    s.connect(lp); lp.connect(g); out(g, pan, 0.8); s.start(ctx.currentTime + at);
+  }
+  function noise(dur) { const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded(dur); for (let i = 0; i < n; i++) d[i] = r() * 2 - 1; return b; }
+  const env = (g, t, a, peak, hold, rel) => { const p = Math.max(0.0002, peak); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(p, t + a); g.gain.setValueAtTime(p, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); };
+  const osc = (type, f, t, end) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(end + 0.05); return o; };
+  const vib = (o, t, end, rate, depth, delay = 0) => { const l = ctx.createOscillator(); l.frequency.value = rate; const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(depth, t + delay + 0.08); l.connect(g); g.connect(o.frequency); l.start(t); l.stop(end + 0.05); };
+  const semi = (f, n) => f * Math.pow(2, n / 12);
+
+  /* ───────── the lives play small instruments, each call cut down to a few soft notes, a little out of tune ───────── */
+  const wob = () => Math.pow(2, (Math.random() - 0.5) * 0.016);
+  const INST = {
+    /* birds: a soft whistle */
+    whistle(f, t, d, v, pan) { f *= wob(); const end = t + 0.05 + d + 0.18; const o = osc('sine', f, t, end); vib(o, t, end, 5.6, f * 0.007, 0.04); const e = ctx.createGain(); o.connect(e); env(e, t, 0.05, v, d, 0.18); out(e, pan); },
+    /* insects: a music-box tine */
+    box(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); for (const [m, gg] of [[1, 1], [3.98, 0.12]]) { const o = osc('sine', f * m, t, t + 0.8); const g = ctx.createGain(); g.gain.value = gg; o.connect(g); g.connect(e); }
+      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.004); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.75); out(e, pan); },
+    /* frogs and beetles: a kalimba, wood and thumb */
+    kalimba(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); const o = osc('sine', f, t, t + 0.6); o.connect(e); const o2 = osc('sine', f * 4.9, t, t + 0.12); const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.18, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08); o2.connect(g2); g2.connect(e);
+      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.006); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.55); out(e, pan); },
+    /* spiders, snails and worms: a string */
+    harp(f, t, d, v, pan) { const s2 = ctx.createBufferSource(); s2.buffer = string(f * wob(), 1.6, 0.9968); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const g = ctx.createGain(); g.gain.value = v * 1.5; s2.connect(lp); lp.connect(g); out(g, pan); s2.start(t); },
+    /* mammals: a soft boop that bends down */
+    boop(f, t, d, v, pan) { f *= wob(); const end = t + d + 0.2; const o = osc('sine', f * 1.12, t, end); o.frequency.exponentialRampToValueAtTime(f * 0.9, t + d + 0.1); const e = ctx.createGain(); o.connect(e); env(e, t, 0.03, v, d * 0.4, d * 0.6 + 0.15); out(e, pan); },
+    /* owls: a hollow note that falls a little */
+    hoot(f, t, d, v, pan) { const end = t + 0.1 + d + 0.3; const o = osc('sine', f * 1.02, t, end); o.frequency.exponentialRampToValueAtTime(f * 0.94, end); const e = ctx.createGain(); o.connect(e); env(e, t, 0.1, v, d * 0.6, 0.3); out(e, pan); },
+    /* flying-foxes, bats, water and plants: glass */
+    chime(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); for (const [m, gg, dec] of [[1, 1, 1.6], [2.76, 0.32, 0.8], [5.4, 0.12, 0.4]]) { const o = osc('sine', f * m, t, t + dec); const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * gg, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); o.connect(g); g.connect(e); } out(e, pan, 1.3); },
+    /* reptiles: a small low bonk */
+    bonk(f, t, d, v, pan) { const o = osc('sine', f * 1.5, t, t + 0.35); o.frequency.exponentialRampToValueAtTime(f, t + 0.06); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.005); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); out(e, pan); },
+  };
+  const INST_W = { whistle: 'WHISTLE', box: 'MUSIC BOX', kalimba: 'KALIMBA', harp: 'STRING', boop: 'BOOP', hoot: 'HOLLOW WHISTLE', chime: 'GLASS', bonk: 'WOOD' };
+  /* each kind's call: an instrument and a few notes, in semitones above the string's own note, with how long each lasts */
+  const MOTIF = {
+    bird: ['whistle', [[0, 0.16], [4, 0.16], [7, 0.34]]], parrot: ['box', [[7, 0.12], [12, 0.12], [7, 0.22]]], waterbird: ['whistle', [[0, 0.34], [-5, 0.48]]],
+    owl: ['hoot', [[0, 0.5], [-2, 0.66]]], raptor: ['whistle', [[12, 0.24], [7, 0.5]]],
+    bee: ['box', [[0, 0.1], [2, 0.1], [0, 0.1], [2, 0.18]]], wasp: ['box', [[2, 0.1], [0, 0.1], [2, 0.18]]], fly: ['box', [[0, 0.09], [1, 0.09], [0, 0.16]]],
+    beetle: ['kalimba', [[0, 0.22], [3, 0.3]]], bug: ['box', [[5, 0.14], [3, 0.2]]], butterfly: ['box', [[0, 0.13], [4, 0.13], [7, 0.13], [12, 0.26]]],
+    moth: ['box', [[7, 0.36], [5, 0.52]]], grasshopper: ['box', [[12, 0.08], [12, 0.08], [12, 0.08], [12, 0.16]]], mantis: ['harp', [[0, 0.36], [5, 0.36]]],
+    dragonfly: ['chime', [[12, 0.26], [19, 0.46]]], spider: ['harp', [[0, 0.26], [7, 0.26], [12, 0.44]]], orb: ['harp', [[0, 0.24], [7, 0.24], [12, 0.24], [7, 0.44]]],
+    snail: ['harp', [[-5, 0.66]]], segmented: ['harp', [[-7, 0.66]]], frog: ['kalimba', [[0, 0.28], [0, 0.36]]],
+    turtle: ['bonk', [[0, 0.46], [-5, 0.56]]], lizard: ['bonk', [[0, 0.26], [2, 0.36]]], snake: ['bonk', [[-2, 0.66]]],
+    mammal: ['boop', [[0, 0.3], [3, 0.4]]], possum: ['boop', [[0, 0.28], [3, 0.28], [0, 0.42]]], macropod: ['bonk', [[0, 0.3], [0, 0.4]]], rodent: ['box', [[12, 0.11], [14, 0.17]]],
+    flyingfox: ['chime', [[12, 0.34], [7, 0.34], [3, 0.56]]], bat: ['chime', [[19, 0.2], [24, 0.32]]],
+    fox: ['harp', [[0, 0.26], [5, 0.4]]], cat: ['harp', [[7, 0.26], [0, 0.4]]], dog: ['boop', [[0, 0.22], [0, 0.32]]], rabbit: ['box', [[7, 0.13], [12, 0.22]]],
+    aquatic: ['chime', [[0, 0.54], [7, 0.64]]], plant: ['chime', [[0, 0.9]]], fungi: ['chime', [[-5, 0.9]]], ape: ['boop', [[0, 0.4], [-2, 0.4], [0, 0.56]]], paw: ['kalimba', [[0, 0.36]]],
+  };
+  /* ───────── the people make small, real sounds, close up: a sleeve, two taps, a cup, a pencil, a hum, a breath ───────── */
+  const softNoise = (t, dur, f0, f1, q, v, pan, room = 0.6) => { const s2 = ctx.createBufferSource(); s2.buffer = noise(dur); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + dur); bp.Q.value = q; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s2.connect(bp); bp.connect(g); out(g, pan, room); s2.start(t); };
+  function hum(f, t, d, v, pan) { f *= wob(); const end = t + 0.18 + d + 0.35; const o = osc('triangle', f, t, end); vib(o, t, end, 4.8, f * 0.006, 0.15); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; const e = ctx.createGain(); o.connect(lp); lp.connect(e); env(e, t, 0.18, v, d, 0.35); out(e, pan, 0.9); }
+  const SOUNDS = {
+    swish: (f, t, v, pan) => softNoise(t, 0.38, 1600, 4200, 1.1, v * 0.5, pan),
+    taps: (f, t, v, pan) => { for (const dt of [0, 0.17]) { const o = osc('sine', 560 * wob(), t + dt, t + dt + 0.08); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t + dt); e.gain.exponentialRampToValueAtTime(v * 0.6, t + dt + 0.003); e.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.07); out(e, pan, 0.4); softNoise(t + dt, 0.03, 2500, 1800, 2, v * 0.25, pan, 0.2); } },
+    cup: (f, t, v, pan) => { for (const [m, gg] of [[2150, 1], [3420, 0.5]]) { const o = osc('sine', m * wob(), t, t + 0.3); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v * 0.18 * gg, t + 0.002); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.26); out(e, pan, 0.8); } },
+    pencil: (f, t, v, pan) => { for (const dt of [0, 0.11, 0.2]) softNoise(t + dt, 0.07, 3600, 5200, 3, v * 0.22, pan, 0.2); },
+    hum: (f, t, v, pan) => hum(f * 0.5, t, 0.6, v * 0.5, pan),
+    hums: (f, t, v, pan) => { hum(f * 0.5, t, 0.6, v * 0.36, pan - 0.25); hum(f * 0.75, t + 0.09, 0.55, v * 0.32, pan + 0.25); },
+    breath: (f, t, v, pan) => { softNoise(t, 0.5, 700, 1100, 0.8, v * 0.2, pan, 0.3); hum(f * 0.5, t + 0.2, 0.3, v * 0.25, pan); },
+  };
+  const GAIN = { whistle: 0.06, box: 0.05, kalimba: 0.09, harp: 0.05, boop: 0.08, hoot: 0.07, chime: 0.035, bonk: 0.09, people: 0.3 };
+  const SOUND_W = { swish: 'A SLEEVE', taps: 'TWO TAPS', cup: 'A CUP', pencil: 'A PENCIL', hum: 'A HUM', hums: 'TWO HUMS', breath: 'A BREATH' };
+  /* what a knot sounds like, as a word and notes: for its sound, and for the little score on its card */
+  function describe(spec = {}) {
+    if (spec.fam) { const F = FAMILIES[spec.fam] || FAMILIES.people || { sound: 'breath' }; const sd = F.sound || 'breath'; return { people: sd, w: SOUND_W[sd] || '', notes: [[0, 0.5]], len: sd === 'pencil' ? 0.45 : sd === 'taps' ? 0.4 : sd === 'cup' ? 0.4 : 0.75 }; }
+    const [inst, notes] = MOTIF[spec.g] || MOTIF.paw; return { inst, w: INST_W[inst], notes, len: notes.reduce((a, x) => a + x[1], 0) + 0.3 };
+  }
+  function knotAt(spec, f, t0, v, pan) {
+    const d = describe(spec);
+    if (d.people) { (SOUNDS[d.people] || SOUNDS.breath)(f, t0, GAIN.people * v, pan); return d.len; }
+    let t = t0; for (const [s2, dur] of d.notes) { INST[d.inst](semi(f, s2), t, dur, (GAIN[d.inst] || 0.06) * v, pan); t += dur; }
+    return d.len;
+  }
+  return {
+    describe,
+    /* a dry click for a press */
+    tick(f = 1700) {
+      buzz(3); if (!ready()) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.035);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.06);
+    },
+    /* a knot's own sound: an animal's instrument, or a voice for the people; f is the string's own note */
+    knot(spec, f = 330, at = 0, v = 1, pan = 0) { if (!ready()) return describe(spec).len; return knotAt(spec, f, ctx.currentTime + at, v, pan); },
+    /* a string tied: shorter strings ring higher */
+    pluck(len = 0.5, pan = 0, gain = 0.15) { buzz(8); if (!ready()) return; play(string(150 + (1 - clamp(len, 0, 1)) * 470, 2, 0.997), gain, 0, pan, 3600); },
+    /* a string cut: muted, low */
+    snap(pan = 0) { buzz([4, 24, 4]); if (!ready()) return; play(string(98, 0.35, 0.95), 0.18, 0, pan, 1600); },
+    /* every string at once, slowly, high to low */
+    strum(lens = [], dir = 1) { buzz(6); if (!ready()) return; const L = lens.length ? lens : [0.5]; L.forEach((l, i) => play(string(150 + (1 - clamp(l, 0, 1)) * 470, 2, 0.997), 0.09, i * 0.09, dir * (i / Math.max(1, L.length - 1) - 0.5), 3600)); },
+    /* a song: each string plucked in the order it was tied, and each knot answering in its own voice */
+    song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = ctx.currentTime + 0.06; for (const n of seq.slice(0, 180)) { if (n.spec) knotAt(n.spec, n.f, t0 + n.t, n.v || 0.8, n.pan || 0); else play(string(n.f, n.dur || 2, n.dc || 0.997), n.g || 0.09, t0 - ctx.currentTime + n.t, n.pan || 0, n.cut || 3600); } },
+    /* a constellation born: four glass notes, rising */
+    born() { buzz([6, 30, 6]); if (!ready()) return; const t = ctx.currentTime; [0, 7, 12, 19].forEach((s2, i) => INST.chime(semi(523, s2), t + i * 0.14, 0.2, 0.025, (i - 1.5) * 0.3)); },
+    /* a cell found by the sweep */
+    blip(k = 0.5) {
+      if (!ready()) return; const now = performance.now(); if (now - lastBlip < 110) return; lastBlip = now;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(900 + k * 900, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.016, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.18);
+    },
+    /* a thermal head stepping: filtered noise in short strokes */
+    printer(ms = 1200) {
+      buzz([18, 36, 18, 36, 18, 36, 40]); if (!ready()) return;
+      const t = ctx.currentTime, d = ms / 1000; const s = ctx.createBufferSource(); s.buffer = noise(d);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.4;
+      const g = ctx.createGain(); g.gain.value = 0; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
+      lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
+    },
+    /* paper torn off */
+    tear() {
+      buzz(12); if (!ready()) return; const t = ctx.currentTime; const s = ctx.createBufferSource(); s.buffer = noise(0.22);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(4200, t); bp.frequency.exponentialRampToValueAtTime(900, t + 0.2);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t);
+    },
+  };
+})();
+const tick = f => snd.tick(f);
 
 
 /* ════════════════════════════════════════════════════════════════════
@@ -118,7 +252,6 @@ const kindOf = o => (o.hum ? 'Human' : (o.tx && o.tx.ic) || 'Unknown');
 function bandOf(o) { if (o.b != null) return o.b; const ic = kindOf(o); const i = SCALES.findIndex(s => s.taxa.includes(ic)); return i < 0 ? 5 : i; }
 const planted = o => !!o.cap && ['Plantae', 'Fungi'].includes(kindOf(o));
 const keptAnimal = o => !!o.cap && !planted(o);
-const genusOf = o => (o.tx && o.tx.n ? o.tx.n.split(' ')[0] : '');
 const rangeOf = o => (S.radius.get(o.id) || (o.hum ? 400 : keptAnimal(o) ? 400 : SCALES[bandOf(o)].range));
 /* the field list (field.js): what each kind of life needs through the year; by species, else by genus when only one is listed */
 const FIELD_IX = new Map(), GENUS_IX = new Map();
@@ -128,21 +261,17 @@ for (const e of FIELD) {
   else if (!GENUS_IX.has(g)) GENUS_IX.set(g, e);
   else { const prev = GENUS_IX.get(g); if (prev && /\s/.test(prev.n)) GENUS_IX.set(g, null); }
 }
-/* a word that names a group, not a species: the field list answers with the one most often met here */
 const GROUP_REP = { serpentes: 'notechis scutatus', chiroptera: 'chalinolobus gouldii', microchiroptera: 'chalinolobus gouldii', anura: 'crinia signifera', scincidae: 'lampropholis guichenoti' };
 const fieldOf = o => { const sub = o && subjectOf(o); const n = sub && sub.tx && sub.tx.n ? sub.tx.n.toLowerCase().trim() : ''; if (!n) return null; return FIELD_IX.get(n) || FIELD_IX.get(n.split(/\s+/).slice(0, 2).join(' ')) || GENUS_IX.get(n.split(/\s+/)[0]) || (GROUP_REP[n] ? FIELD_IX.get(GROUP_REP[n]) : null) || null; };
 const ICONIC_GLYPH = { Aves: 'bird', Mammalia: 'mammal', Reptilia: 'lizard', Amphibia: 'frog', Actinopterygii: 'aquatic', Insecta: 'beetle', Arachnida: 'spider', Mollusca: 'snail', Plantae: 'plant', Fungi: 'fungi', Animalia: 'segmented', Chromista: 'plant', Protozoa: 'segmented', Unknown: 'plant' };
-/* a kind the field list does not hold: read its common name, then its class */
 const NAME_GLYPH = [[/flying-?fox/i, 'flyingfox'], [/\bbat\b/i, 'bat'], [/possum|glider/i, 'possum'], [/\bbee\b|bees$/i, 'bee'], [/butterfl|\bskipper\b|\b(admiral|jezebel|swallowtail|brown)\b/i, 'butterfly'], [/\bmoth\b/i, 'moth'], [/wasp|hornet/i, 'wasp'], [/hoverfly|\bfly\b/i, 'fly'], [/dragonfly|damselfly/i, 'dragonfly'],
   [/orb-?weaver/i, 'orb'], [/spider/i, 'spider'], [/beetle|ladybird|weevil/i, 'beetle'], [/grasshopper|cricket|katydid/i, 'grasshopper'], [/mantis/i, 'mantis'], [/\bbug\b|aphid|cicada|psyllid|lerp/i, 'bug'], [/snail|slug/i, 'snail'], [/worm/i, 'segmented'],
   [/frog|toadlet|froglet/i, 'frog'], [/turtle|tortoise/i, 'turtle'], [/skink|gecko|lizard|dragon\b/i, 'lizard'], [/snake/i, 'snake'], [/\b(fish|eel|galaxias|carp|mosquitofish)\b/i, 'aquatic'],
   [/owl|frogmouth|boobook/i, 'owl'], [/hawk|kite|falcon|eagle|goshawk/i, 'raptor'], [/duck|swan|heron|egret|ibis|cormorant|grebe|moorhen|coot|gull|darter|swamphen|teal/i, 'waterbird'], [/lorikeet|rosella|cockatoo|corella|galah|parrot/i, 'parrot'], [/orang-?utan|gorilla|chimpanzee/i, 'ape']];
-const glyphOf = o => { if (o && o.user && o.g) return o.g; const fe = fieldOf(o); if (fe) return fe.g; const sub = subjectOf(o); const cn = sub.tx && sub.tx.cn; if (cn && !o.hum) for (const [re, g] of NAME_GLYPH) if (re.test(cn)) return g; if (sub.tx && sub.tx.ic && ICONIC_GLYPH[sub.tx.ic]) return ICONIC_GLYPH[sub.tx.ic]; return o.hum ? 'human' : 'plant'; };
-/* whose record it is: a record of people that names an animal speaks for the animal */
-const lifeOf = o => { if (o.user && o.g) return o.g; const sub = subjectOf(o); return o.hum && !(sub && sub.tx && sub.tx.n) ? 'human' : glyphOf(o); };
-/* gone cold: a sighting more than three weeks old, or one from this season in a past year */
+const glyphOf = o => { if (o && o.user && o.g) return o.g; if (o && o.sigPin && o.g) return o.g; const fe = fieldOf(o); if (fe) return fe.g; const sub = subjectOf(o); const cn = sub.tx && sub.tx.cn; if (cn && !o.hum) for (const [re, g] of NAME_GLYPH) if (re.test(cn)) return g; if (sub.tx && sub.tx.ic && ICONIC_GLYPH[sub.tx.ic]) return ICONIC_GLYPH[sub.tx.ic]; return o.hum ? 'human' : 'plant'; };
+const lifeOf = o => { if ((o.user || o.sigPin) && o.g) return o.g; const sub = subjectOf(o); return o.hum && !(sub && sub.tx && sub.tx.n) ? 'human' : glyphOf(o); };
 const COLD_DAYS = 21;
-const isCold = o => !!o.hist || ((typeof o.id === 'number' || o.specimen) && !o.hum && o.age != null && o.age > COLD_DAYS);
+const isCold = o => !!o.hist || (typeof o.id === 'number' && !o.hum && o.age != null && o.age > COLD_DAYS);
 const hourOf = o => (o.t ? new Date(o.t).getHours() : null);
 const isNight = o => { const h = hourOf(o); return h != null && (h >= 20 || h < 5); };
 function traitsOf(o) {
@@ -151,49 +280,81 @@ function traitsOf(o) {
   const g = o.tx ? kindOf(o) : SCALES[bandOf(o)].taxa[0];
   const t = TRAITS.groups[g] || TRAITS.groups.Unknown; return [t[0], t[1], ''];
 }
-/* the outlook, month by month (config.js) */
 const OUT_N = OUT.lv.length;
 const outMonth = k => { const [y, m] = OUT.start; const t = m + k; return { k, m: t % 12, y: y + Math.floor(t / 12), lv: OUT.lv[k] || 0, h: OUT.h[k] || 'p' }; };
 const nowK = () => { const d = new Date(); const [y, m] = OUT.start; return clamp((d.getFullYear() - y) * 12 + d.getMonth() - m, 0, OUT_N - 1); };
 const inWin = (w, m) => (w.a <= w.b ? m >= w.a && m <= w.b : m >= w.a || m <= w.b);
 const monthsWord = (a, b) => (a === b ? MON[a] : `${MON[a]}–${MON[b]}`);
-/* the canopy where a point is: by suburb where measured, else by council */
 const canopyAt = (lat, lng, sb = suburbAt(lat, lng)) => Object.assign({ sb, pc: 15, yr: 2018, by: 'MELBOURNE' }, CANOPY[sb] || {});
-/* the canopy of the suburb a record names */
 const canopyOf = o => canopyAt(o.lat, o.lng, placeOf(o));
-/* degrees of danger for a life in a month: 0 low · 1 watch · 2 high · 3 severe · 4 extreme.
-   The month's outlook, scaled by how hard heat (twice) and drought (once) are on its kind; more when the heat lands
-   while a heat-sensitive kind breeds or in one of the unseasonable windows; a little more on bare ground; less for introduced kinds. */
 function degAt(o, k) {
   if (!o || o.hist) return 0;
-  const M = outMonth(k);
-  if (o.hum) return o.story || o.kind === 'pulse' || o.kind === 'need' || o.kind === 'refuge' ? M.lv : 0;
+  const Mo = outMonth(k);
+  if (o.hum) return o.kind === 'need' ? Mo.lv : 0;
   const sub = subjectOf(o); if (keptAnimal(sub)) return 0;
   const fe = fieldOf(o); const [th, tw] = traitsOf(sub); const g = glyphOf(o);
   const heat = fe ? fe.heat || 0 : Math.min(3, th), water = fe ? fe.water || 0 : Math.min(3, tw);
-  let lv = M.lv; if (fe && fe.act && fe.act[M.m] === '.') lv = Math.max(0, lv - 1);
+  let lv = Mo.lv; if (fe && fe.act && fe.act[Mo.m] === '.') lv = Math.max(0, lv - 1);
   let d = lv * ((2 * heat + water) / 3) / 3;
-  const born = !!(fe && fe.brd && fe.brd[M.m] === 'B');
-  if (M.lv >= 2 && heat >= 2 && (born || OUT.windows.some(w => inWin(w, M.m) && w.g.includes(g)))) d += 0.6;   /* the wrong moment */
-  if (M.lv >= 3 && heat >= 2 && canopyOf(o).pc < 15) d += 0.3;                                    /* bare ground */
+  const born = !!(fe && fe.brd && fe.brd[Mo.m] === 'B');
+  if (Mo.lv >= 2 && heat >= 2 && (born || OUT.windows.some(w => inWin(w, Mo.m) && w.g.includes(g)))) d += 0.6;
+  if (Mo.lv >= 3 && heat >= 2 && canopyOf(o).pc < 15) d += 0.3;
   if (sub.tx && sub.tx.intro) d -= 1;
   return d >= 3.6 ? 4 : d >= 2.8 ? 3 : d >= 1.8 ? 2 : d >= 0.9 ? 1 : 0;
 }
 const degCache = new Map();
 function degOf(o, k0 = S.mo, span = 3) {
-  const key = `${o.id}|${k0}|${span}|${S.radius.get(o.id) || 0}`; if (degCache.has(key)) return degCache.get(key);
+  const key = `${o.id}|${k0}|${span}`; if (degCache.has(key)) return degCache.get(key);
   let best = 0; for (let k = k0; k < Math.min(OUT_N, k0 + span); k++) best = Math.max(best, degAt(o, k));
   degCache.set(key, best); if (degCache.size > 6000) degCache.clear(); return best;
 }
-/* when it is worst: the months ahead at its highest degree */
 function worstWhen(o, k0 = S.mo, span = 3) {
   let top = 0, a = -1, b = -1;
   for (let k = k0; k < Math.min(OUT_N, k0 + span); k++) { const d = degAt(o, k); if (d > top) { top = d; a = b = k; } else if (d === top && top > 0 && b === k - 1) b = k; }
   return top ? { deg: top, a, b, word: monthsWord(outMonth(a).m, outMonth(b).m) } : null;
 }
-/* the unseasonable window it falls in, if any */
-const windowOf = (o, k0 = S.mo, span = 3) => { const g = lifeOf(o); for (let k = k0; k < Math.min(OUT_N, k0 + span); k++) { const m = outMonth(k).m; const w = OUT.windows.find(x => inWin(x, m) && x.g.includes(g)); if (w) return w; } return null; };
-/* what a life needs within its radius, and what threatens it there: three readings chosen for its kind (DA_NEEDS in config.js) */
+/* the threat, in a line: what El Niño does to this kind of life */
+const threatOf = o => THREAT[lifeOf(o)] || THREAT.paw || '';
+/* when it lands: the first unseasonable window that names this kind, else its worst stretch in the next six months */
+const monthStart = k => { const m = outMonth(k); return new Date(m.y, m.m, 1).getTime(); };
+const monthEnd = k => { const m = outMonth(k); return new Date(m.y, m.m + 1, 0, 23, 59).getTime(); };
+function windowRun(w, k0) { let a = -1; for (let k = k0; k < OUT_N; k++) if (inWin(w, outMonth(k).m)) { a = k; break; } if (a < 0) return null; let b = a; while (b + 1 < OUT_N && inWin(w, outMonth(b + 1).m)) b++; return { w, a, b }; }
+function whenOf(o) {
+  const g = lifeOf(o); const k0 = nowK();
+  const runs = OUT.windows.filter(w => w.g.includes(g)).map(w => windowRun(w, k0)).filter(Boolean).sort((x, y) => x.a - y.a);
+  if (runs.length) { const r = runs[0]; return { w: r.w.w, why: r.w.why, word: monthsWord(outMonth(r.a).m, outMonth(r.b).m), start: monthStart(r.a), end: monthEnd(r.b), now: r.a === k0 }; }
+  const ww = worstWhen(o, k0, 6); if (!ww || ww.deg < 2) return null;
+  return { w: 'PEAK', why: 'Its worst months in the outlook.', word: ww.word, start: monthStart(ww.a), end: monthEnd(ww.b), now: ww.a === k0 };
+}
+const daysTo = t => Math.max(0, Math.ceil((t - Date.now()) / 864e5));
+/* the next month its young are due, from the field list */
+function youngOf(o) { const fe = fieldOf(o); if (!fe || !fe.brd) return null; const m0 = new Date().getMonth(); for (let i = 0; i < 12; i++) { const m = (m0 + i) % 12; if (fe.brd[m] === 'B') return { m, now: i === 0 }; } return null; }
+/* something to learn: the field list's line, else iNaturalist's (fetched on opening the card) */
+const learnOf = o => { const fe = fieldOf(o); return fe ? fe.aware || fe.note || '' : ''; };
+/* ───────── iNaturalist, further in: a taxon's summary and status, and the months it is seen here ───────── */
+const TXI = store.get('da.tx.v1', {}), HGI = store.get('da.hg.v1', {});
+const MONTH30 = 30 * 864e5;
+async function taxonInfo(id) {
+  if (!id) return null; if (TXI[id] && Date.now() - TXI[id].t < MONTH30) return TXI[id];
+  try {
+    const j = await (await fetch(`${CONFIG.INAT_API}/taxa/${id}?locale=en&preferred_place_id=${CONFIG.PLACE_PREF}`)).json(); const t = (j.results || [])[0]; if (!t) return null;
+    const sum = String(t.wikipedia_summary || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+    const first = (sum.match(/^.{20,}?[.!?](?=\s|$)/) || [sum])[0].trim();
+    const cs = (t.conservation_statuses || []).find(c => c.place && /victoria/i.test(c.place.name || '')) || (t.conservation_statuses || []).find(c => c.place && /australia/i.test(c.place.name || '')) || t.conservation_status || null;
+    const em = (t.establishment_means && t.establishment_means.establishment_means) || '';
+    const v = { t: Date.now(), sum: first.length > 180 ? first.slice(0, 177) + '…' : first, obs: t.observations_count || 0, cs: cs ? String(cs.status_name || cs.status || '').toUpperCase() : '', em: em.toUpperCase(), wiki: t.wikipedia_url || '' };
+    TXI[id] = v; store.set('da.tx.v1', TXI); return v;
+  } catch (e) { return null; }
+}
+async function seasonOf(id) {
+  if (!id) return null; if (HGI[id] && Date.now() - HGI[id].t < MONTH30) return HGI[id].m;
+  try {
+    const q = new URLSearchParams({ taxon_id: id, nelat: B.n + 0.1, nelng: B.e + 0.1, swlat: B.s - 0.1, swlng: B.w - 0.1, interval: 'month_of_year', date_field: 'observed', verifiable: 'true' });
+    const j = await (await fetch(`${CONFIG.INAT_API}/observations/histogram?${q}`)).json(); const r = (j.results && j.results.month_of_year) || {};
+    const m = Array.from({ length: 12 }, (_, i) => +r[i + 1] || 0); HGI[id] = { t: Date.now(), m }; store.set('da.hg.v1', HGI); return m;
+  } catch (e) { return null; }
+}
+/* ───────── what a life needs within its radius, and what threatens it there (DA_NEEDS in config.js) ───────── */
 const POLLINATORS = new Set(['bee', 'butterfly', 'moth', 'fly', 'wasp', 'parrot', 'flyingfox']);
 const INSECTS = new Set(['bee', 'butterfly', 'moth', 'fly', 'wasp', 'beetle', 'bug', 'grasshopper', 'mantis', 'dragonfly']);
 const FOOD_GENERA = new Set(['citrus', 'malus', 'prunus', 'pyrus', 'olea', 'vitis', 'eriobotrya', 'morus', 'feijoa', 'acca', 'rubus', 'fragaria', 'persea', 'diospyros', 'punica', 'macadamia', 'cydonia', 'juglans', 'corylus', 'castanea', 'passiflora', 'actinidia', 'ribes', 'vaccinium', 'solanum', 'cucurbita', 'rosmarinus', 'ocimum']);
@@ -201,18 +362,16 @@ const NECTAR_GENERA = new Set(['eucalyptus', 'corymbia', 'angophora', 'grevillea
 const genusOfX = x => ((x.tx && x.tx.n) || '').toLowerCase().split(/\s+/)[0];
 const isFood = x => { const n = ((x.tx && x.tx.n) || '').toLowerCase(); return n.startsWith('ficus') || FOOD_GENERA.has(n.split(' ')[0]); };
 const isPlant = x => ['Plantae'].includes(kindOf(x)) || (!x.tx && bandOf(x) === 5);
-/* the nearest water: a creek, the river or a wetland, by the straight line */
 function waterNear(lat, lng) {
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540; let best = { d: Infinity, n: '' };
-  const seg = (a, b) => { const ax = (a[1] - lng) * kx, ay = (a[0] - lat) * ky, bx = (b[1] - lng) * kx, by = (b[0] - lat) * ky; const dx = bx - ax, dy = by - ay; const t = clamp(-(ax * dx + ay * dy) / (dx * dx + dy * dy || 1), 0, 1); return Math.hypot(ax + t * dx, ay + t * dy); };
-  for (const [n, pts] of WATERS.lines) for (let i = 0; i < pts.length - 1; i++) { const d = seg(pts[i], pts[i + 1]); if (d < best.d) best = { d, n }; }
-  for (const [n, a, b] of WATERS.points) { const d = haversine(lat, lng, a, b); if (d < best.d) best = { d, n }; }
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540; let best = { d: Infinity, n: '', lat, lng };
+  const seg = (a, b) => { const ax = (a[1] - lng) * kx, ay = (a[0] - lat) * ky, bx = (b[1] - lng) * kx, by = (b[0] - lat) * ky; const dx = bx - ax, dy = by - ay; const t = clamp(-(ax * dx + ay * dy) / (dx * dx + dy * dy || 1), 0, 1); return { d: Math.hypot(ax + t * dx, ay + t * dy), lat: a[0] + (b[0] - a[0]) * t, lng: a[1] + (b[1] - a[1]) * t }; };
+  for (const [n, pts] of WATERS.lines) for (let i = 0; i < pts.length - 1; i++) { const s2 = seg(pts[i], pts[i + 1]); if (s2.d < best.d) best = { ...s2, n }; }
+  for (const [n, a, b] of WATERS.points) { const d = haversine(lat, lng, a, b); if (d < best.d) best = { d, n, lat: a, lng: b }; }
   return best;
 }
-/* one count of each kind within a radius: the lives recorded now and in past years, and the places around */
 function countsAt(lat, lng, R, self) {
   const c = { insects: 0, flowers: 0, fruit: 0, plants: 0, prey: 0, hollows: 0, pollinators: 0, cats: 0, wildlife: 0, checkins: 0, cool: 0 }; const kinds = new Set();
-  for (const x of [...S.obs, ...S.hist, ...S.stories, ...S.user]) {
+  for (const x of [...S.obs, ...S.hist, ...S.user]) {
     if (x === self || x.ob || haversine(lat, lng, x.lat, x.lng) > R) continue; const sub = subjectOf(x);
     if (sub.tx && sub.tx.n) kinds.add(sub.tx.n.toLowerCase().split(/\s+/).slice(0, 2).join(' '));
     const g = glyphOf(x), gn = genusOfX(sub);
@@ -223,23 +382,21 @@ function countsAt(lat, lng, R, self) {
     if (g === 'cat') c.cats++;
     if (['bird', 'parrot', 'lizard', 'snake', 'possum', 'rodent', 'frog', 'turtle', 'bat'].includes(g) && !(sub.tx && sub.tx.intro)) c.wildlife++;
   }
-  for (const h of S.community) { if (haversine(lat, lng, h.lat, h.lng) > R) continue; if (h.kind === 'pulse') c.checkins += h.n || 1; if (h.kind === 'refuge' || (h.tags || []).includes('refuge')) c.cool++; }
+  for (const h of S.community) { if (haversine(lat, lng, h.lat, h.lng) > R) continue; if (h.kind === 'pulse') c.checkins += h.n || 1; if ((h.tags || []).includes('refuge')) c.cool++; }
   c.kinds = kinds.size;
   return c;
 }
-/* the middle of the map: median counts within 300 m of forty records spread across it */
 let normKey = '', norms = {};
 function needNorms() {
-  const key = `${S.obs.length}|${S.hist.length}|${S.stories.length}`; if (key === normKey) return norms; normKey = key;
+  const key = `${S.obs.length}|${S.hist.length}`; if (key === normKey) return norms; normKey = key;
   const pool = S.obs.filter(o => !o.ob); if (pool.length < 10) { norms = {}; return norms; } const step = Math.max(1, Math.floor(pool.length / 40)); const all = {};
   for (let i = 0; i < pool.length; i += step) { const c = countsAt(pool[i].lat, pool[i].lng, 300, pool[i]); for (const k in c) (all[k] = all[k] || []).push(c[k]); }
   const med = a => { a.sort((x, y) => x - y); return a[Math.floor(a.length / 2)] || 0; };
   norms = Object.fromEntries(Object.entries(all).map(([k, a]) => [k, med(a)])); return norms;
 }
-/* each reading: its word, how to read it, and what makes it ok, low, missing, or a threat nearby */
 const NEED_INFO = {
   insects: ['INSECTS', 'Insects to eat'], flowers: ['FLOWERS', 'Nectar and pollen plants'], fruit: ['FRUIT', 'Fruit trees and figs'], plants: ['PLANTS', 'Plants to eat and hide in'],
-  prey: ['PREY', 'Rats, mice and possums to hunt'], hollows: ['OLD GUMS', 'Gums old enough to grow hollows'], pollinators: ['POLLINATORS', 'Bees, moths, flies, wasps, lorikeets and flying-foxes that carry pollen'],
+  prey: ['PREY', 'Rats, mice and possums to hunt'], hollows: ['OLD GUMS', 'Gums old enough to grow hollows'], pollinators: ['POLLINATORS', 'Bees, moths, flies, wasps, lorikeets and flying-foxes'],
   kinds: ['DIVERSITY', 'Kinds of life recorded'], cool: ['COOL ROOMS', 'Cool rooms open in a heatwave'], checkins: ['CHECK-INS', 'People checking on each other'],
   water: ['WATER', 'The nearest creek, river or wetland'], canopy: ['CANOPY', 'Ground under trees'],
   cats: ['CATS', 'Cats recorded'], poison: ['BAITS', 'Shops selling baits, pellets or sprays'], light: ['NIGHT LIGHT', 'Shopfronts and offices lit at night'], litter: ['SINGLE-USE', 'Sellers of single-use packaging'],
@@ -255,39 +412,48 @@ function needsOf(o) {
   const c = countsAt(o.lat, o.lng, R, o); const N = needNorms(); const near = (S.biz ? bizNear(o.lat, o.lng, R) : []);
   const out = list.map(k => {
     const [w, what] = NEED_INFO[k] || [k.toUpperCase(), ''];
-    if (k === 'canopy') { const cn = canopyOf(o); return { k, w, v: `${cn.pc}%`, n: cn.pc, st: cn.pc >= CANOPY_TARGET ? 'ok' : cn.pc >= 10 ? 'low' : 'none', tip: `${what} in ${title(cn.sb)}, ${cn.yr}: ${cn.pc}%.${cn.streets ? ` Street trees alone: ${cn.streets}%.` : ''} Cooling starts near ${CANOPY_TARGET}%.` }; }
-    if (k === 'water') { const wn = waterNear(o.lat, o.lng); const d = Math.round(wn.d / 10) * 10; return { k, w, v: d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${d} m`, n: d, st: d <= 250 ? 'ok' : d <= 800 ? 'low' : 'none', tip: `${what}: ${wn.n}, ${d >= 1000 ? (d / 1000).toFixed(1) + ' km' : d + ' m'} away.` }; }
-    if (THREAT_ROLE[k]) { const n = near.filter(b => b.role === THREAT_ROLE[k]).length; return { k, w, v: String(n), n, threat: true, st: n ? 'near' : 'ok', tip: `${what}, within ${R} m: ${n}.` }; }
-    if (k === 'cats') { const n = c.cats; return { k, w, v: String(n), n, threat: true, st: n ? 'near' : 'ok', tip: `${what}, within ${R} m: ${n}.` }; }
-    /* for a hunter brought here, the readings turn round: the native animals within its reach are at risk from it */
-    if (k === 'wildlife') { const n = c.wildlife; return { k, w, v: String(n), n, st: n ? 'risk' : 'ok', tip: `${what}, within ${R} m: ${n}. Each is at risk from it.` }; }
-    /* against what a patch of this size usually holds here (the median within 300 m, scaled to this radius), and never fewer than a floor */
+    if (k === 'canopy') { const cn = canopyOf(o); return { k, w, v: `${cn.pc}%`, n: cn.pc, st: cn.pc >= CANOPY_TARGET ? 'ok' : cn.pc >= 10 ? 'low' : 'none', tip: `${what} · ${title(cn.sb)} ${cn.yr}: ${cn.pc}% · cools at ${CANOPY_TARGET}%` }; }
+    if (k === 'water') { const wn = waterNear(o.lat, o.lng); const d = Math.round(wn.d / 10) * 10; return { k, w, v: metres(d), n: d, st: d <= 250 ? 'ok' : d <= 800 ? 'low' : 'none', tip: `${wn.n} · ${metres(d)}` }; }
+    if (THREAT_ROLE[k]) { const n = near.filter(b => b.role === THREAT_ROLE[k]).length; return { k, w, v: String(n), n, threat: true, st: n ? 'near' : 'ok', tip: `${what} · ${n} in ${R} m` }; }
+    if (k === 'cats') { const n = c.cats; return { k, w, v: String(n), n, threat: true, st: n ? 'near' : 'ok', tip: `${what} · ${n} in ${R} m` }; }
+    if (k === 'wildlife') { const n = c.wildlife; return { k, w, v: String(n), n, st: n ? 'risk' : 'ok', tip: `${what} · ${n} in ${R} m` }; }
     const n = c[k] || 0; const want = Math.max(NEED_FLOOR[k] ?? 3, Math.round((N[k] || 0) * Math.min(9, (R / 300) ** 2)));
-    return { k, w, v: String(n), n, st: n === 0 ? 'none' : n < want ? 'low' : 'ok', tip: `${what}, within ${R} m: ${n}. A patch this size here usually has ${want}.` };
+    return { k, w, v: String(n), n, want, st: n === 0 ? 'none' : n < want ? 'low' : 'ok', tip: `${what} · ${n} in ${R} m · usual ${want}` };
   });
   needCache.set(key, out); if (needCache.size > 400) needCache.clear(); return out;
 }
-/* the short of it: what is missing and what is near, in a line */
 const NEED_ST = { ok: 'OK', low: 'LOW', none: 'MISSING', near: 'NEARBY', risk: 'AT RISK' };
 function needLine(o) { const n = needsOf(o); const by = st => n.filter(x => x.st === st).map(x => x.w); const miss = by('none'), low = by('low'), near = by('near'), risk = n.filter(x => x.st === 'risk');
   return [risk.length ? risk.map(x => `${x.v} ${x.w} AT RISK`).join(', ') : '', miss.length ? `MISSING ${miss.join(', ')}` : '', low.length ? `LOW ${low.join(', ')}` : '', near.length ? `${near.join(', ')} NEARBY` : ''].filter(Boolean).join(' · '); }
 
-/* ───────── the five in greatest need, where past sightings say they live ───────── */
+/* ───────── cells hidden from the map, kept on this device ───────── */
+const HIDE = new Set(store.get('da.hide.v1', []).map(String));
+const hiddenCell = id => HIDE.has(String(id));
+function setHidden(id, on) { if (on) HIDE.add(String(id)); else HIDE.delete(String(id)); store.set('da.hide.v1', [...HIDE]); }
+function showAllHidden() { HIDE.clear(); store.set('da.hide.v1', []); }
+
+/* ───────── the five in greatest need, where past sightings say they live; any of them can be changed on this device ───────── */
+const MOVE_OF = { Aves: 'flap', Mammalia: 'climb', Insecta: 'flutter', Arachnida: 'climb', Reptilia: 'walk', Amphibia: 'hop', Actinopterygii: 'walk', Mollusca: 'walk' };
+function fiveList() {
+  const over = store.get('da.five.v1', []);
+  return HEROES.map((h, i) => { const c = over[i]; if (!c || !c.n) return h; const g = c.g || 'paw'; const b = BRIEFS.find(x => x.g.includes(g)) || {};
+    return { id: `x${i}-${norm(c.n).replace(/\s+/g, '-').slice(0, 24)}`, n: c.n, cn: c.cn || c.n, ic: c.ic || 'Animalia', th: !!c.th, move: MOVE_OF[c.ic] || 'walk', brief: b.id || null, why: '', home: [], custom: true, slot: i, g }; });
+}
+function setFive(slot, c) { const over = store.get('da.five.v1', []); while (over.length < HEROES.length) over.push(null); over[slot] = c; store.set('da.five.v1', over); buildHeroes(); }
 function buildHeroes() {
   const hs = [];
-  for (const h of HEROES) {
-    const key = h.n.toLowerCase(); const pts = [];
-    for (const x of [...S.obs, ...S.hist, ...S.stories]) { const sub = subjectOf(x); if (sub.tx && sub.tx.n && sub.tx.n.toLowerCase().startsWith(key) && inBox(x.lat, x.lng)) pts.push([x.lat, x.lng]); }
-    const curated = pts.length < 3; const home = curated ? [...pts, ...h.home] : pts.slice(0, 60);
-    /* it lives where its sightings gather most */
+  for (const [slot, h] of fiveList().entries()) {
+    const key = h.n.toLowerCase(); const pts = []; let ph = null;
+    for (const x of [...S.obs, ...S.hist]) { const sub = subjectOf(x); if (sub.tx && sub.tx.n && sub.tx.n.toLowerCase().startsWith(key) && inBox(x.lat, x.lng)) { pts.push([x.lat, x.lng]); if (!ph && x.ph && licOpen(x.ph.l)) ph = x; } }
+    const curated = pts.length < 3; const home = curated ? [...pts, ...(h.home || [])] : pts.slice(0, 60);
+    if (!home.length) home.push([S.scan.lat + 0.0012 * Math.cos(slot * 1.3), S.scan.lng + 0.0016 * Math.sin(slot * 1.3)]);
     let best = home[0], bn = -1; for (const p of home) { const n = home.filter(q => haversine(p[0], p[1], q[0], q[1]) < 450).length; if (n > bn) { bn = n; best = p; } }
-    const o = { id: 'hero:' + h.id, hero: h.id, heroOf: h, lat: best[0], lng: best[1], b: bandOf({ tx: { ic: h.ic } }), tx: { id: null, n: h.n, cn: h.cn, ic: h.ic, th: !!h.th, na: true, intro: false }, n: pts.length, home, curated, rare: 1, spec: false, d: null };
-    hs.push(o);
+    hs.push({ id: 'hero:' + h.id, hero: h.id, heroOf: h, slot, g: h.g, sigPin: !!h.custom, lat: best[0], lng: best[1], b: bandOf({ tx: { ic: h.ic } }), tx: { id: ph ? ph.tx.id : null, n: h.n, cn: h.cn, ic: h.ic, th: !!h.th, na: true, intro: false }, ph: ph ? ph.ph : null, u: ph ? ph.u : null, so: null, n: pts.length, home, curated, rare: 1, d: null });
   }
   for (const o of S.heroes) S.byId.delete(o.id);
   S.heroes = hs; for (const o of hs) S.byId.set(o.id, o);
 }
-/* ───────── groups already caring for a patch of ground: each patch as overlapping circles ───────── */
+/* ───────── groups already caring for a patch of ground ───────── */
 function buildTribes() {
   S.tribes = TRIBES.map(t => {
     const r0 = seeded(t.id); const blobs = []; const z = t.zone || {};
@@ -302,9 +468,11 @@ function buildTribes() {
   for (const t of S.tribes) S.byId.set(t.id, t);
 }
 const inTribe = (t, lat, lng) => t.blobs.some(([a, b, r]) => haversine(lat, lng, a, b) <= r);
+/* the nearest point of a group's ground, and how far it is */
+const tribeNear = (t, lat, lng) => { let best = null; for (const [a, b, r] of t.blobs) { const d = Math.max(0, haversine(lat, lng, a, b) - r); if (!best || d < best.d) best = { d, lat: a, lng: b }; } return best; };
 const livesIn = t => cellsAll().filter(o => !o.hum && !isCold(o) && !o.isTribe && inTribe(t, o.lat, o.lng));
 
-/* ───────── weather today: kept for the hot-day layers on the ground (drinking water, air temperature now) ───────── */
+/* ───────── weather today: for the hot-day layers on the ground ───────── */
 async function loadWeather() {
   if (S.wx.t && Date.now() - S.wx.t < 60 * 60000 && (S.wx.days || []).length > 3) return false;
   try {
@@ -324,13 +492,15 @@ function compact(r) {
   const c = r.geojson && r.geojson.coordinates; if (!c) return null;
   const t = r.taxon || {}; const ph = (r.photos || [])[0]; const so = (r.sounds || [])[0]; if (!ph && !so) return null;
   const gp = v => v === 'obscured' || v === 'private';
+  /* the other photographs of the same sighting, where their licence lets the slip print them in black and white */
+  const phs = (r.photos || []).slice(1, 4).filter(p => p && p.url && licAdaptable(p.license_code)).map(p => ({ u: p.url, l: p.license_code, a: p.attribution || '' }));
   return {
     id: r.id, d: r.observed_on || (r.time_observed_at || '').slice(0, 10), t: r.time_observed_at || null, c: r.created_at || null,
     lat: +c[1], lng: +c[0], ob: !!(r.obscured || gp(r.geoprivacy) || gp(r.taxon_geoprivacy)), cap: !!r.captive, q: r.quality_grade || '', pg: r.place_guess || '',
     tx: { id: t.id || null, n: t.name || r.species_guess || 'Unidentified', cn: t.preferred_common_name || '', ic: t.iconic_taxon_name || 'Unknown', th: !!t.threatened, na: t.native === true, intro: t.introduced === true },
     u: { l: (r.user && r.user.login) || '', n: (r.user && r.user.name) || '' },
     ph: ph ? { u: ph.url, l: ph.license_code || null, a: ph.attribution || '' } : null,
-    so: so ? { u: so.file_url, l: so.license_code || null } : null,
+    so: so ? { u: so.file_url, l: so.license_code || null } : null, ...(phs.length ? { phs } : {}),
   };
 }
 async function fetchSightings(force) {
@@ -369,8 +539,9 @@ function useSightings(list, t, stale) {
   }
   list.sort((a, b) => (b.d || '').localeCompare(a.d || '') || (b.t || '').localeCompare(a.t || '') || b.id - a.id);
   for (const k of keep) if (!list.some(o => o.id === k.id)) list.push(k);
+  const made = [...S.byId.values()].filter(o => o.sigPin);   /* cells made from signals stay */
   S.obs = list; S.byId = new Map(list.map(o => [o.id, o]));
-  for (const u of [...S.user, ...S.community, ...S.stories, ...S.hist, ...S.heroes, ...S.tribes]) S.byId.set(u.id, u);
+  for (const u of [...S.user, ...S.community, ...S.hist, ...S.heroes, ...S.tribes, ...made]) S.byId.set(u.id, u);
   S.lastSignal = t; S.stale = stale; S.offline = false;
   derive(); refresh();
   if (!stale) setTimeout(() => store.set('da.lastVisit', Date.now()), 4000);
@@ -393,7 +564,6 @@ async function fetchNew() {
     return fresh.length;
   } catch (e) { return 0; }
 }
-/* the same weeks in past years: what has been seen here at this time before (cold, dotted) */
 async function fetchHistory() {
   const H = CONFIG.HISTORY; if (!H || !H.years) return;
   const cache = store.get('da.hist.v1', null); let list = cache && Date.now() - cache.t < 3 * 864e5 ? cache.list : null;
@@ -407,49 +577,13 @@ async function fetchHistory() {
     if (list.length && !store.set('da.hist.v1', { t: Date.now(), list })) store.set('da.hist.v1', { t: Date.now(), list: list.slice(0, 160) });
   }
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const own = S.hist.filter(o => o.specimen);
-  S.hist = [...own, ...list.filter(o => !S.byId.has(o.id) || S.byId.get(o.id).hist).map(o => { const day = parseDay(o.d); return Object.assign(o, { hist: true, age: day ? Math.round((today - day) / 864e5) : 400, rare: 0.3 }); })];
+  S.hist = list.filter(o => !S.byId.has(o.id) || S.byId.get(o.id).hist).map(o => { const day = parseDay(o.d); return Object.assign(o, { hist: true, age: day ? Math.round((today - day) / 864e5) : 400, rare: 0.3 }); });
   for (const o of S.hist) S.byId.set(o.id, o);
   life.data();
 }
-async function liveTick() {
-  const n = await fetchNew(); await loadWeather();
-  refreshPanel();
-  return n;
-}
+async function liveTick() { const n = await fetchNew(); await loadWeather(); refreshPanel(); return n; }
 
-/* ════════════════════════════════════════════════════════════════════
-   SPECIMENS — the demo's stories, partners and community records (demo.js)
-   ════════════════════════════════════════════════════════════════════ */
-function loadDemo() {
-  if (!DEMO) return;
-  const at = (n, h = 12, m = 0) => { const d = daysFrom(n); d.setHours(h, m, 0, 0); return d.getTime(); };
-  /* a community record happened 'ago' minutes before now, or on day d at an hour */
-  const when = h => { const t = h.ago != null ? Date.now() - h.ago * 60000 : h.d != null ? at(h.d, h.h ?? 9, h.m || 0) : Date.now(); return { at: t, d: h.ago != null || h.d != null ? isoDay(new Date(t)) : null, age: h.ago != null ? h.ago / 1440 : h.d != null ? -h.d : 0 }; };
-  S.stories = DEMO.stories.map(st => ({
-    id: 'story:' + st.id, sid: st.id, story: true, spec: true, lat: st.lat, lng: st.lng, b: st.b, hum: st.b === 0,
-    tx: { id: null, n: st.tx.n, cn: st.tx.cn, ic: st.tx.ic, th: !!st.tx.th, na: !st.tx.intro, intro: !!st.tx.intro }, d: isoDay(daysFrom(st.d)), at: at(st.d, 10),
-    age: -st.d, done: !!st.done, who: st.who, rare: 0.7,
-  }));
-  S.community = DEMO.community.map(h => ({
-    id: 'h:' + h.id, hid: h.id, comm: true, hum: true, b: 0, kind: h.kind, spec: !h.real, real: !!h.real, lat: h.lat, lng: h.lng,
-    title: h.title, n: h.n || 0, tags: h.tags || [], link: h.link || '', tel: h.tel || '', venue: h.venue || '', isEvent: h.kind === 'event', g: h.g || null, i: h.i || null, search: h.search || 0,
-    tx: h.tx ? { id: null, n: h.tx.n, cn: h.tx.cn, ic: h.tx.ic, th: !!h.tx.th, na: !h.tx.intro, intro: !!h.tx.intro } : undefined,
-    start: h.start ? at(h.start[0], h.start[1], h.start[2]) : null, ...when(h),
-  }));
-  /* specimen sightings: kept beside the live ones; past seasons go with the history */
-  const seen = (DEMO.sightings || []).map(f => {
-    const when = at(f.d, f.h ?? 12, f.m || 0);
-    return { id: 'f:' + f.id, fid: f.id, specimen: true, spec: true, ext: true, d: isoDay(new Date(when)), t: new Date(when).toISOString(), c: null, lat: f.lat, lng: f.lng, ob: false, cap: false, q: 'specimen', pg: '',
-      tx: { id: null, n: f.tx.n, cn: f.tx.cn, ic: f.tx.ic, th: !!f.tx.th, na: !f.tx.intro, intro: !!f.tx.intro }, u: { l: '', n: '' }, ph: null, so: null,
-      age: Math.max(0, -f.d), rare: 0.55, n: f.n || 1, note: f.note || '', hist: !!f.hist, isNew: false };
-  });
-  S.obs = [...S.obs.filter(o => !o.specimen), ...seen.filter(o => !o.hist)];
-  S.hist = [...S.hist.filter(o => !o.specimen), ...seen.filter(o => o.hist)];
-  for (const c of [...S.stories, ...S.community, ...seen]) S.byId.set(c.id, c);
-}
-/* gatherings from a published sheet, curated by hand from community radio guides and club listings, with permission:
-   title, start (ISO date and time), venue, lat, lng, tags (nature free first-nations sound walk kids), link */
+/* gatherings from a published sheet: title, start, venue, lat, lng, tags (nature free gig rrr ra …), link */
 const parseCSV = t => {
   const rows = []; let row = [], f = '', q = false;
   for (let i = 0; i < t.length; i++) {
@@ -469,19 +603,18 @@ async function loadEvents() {
     for (const r of rows) {
       const g = k => { const i = head.indexOf(k); return i >= 0 ? String(r[i] || '').trim() : ''; };
       const lat = +g('lat'), lng = +g('lng'), start = Date.parse(g('start')); if (!g('title') || !inBox(lat, lng) || !start) continue;
-      n++; const o = { id: 'e:' + n, hid: 'E' + pad2(n), comm: true, hum: true, b: 0, kind: 'event', isEvent: true, spec: false, real: true, lat, lng, title: g('title'), venue: g('venue'), start, tags: g('tags').toLowerCase().split(/[\s;|]+/).filter(Boolean), link: g('link'), tel: '', n: 0, at: Date.now(), d: isoDay(new Date()), age: 0 };
+      n++; const o = { id: 'e:' + n, hid: 'E' + pad2(n), comm: true, hum: true, b: 0, kind: 'event', isEvent: true, real: true, lat, lng, title: g('title'), venue: g('venue'), start, tags: g('tags').toLowerCase().split(/[\s;|]+/).filter(Boolean), link: g('link'), n: 0, at: Date.now(), d: isoDay(new Date()), age: 0 };
       S.community = S.community.filter(x => x.id !== o.id); S.community.push(o); S.byId.set(o.id, o);
     }
     if (n) refresh();
     return n;
   } catch (e) { return 0; }
 }
-const partnerById = id => (S.biz || []).findIndex(b => b[5] && b[5].id === id);
 
 /* ════════════════════════════════════════════════════════════════════
-   LEDGER — on this device: joins, drafts, responses, pledges, did-its, placed cells
+   LEDGER — on this device: placed records and signals
    ════════════════════════════════════════════════════════════════════ */
-const ledger = { local: store.get('da.ledger.v3', null) || store.get('da.ledger.v2', []) };
+const ledger = { local: store.get('da.ledger.v4', []) };
 const evKey = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 function ledgerAll() {
   const redacted = new Set(ledger.local.filter(e => e.type === 'redact').map(e => e.ref));
@@ -489,94 +622,42 @@ function ledgerAll() {
 }
 async function ledgerAdd(ev) {
   ev.key = ev.key || evKey(); ev.at = ev.at || Date.now(); ev.who = ev.who != null ? ev.who : (S.me.by || ''); ev.dev = S.me.dev;
-  ledger.local.push(ev); store.set('da.ledger.v3', ledger.local);
+  ledger.local.push(ev); store.set('da.ledger.v4', ledger.local);
   derive(); refresh();
   return ev;
 }
-const STAGE_OF_TYPE = { noticed: 0, draft: 1, poster: 2, done: 3, need: 0, offer: 0, event: 0, injured: 0, lost: 0, dead: 0 };
-const blankStat = () => ({ joins: new Set(), drafts: [], resps: [] });
-/* a response joins three kinds of data: the life it answers, the designer's four lines, and the patrons who carry it */
-function responseOf(e, cell) {
-  const d = e.data || {};
-  const patrons = (d.patrons || []).filter(p => p && p.n).map(p => ({ n: String(p.n), bi: p.bi != null ? +p.bi : null, amt: +p.amt || 0, st: p.st || 'asked', by: e.dev || '', person: !!p.person }));
-  return { key: e.key, ev: e, cell, who: e.who || '', dev: e.dev || '', letter: d.letter || 'A', issued: d.issued || e.at, data: d, brief: d.brief || null, patrons, hostList: [...(d.hosts || [])].map(String), did: new Set(), backers: new Set(), voters: new Set(), votes0: 0, placed: e.type === 'poster', spec: !!e.spec };
-}
-function demoResponses(resp, st) {
-  if (!DEMO) return;
-  for (const s of DEMO.stories) {
-    const cell = 'story:' + s.id; const at = daysFrom(s.d).getTime();
-    /* a poster is supported two ways: people who give, and places that host it */
-    const ev = { key: s.id, type: 'notice', ref: cell, at, who: s.who, dev: 'specimen', spec: true, data: { w: s.w, i: s.i, s: s.s, h: s.h, letter: 'A', issued: at, brief: s.after || null, hosts: (s.hosts || []).map(pid => (DEMO.partners.find(x => x.id === pid) || {}).n).filter(Boolean), patrons: (s.givers || []).map(([n, stt]) => ({ n, st: stt, person: true })) } };
-    const r = responseOf(ev, cell); r.patrons.forEach(p => { p.by = 'specimen'; if (p.st !== 'asked') r.backers.add(p.n); });
-    for (let k = 0; k < (s.did || 0); k++) r.did.add('specimen-' + k);
-    r.done = !!s.done; r.votes0 = s.votes || 0; resp.set(r.key, r); st(cell).resps.push(r.key);
-  }
-}
+const PLACED = new Set(['noticed', 'need', 'offer', 'event', 'injured', 'lost', 'dead']);
 function derive() {
-  const stats = new Map(); const user = []; const resp = new Map(); const later = [];
-  const st = id => { if (!stats.has(id)) stats.set(id, blankStat()); return stats.get(id); };
-  demoResponses(resp, st);
+  const user = []; const sigs = [];
   for (const e of ledgerAll()) {
-    if (e.type === 'join' && e.ref != null) st(e.ref).joins.add(e.dev || e.who || e.key);
-    else if (e.type === 'draft' && e.ref != null) st(e.ref).drafts.push(e);
-    else if (e.type === 'notice') { if (e.ref == null) continue; const r = responseOf(e, e.ref); resp.set(e.key, r); st(e.ref).resps.push(e.key); }
-    else if (e.type === 'pledge' || e.type === 'did' || e.type === 'host' || e.type === 'vote') later.push(e);
-    else if (STAGE_OF_TYPE[e.type] !== undefined) {
-      const u = userPing(e); user.push(u);
-      if (e.type === 'poster') { const r = responseOf(e, u.id); resp.set(e.key, r); st(u.id).resps.push(e.key); }
-    }
-  }
-  for (const e of later) {
-    const r = resp.get((e.data || {}).of); if (!r) continue; const d = e.data || {};
-    if (e.type === 'did') { if (e.dev && e.dev !== r.dev) r.did.add(e.dev); continue; }
-    if (e.type === 'vote') { if (e.dev) r.voters.add(e.dev); continue; }
-    if (e.type === 'host') { const h = String(d.n || '').trim(); if (h && !r.hostList.some(x => norm(x) === norm(h))) r.hostList.push(h); continue; }
-    const name = String(d.n || '').trim(); if (!name) continue;
-    const mine = e.dev && e.dev === r.dev; let p = r.patrons.find(x => norm(x.n) === norm(name));
-    if (!p) { p = { n: name, bi: d.bi != null ? +d.bi : null, amt: 0, st: 'asked', by: e.dev || '' }; r.patrons.push(p); }
-    if (+d.amt > 0) p.amt = +d.amt;
-    if (d.st === 'given' || d.st === 'paid') p.st = 'given'; else if (d.st === 'pledged' || d.st === 'asked') p.st = d.st;
-    if (!mine) r.backers.add(e.dev || name);
+    if (PLACED.has(e.type)) user.push(userPing(e));
+    else if (e.type === 'signal') sigs.push({ key: e.key, at: e.at, who: e.who || '', mine: e.dev === S.me.dev && !(e.data || {}).recv, ...(e.data || {}) });
   }
   for (const u of S.user) S.byId.delete(u.id);
   S.user = user; for (const u of user) S.byId.set(u.id, u);
-  /* funded: someone has given to it. Supported: given to, or put up on a wall. Amounts are the givers' own business. */
-  for (const r of resp.values()) {
-    r.given = r.patrons.filter(p => p.st === 'given').length; r.pledged = r.patrons.filter(p => p.st === 'pledged').length;
-    r.funded = r.given > 0; r.hosts = r.hostList.length; r.status = r.funded ? 'given' : r.pledged ? 'pledged' : r.patrons.length ? 'asked' : 'none';
-    r.score = 3 * r.did.size + 2 * r.backers.size + (r.funded ? 4 : 0) + 2 * Math.min(3, r.hosts);
-    r.votes = (r.votes0 || 0) + r.voters.size; r.voted = r.voters.has(S.me.dev);
-  }
-  for (const s of stats.values()) s.resps.sort((a, b) => (resp.get(b).score - resp.get(a).score) || (resp.get(b).issued - resp.get(a).issued));
-  S.stats = stats; S.resp = resp;
+  S.signals = [...sigs.sort((a, b) => b.at - a.at), ...EXAMPLES.map(x => ({ key: 'ex:' + x.code, ex: true, ...x, at: Date.parse(x.at) }))];
 }
 function userPing(e) {
   const d = e.data || {}; const hum = ['need', 'offer', 'event', 'injured', 'lost', 'dead'].includes(e.type);
   const tx = d.tx && d.tx.n ? { id: null, n: d.tx.n, cn: d.tx.cn || d.tx.n, ic: d.tx.ic || 'Animalia', th: !!d.tx.th, na: !d.tx.intro, intro: !!d.tx.intro } : undefined;
-  const u = { id: 'u:' + e.key, ev: e, user: true, hum, kind: e.type, lat: +e.lat, lng: +e.lng, b: hum ? 0 : e.b != null ? e.b : tx ? undefined : 5, st: STAGE_OF_TYPE[e.type], ref: e.ref, at: e.at, t: new Date(e.at).toISOString(), who: e.who || '', age: Math.round((Date.now() - e.at) / 864e5), rare: 0.5, d: isoDay(new Date(e.at)), sound: d.sound || '', title: d.text || d.note || '', said: d.text || '', photo: d.photo || null, n: +d.n || 0, tx };
+  const u = { id: 'u:' + e.key, ev: e, user: true, hum, kind: e.type, lat: +e.lat, lng: +e.lng, b: hum ? 0 : e.b != null ? e.b : tx ? undefined : 5, at: e.at, t: new Date(e.at).toISOString(), who: e.who || '', age: Math.round((Date.now() - e.at) / 864e5), rare: 0.5, d: isoDay(new Date(e.at)), title: d.text || '', said: d.text || '', photo: d.photo || null, n: +d.n || 0, tx };
   if (e.type === 'event') Object.assign(u, { isEvent: true, title: d.text || '', start: Date.parse(d.start) || null, venue: d.venue || '', link: d.link || '' });
   if (hum && tx) u.title = d.text || tx.cn;
   if (d.g) u.g = d.g; if (d.contact) u.contact = d.contact;
   return u;
 }
-const statOf = o => S.stats.get(o.id) || blankStat();
-const respsOf = o => statOf(o).resps.map(k => S.resp.get(k)).filter(Boolean);
-const didOf = o => respsOf(o).reduce((a, r) => a + r.did.size, 0);
-function stageOf(o) {
-  const s = statOf(o); const rs = respsOf(o);
-  const fromResp = rs.some(r => r.did.size || r.done) ? 3 : rs.length ? 2 : (s.joins.size || s.drafts.length) ? 1 : 0;
-  return Math.max(o.user ? (o.st || 0) : 0, fromResp);
-}
 
 
 /* ════════════════════════════════════════════════════════════════════
-   THE RADIUS OF RESPONSIBILITY — every record holds the businesses and brands inside its radius, each with its role:
-   on notice for what it leaves behind (single-use, new clothing, rat poison, night light, runoff, roaming cats),
-   or worth backing for what it repairs, reuses, makes, grows and hosts.
+   PLACES — the human ecology around each life. The places and networks in places.js are always here, offline too.
+   Around a life just opened, every named business OpenStreetMap knows is fetched a small square at a time and kept.
+   Each place belongs to one part of the human ecology (brands, circular, services, artists, third spaces, networks)
+   and plays a role near the lives around it; a shop can also sell what harms them (takeaway containers, plastic bottles,
+   paint, pesticides). They appear only inside an open cell's radius, as knots a string can be tied to.
    ════════════════════════════════════════════════════════════════════ */
 function sectorOf(t) {
   const a = t.amenity, s = t.shop, c = t.craft, o = t.office; const has = (v, list) => v && list.includes(v);
-  if (has(a, ['nightclub', 'theatre', 'arts_centre', 'music_venue', 'cinema', 'community_centre', 'events_venue'])) return 'VENUE';
+  if (has(a, ['nightclub', 'theatre', 'arts_centre', 'music_venue', 'cinema', 'community_centre', 'events_venue', 'library', 'social_centre'])) return 'VENUE';
   if (has(a, ['cafe', 'restaurant', 'fast_food', 'bar', 'pub', 'ice_cream', 'food_court', 'biergarten']) || has(s, ['bakery', 'deli', 'confectionery', 'coffee', 'beverages', 'alcohol', 'wine', 'pastry', 'chocolate', 'tea'])) return 'FOOD';
   if (has(s, ['supermarket', 'convenience', 'greengrocer', 'butcher', 'grocery', 'organic', 'health_food', 'seafood', 'frozen_food']) || a === 'marketplace') return 'GROCERY';
   if (has(s, ['hardware', 'doityourself', 'garden_centre', 'trade', 'building_materials', 'paint', 'agrarian', 'florist']) || c === 'gardener') return 'GARDEN';
@@ -587,25 +668,36 @@ function sectorOf(t) {
   if (o || a === 'bank') return 'OFFICE';
   return 'RETAIL';
 }
-/* the role a named place plays, from its OpenStreetMap tags */
+/* what a named place sells or leaves that harms a life near it, from its OpenStreetMap tags; most shops harm nothing */
+function harmsOfTags(t) {
+  const a = t.amenity, s = t.shop, c = t.craft, o = t.office; const has = (v, list) => v && list.includes(v); const h = [];
+  if (/\b(pest|termite|weed|spray)/i.test(t.name || '') || c === 'gardener' || s === 'landscaping') h.push('spraying');
+  if (has(a, ['cafe', 'restaurant', 'fast_food', 'ice_cream', 'food_court']) || has(s, ['bakery', 'coffee', 'deli', 'convenience', 'kiosk'])) h.push('takeaway');
+  if (has(a, ['fast_food', 'bar', 'pub', 'nightclub', 'biergarten'])) h.push('litter');
+  if (has(s, ['convenience', 'kiosk', 'supermarket', 'alcohol', 'beverages', 'wine', 'chemist']) || has(a, ['fuel', 'pharmacy'])) h.push('bottles');
+  if (has(s, ['paint', 'hardware', 'doityourself', 'trade', 'building_materials'])) h.push('paint');
+  if (has(s, ['hardware', 'doityourself', 'garden_centre', 'agrarian', 'supermarket']) || /\bpest/i.test(t.name || '')) h.push('poison');
+  if (has(a, ['fuel', 'car_wash']) || has(s, ['car_repair', 'car', 'tyres', 'motorcycle'])) h.push('runoff');
+  if (has(s, ['laundry', 'dry_cleaning'])) h.push('fibres');
+  if (has(s, ['clothes', 'shoes', 'boutique', 'fashion_accessories', 'bag']) && t.second_hand !== 'only') h.push('fashion');
+  if (has(a, ['bar', 'pub', 'nightclub']) || (o && !has(o, ['association', 'ngo', 'charity', 'foundation']))) h.push('light');
+  return [...new Set(h)];
+}
+/* the role a named place plays, from its OpenStreetMap tags: what it does first, else the harm it does */
 function roleOfTags(t) {
-  const a = t.amenity, s = t.shop, c = t.craft, o = t.office; const has = (v, list) => v && list.includes(v);
+  const a = t.amenity, s = t.shop, c = t.craft, o = t.office, l = t.leisure; const has = (v, list) => v && list.includes(v);
+  if (has(a, ['library', 'community_centre', 'social_centre', 'townhall']) || has(l, ['swimming_pool', 'sports_centre']) || (l === 'garden' && /community/.test(t['garden:type'] || ''))) return 'third';
+  if (has(o, ['association', 'ngo', 'charity', 'foundation']) || (a === 'studio' && /radio/.test(t.studio || ''))) return 'network';
   if (has(s, ['second_hand', 'charity']) || t.second_hand === 'only') return 'reuse';
-  if (has(c, ['tailor', 'dressmaker', 'shoemaker', 'upholsterer']) || has(s, ['tailor', 'repair', 'bicycle', 'shoe_repair'])) return 'repair';
-  if (has(s, ['clothes', 'shoes', 'boutique', 'fashion_accessories', 'bag'])) return 'fashion';
-  if (has(s, ['laundry', 'dry_cleaning'])) return 'fibres';
-  if (s === 'garden_centre') return 'grower';
-  if (has(s, ['hardware', 'doityourself', 'trade', 'agrarian'])) return 'poison';
-  if (a === 'marketplace') return 'market';
-  if (has(a, ['arts_centre', 'community_centre']) || s === 'art') return 'space';
-  if (has(c, ['pottery', 'jeweller', 'printer', 'sculptor', 'carpenter']) || has(o, ['architect', 'design'])) return 'studio';
+  if (has(c, ['tailor', 'dressmaker', 'shoemaker', 'upholsterer']) || has(s, ['tailor', 'repair', 'bicycle', 'shoe_repair', 'fabric', 'sewing', 'haberdashery', 'textiles'])) return 'repair';
   if (has(s, ['organic', 'health_food', 'zero_waste', 'bulk'])) return 'coop';
-  if (has(a, ['fast_food', 'ice_cream', 'food_court', 'pharmacy']) || has(s, ['convenience', 'supermarket', 'alcohol', 'beverages', 'kiosk', 'confectionery', 'chemist'])) return 'litter';
-  if (has(a, ['fuel', 'car_wash']) || has(s, ['car_repair', 'car', 'tyres'])) return 'runoff';
+  if (s === 'garden_centre') return 'grower';
+  if (a === 'marketplace') return 'market';
+  if (has(a, ['arts_centre']) || has(t.tourism, ['gallery', 'museum']) || s === 'art') return 'space';
+  if (has(c, ['pottery', 'jeweller', 'printer', 'sculptor', 'carpenter']) || has(o, ['architect', 'design', 'coworking']) || s === 'copyshop' || l === 'hackerspace' || a === 'coworking_space') return 'studio';
   if (a === 'veterinary') return 'vet';
   if (s === 'pet') return 'pets';
-  if (has(a, ['nightclub', 'bar', 'pub']) || o) return 'light';
-  return 'owner';
+  return harmsOfTags(t)[0] || 'owner';
 }
 const GRID = 0.004;
 let bizGrid = new Map();
@@ -615,83 +707,76 @@ function bizNear(lat, lng, R) {
   const di = Math.ceil(R / 111000 / GRID), dj = Math.ceil(R / (111000 * Math.cos(lat * Math.PI / 180)) / GRID), ci = Math.floor(lat / GRID), cj = Math.floor(lng / GRID);
   for (let i = ci - di; i <= ci + di; i++) for (let j = cj - dj; j <= cj + dj; j++) {
     const a = bizGrid.get(`${i},${j}`); if (!a) continue;
-    for (const k of a) { const b = S.biz[k]; const d = haversine(lat, lng, b[3], b[4]); if (d <= R) out.push({ i: k, n: b[0], b: b[1], sec: b[2], lat: b[3], lng: b[4], d, partner: !!(b[5] && b[5].partner), role: roleOfRow(b) }); }
+    for (const k of a) { const b = S.biz[k]; const d = haversine(lat, lng, b[3], b[4]); if (d <= R) { const m = b[5] || {}; out.push({ i: k, n: b[0], b: b[1], sec: b[2], lat: b[3], lng: b[4], d, role: roleOfRow(b), h: harmsOfRow(b), fam: famOf(roleOfRow(b), m), cur: !!m.cur, url: m.url || '', what: m.what || '', addr: m.addr || '', a: !!m.a }); } }
   }
   return out.sort((a, b) => a.d - b.d);
 }
-/* a business's role: its own, else its kind of trade's */
+/* a place's role: its own, else its kind of trade's; and the harms it does, its own, else its role's when that is one */
 const roleOfRow = b => (b[5] && b[5].role) || (SECTORS[b[2]] || {}).role || 'owner';
+const harmsOfRow = b => (b[5] && b[5].h) || (ROLES[roleOfRow(b)] && ROLES[roleOfRow(b)].on ? [roleOfRow(b)] : []);
+const famOf = (role, m) => (m && m.cat) || (ROLES[role] || {}).cat || 'service';
 const onNotice = role => !!(ROLES[role] && ROLES[role].on);
-/* in the demo, the area's businesses and brands are the specimen roster; live, every named business on OpenStreetMap.
-   None is signed up until it says so. */
-const partnerRows = () => (DEMO ? DEMO.partners.map(p => [p.n, p.b || '', p.sec, p.lat, p.lng, { partner: !!p.signed, id: p.id, role: p.role }]) : []);
-function useBusinesses(osm) {
-  const rows = partnerRows(); const names = new Set(rows.map(r => norm(r[0])));
-  for (const b of osm || []) if (!names.has(norm(b[0]))) rows.push(b);
-  S.biz = rows; indexBiz(); refresh();
+/* the places listed here: on the map from the first moment, offline too */
+const LISTED = PLACES.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)).map(p => [p.n, '', 'LISTED', p.lat, p.lng, { role: p.role, cat: p.cat, url: p.url, what: p.what, addr: [p.addr, p.sub].filter(Boolean).join(', '), cur: 1, ...(p.a ? { a: 1 } : {}) }]);
+/* OpenStreetMap, a square of about a kilometre at a time, kept a fortnight (an empty square, a day) */
+const TILE = 0.01, TILES = store.get('da.tiles.v5', {});
+try { localStorage.removeItem('da.biz.v4'); } catch (e) { /* old cache gone */ }
+const tileKey = (i, j) => `${i},${j}`;
+const freshTile = t => !!t && Date.now() - t.t < ((t.rows || []).length ? 14 : 1) * 864e5;
+function rebuildBiz() {
+  const rows = [...LISTED]; const seen = new Set(LISTED.map(r => `${norm(r[0])}|${r[3].toFixed(3)}|${r[4].toFixed(3)}`));
+  const listedNear = r => LISTED.some(l => haversine(l[3], l[4], r[3], r[4]) < 90 && (norm(l[0]).includes(norm(r[0])) || norm(r[0]).includes(norm(l[0]).split(' ').slice(0, 2).join(' '))));
+  for (const t of Object.values(TILES)) for (const r of t.rows || []) { const k = `${norm(r[0])}|${(+r[3]).toFixed(3)}|${(+r[4]).toFixed(3)}`; if (seen.has(k) || listedNear(r)) continue; seen.add(k); rows.push(r); }
+  S.biz = rows; indexBiz();
 }
-function loadBusinesses() {
-  if (S.biz && S.bizFull) return Promise.resolve(S.biz);
-  if (S.bizLoading) return S.bizLoading;
-  if (!S.biz) useBusinesses([]);
-  if (DEMO) { S.bizFull = true; return Promise.resolve(S.biz); }
-  S.bizLoading = (async () => {
-    const cached = store.get('da.biz.v3', null);
-    if (cached && cached.list && Date.now() - cached.t < 7 * 864e5) { useBusinesses(cached.list); S.bizFull = true; return S.biz; }
-    const bb = `${B.s - 0.006},${B.w - 0.008},${B.n + 0.006},${B.e + 0.008}`;
-    const q = `[out:json][timeout:90];(nwr["shop"]["name"](${bb});nwr["amenity"~"^(cafe|restaurant|fast_food|bar|pub|ice_cream|food_court|biergarten|fuel|car_wash|car_rental|pharmacy|bank|veterinary|marketplace|nightclub|theatre|arts_centre|music_venue|cinema|community_centre|events_venue)$"]["name"](${bb});nwr["craft"]["name"](${bb});nwr["office"]["name"](${bb}););out center tags;`;
+function saveTiles() {
+  const keys = Object.keys(TILES).sort((a, b) => TILES[a].t - TILES[b].t); while (keys.length > 40) delete TILES[keys.shift()];
+  while (!store.set('da.tiles.v5', TILES) && keys.length) delete TILES[keys.shift()];
+}
+rebuildBiz();
+const tilesFor = (lat, lng, R) => { const di = R / 111320, dj = R / (111320 * Math.cos(lat * Math.PI / 180)); const out = []; for (let i = Math.floor((lat - di) / TILE); i <= Math.floor((lat + di) / TILE); i++) for (let j = Math.floor((lng - dj) / TILE); j <= Math.floor((lng + dj) / TILE); j++) out.push([i, j]); return out; };
+const PLACE_Q = bb => `[out:json][timeout:25];(nwr["shop"]["name"](${bb});nwr["amenity"~"^(cafe|restaurant|fast_food|bar|pub|ice_cream|food_court|biergarten|fuel|car_wash|car_rental|pharmacy|bank|veterinary|marketplace|nightclub|theatre|arts_centre|music_venue|cinema|community_centre|events_venue|library|social_centre|townhall|coworking_space|studio)$"]["name"](${bb});nwr["craft"]["name"](${bb});nwr["office"]["name"](${bb});nwr["leisure"~"^(hackerspace|swimming_pool|sports_centre|garden)$"]["name"](${bb});nwr["tourism"~"^(gallery|museum)$"]["name"](${bb}););out center tags qt;`;
+let placesBusy = null, placesFailAt = 0;
+/* the places around a point, fetched if not yet kept; whatever happens the listed places are already here */
+function placesAround(lat, lng, R) {
+  const need = tilesFor(lat, lng, R).filter(([i, j]) => !freshTile(TILES[tileKey(i, j)]));
+  if (!need.length) { S.bizState = 'ok'; return Promise.resolve(S.biz); }
+  if (placesBusy) return placesBusy;
+  if (Date.now() - placesFailAt < 90000) { S.bizState = 'off'; return Promise.resolve(S.biz); }
+  S.bizState = 'loading'; if (typeof placesChanged === 'function') placesChanged();
+  placesBusy = (async () => {
+    const is = need.map(t => t[0]), js = need.map(t => t[1]);
+    const bb = [Math.min(...is) * TILE, Math.min(...js) * TILE, (Math.max(...is) + 1) * TILE, (Math.max(...js) + 1) * TILE].map(v => v.toFixed(4)).join(',');
     for (const url of CONFIG.OVERPASS) {
       try {
-        const res = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const j = await res.json(); const seen = new Set(); const list = [];
+        const res = await fetch(`${url}?data=${encodeURIComponent(PLACE_Q(bb))}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json(); if (j.remark && /error|time/i.test(j.remark)) throw new Error(j.remark);
+        const by = new Map(need.map(([i, k]) => [tileKey(i, k), []]));
         for (const el of j.elements || []) {
-          const t = el.tags || {}; const lat = el.lat != null ? el.lat : el.center && el.center.lat; const lng = el.lon != null ? el.lon : el.center && el.center.lon;
-          if (lat == null || !t.name) continue; const k = `${t.name}|${lat.toFixed(4)}|${lng.toFixed(4)}`; if (seen.has(k)) continue; seen.add(k);
-          list.push([t.name, t.brand && t.brand !== t.name ? t.brand : '', sectorOf(t), +lat.toFixed(5), +lng.toFixed(5), { role: roleOfTags(t) }]);
+          const t = el.tags || {}; const la = el.lat != null ? el.lat : el.center && el.center.lat; const ln = el.lon != null ? el.lon : el.center && el.center.lon; if (la == null || !t.name) continue;
+          const key = tileKey(Math.floor(la / TILE), Math.floor(ln / TILE)); if (!by.has(key)) continue;
+          const role = roleOfTags(t), h = harmsOfTags(t), url = t.website || t['contact:website'] || t.url || '';
+          by.get(key).push([t.name, t.brand && t.brand !== t.name ? t.brand : '', sectorOf(t), +la.toFixed(5), +ln.toFixed(5), { role, ...(h.length ? { h } : {}), ...(/^https?:\/\//.test(url) ? { url } : {}) }]);
         }
-        store.set('da.biz.v3', { t: Date.now(), list }); useBusinesses(list); S.bizFull = true; return S.biz;
+        const now = Date.now(); for (const [k, rows] of by) TILES[k] = { t: now, rows };
+        saveTiles(); rebuildBiz(); S.bizState = 'ok'; placesBusy = null; if (typeof placesChanged === 'function') placesChanged(); return S.biz;
       } catch (e) { /* the next mirror */ }
     }
-    S.bizLoading = null; return S.biz;
+    placesFailAt = Date.now(); S.bizState = 'off'; placesBusy = null; if (typeof placesChanged === 'function') placesChanged(); return S.biz;
   })();
-  return S.bizLoading;
+  return placesBusy;
 }
-const within = o => (!S.biz || o.ob ? [] : bizNear(o.lat, o.lng, rangeOf(o)));
 const liveEvent = u => !u.isEvent || !u.start || u.start + 3 * 3600e3 > Date.now();
 /* a gig: tagged gig, or listed by Triple R (rrr) or Resident Advisor (ra) */
 const isGig = o => !!o && !!o.isEvent && (o.tags || []).some(t => t === 'gig' || t === 'rrr' || t === 'ra');
 const gigOf = o => ((o && o.tags) || []).map(t => GIGS[t]).find(Boolean) || null;
-const cellsAll = () => [...S.obs.filter(o => !o.ob), ...S.user.filter(liveEvent), ...S.community.filter(c => c.kind !== 'refuge' && liveEvent(c)), ...S.stories, ...S.heroes];
-/* each record holds the places in its radius, nearest first; each place holds the lives that reach it, most at risk first */
-function computeOrbit() {
-  const cell = new Map(), biz = new Map();
-  if (S.biz) for (const o of cellsAll()) {
-    const rows = within(o); if (!rows.length) continue; cell.set(o.id, rows);
-    const deg = degOf(o);
-    for (const r of rows) { let z = biz.get(r.i); if (!z) biz.set(r.i, z = { i: r.i, cells: [], deg: 0 }); z.cells.push({ id: o.id, d: r.d, deg }); z.deg = Math.max(z.deg, deg); }
-  }
-  for (const z of biz.values()) z.cells.sort((a, b) => b.deg - a.deg || a.d - b.d);
-  S.orbit = { cell, biz };
-}
-/* the radius a business answers for: what it leaves behind travels this far */
-const BIZ_R = 400;
-/* the life it touches most: the nearest record of a kind its role reaches, within 3 km (litter rides the drains to the creek) */
-function linkedLife(z) {
-  const gs = (ROLES[z.role] || {}).g || []; if (!gs.length) return null; let best = null;
-  for (const o of cellsAll()) { if (o.hum || isCold(o) || !gs.includes(glyphOf(o))) continue; const d = haversine(z.lat, z.lng, o.lat, o.lng); if (d < 3000 && (!best || d < best.d)) best = { o, d }; }
-  return best;
-}
-const bizOf = i => { const b = S.biz && S.biz[i]; if (!b) return null; const z = S.orbit.biz.get(i) || { cells: [], deg: 0 }; return { i, n: b[0], brand: b[1], sec: b[2], lat: b[3], lng: b[4], partner: !!(b[5] && b[5].partner), pid: b[5] && b[5].id, role: roleOfRow(b), ...z }; };
+const cellsAll = () => [...S.obs.filter(o => !o.ob), ...S.user.filter(liveEvent), ...S.community.filter(c => c.kind !== 'refuge' && liveEvent(c)), ...S.heroes].filter(o => !hiddenCell(o.id));
 const subjectOf = o => (o.ref != null && S.byId.get(o.ref) ? S.byId.get(o.ref) : o);
-/* what a business has signed: every response it backs, and the briefs they belong to */
-const pledgesOf = name => [...S.resp.values()].flatMap(r => r.patrons.filter(p => norm(p.n) === norm(name)).map(p => ({ r, p })));
 
 
 /* ════════════════════════════════════════════════════════════════════
-   THE GROUND — the satellite photograph on the land's own relief, always. No roads, no labels:
-   the place as it is, so the marks above it (35-life.js) are the only things that speak.
-   Colour is held back a little, so a cobalt point, the signal colour and the red mark stay legible on any roof or canopy.
+   THE GROUND — the satellite photograph on the land's own relief. No roads, no labels:
+   the marks above it (35-life.js) are the only things that speak, and only where the radar has looked.
    ════════════════════════════════════════════════════════════════════ */
 const IMG = CONFIG.IMAGERY;
 const style = {
@@ -703,26 +788,31 @@ const style = {
     demShade: { type: 'raster-dem', tiles: [CONFIG.DEM_URL], tileSize: 256, maxzoom: 15, encoding: 'terrarium' },
   },
   layers: [
-    { id: 'ground', type: 'background', paint: { 'background-color': '#2C3631' } },
-    { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.32, 'raster-contrast': -0.04, 'raster-brightness-max': 0.94, 'raster-fade-duration': 0 } },
+    { id: 'ground', type: 'background', paint: { 'background-color': '#1E2622' } },
+    { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': -0.38, 'raster-contrast': -0.04, 'raster-brightness-max': 0.9, 'raster-fade-duration': 0 } },
     { id: 'shade', type: 'hillshade', source: 'demShade', paint: { 'hillshade-exaggeration': 0.2, 'hillshade-shadow-color': '#0B2545', 'hillshade-highlight-color': '#FFFFFF', 'hillshade-accent-color': '#0B2545' } },
   ],
 };
-/* the frame: on a phone the white page is a sheet over the lower half, so the ground is framed above it */
-const framePad = () => (innerWidth < 760 ? { top: 24, left: 16, right: 60, bottom: Math.round(innerHeight * (S.open ? 0.56 : 0)) + 16 } : 32);
+/* the frame: on a phone the card is a sheet over the lower half, so the ground is framed above it; on a desk it sits to the right */
+const phone = () => innerWidth < 760;
+const framePad = () => (phone() ? { top: 24, left: 16, right: 16, bottom: Math.round(innerHeight * (S.open ? 0.56 : 0)) + 16 } : { top: 32, left: 32, bottom: 32, right: (S.open ? Math.min(440, innerWidth * 0.4) : 0) + 64 });
+const sheetOffset = () => (phone() && S.open ? [0, -innerHeight * (document.body.classList.contains('placing') ? 0.37 : 0.26)] : !phone() && S.open ? [-Math.min(440, innerWidth * 0.4) / 2, 0] : [0, 0]);
+/* the zoom at which the radar fills a good part of the screen */
+const metresPerPx = (lat, z) => 78271.51696 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z);
+function scanZoom(r = S.scan.r) { const c = $('#world'); const dim = Math.min(c.clientWidth || innerWidth, (c.clientHeight || innerHeight) * (phone() && S.open ? 0.5 : 1)); return clamp(Math.log2(78271.51696 * Math.cos(S.scan.lat * Math.PI / 180) / (r / (dim * 0.36))), 12.5, 17.5); }
 const map = new maplibregl.Map({
-  container: 'world', style, bounds: [[B.w, B.s], [B.e, B.n]], fitBoundsOptions: { padding: framePad() }, pitch: 0, bearing: 0, maxPitch: 70,
+  container: 'world', style, center: [S.scan.lng, S.scan.lat], zoom: 13, pitch: 0, bearing: 0, maxPitch: 70,
   attributionControl: false, fadeDuration: 0, renderWorldCopies: false,
   maxBounds: [[B.w - 0.07, B.s - 0.06], [B.e + 0.07, B.n + 0.06]],
 });
-map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#archive" class="da-about">${CONFIG.NAME} · ${CONFIG.BY.toUpperCase()}</a> · iNaturalist · © OpenStreetMap · Open-Meteo` }), 'bottom-left');
-document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); setView(1, false, 'archive'); } });
-const sheetOffset = () => (innerWidth < 760 && S.open ? [0, -innerHeight * (document.body.classList.contains('placing') ? 0.37 : 0.26)] : [0, 0]);
+map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME} · ${CONFIG.BY.toUpperCase()}</a> · iNaturalist · © OpenStreetMap · Open-Meteo` }), 'bottom-left');
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); setView(1, false, 'sources'); } });
 map.on('load', () => {
   S.mapReady = true;
-  const open = S.byId.get(S.sel);
+  const open = S.byId.get(S.sel); const sg = S.mode === 'sig' && S.signals.find(x => x.key === S.sig);
   if (open) map.jumpTo({ center: [open.lng, open.lat], zoom: 15.6 });
-  else { const cam = map.cameraForBounds([[B.w, B.s], [B.e, B.n]], { padding: framePad() }); if (cam && !reduced()) { map.jumpTo({ ...cam, zoom: cam.zoom - 0.7 }); map.easeTo({ ...cam, duration: 1400, easing: t => 1 - Math.pow(1 - t, 3) }); } else if (cam) map.jumpTo(cam); }
+  else if (sg && sg.pin) map.jumpTo({ center: [sg.pin.lng, sg.pin.lat], zoom: 15.6 });
+  else { const z = scanZoom(); if (!reduced()) { map.jumpTo({ center: [S.scan.lng, S.scan.lat], zoom: z - 0.8 }); map.easeTo({ zoom: z, duration: 1600, easing: t => 1 - Math.pow(1 - t, 3) }); } else map.jumpTo({ center: [S.scan.lng, S.scan.lat], zoom: z }); }
   const fold = () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); };
   fold(); setTimeout(fold, 200);
   life.start(); refresh();
@@ -741,27 +831,67 @@ map.on('pitchend', () => {
 
 /* ───────── touch: everything on the ground is hit-tested where it is drawn ───────── */
 map.on('click', e => {
-  life.stopTour();
-  if (S.mode === 'place') { movePlace(e.lngLat); return; }   /* while placing, a touch on the ground moves the point */
+  /* while placing: a touch inside the marker's radius moves it there; on the marker itself or outside the radius, placing is cancelled */
+  if (S.mode === 'place') { if (consumeHold()) return; const p = S.place; const q = p && map.project([p.lng, p.lat]); if (p && (Math.hypot(q.x - e.point.x, q.y - e.point.y) < 18 || haversine(p.lat, p.lng, e.lngLat.lat, e.lngLat.lng) > rangeOf(p))) { cancelPlace(); return; } movePlace(e.lngLat); return; }
   const h = life.hit(e.point.x, e.point.y);
-  if (!h) { if (S.mode) closeRecord(); else { life.offer(e.lngLat); tick(1300); } return; }   /* empty ground: offer a new record here */
-  if (h.kind === 'zoom') return;
-  if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
-  if (h.kind === 'partner') { selectBiz(h.bi); return; }
-  if (h.kind === 'tribe') { selectTribe(h.id); return; }
-  select(h.id);
+  /* an open cell keeps its focus: knots are looked at, then tied; a life outside its radius is only looked at */
+  if (S.mode === 'ping') {
+    if (knotHeld) { knotHeld = false; return; }
+    if (h && h.kind === 'node') { strings.tap(h.key); return; }
+    if (h && h.kind === 'cell') { if (h.id === S.sel) strings.tap('pin'); else strings.peekOut(h.id); return; }
+    if (h && h.kind === 'zoom') return;
+    const o = S.byId.get(S.sel); if (o && haversine(o.lat, o.lng, e.lngLat.lat, e.lngLat.lng) <= rangeOf(o)) { strings.ground(e.lngLat); return; }
+    strings.unpeek(); tick(800); return;
+  }
+  if (h) {
+    if (h.kind === 'zoom') return;
+    if (h.kind === 'node') { strings.tap(h.key); return; }
+    if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
+    if (h.kind === 'tribe') { selectTribe(h.id); return; }
+    if (h.kind === 'sig') { openSignal(h.key); return; }
+    select(h.id); return;
+  }
+  if (S.mode) { closeRecord(); return; }
+  /* inside the radar: offer a new record here; outside it: the radar goes there */
+  if (life.inScan(e.lngLat.lat, e.lngLat.lng)) { life.offer(e.lngLat); tick(1300); }
+  else life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
 });
-let hoverT = 0, hoverId = null;
+/* a double tap ties instead of zooming while a cell or a marker is open */
+map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') e.preventDefault(); });
+let hoverT = 0, hoverKey = null;
 map.on('mousemove', e => {
   if (hoverT) return; hoverT = setTimeout(() => { hoverT = 0; }, 40);
-  const h = life.hit(e.point.x, e.point.y, true); map.getCanvas().style.cursor = h ? 'pointer' : '';
-  const id = h && h.kind === 'cell' ? h.id : null;
-  if (id !== hoverId) { hoverId = id; life.hover(id != null ? S.byId.get(id) : null); }
+  const h = life.hit(e.point.x, e.point.y, true); const canvas = map.getCanvas();
+  canvas.style.cursor = h ? 'pointer' : S.mode === 'ping' || S.mode === 'place' || life.inScan(map.unproject(e.point).lat, map.unproject(e.point).lng) ? '' : 'crosshair';
+  const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'sig' ? 's:' + h.key : null) : null;
+  if (key !== hoverKey) { hoverKey = key; life.hover(h && key ? h : null); }
 });
-map.getCanvas().addEventListener('mouseleave', () => { hoverId = null; life.hover(null); });
-map.on('contextmenu', e => { e.preventDefault(); life.stopTour(); if (S.mode === 'place') movePlace(e.lngLat); else startPlace(e.lngLat); });
+map.getCanvas().addEventListener('mouseleave', () => { hoverKey = null; life.hover(null); });
+/* the right button joins: in an open life a knot is joined or let go, another life is brought in and joined, the life itself plays;
+   with nothing open it opens what is under it. It never makes a record: holding the left button down does that */
+let lastTouch = 0;
+map.on('contextmenu', e => {
+  e.preventDefault(); if (performance.now() - lastTouch < 900) return;
+  if (S.mode === 'place') { cancelPlace(); return; }
+  const h = life.hit(e.point.x, e.point.y, true);
+  /* on open ground the right button backs out: whatever is open closes and the radar carries on */
+  if (!h || h.kind === 'zoom') { if (S.mode) { tick(900); closeRecord(); } return; }
+  if (S.mode === 'ping') { if (h.kind === 'node') strings.join(h.key); else if (h.kind === 'cell') { if (h.id === S.sel) strings.playOpen(); else strings.join('x:' + h.id); } return; }
+  if (h.kind === 'cell') select(h.id); else if (h.kind === 'tribe') selectTribe(h.id); else if (h.kind === 'sig') openSignal(h.key);
+});
+/* on a phone a long press on a knot is the right button: it joins at once, or lets go */
+let knotT = 0, knotPt = null, knotHeld = false;
+map.on('touchstart', e => {
+  lastTouch = performance.now(); clearTimeout(knotT); knotPt = null;
+  if (S.mode !== 'ping' || (e.points && e.points.length > 1)) return;
+  const h = life.hit(e.point.x, e.point.y, true); if (!h || (h.kind !== 'node' && h.kind !== 'cell')) return;
+  knotPt = e.point; knotT = setTimeout(() => { if (!knotPt) return; knotPt = null; knotHeld = true; buzz(10); if (h.kind === 'node') strings.join(h.key); else if (h.id === S.sel) strings.playOpen(); else strings.join('x:' + h.id); }, 480);
+});
+map.on('touchmove', e => { if (knotPt && (!e.point || Math.hypot(e.point.x - knotPt.x, e.point.y - knotPt.y) > 8)) { clearTimeout(knotT); knotPt = null; } });
+map.on('touchend', () => { clearTimeout(knotT); knotPt = null; if (knotHeld) setTimeout(() => { knotHeld = false; }, 450); });
+map.on('dragstart', () => { clearTimeout(knotT); knotPt = null; });
 
-/* ───────── City of Melbourne: drinking water and air temperature now, under ALERTS ───────── */
+/* ───────── City of Melbourne: drinking water and air temperature now, on a hot day ───────── */
 const overlayState = {};
 const geoOf = r => { for (const k of ['geo_point_2d', 'latlong', 'location', 'lat_long', 'coordinates', 'geolocation']) { const g = r[k]; if (g && typeof g === 'object' && (g.lat != null || g.latitude != null)) return [+(g.lon ?? g.longitude ?? g.lng), +(g.lat ?? g.latitude)]; } if (r.latitude != null && r.longitude != null) return [+r.longitude, +r.latitude]; if (r.lat != null && (r.lon != null || r.lng != null)) return [+(r.lon ?? r.lng), +r.lat]; return null; };
 async function loadOverlays() {
@@ -789,23 +919,38 @@ async function loadOverlays() {
 
 
 /* ════════════════════════════════════════════════════════════════════
-   THE GROUND, ALIVE — two canvases over the photograph.
-   The still one holds plants, gatherings, people's needs and offers, posters, the past, and the web of a selection.
-   The moving one holds the animals, each moving the way its kind moves and each kind in its own colour, and the alarms:
-   a hurt animal's pulse, a lost animal's search area swept by a slow hand. An orange ring marks the lives the months ahead
-   put in danger. The five in greatest need move across the ground they are known from. No words are written on the ground.
-   Every icon is the thing itself, and every icon can be clicked.
+   THE RADAR — the map holds nothing until the radar has looked. A slow hand sweeps the pinned circle and each life
+   it passes appears and stays while the radar stays. Outside it only what cannot wait is shown: an animal hurt,
+   dead or lost, a life in extreme danger, a threatened one, and the five in greatest need.
+   Open a cell and the sweep stops: its own radius opens, and everything inside it becomes a knot for a string.
+   Two canvases over the photograph: the ground (the radar's mask, ticks and patches) and the marks.
    ════════════════════════════════════════════════════════════════════ */
+const nameOf = o => {
+  if (!o) return ''; const sub = subjectOf(o); const d = (o.ev && o.ev.data) || {};
+  if (o.isEvent || o.comm || (o.user && o.hum && o.title)) return o.title;
+  if (sub.tx) return sub.tx.cn || sub.tx.n;
+  return d.text || o.title || (o.hum ? 'People' : SCALES[bandOf(o)].label.split(' · ')[0]);
+};
+const isAlarm = o => !!o && (o.kind === 'injured' || o.kind === 'lost' || o.kind === 'dead');
+const codeOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? toCode(String(o.ev.key).slice(-6)) : o.hero ? 'H·' + o.hero.toUpperCase() : String(o.id).toUpperCase());
+const hashOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? 'U' + o.ev.key : o.isTribe ? o.tid : '');
+/* a point a distance and a bearing away: flat, which holds well inside a few kilometres */
+const KY = 110540;
+const dest = (lat, lng, d, brg) => { const r = brg * Math.PI / 180; return [lat + d * Math.cos(r) / KY, lng + d * Math.sin(r) / (111320 * Math.cos(lat * Math.PI / 180))]; };
 const life = (() => {
   const make = cls => { const c = document.createElement('canvas'); c.className = cls; c.setAttribute('aria-hidden', 'true'); return c; };
   const baseCv = make('life'), fxCv = make('life fx');
-  let bx = null, fx = null, W = 0, H = 0, dpr = 1, items = [], movers = [], net = [], bins = [], hidden = new Set(), curD = 0;
-  let dirty = true, fxDirty = true, raf = 0, lastFx = 0, lastText = 0, wasSelecting = false, hoverIt = null;
-  const tagEl = $('#tag'), handle = $('#radius');
-  let tagCell = null, tagHide = 0, tourT = 0, tourOn = false, toured = false, tourTries = 0;
-  let selT = 0, dragging = false;
+  let bx = null, fx = null, W = 0, H = 0, dpr = 1, items = [], movers = [], bins = [], curD = 0;
+  let dirty = true, fxDirty = true, raf = 0, lastFx = 0, hoverH = null;
+  const tagEl = $('#tag'), handle = $('#radius'), knob = $('#knob'), ringK = $('#ring');
+  let selT = 0, dragging = false, ringPts = [], cellPts = [];
   const audio = new Audio(); audio.preload = 'none'; let playing = '';
-  const DIM = 0.3, TAU = Math.PI * 2;
+  const TAU = Math.PI * 2, SC = Object.assign({ min: 250, max: 1500, turn: 8 }, CONFIG.SCAN || {});
+  /* the sweep, as a bearing; what it has found, and when */
+  let sweepB = 0, lastSweep = 0; const seen = new Map(); let songFx = [];
+  /* the centre, pressed: every string inside the radar played as a song */
+  let singT = 0;
+  function song() { songFx = strings.song(); fxDirty = true; if (!songFx.length) { tick(700); return; } const end = Math.max(...songFx.map(n => n.at)) - performance.now() + 500; knob.classList.add('sing'); clearTimeout(singT); singT = setTimeout(() => knob.classList.remove('sing'), end); }
   function resize() {
     if (!bx) return; const c = map.getContainer(); dpr = Math.min(2, devicePixelRatio || 1); W = c.clientWidth; H = c.clientHeight;
     for (const cv of [baseCv, fxCv]) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = `${W}px`; cv.style.height = `${H}px`; }
@@ -815,12 +960,13 @@ const life = (() => {
     const host = map.getCanvas().parentNode; host.appendChild(baseCv); host.appendChild(fxCv);
     bx = baseCv.getContext('2d'); fx = fxCv.getContext('2d'); resize(); data();
     if (!raf) raf = requestAnimationFrame(frame);
-    /* no words on the ground: the tour that named records on arrival is gone; a tag shows only under the pointer */
-    ['pointerdown', 'wheel', 'keydown'].forEach(n => addEventListener(n, stopTour, { passive: true }));
   }
 
   /* ───────── what each record is: the thing itself, in the shape of its kind of record ───────── */
-  const sizeAt = () => { const z = S.mapReady ? map.getZoom() : 14; return clamp(Math.round((16 + (z - 12.5) * 4) / 2) * 2, 16, 28); };
+  const zoomNow = () => (S.mapReady ? map.getZoom() : 14);
+  /* icons are half size from afar and full size close in: the ground asks to be approached */
+  const kzAt = z => clamp(0.5 + (z - 13.2) * 0.25, 0.5, 1);
+  const sizeAt = (z = zoomNow()) => Math.max(8, Math.round(clamp(16 + (z - 12.5) * 4, 16, 28) * kzAt(z) / 2) * 2);
   const PLACE_TONE = { flora: 'flora', injured: 'injured', dead: 'dead', lost: 'lost', need: 'need', offer: 'offer', event: 'event' };
   const PLACE_ICON = { need: 'plus', offer: 'give', event: 'people', injured: 'injured', dead: 'harm' };
   const PLANT_Z = 15.4;   /* plants show only close up, and small */
@@ -828,24 +974,23 @@ const life = (() => {
     const d = d0 || sizeAt();
     if (o.id === 'place') {
       const k = PLACE_KINDS[o.kind] || PLACE_KINDS[0]; const g = placeGlyph(o);
-      return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: d + 6 };
+      return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: Math.max(d, 18) + 6 };
     }
-    if (o.hero) { const deg = degOf(o); return { tone: M.toneOf(glyphOf(o)), g: glyphOf(o), d: d + 14, dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
-    if (o.hist) return { tone: 'hist', d: Math.max(8, Math.round(d * 0.42)) };
-    if (o.story) return { tone: 'story', g: o.hum ? null : glyphOf(o), i: o.hum ? 'people' : null, d: d + 2, carried: !!o.done };
-    if (o.kind === 'injured') return { tone: 'injured', g: o.tx ? glyphOf(o) : null, i: o.tx ? null : 'injured', d: d + 4 };
-    if (o.kind === 'dead') return { tone: 'dead', g: o.tx ? glyphOf(o) : null, i: o.tx ? null : 'harm', d: d + 2 };
-    if (o.kind === 'lost') return { tone: 'lost', g: o.tx ? glyphOf(o) : 'mammal', d: d + 4 };
+    if (o.hero) { const deg = degOf(o); return { tone: M.toneOf(glyphOf(o)), g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
+    if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
+    if (o.kind === 'injured') return { tone: 'injured', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'injured', d: d + 4 };
+    if (o.kind === 'dead') return { tone: 'dead', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'harm', d: d + 2 };
+    if (o.kind === 'lost') return { tone: 'lost', g: o.tx || o.g ? glyphOf(o) : 'paw', d: d + 4 };
     if (o.hum) {
       const k = o.kind; const gig = isGig(o); const i = gig ? 'hug' : o.i || (k === 'event' ? ((o.tags || []).includes('sound') ? 'sound' : 'people') : k === 'offer' ? 'give' : k === 'pulse' ? 'people' : k === 'refuge' ? 'refuge' : 'plus');
       if (gig) return { tone: 'event', g: null, i, d: d + 2 };
       return { tone: k === 'event' ? 'event' : k === 'offer' || k === 'pulse' ? 'offer' : 'need', g: o.g || null, i: o.g ? null : i, d, fresh: !!(o.user && Date.now() - o.at < 864e5) };
     }
     const sub = subjectOf(o); const g = glyphOf(o); const flora = ['Plantae', 'Fungi'].includes(kindOf(sub)) || bandOf(o) === 5 || g === 'plant' || g === 'fungi';
-    if (isCold(o)) return { tone: 'cold', g, d: Math.max(12, Math.round(d * 0.64)) };
+    if (isCold(o)) return { tone: 'cold', g, d: Math.max(8, Math.round(d * 0.64)) };
     const deg = degOf(o);
     const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || (o.user && Date.now() - o.at < 864e5));
-    if (flora) return { tone: 'flora', g, d: Math.max(10, Math.round(d * 0.55)), sig: !!(sub.tx && sub.tx.th), dz: deg >= 3 ? deg : 0 };
+    if (flora) return { tone: 'flora', g, d: Math.max(8, Math.round(d * 0.55)), sig: !!(sub.tx && sub.tx.th), dz: deg >= 3 ? deg : 0 };
     return { tone: M.toneOf(g), g, d: d + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0), sig: !!(sub.tx && sub.tx.th), fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
@@ -853,185 +998,117 @@ const life = (() => {
   /* how far to search for an animal lost: a dog runs, a cat hides close */
   const searchOf = o => o.search || ({ dog: 900, cat: 350 }[glyphOf(o)] || 500);
   const MOVING = new Set(['k-bird', 'k-mammal', 'k-insect', 'k-spider', 'k-reptile', 'k-water', 'k-other']);
-  /* which records speak on each page; the rest step back */
-  function role(o, v) {
-    if (v === 'stories') return o.story || respsOf(o).length || (o.hum && o.kind !== 'injured' && o.kind !== 'lost' && o.kind !== 'dead') ? 1 : 0;
-    return 1;
-  }
   function data() {
-    if (!bx) return; const v = VIEWS[S.view].k; items = []; const now = Date.now(); curD = sizeAt();
-    for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.stories, ...S.heroes]) {
-      const b = badgeOf(o, curD); const on = role(o, v); if (!on) b.a = DIM;
-      const r0 = seeded(`${o.id}|${WEEK}`);
-      items.push({ o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, phase: r0(), on, resp: !o.story && !o.hist && respsOf(o).length > 0, pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero });
+    if (!bx) return; items = []; const now = Date.now(); curD = sizeAt();
+    for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.heroes]) {
+      if (hiddenCell(o.id)) continue;
+      const b = badgeOf(o, curD); const r0 = seeded(`${o.id}|${WEEK}`);
+      const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, phase: r0(), pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
+      it.alarm = (o.kind === 'injured' && now - o.at < 12 * 3600e3) || (o.kind === 'dead' && now - o.at < 48 * 3600e3) || (o.kind === 'lost' && now - o.at < 72 * 3600e3);
+      /* what deserves to be seen outside the radar: hurt, dead or lost now; extreme danger; threatened; the five; what this device just placed */
+      const quiet = b.tone === 'hist' || b.tone === 'cold' || b.tone === 'flora';
+      it.flag = it.alarm || it.hero || (!quiet && (b.dz >= 4 || !!(o.tx && o.tx.th && !o.hum))) || !!(o.user && now - o.at < 864e5);
+      items.push(it);
     }
     for (const it of items) {
-      const o = it.o; if (!it.on) continue;
-      if (o.kind === 'injured' && now - o.at < 12 * 3600e3) { it.pulse = 3; it.pc = C.red; }
-      else if (o.kind === 'lost' && now - o.at < 72 * 3600e3) it.radar = searchOf(o);
+      const o = it.o;
+      if (o.kind === 'injured' && it.alarm) { it.pulse = 3; it.pc = C.red; }
+      else if (o.kind === 'lost' && it.alarm) { it.pulse = 2; it.pc = C.red; it.radar = searchOf(o); }
       else if (o.arrived && now - o.arrived < 5 * 60e3) { it.pulse = 2; it.pc = C.red; }
     }
-    /* the three lives in extreme danger in the months ahead keep a slow orange ring */
-    items.filter(it => it.on && !it.pulse && !it.o.hum && it.b.dz >= 4)
-      .sort((a, b) => (b.hero - a.hero) || ((b.o.rare || 0) - (a.o.rare || 0))).slice(0, 4).forEach(it => { it.pulse = 1; it.pc = C.orange; });
-    for (const it of items) it.moving = !reduced() && it.on && (it.hero || (MOVING.has(it.b.tone) && !M.STILL.has(it.b.g)));
-    const rank = it => (it.b.tone === 'hist' ? 0 : it.b.tone === 'cold' ? 1 : it.b.tone === 'flora' ? 1.5 : !it.on ? 2 : it.hero ? 7 : it.moving ? 4 : it.pulse || it.radar ? 6 : 3);
+    /* the lives in extreme danger in the months ahead keep a slow orange ring */
+    items.filter(it => !it.pulse && !it.o.hum && it.b.dz >= 4).sort((a, b) => (b.hero - a.hero) || ((b.o.rare || 0) - (a.o.rare || 0))).slice(0, 4).forEach(it => { it.pulse = 1; it.pc = C.orange; });
+    for (const it of items) it.moving = !reduced() && (it.hero || (MOVING.has(it.b.tone) && !M.STILL.has(it.b.g)));
+    const rank = it => (it.b.tone === 'hist' ? 0 : it.b.tone === 'cold' ? 1 : it.b.tone === 'flora' ? 1.5 : it.hero ? 7 : it.moving ? 4 : it.pulse || it.radar ? 6 : 3);
     items.sort((a, b) => rank(a) - rank(b));
     movers = items.filter(it => it.moving || it.pulse || it.radar);
-    networks(); dirty = true; fxDirty = true;
+    scanGeo(); if (reduced()) revealAll();
+    dirty = true; fxDirty = true;
   }
-  /* the network of support: each poster to the places that host it, and to any business that gave */
-  function networks() {
-    net = [];
-    const at = n => (S.biz ? S.biz.findIndex(b => norm(b[0]) === norm(n)) : -1);
-    for (const r of S.resp.values()) {
-      const o = S.byId.get(r.cell); if (!o) continue;
-      for (const n of r.hostList) { const bi = at(n); if (bi >= 0) net.push({ o, r, p: { n, st: 'host' }, bi, lat: S.biz[bi][3], lng: S.biz[bi][4], x: 0, y: 0, ox: 0, oy: 0 }); }
-      for (const p of r.patrons) { if (p.person) continue; const bi = p.bi != null ? p.bi : at(p.n); if (bi >= 0 && S.biz[bi]) net.push({ o, r, p, bi, lat: S.biz[bi][3], lng: S.biz[bi][4], x: 0, y: 0, ox: 0, oy: 0 }); }
+
+  /* ───────── the radar ───────── */
+  const inScan = (lat, lng) => haversine(S.scan.lat, S.scan.lng, lat, lng) <= S.scan.r;
+  function scanGeo() {
+    for (const it of items) { it.sd = haversine(S.scan.lat, S.scan.lng, it.lat, it.lng); it.sb = bearing(S.scan.lat, S.scan.lng, it.lat, it.lng); it.inS = it.sd <= S.scan.r; if (!it.inS) seen.delete(it.o.id); }
+  }
+  function revealAll() { const t = performance.now() - 2000; for (const it of items) if (it.inS && !seen.has(it.o.id)) seen.set(it.o.id, t); }
+  const paused = () => !!S.mode || document.hidden;
+  const running = () => !reduced() && !paused();
+  /* the hand moves on; whatever lies between where it was and where it is now is found */
+  function sweep(now) {
+    const dt = lastSweep ? Math.min(0.12, (now - lastSweep) / 1000) : 0; lastSweep = now;
+    if (reduced()) { revealAll(); return; }
+    if (!running() || !dt) return;
+    const b0 = sweepB, b1 = sweepB + 360 * dt / SC.turn; sweepB = b1 % 360;
+    for (const it of items) {
+      if (!it.inS || seen.has(it.o.id)) continue;
+      let a = it.sb; if (a < b0) a += 360; if (a > b0 && a <= b1) { seen.set(it.o.id, now); if (!it.o.hist && it.b.tone !== 'cold') snd.blip(it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45); }
     }
   }
+  let scanSave = 0;
+  function setScan(lat, lng, r, save) {
+    if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
+    if (r != null) S.scan.r = Math.round(clamp(r, SC.min, SC.max) / 10) * 10;
+    scanGeo(); dirty = true; fxDirty = true; placeKnobs();
+    if (save) { clearTimeout(scanSave); scanSave = setTimeout(() => { prefs.scan = { lat: +S.scan.lat.toFixed(5), lng: +S.scan.lng.toFixed(5), r: S.scan.r }; savePrefs(); }, 250); }
+  }
+  /* the radar glides to a new place: the hand keeps sweeping as it goes */
+  let glide = 0;
+  function moveScan(lat, lng, anim) {
+    if (!inBox(lat, lng)) { tick(600); return; }
+    cancelAnimationFrame(glide); const a = { lat: S.scan.lat, lng: S.scan.lng }; const t0 = performance.now(); const dur = anim && !reduced() ? 520 : 0;
+    snd.tick(700); buzz(6);
+    const step = now => { const k = dur ? Math.min(1, (now - t0) / dur) : 1; const e = 1 - Math.pow(1 - k, 3); setScan(a.lat + (lat - a.lat) * e, a.lng + (lng - a.lng) * e, null, k >= 1); if (k < 1) glide = requestAnimationFrame(step); else snd.tick(1100); };
+    glide = requestAnimationFrame(step);
+  }
+
+  /* ───────── where everything is on the screen ───────── */
+  const metresPerPixel = lat => metresPerPx(lat, map.getZoom());
+  const ringOf = (lat, lng, r, n = 72) => { const pts = []; for (let i = 0; i < n; i++) { const [a, b] = dest(lat, lng, r, (i / n) * 360); const p = map.project([b, a]); pts.push([p.x, p.y]); } return pts; };
+  const selected = () => (S.mode === 'ping' ? S.byId.get(S.sel) : S.mode === 'place' ? S.place : null);
   function project() {
-    const d = sizeAt(); if (d !== curD) { curD = d; for (const it of items) { const a = it.b.a; it.b = badgeOf(it.o, d); if (a != null) it.b.a = a; } }
+    const d = sizeAt(); if (d !== curD) { curD = d; for (const it of items) it.b = badgeOf(it.o, d); }
     for (const it of items) { const p = map.project([it.lng, it.lat]); it.x = p.x; it.y = p.y; }
-    for (const l of net) { const a = map.project([l.lng, l.lat]), b = map.project([l.o.lng, l.o.lat]); l.x = a.x; l.y = a.y; l.ox = b.x; l.oy = b.y; }
     for (const s of S.sensors) { const p = map.project([s.lng, s.lat]); s.x = p.x; s.y = p.y; }
     for (const f of S.fountains) { const p = map.project([f.lng, f.lat]); f.x = p.x; f.y = p.y; }
-    cluster(); if (tagCell) placeTag(); placeHandle();
+    ringPts = ringOf(S.scan.lat, S.scan.lng, S.scan.r);
+    const o = selected(); cellPts = o ? ringOf(o.lat, o.lng, rangeOf(o)) : [];
+    cluster(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+  }
+  const zoomQuiet = () => zoomNow() < 14.2;
+  /* what the ground shows, item by item */
+  function shown(it) {
+    const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
+    if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
+    const found = it.inS && seen.has(o.id); const z = zoomNow();
+    if (it.b.tone === 'hist') return found && z >= 14;
+    if (it.b.tone === 'flora') return found && z >= PLANT_Z;
+    return it.flag || found;
   }
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
   function cluster() {
-    bins = []; hidden = new Set(); const z = map.getZoom();
-    for (const it of items) if ((it.b.tone === 'hist' && z < 13) || (it.b.tone === 'flora' && z < PLANT_Z && it.o.id !== S.sel && !it.resp && !it.o.story)) hidden.add(it);
-    if (z >= 14.2) return;
-    const G = curD + 8, m = new Map();
-    for (const it of items) { if (!it.on || hidden.has(it) || it.b.tone === 'hist' || it.pulse || it.radar || it.hero || it.o.story || it.o.hum || it.o.id === S.sel) continue; const k = `${Math.floor(it.x / G)},${Math.floor(it.y / G)}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it); }
+    bins = []; if (!zoomQuiet()) { for (const it of items) it.binned = false; return; }
+    const G = curD + 10, m = new Map();
+    for (const it of items) {
+      it.binned = false; if (!shown(it) || it.flag || it.pulse || it.b.tone === 'hist' || it.o.hum || (S.mode === 'ping' && strings.lifeNode(it.o.id))) continue;
+      const k = `${Math.floor(it.x / G)},${Math.floor(it.y / G)}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it);
+    }
     for (const list of m.values()) {
       if (list.length < 3) continue; let x = 0, y = 0; const count = new Map();
-      for (const it of list) { x += it.x; y += it.y; hidden.add(it); const key = `${it.b.g}|${it.b.tone}`; count.set(key, (count.get(key) || 0) + 1); }
+      for (const it of list) { x += it.x; y += it.y; it.binned = true; const key = `${it.b.g}|${it.b.tone}`; count.set(key, (count.get(key) || 0) + 1); }
       const [g, tone] = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0].split('|');
-      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: curD, n: 3 } });
+      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: curD + 2, n: 3 } });
     }
   }
 
-  /* ───────── drawing ───────── */
-  /* the edge of the survey: a hairline frame, so the edge of what is known is visible */
+  /* ───────── the ground layer: the radar's mask and ticks, the patches it holds, water and heat on a hot day ───────── */
+  const off = (x, y, m = 50) => x < -m || y < -m || x > W + m || y > H + m;
+  const poly = (ctx, pts) => { pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); };
   function frameLine(ctx) {
     const c = [[B.w, B.n], [B.e, B.n], [B.e, B.s], [B.w, B.s]].map(p => map.project(p));
-    ctx.save(); ctx.beginPath(); c.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1; ctx.setLineDash([1, 3]); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.beginPath(); c.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath(); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1; ctx.setLineDash([1, 3]); ctx.stroke(); ctx.restore();
   }
-  const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
-  const metresPerPixel = lat => 78271.51696 * Math.cos(lat * Math.PI / 180) / Math.pow(2, map.getZoom());   // MapLibre zooms in 512-pixel tiles
-  const selected = () => S.byId.get(S.sel) || (S.mode === 'place' ? S.place : null);
-  /* one icon, from its bitmap, where its motion has taken it */
-  function drawItem(ctx, it, m) {
-    const sp = M.badgeSprite(it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
-    if (m && m.thread) { ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
-    if (it.b.a != null) ctx.globalAlpha = it.b.a;
-    if (m && (m.rot || m.sx !== 1)) { ctx.save(); ctx.translate(x, y); ctx.rotate(m.rot); ctx.scale(m.sx, 1); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
-    else ctx.drawImage(sp.cv, x - sp.size / 2, y - sp.size / 2, sp.size, sp.size);
-    ctx.globalAlpha = 1;
-    if (it.resp && it.on) { const r = it.b.d / 2, s = 3.4, ox = x - r * 0.78, oy = y - r * 0.78; ctx.save(); ctx.fillStyle = C.white; ctx.fillRect(ox - s - 1.2, oy - s - 1.2, s * 2 + 2.4, s * 2 + 2.4); ctx.fillStyle = C.cobalt; ctx.fillRect(ox - s, oy - s, s * 2, s * 2); ctx.restore(); }
-  }
-  /* the selection: a point becomes a line, the line a boundary, the boundary a plane, and the plane shows what it held */
-  function selection(ctx, now) {
-    const o = selected(); if (!o || S.mode === 'biz') return;
-    const it = items.find(x => x.o === o); const p0 = map.project([o.lng, o.lat]); const x = p0.x, y = p0.y;
-    const e = reduced() ? 9999 : now - selT; const kA = ease(e / 220), kB = ease((e - 160) / 520), kC = ease((e - 560) / 320);
-    const R = rangeOf(o); const rp = R / metresPerPixel(o.lat);
-    ctx.save(); ctx.strokeStyle = C.white; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
-    ctx.beginPath(); ctx.moveTo(x + 8, y); ctx.lineTo(x + 8 + (W + 4 - x - 8) * kA, y); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
-    if (kC > 0) { ctx.save(); ctx.globalAlpha = 0.2 * kC; ctx.beginPath(); ctx.arc(x, y, rp, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); }
-    if (kB > 0) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, rp, -Math.PI / 2, -Math.PI / 2 + TAU * kB); ctx.strokeStyle = C.white; ctx.lineWidth = dragging ? 2.4 : 1.6; ctx.stroke(); ctx.restore(); }
-    if (kB >= 1) {
-      ctx.save(); ctx.strokeStyle = C.white; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + rp, y); ctx.stroke(); ctx.restore();
-    }
-    if (e > 760) {
-      const rows = S.orbit.cell.get(o.id) || (S.mode === 'place' ? within(o) : []);
-      const mode = focusK || 'zone'; const quiet = mode !== 'zone' && mode !== 'biz';
-      const hosts = new Set(respsOf(o).flatMap(r => r.hostList.map(norm)));
-      const fits = new Set(((BRIEFS.find(x => x.id === S.brief) || {}).roles || []));
-      rows.slice(0, 60).forEach(b => {
-        const k = reduced() ? 1 : ease((e - 760 - (b.d / R) * 520) / 260); if (k <= 0) return;
-        const p = map.project([b.lng, b.lat]); const me = mode === 'biz' && b.i === focusKey; const host = hosts.has(norm(b.n)); const on = onNotice(b.role); const fit = fits.has(b.role);
-        const a = k * (quiet ? 0.14 : mode === 'biz' ? (me ? 1 : 0.2) : 1);
-        ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = me || fit ? C.white : on ? C.neon : 'rgba(255,255,255,.75)'; ctx.lineWidth = me ? 2.6 : fit ? 2.2 : on ? 1.6 : 1; ctx.setLineDash(host || me || on || fit ? [] : [2, 3]); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.restore();
-        M.pin(ctx, { f: 'partner', s: host || fit, on, half: false, r: (me ? 4.6 : fit ? 4.2 : 3.4), a }, p.x, p.y);
-      });
-      if (mode === 'biz') { const b = S.biz && S.biz[focusKey]; if (b && !rows.some(r => r.i === focusKey)) { const q = map.project([b[4], b[3]]); ctx.save(); ctx.strokeStyle = C.white; ctx.lineWidth = 2.2; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.restore(); M.pin(ctx, { f: 'partner', s: false, r: 5.4 }, q.x, q.y); } }
-      else if (mode === 'heat') heatWeb(ctx, o, x, y, R);
-      else if (mode === 'poster') posterWeb(ctx, x, y);
-    }
-    const b = it ? it.b : badgeOf(o);
-    M.badge(ctx, { ...b, a: 1, d: Math.round((b.tone === 'hist' || b.tone === 'cold' ? curD : b.d) * (1 + 0.42 * kA)), tone: b.tone === 'hist' || b.tone === 'cold' ? 'fauna' : b.tone, g: b.g || (b.tone === 'hist' ? glyphOf(o) : null) }, x, y);
-  }
-  /* the webs a record can show, chosen by what the pointer rests on in the card */
-  /* danger: the lives inside the boundary the months ahead put in severe danger */
-  function heatWeb(ctx, o, x, y, R) {
-    let n = 0; ctx.save();
-    for (const it of items) {
-      if (it.o === o || it.o.hum || it.b.tone === 'cold' || it.b.tone === 'hist' || !(it.b.dz >= 3)) continue;
-      if (haversine(o.lat, o.lng, it.lat, it.lng) > R) continue; n++;
-      const px = it.x + it.dx, py = it.y + it.dy;
-      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(px, py, it.b.d / 2 + 7, 0, TAU); ctx.fillStyle = 'rgba(255,122,0,.35)'; ctx.fill();
-      ctx.strokeStyle = C.orange; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(px, py); ctx.stroke();
-    }
-    ctx.restore();
-    return n;
-  }
-  /* a poster: lines to the places that host it */
-  function posterWeb(ctx, x, y) {
-    const r = S.resp.get(focusKey); if (!r) return 'POSTER';
-    const marks = [];
-    for (const h of r.hostList) { const bi = S.biz ? S.biz.findIndex(b => norm(b[0]) === norm(h)) : -1; if (bi >= 0) marks.push({ b: S.biz[bi] }); }
-    ctx.save();
-    for (const m of marks) { const q = map.project([m.b[4], m.b[3]]); m.x = q.x; m.y = q.y; ctx.strokeStyle = C.white; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.strokeRect(q.x - 8, q.y - 8, 16, 16); }
-    ctx.restore();
-    for (const m of marks) M.pin(ctx, { f: 'partner', s: true, r: 5 }, m.x, m.y);
-    return marks.length;
-  }
-  let focusK = null, focusKey = null;
-  function focus(k, key) { k = k || null; key = key == null ? null : key; if (k === focusK && key === focusKey) return; focusK = k; focusKey = key; dirty = true; }
-  /* a business: the radius it answers for, and a line to every life in it; the lives its role touches most, drawn bold */
-  function business(ctx) {
-    if (S.mode !== 'biz') return; const z = bizOf(S.bizSel); if (!z) return; const p = map.project([z.lng, z.lat]);
-    const rp = BIZ_R / metresPerPixel(z.lat); const on = onNotice(z.role); const gs = (ROLES[z.role] || {}).g || [];
-    ctx.save(); ctx.beginPath(); ctx.arc(p.x, p.y, rp, 0, TAU); ctx.fillStyle = on ? 'rgba(230,248,74,.22)' : 'rgba(255,255,255,.12)'; ctx.fill();
-    ctx.setLineDash([4, 3]); ctx.lineWidth = 1.6; ctx.strokeStyle = on ? C.neon : C.white; ctx.stroke(); ctx.setLineDash([]); ctx.restore();
-    ctx.save();
-    for (const it of items) {
-      if (it.o.hum || it.b.tone === 'hist' || hidden.has(it)) continue; if (haversine(z.lat, z.lng, it.lat, it.lng) > BIZ_R) continue;
-      const linked = gs.includes(glyphOf(it.o)); ctx.globalAlpha = linked ? 1 : 0.55; ctx.strokeStyle = linked ? (on ? C.neon : C.white) : 'rgba(255,255,255,.7)'; ctx.lineWidth = linked ? 2.2 : 0.8;
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(it.x + it.dx, it.y + it.dy); ctx.stroke();
-    }
-    ctx.restore();
-    M.pin(ctx, { f: 'partner', s: z.partner, on, r: 6 }, p.x, p.y);
-  }
-  /* the support layer: each poster to the places that host it */
-  function network(ctx, v) {
-    if (v !== 'stories' && !(S.sel && String(S.sel).startsWith('story:'))) return;
-    const sel = S.sel;
-    ctx.save();
-    for (const l of net) {
-      const on = sel ? l.o.id === sel : true; if (!on && !l.o.story) continue;
-      ctx.globalAlpha = on ? (sel ? 1 : 0.6) : 0.15; ctx.strokeStyle = C.white; ctx.lineWidth = sel && on ? 1.8 : 1.1; ctx.setLineDash(l.p.st === 'host' ? [] : [2, 3]);
-      ctx.beginPath(); ctx.moveTo(l.ox, l.oy); ctx.lineTo(l.x, l.y); ctx.stroke(); ctx.setLineDash([]);
-    }
-    ctx.restore();
-    for (const l of net) {
-      const on = sel ? l.o.id === sel : true; if (!on && !l.o.story) continue;
-      M.pin(ctx, { f: 'partner', s: true, r: sel && on ? 5.2 : 4, a: on ? 1 : 0.3 }, l.x, l.y);
-    }
-  }
-  /* on NOW: soft orange planes under the lives in extreme danger in the months chosen */
-  function fields(ctx) {
-    for (const it of items) {
-      if (!it.on || it.o.hum || !(it.b.dz >= 4) || it.b.tone === 'flora' || off(it) || hidden.has(it)) continue;
-      ctx.save(); ctx.globalAlpha = 0.42; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 13, 0, TAU); ctx.fillStyle = C.orange; ctx.fill(); ctx.restore();
-    }
-  }
-  const off = (it, m = 50) => it.x < -m || it.y < -m || it.x > W + m || it.y > H + m;
-  /* patches on the ground: on NOW, where the five in greatest need are known to live; on STORIES, the ground groups already care for */
-  /* ground cared for, drawn as patches: each blob an uneven round, the same shape every time it is drawn */
+  /* patches on the ground, each an uneven round, the same shape every time it is drawn */
   function blob(ctx, x, y, r, seed) {
     const n = 18, pt = i => { const a = (i / n) * TAU; const k = 1 + 0.15 * Math.sin(a * 3 + seed) + 0.07 * Math.sin(a * 5 + seed * 1.7); return [x + Math.cos(a) * r * k, y + Math.sin(a) * r * k]; };
     const P = Array.from({ length: n }, (_, i) => pt(i)); const mid = i => { const a = P[i % n], b = P[(i + 1) % n]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
@@ -1039,85 +1116,180 @@ const life = (() => {
   }
   function patch(ctx, blobs, color, alpha) {
     ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
-    for (const [la, ln, r] of blobs) { const p = map.project([ln, la]); const rp = r / metresPerPixel(la); if (p.x < -rp * 1.3 || p.y < -rp * 1.3 || p.x > W + rp * 1.3 || p.y > H + rp * 1.3) continue; blob(ctx, p.x, p.y, rp, ((la * 7919 + ln * 104729) % TAU + TAU) % TAU); }
+    for (const [la, ln, r] of blobs) { const p = map.project([ln, la]); const rp = r / metresPerPixel(la); if (off(p.x, p.y, rp * 1.3)) continue; blob(ctx, p.x, p.y, rp, ((la * 7919 + ln * 104729) % TAU + TAU) % TAU); }
     ctx.fill(); ctx.restore();
   }
-  function zones(ctx, v) {
-    /* the homes of the five: plain from above, fainter close in, so they never bury what is on the ground */
-    const zf = clamp(1 - (map.getZoom() - 14.8) * 0.4, 0.3, 1);
-    if (v === 'now' && S.mode !== 'tribe') for (const h of S.heroes) { const sel = S.sel === h.id; patch(ctx, h.home.map(([a, b]) => [a, b, 170]), C.kind[M.GROUP[glyphOf(h)]] || C.kind.other, sel ? 0.36 : 0.15 * zf); }
-    if (v === 'stories' || S.mode === 'tribe') for (const t of S.tribes) { const sel = S.tribeSel === t.id; patch(ctx, t.blobs, C.tribe[t.kind] || C.tribe.park, sel ? 0.55 : S.tribeSel ? 0.16 : 0.32); }
-  }
-  /* the still layer */
-  function drawBase(now, selecting) {
-    const v = VIEWS[S.view].k; const ctx = bx;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  function drawBase() {
+    const ctx = bx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
     frameLine(ctx);
-    zones(ctx, v);
-    if (v === 'now') fields(ctx);
-    network(ctx, v);
-    for (const it of items) { if (it.moving || it.pulse || it.radar || off(it) || hidden.has(it) || it.o.id === S.sel) continue; drawItem(ctx, it, null); }
-    for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
-    if (v === 'now' && (S.wx.tmax || 0) >= HEAT.hot) {   /* on a hot day: the drinking water and the air temperature now */
-      for (const f of S.fountains) { if (f.x == null) continue; ctx.save(); ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', f.x, f.y, 10, C.cobalt); }
+    const cellOpen = S.mode === 'ping' && cellPts.length;
+    /* nothing outside is darkened: an alert anywhere stays as clear as the ground. Inside, a faint light marks where the radar
+       or an open cell looks; a signal's figure is ringed */
+    const sig = S.mode === 'sig' && S.signals.find(x => x.key === S.sig); const sigPts = sig && sig.pin ? ringOf(sig.pin.lat, sig.pin.lng, Math.max(260, ...(sig.nodes || []).map(n => n.d + 90))) : null;
+    const lit = cellOpen ? cellPts : sigPts || (S.mode === 'tribe' ? null : ringPts);
+    if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = cellOpen || sigPts ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.06)'; ctx.fill(); ctx.restore(); }
+    if (sigPts) { ctx.save(); ctx.beginPath(); poly(ctx, sigPts); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([2, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.restore(); }
+    /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
+    if (cellOpen || S.mode === 'tribe') {
+      ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
+      for (const t of S.tribes) { const sel = S.tribeSel === t.id; if (S.mode === 'tribe' && !sel) continue; patch(ctx, t.blobs, C.tribe[t.kind] || C.tribe.park, sel ? 0.5 : 0.22); }
+      ctx.restore();
+    }
+    /* a hero chosen: the ground it is known from */
+    const h = S.mode === 'ping' && S.byId.get(S.sel); if (h && h.hero) patch(ctx, h.home.map(([a, b]) => [a, b, 170]), C.kind[M.GROUP[glyphOf(h)]] || C.kind.other, 0.3);
+    /* the radar's rim: a hairline with a tick every ten degrees, longer every thirty, a notch at north */
+    if (ringPts.length) {
+      const cp = map.project([S.scan.lng, S.scan.lat]);
+      const quiet = cellOpen || !!sigPts || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath();
+      for (let i = 0; i < 72; i += 2) { const [x, y] = ringPts[i]; const dx = cp.x - x, dy = cp.y - y, L = Math.hypot(dx, dy) || 1; const k = i % 6 === 0 ? 9 : 4; ctx.moveTo(x, y); ctx.lineTo(x + dx / L * k, y + dy / L * k); }
+      ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 1.2; ctx.stroke();
+      const [nx, ny] = ringPts[0]; const ux = (nx - cp.x) / (Math.hypot(nx - cp.x, ny - cp.y) || 1), uy = (ny - cp.y) / (Math.hypot(nx - cp.x, ny - cp.y) || 1);
+      ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
+      ctx.restore();
+    }
+    /* on a hot day, inside the radar: drinking water, and the air temperature now */
+    if ((S.wx.tmax || 0) >= HEAT.hot) {
+      for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', f.x, f.y, 10, C.cobalt); }
       for (const s of S.sensors) {
-        if (s.x == null) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
+        if (s.x == null || !inScan(s.lat, s.lng)) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
         ctx.fillStyle = s.t >= HEAT.hot ? C.orange : C.white; ctx.fillRect(s.x - w / 2, s.y - 7, w, 14); ctx.fillStyle = C.navy; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, s.x, s.y + 0.5); ctx.restore();
       }
     }
-    business(ctx);
-    if (!selecting) selection(ctx, now);
   }
-  /* the moving layer: lost animals' search areas, the animals themselves, alarms, the record under the pointer */
-  function drawFx(now, selecting) {
-    const ctx = fx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    const t = now / 1000, still = reduced(); const amp = clamp((map.getZoom() - 12) / 3, 0.35, 1);
-    /* a lost animal's search area belongs to NOW; on STORIES and among the groups it would only hide the ground */
-    if (S.view === 0 && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || hidden.has(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (it.x < -R || it.y < -R || it.x > W + R || it.y > H + R) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
-    for (const it of movers) {
-      if (off(it) || hidden.has(it) || it.o.id === S.sel) continue;
-      if (it.pulse && !still) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
-      let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
-      drawItem(ctx, it, m);
+
+  /* ───────── the marks layer ───────── */
+  const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+  const back = k => { k = clamp(k, 0, 1); const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+  function drawItem(ctx, it, m, a = 1, k = 1) {
+    const sp = M.badgeSprite(it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
+    if (m && m.thread) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
+    ctx.globalAlpha = a;
+    if ((m && (m.rot || m.sx !== 1)) || k !== 1) { ctx.save(); ctx.translate(x, y); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
+    else ctx.drawImage(sp.cv, x - sp.size / 2, y - sp.size / 2, sp.size, sp.size);
+    ctx.globalAlpha = 1;
+  }
+  /* the hand and its wake, drawn on the ground */
+  function hand(ctx) {
+    const c = map.project([S.scan.lng, S.scan.lat]); const at = b => { const [la, ln] = dest(S.scan.lat, S.scan.lng, S.scan.r, b); return map.project([ln, la]); };
+    ctx.save();
+    for (let i = 0; i < 14; i++) {
+      const b1 = sweepB - i * 3, b0 = b1 - 3; const p0 = at(b0), p1 = at((b0 + b1) / 2), p2 = at(b1);
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.closePath();
+      ctx.fillStyle = `rgba(190,245,238,${(0.17 * Math.pow(1 - i / 14, 1.7)).toFixed(3)})`; ctx.fill();
     }
-    if (hoverIt && hoverIt.o.id !== S.sel && !off(hoverIt) && !hidden.has(hoverIt)) { const r = hoverIt.b.d / 2 + 5; ctx.save(); ctx.beginPath(); ctx.arc(hoverIt.x + hoverIt.dx, hoverIt.y + hoverIt.dy, r, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
-    if (selecting) selection(ctx, now);
+    const tip = at(sweepB); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.restore();
+  }
+  /* the cell chosen: a point becomes a line, the line a boundary, and the boundary holds the knots */
+  function selection(ctx, now) {
+    const o = selected(); if (!o) return;
+    const p0 = map.project([o.lng, o.lat]); const x = p0.x, y = p0.y;
+    const e = reduced() ? 9999 : now - selT; const kA = ease(e / 200), kB = ease((e - 120) / 480);
+    if (cellPts.length && kB > 0) {
+      const n = Math.max(2, Math.round(cellPts.length * kB));
+      ctx.save(); ctx.beginPath(); for (let i = 0; i <= n; i++) { const [px, py] = cellPts[i % cellPts.length]; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.strokeStyle = C.white; ctx.lineWidth = dragging ? 2.4 : 1.5; ctx.stroke(); ctx.restore();
+    }
+    if (S.mode === 'ping') strings.draw(ctx, now, e);
+    const it = items.find(z => z.o === o); const b = it ? it.b : badgeOf(o);
+    const big = Math.round((b.tone === 'hist' || b.tone === 'cold' ? Math.max(curD, 18) : Math.max(b.d, 20)) * (1 + 0.36 * kA));
+    M.badge(ctx, { ...b, a: 1, d: big, tone: b.tone === 'hist' || b.tone === 'cold' ? M.toneOf(glyphOf(o)) : b.tone, g: b.g || (b.tone === 'hist' ? glyphOf(o) : null) }, x, y);
+    if (S.mode === 'ping') strings.knotAt(ctx, 'pin', x, y, big / 2, now);
+  }
+  function drawFx(now) {
+    const ctx = fx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const t = now / 1000, still = reduced(); const amp = clamp((zoomNow() - 12) / 3, 0.35, 1); const cellOpen = S.mode === 'ping';
+    /* a lost animal's search area, when search areas are on */
+    if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
+    if (!cellOpen && S.mode !== 'place' && !still) hand(ctx);
+    strings.drawSaved(ctx, now);
+    for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
+    for (const it of items) {
+      if (it.binned || !shown(it) || off(it.x, it.y)) continue;
+      const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'sig' ? 0.55 : 1;
+      if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
+      let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
+      /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
+      const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = age < 420 ? back(age / 420) : 1;
+      if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
+      drawItem(ctx, it, m, a, k);
+    }
+    /* a song from the centre: each note lights where it was tied */
+    for (const n of songFx) { const q = (now - n.at) / 700; if (q < 0 || q > 1) continue; const p = map.project([n.lng, n.lat]); ctx.save(); ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(p.x, p.y, 6 + q * 22, 0, TAU); ctx.strokeStyle = C.orange; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
+    if (S.view === 1 || S.mode === 'sig') sigPins(ctx, now);
+    if (S.mode === 'sig') strings.drawSig(ctx, now);
+    selection(ctx, now);
+    if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) { ctx.save(); ctx.beginPath(); ctx.arc(it.x + it.dx, it.y + it.dy, it.b.d / 2 + 5, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } }
     /* the record being placed breathes: one ring leaving it, until it is placed */
     if (S.mode === 'place' && S.place && !still) { const q = map.project([S.place.lng, S.place.lat]); const k = (now / 1400) % 1; ctx.save(); ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(q.x, q.y, 14 + k * 26, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.8; ctx.stroke(); ctx.restore(); }
-    if (ghost) { const q = map.project([ghost.lng, ghost.lat]); M.badge(ctx, { tone: 'need', i: 'plus', d: 30 }, q.x, q.y); }
+    if (ghost) { const q = map.project([ghost.lng, ghost.lat]); const k = still ? 1 : back((now - ghost.t) / 300); M.badge(ctx, { tone: 'need', i: 'plus', d: Math.round(28 * k) || 1 }, q.x, q.y); }
+  }
+  /* signals on the ground: each a small receipt where its life was */
+  function sigPins(ctx) {
+    for (const s of S.signals) {
+      const p = s.pin; if (!p || p.lat == null) continue; const q = map.project([p.lng, p.lat]); s._x = q.x; s._y = q.y; if (off(q.x, q.y)) continue;
+      const on = S.mode === 'sig' && S.sig === s.key; M.badge(ctx, { tone: 'story', g: p.g || 'paw', d: Math.max(16, curD) + (on ? 10 : 2), carried: !s.ex, a: S.mode === 'sig' && !on ? 0.5 : 1 }, q.x, q.y);
+    }
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    if (document.hidden || !bx) return;
-    const selecting = !!selT && !reduced() && now - selT < 1700;
-    if (selecting !== wasSelecting) { wasSelecting = selecting; dirty = true; }
-    if (dirty) { dirty = false; project(); drawBase(now, selecting); fxDirty = true; }
-    const moving = !reduced() && (movers.length > 0 || selecting || S.mode === 'place');
-    if (fxDirty || (moving && now - lastFx >= (selecting ? 1000 / 30 : 1000 / 24) - 2)) { fxDirty = false; lastFx = now; drawFx(now, selecting); }
-    secondHand(now);
+    if (document.hidden || !bx) { lastSweep = 0; return; }
+    if (dirty) { dirty = false; project(); drawBase(); fxDirty = true; }
+    sweep(now);
+    const selecting = !!selT && !reduced() && now - selT < 1400;
+    const animating = !reduced() && (running() || movers.length > 0 || selecting || S.mode === 'place' || !!ghost || strings.busy(now) || songFx.some(n => now - n.at < 800));
+    if (fxDirty || (animating && now - lastFx >= 1000 / 30 - 2)) { fxDirty = false; lastFx = now; drawFx(now); }
   }
-  function secondHand(now) { if (now - lastText < 1000) return; lastText = now; }
-  /* a touch on empty ground offers a new record there */
+  /* a touch on empty ground inside the radar offers a new record there */
   let ghost = null, ghostT = 0;
-  function offer(ll) { ghost = ll ? { lat: ll.lat, lng: ll.lng } : null; clearTimeout(ghostT); if (ghost) ghostT = setTimeout(() => { ghost = null; fxDirty = true; }, 3500); fxDirty = true; }
+  function offer(ll) { ghost = ll ? { lat: ll.lat, lng: ll.lng, t: performance.now() } : null; clearTimeout(ghostT); if (ghost) ghostT = setTimeout(() => { ghost = null; fxDirty = true; }, 3500); fxDirty = true; }
 
-  /* ───────── the radius instrument: drag the boundary; what it holds changes with it ───────── */
+  /* ───────── the radar's two handles: the centre moves it, the rim resizes it ───────── */
+  function placeKnobs() {
+    if (!S.mapReady || !knob) return; const hide = S.mode === 'ping' || S.mode === 'place';
+    const c = map.project([S.scan.lng, S.scan.lat]); const [la, ln] = dest(S.scan.lat, S.scan.lng, S.scan.r, 90); const e = map.project([ln, la]);
+    knob.hidden = hide || off(c.x, c.y, -6); ringK.hidden = hide || off(e.x, e.y, -6);
+    knob.style.transform = `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px)`; ringK.style.transform = `translate(${Math.round(e.x)}px, ${Math.round(e.y)}px)`;
+    ringK.dataset.r = metres(S.scan.r);
+  }
+  const llAt = e => { const r = map.getContainer().getBoundingClientRect(); return map.unproject([e.clientX - r.left, e.clientY - r.top]); };
+  let knobDrag = null;
+  const grab = (el, kind) => {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); knobDrag = { kind, id: e.pointerId, moved: false, x: e.clientX, y: e.clientY }; el.setPointerCapture(e.pointerId); el.classList.add('on'); map.dragPan.disable(); snd.tick(1500); });
+    el.addEventListener('pointermove', e => {
+      if (!knobDrag || knobDrag.kind !== kind) return; if (!knobDrag.moved && Math.hypot(e.clientX - knobDrag.x, e.clientY - knobDrag.y) < 4) return; const ll = llAt(e); knobDrag.moved = true;
+      if (kind === 'move') setScan(ll.lat, ll.lng, null, false);
+      else { const r0 = S.scan.r; setScan(null, null, haversine(S.scan.lat, S.scan.lng, ll.lat, ll.lng), false); if (Math.abs(S.scan.r - r0) >= 50 || Math.floor(S.scan.r / 100) !== Math.floor(r0 / 100)) snd.tick(900 + S.scan.r / 2); }
+    });
+    const end = () => { if (!knobDrag || knobDrag.kind !== kind) return; const moved = knobDrag.moved; knobDrag = null; el.classList.remove('on'); map.dragPan.enable(); if (!moved && kind === 'move') { song(); return; } setScan(null, null, null, true); snd.tick(1100); buzz(6); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.addEventListener('keydown', e => {
+      if (kind === 'move' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); song(); return; }
+      const k = { ArrowUp: 0, ArrowRight: 90, ArrowDown: 180, ArrowLeft: 270 }[e.key]; if (k == null) return; e.preventDefault();
+      if (kind === 'move') { const [la, ln] = dest(S.scan.lat, S.scan.lng, 60, k); setScan(la, ln, null, true); }
+      else setScan(null, null, S.scan.r + (k === 0 || k === 90 ? 50 : -50), true);
+      snd.tick(1200);
+    });
+  };
+  if (knob) { grab(knob, 'move'); grab(ringK, 'size'); }
+
+  /* ───────── a cell's own radius: drag the boundary; the knots inside change with it ───────── */
   function placeHandle() {
     const o = S.mode === 'ping' || S.mode === 'place' ? selected() : null;
     if (!o || !S.mapReady || o.ob || o.hist) { handle.hidden = true; return; }
-    const p = map.project([o.lng, o.lat]); const rp = rangeOf(o) / metresPerPixel(o.lat); const hx = p.x + rp;
-    if (hx > W - 10 || hx < 10 || p.y < 10 || p.y > H - 10) { handle.hidden = true; return; }
-    handle.hidden = false; handle.style.transform = `translate(${Math.round(hx)}px, ${Math.round(p.y)}px)`;
+    const [la, ln] = dest(o.lat, o.lng, rangeOf(o), 90); const p = map.project([ln, la]);
+    if (off(p.x, p.y, -10)) { handle.hidden = true; return; }
+    handle.hidden = false; handle.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px)`; handle.dataset.r = metres(rangeOf(o));
   }
-  const commitRadius = debounce(() => { computeOrbit(); refreshRecord(); }, 120);
-  handle.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); dragging = true; handle.setPointerCapture(e.pointerId); handle.classList.add('on'); map.dragPan.disable(); });
+  const commitRadius = debounce(() => { strings.refresh(); refreshRecord(); }, 140);
+  handle.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); dragging = true; handle.setPointerCapture(e.pointerId); handle.classList.add('on'); map.dragPan.disable(); snd.tick(1500); });
   handle.addEventListener('pointermove', e => {
-    if (!dragging) return; const o = selected(); if (!o) return;
-    const r = map.getContainer().getBoundingClientRect(); const ll = map.unproject([e.clientX - r.left, e.clientY - r.top]);
-    const R = clamp(haversine(o.lat, o.lng, ll.lat, ll.lng), CONFIG.RADIUS.min, CONFIG.RADIUS.max);
-    S.radius.set(o.id, Math.round(R / 10) * 10); placeHandle(); commitRadius(); dirty = true;
+    if (!dragging) return; const o = selected(); if (!o) return; const ll = llAt(e);
+    const R = Math.round(clamp(haversine(o.lat, o.lng, ll.lat, ll.lng), CONFIG.RADIUS.min, CONFIG.RADIUS.max) / 10) * 10; const was = rangeOf(o);
+    S.radius.set(o.id, R); if (Math.floor(R / 100) !== Math.floor(was / 100)) snd.tick(900 + R / 2); placeHandle(); commitRadius(); dirty = true;
   });
-  const endDrag = () => { if (!dragging) return; dragging = false; handle.classList.remove('on'); map.dragPan.enable(); computeOrbit(); refreshRecord(); dirty = true; buzz(6); };
+  const endDrag = () => { if (!dragging) return; dragging = false; handle.classList.remove('on'); map.dragPan.enable(); strings.refresh(); refreshRecord(); dirty = true; buzz(6); snd.tick(1100); };
   handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag);
   handle.addEventListener('keydown', e => { const o = selected(); if (!o) return; const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 25 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -25 : 0; if (!d) return; e.preventDefault(); S.radius.set(o.id, clamp(rangeOf(o) + d, CONFIG.RADIUS.min, CONFIG.RADIUS.max)); placeHandle(); commitRadius(); dirty = true; });
 
@@ -1126,83 +1298,84 @@ const life = (() => {
     const slack = coarse() ? 10 : 5; let best = null;
     const consider = (d, h) => { if (d <= slack && (!best || d < best.d)) best = { ...h, d }; };
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
-    if (S.view === 1 || (S.sel && String(S.sel).startsWith('story:'))) for (const l of net) consider(Math.hypot(l.x - x, l.y - y) - 5, { kind: 'partner', bi: l.bi });
-    for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); return { kind: 'zoom', d: 0 }; }
-    for (const it of items) { if (hidden.has(it)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2; consider(d + (it.on ? 0 : 6) + (it.b.tone === 'hist' ? 3 : 0), { kind: 'cell', id: it.o.id }); }
-    const sel = S.byId.get(S.sel);
-    if (sel) for (const b of (S.orbit.cell.get(sel.id) || []).slice(0, 60)) { const p = map.project([b.lng, b.lat]); consider(Math.hypot(p.x - x, p.y - y) - 4, { kind: 'partner', bi: b.i }); }
-    if (!best && !peek && (S.view === 1 || S.mode === 'tribe')) { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
+    if (S.mode === 'ping') { const n = strings.hit(x, y, slack); if (n) return n; }
+    if (S.view === 1 || S.mode === 'sig') for (const s of S.signals) if (s._x != null) consider(Math.hypot(s._x - x, s._y - y) - 9, { kind: 'sig', key: s.key });
+    for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
+    for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2; consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
+    if (!best && !peek && S.mode !== 'ping') { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => (S.mode === 'tribe' || inScan(ll.lat, ll.lng)) && inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
     return best;
   }
 
-  /* ───────── the tag: on pointing, and on the tour ───────── */
-  function tagHTML(o) {
-    const sub = subjectOf(o);
+  /* ───────── the tag: a name under the pointer, nothing more ───────── */
+  function tagHTML(h) {
+    if (h.kind === 'node') return strings.tagHTML(h.key);
+    if (h.kind === 'sig') { const s = S.signals.find(x => x.key === h.key); return s ? `<span class="tx"><b class="mono">${esc(s.code)}${s.ex ? ' · EX' : ''}</b><small>${esc((s.lines || {}).h || '')}</small></span>` : ''; }
+    const o = S.byId.get(h.id); if (!o) return ''; const sub = subjectOf(o);
     const ph = o.photo ? `<img src="${esc(o.photo)}" alt="">` : sub.ph && licOpen(sub.ph.l) ? `<img src="${esc(photoURL(sub.ph.u, 'small'))}" alt="">` : `<img src="${badgeImg(badgeOf(o, 40), 44)}" alt="">`;
     const voice = (sub.so && sub.so.u) || o.sound;
-    const when = o.isEvent && o.start ? dayWord(o.start) : o.story ? '' : o.hist ? String(o.d).slice(0, 4) : o.at && (o.comm || o.user) ? `${fmtClock(o.at)}` : o.t ? fmtClock(o.t) : '';
-    const w = !o.hum && !isCold(o) && !isAlarm(o) ? worstWhen(o) : null;
-    return `${ph}<span class="tx"><b>${esc(nameOf(o))}</b>${when ? `<small>${esc(when)}</small>` : ''}${w && w.deg >= 2 ? `<small class="dg d${w.deg}">${DEG[w.deg]} · ${w.word}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}`;
+    const when = o.isEvent && o.start ? dayWord(o.start) : o.hist ? String(o.d).slice(0, 4) : o.at && (o.comm || o.user) ? fmtClock(o.at) : o.t ? fmtClock(o.t) : '';
+    const w = !o.hum && !isCold(o) && !isAlarm(o) ? whenOf(o) : null; const dg = !o.hum && !isCold(o) ? degOf(o) : 0;
+    return `${ph}<span class="tx"><b>${esc(nameOf(o))}</b>${when ? `<small>${esc(when)}</small>` : ''}${dg >= 2 ? `<small class="dg d${dg}">${DEG[dg]}${w ? ` · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}${o.hero ? '' : `<button type="button" class="hide" data-hide="${esc(String(o.id))}" aria-label="${o.user ? 'Delete' : 'Hide'}" data-tip="${o.user ? 'Delete' : 'Hide from the map'}">${icon('hide', 'sm')}</button>`}`;
   }
   function placeTag() {
-    const p = map.project([tagCell.lng, tagCell.lat]); const w = tagEl.offsetWidth || 220, h = tagEl.offsetHeight || 60;
-    let x = p.x + 18, y = p.y - h - 14; if (x + w > W - 8) x = p.x - w - 18; if (y < 8) y = p.y + 18; x = clamp(x, 8, Math.max(8, W - w - 8));
+    let x0, y0;
+    if (hoverH.kind === 'node') { const n = strings.pos(hoverH.key); if (!n) return; x0 = n.x; y0 = n.y; }
+    else if (hoverH.kind === 'sig') { const s = S.signals.find(z => z.key === hoverH.key); if (!s || s._x == null) return; x0 = s._x; y0 = s._y; }
+    else { const o = S.byId.get(hoverH.id); if (!o) return; const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; }
+    const w = tagEl.offsetWidth || 220, h = tagEl.offsetHeight || 60;
+    let x = x0 + 18, y = y0 - h - 14; if (x + w > W - 8) x = x0 - w - 18; if (y < 8) y = y0 + 18; x = clamp(x, 8, Math.max(8, W - w - 8));
     tagEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
-  function showTag(o) { clearTimeout(tagHide); if (!o) return; tagCell = o; tagEl.innerHTML = tagHTML(o); tagEl.classList.toggle('alarm', isAlarm(o)); tagEl.hidden = false; placeTag(); }
-  function hover(o) {
-    if (tourOn && o) stopTour();
-    const it = o ? items.find(x => x.o === o) || null : null; if (it !== hoverIt) { hoverIt = it; fxDirty = true; }
-    if (o) { showTag(o); return; }
-    clearTimeout(tagHide); tagHide = setTimeout(() => { if (!tagEl.matches(':hover')) { tagEl.hidden = true; tagCell = null; } }, 300);
+  let tagHide = 0;
+  function hover(h) {
+    if (h && hoverH && h.kind === hoverH.kind && h.id === hoverH.id && h.key === hoverH.key) return;
+    fxDirty = true;
+    if (h) { clearTimeout(tagHide); const html = tagHTML(h); if (!html) return; hoverH = h; tagEl.innerHTML = html; tagEl.classList.toggle('alarm', h.kind === 'cell' && isAlarm(S.byId.get(h.id))); tagEl.classList.toggle('node', h.kind === 'node'); tagEl.hidden = false; placeTag(); return; }
+    clearTimeout(tagHide); tagHide = setTimeout(() => { if (!tagEl.matches(':hover')) { tagEl.hidden = true; hoverH = null; fxDirty = true; } }, 260);
   }
+  /* the tag under the pointer, rewritten when what it names has changed */
+  function retag() { if (!hoverH || tagEl.hidden) return; const html = tagHTML(hoverH); if (!html) { tagEl.hidden = true; hoverH = null; fxDirty = true; return; } tagEl.innerHTML = html; placeTag(); }
   tagEl.addEventListener('mouseleave', () => hover(null));
+  /* the right button on a name joins it, as it does on the knot itself */
+  tagEl.addEventListener('contextmenu', e => { if (!hoverH) return; e.preventDefault(); const h = hoverH; if (h.kind === 'node') strings.join(h.key); else if (h.kind === 'cell') { if (S.mode === 'ping' && h.id !== S.sel) strings.join('x:' + h.id); else if (!S.mode) select(h.id); } });
   tagEl.addEventListener('click', e => {
     const b = e.target.closest('.play'); if (b) { e.stopPropagation(); play(b.dataset.u, b); return; }
-    if (tagCell) { const id = tagCell.id; tagEl.hidden = true; tagCell = null; stopTour(); select(id); }
+    const hd = e.target.closest('[data-hide]'); if (hd) { e.stopPropagation(); const v = hd.dataset.hide; tagEl.hidden = true; hoverH = null; hideCell(/^\d+$/.test(v) ? +v : v); return; }
+    if (!hoverH) return; const h = hoverH; tagEl.hidden = true; hoverH = null;
+    if (h.kind === 'cell') { if (S.mode === 'ping' && h.id !== S.sel) strings.peekOut(h.id); else select(h.id); } else if (h.kind === 'node') strings.tap(h.key); else if (h.kind === 'sig') openSignal(h.key);
   });
   function play(url, btn) {
-    if (!prefs.sound) { toast('Sound is off.'); return; }
+    if (!prefs.sound) { toast('SOUND OFF'); return; }
     if (playing === url && !audio.paused) { audio.pause(); if (btn) btn.innerHTML = icon('play'); return; }
-    playing = url; audio.src = url; audio.play().then(() => { if (btn) btn.innerHTML = icon('pause'); }).catch(() => toast('This call will not play here.'));
+    playing = url; audio.src = url; audio.play().then(() => { if (btn) btn.innerHTML = icon('pause'); }).catch(() => toast('NO SOUND HERE'));
     audio.onended = () => { if (btn) btn.innerHTML = icon('play'); };
   }
-  /* each visit opens on what matters now: an animal hurt, dead or lost, then what is new or in danger */
-  function startTour() {
-    if (toured || S.mode || S.view) return;
-    if (!S.obs.some(o => typeof o.id === 'number')) { if (++tourTries < 20) { setTimeout(startTour, 1500); return; } }
-    toured = true;
-    const alarms = alarmsNow();
-    let list = S.obs.filter(o => !o.ob && !isCold(o) && (o.isNew || o.arrived)).sort((a, b) => (b.c || '').localeCompare(a.c || ''));
-    if (!list.length) { const r = seeded(WEEK); list = S.obs.filter(o => !o.ob && !isCold(o) && degOf(o) >= 3).sort(() => r() - 0.5); }
-    list = [...alarms, ...list].slice(0, 5); if (!list.length) return;
-    tourOn = true; let i = 0;
-    const step = () => { if (!tourOn) return; if (i >= list.length) { stopTour(); return; } const o = list[i++]; const p = map.project([o.lng, o.lat]); if (p.x < 0 || p.y < 0 || p.x > W || p.y > H) { step(); return; } showTag(o); tourT = setTimeout(step, 3200); };
-    step();
-  }
-  function stopTour() { if (!tourOn) return; tourOn = false; clearTimeout(tourT); tagEl.hidden = true; tagCell = null; }
   return {
-    start, data, resize, moved: () => { dirty = true; }, hover, play, stopTour, hit, badgeOf, offer, searchOf, blob,
-    select: () => { selT = performance.now(); focusK = null; focusKey = null; ghost = null; dirty = true; }, placeHandle, focus,
-    get focused() { return focusK; },
-    get items() { return items; }, get net() { return net; }, get bins() { return bins; }, get movers() { return movers; }, get hidden() { return hidden; },
+    start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan,
+    select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
+    seen: () => seen, reveal: revealAll, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
+    get items() { return items; }, get bins() { return bins; }, get movers() { return movers; }, shown,
   };
 })();
-function needsSupport(r) { if (r.funded || r.done) return false; const o = S.byId.get(r.cell); return !!o; }
 
 
 /* ════════════════════════════════════════════════════════════════════
-   THE WHITE PAGE — two pages. NOW is the emergency: the El Niño months ahead, the five lives in greatest need,
-   what is hurt or lost right now, the lives in danger, the briefs for the season, and the gigs and gatherings.
-   STORIES is the response: the field list, the guide and the downloads first, then the posters people vote up,
-   the groups already caring for the ground, fifty briefs that have worked elsewhere, the businesses, the archive.
+   THE PAGE — closed until it is asked for. NOW: the months ahead, the five in greatest need, anything hurt or lost,
+   and the gigs. STORIES: the signals people have issued, newest first, then the groups, the tools and the sources.
    ════════════════════════════════════════════════════════════════════ */
 const panel = $('#panel'), rail = $('#rail'), viewEl = $('#view');
-rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab" data-i="${i}" aria-label="${v.label}" title="${v.label}" aria-pressed="${i === 0}"><span class="sq">${icon(v.icon)}</span><small class="tw">${v.w}</small><i class="flag" hidden></i></button>`).join('');
-rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; tick(1400 + 160 * +b.dataset.i); const i = +b.dataset.i; if (i === S.view && !S.mode) { setOpen(!S.open); return; } setView(i); });
+rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><i class="flag" hidden></i></button>`).join('');
+rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i); if (i === S.view && S.open && !S.mode) { setOpen(false); return; } setView(i); });
 rail.addEventListener('keydown', e => { const b = e.target.closest('.tab'); if (!b) return; const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return; e.preventDefault(); const all = $$('#rail .tab'); all[(all.indexOf(b) + d + all.length) % all.length].focus(); });
 new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'));
-function setOpen(on) { S.open = on; document.body.classList.toggle('shut', !on); buzz(5); }
+function setOpen(on) {
+  S.open = on; document.body.classList.toggle('shut', !on); buzz(5);
+  $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
+  if (!on) { stopHeroes(); if (S.mode) closeRecord('view'); }
+  /* on a phone the sheet covers the lower half: the radar moves up into the half left open */
+  if (phone() && S.mapReady && !S.mode) map.easeTo({ center: [S.scan.lng, S.scan.lat], offset: on ? [0, -innerHeight * 0.27] : [0, 0], duration: reduced() ? 0 : 500 });
+  life.moved();
+}
 
 /* the living icon, small, for the page: the same icon as on the ground */
 const imgCache = new Map();
@@ -1214,106 +1387,89 @@ function badgeImg(b, size = 36) {
   const url = c.toDataURL(); imgCache.set(key, url); return url;
 }
 const pinOf = o => badgeImg(life.badgeOf(o, 22));
-/* a section's title */
-const sh = (t, cls = '') => `<h3 class="sh ${cls}">${t}</h3>`;
-/* a degree of danger, in orange, with the months it is worst */
+const lab = (t, cls = '') => `<h3 class="lab ${cls}">${t}</h3>`;
+/* a degree of danger, in orange; and how long until it lands */
 const degChip = (deg, word = '') => (deg ? `<i class="dg d${deg}">${DEG[deg]}${word ? ` · ${word}` : ''}</i>` : '');
+const whenChip = w => (w ? `<i class="wn${w.now ? ' now' : ''}" data-tip="${esc(w.why)}">${w.now ? 'NOW' : `${daysTo(w.start)} D`} · ${esc(w.w)}</i>` : '');
 const row = (o, sub = '', right = '') => `<li><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b>${sub ? `<small>${sub}</small>` : ''}</span><span class="rt">${right}</span></button></li>`;
-const elapsed = t => { const s = Math.max(0, Math.floor((Date.now() - t) / 1000)); const h = Math.floor(s / 3600); return h >= 48 ? `${Math.floor(h / 24)} DAYS` : h >= 1 ? `${h} H ${pad2(Math.floor(s % 3600 / 60))}` : `${Math.floor(s / 60)} MIN`; };
+const elapsed = t => { const s = Math.max(0, Math.floor((Date.now() - t) / 1000)); const h = Math.floor(s / 3600); return h >= 48 ? `${Math.floor(h / 24)} D` : h >= 1 ? `${h} H ${pad2(Math.floor(s % 3600 / 60))}` : `${Math.floor(s / 60)} MIN`; };
 const since = t => `<span class="cdn up mono" data-up="${t}">${elapsed(t)}</span>`;
 /* right now: an animal hurt in the last twelve hours, found dead in the last two days, or lost in the last three */
 const alarmsNow = () => { const now = Date.now(); const ord = { injured: 0, dead: 1, lost: 2 }; return [...S.community, ...S.user].filter(o => (o.kind === 'injured' && now - o.at < 12 * 3600e3) || (o.kind === 'dead' && now - o.at < 48 * 3600e3) || (o.kind === 'lost' && now - o.at < 72 * 3600e3)).sort((a, b) => ord[a.kind] - ord[b.kind] || b.at - a.at); };
 const BIRDS = new Set(['bird', 'parrot', 'waterbird', 'owl', 'raptor']);
-const telOf = o => (o.tel ? o.tel : o.kind === 'injured' ? ((o.tags || []).includes('h5') ? 'tel:1800675888' : 'tel:0384007300') : o.kind === 'dead' && ((o.tags || []).includes('h5') || BIRDS.has(glyphOf(o))) ? 'tel:1800675888' : '');
-const ACT_OF = { injured: 'CALL', dead: 'REPORT', lost: 'SEARCH' };
-const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<button type="button" class="callb lostb" data-search="${esc(String(o.id))}">${icon('lost')}<small>SEARCH</small></button>` : tel ? `<a class="callb${o.kind === 'dead' ? ' deadb' : ''}" href="${tel}">${icon('phone')}<small>${ACT_OF[o.kind]}</small></a>` : o.link ? `<a class="callb" href="${esc(o.link)}" target="_blank" rel="noopener">${icon('out')}<small>OPEN</small></a>` : '';
-  return `<li class="alarm ${o.kind}"><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b><small>${o.kind === 'injured' ? 'HURT' : o.kind === 'dead' ? 'DEAD · DO NOT TOUCH' : 'LOST'} · ${since(o.at)} AGO</small></span></button>${act}</li>`; };
+const telOf = o => (o.tel ? o.tel : o.kind === 'injured' ? ((o.tags || []).includes('h5') ? 'tel:1800675888' : glyphOf(o) === 'flyingfox' ? 'tel:136186' : 'tel:0384007300') : o.kind === 'dead' && ((o.tags || []).includes('h5') || BIRDS.has(glyphOf(o))) ? 'tel:1800675888' : o.kind === 'dead' && glyphOf(o) === 'flyingfox' ? 'tel:136186' : '');
+const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<button type="button" class="callb lostb" data-search="${esc(String(o.id))}">${icon('lost')}<small>SEARCH</small></button>` : tel ? `<a class="callb${o.kind === 'dead' ? ' deadb' : ''}" href="${tel}">${icon('phone')}<small>${o.kind === 'dead' ? 'REPORT' : 'CALL'}</small></a>` : '';
+  return `<li class="alarm ${o.kind}"><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b><small>${o.kind === 'injured' ? 'HURT' : o.kind === 'dead' ? 'DEAD · DO NOT TOUCH' : 'LOST'} · ${since(o.at)}</small></span></button>${act}</li>`; };
 
 /* ───────── the two pages ───────── */
 function setView(i, keep, part) {
   const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k;
-  $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
+  if (S.mode && !keep) closeRecord('view');
   if (!S.open) setOpen(true);
-  if (S.mode && !keep) closeRecord(true);
+  $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
   if (was !== i) buzz(5);
   renderView(); life.data();
-  if (was !== i) { viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in'); }
+  viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
   if (part) goPart(part);
-  try { history.replaceState(null, '', i ? '#' + (part || VIEWS[i].k) : location.pathname + location.search); } catch (e) { /* file:// */ }
+  try { history.replaceState(null, '', '#' + (part || VIEWS[i].k)); } catch (e) { /* file:// */ }
 }
 /* a part of a page by name */
-const PARTS = { now: [0, null], outlook: [0, 'sec-heat'], forecast: [0, 'sec-heat'], heroes: [0, 'sec-heroes'], alerts: [0, 'sec-alarms'], emergencies: [0, 'sec-alarms'], noticing: [0, 'sec-noticing'], briefs: [0, 'sec-briefs'], events: [0, 'sec-events'], gigs: [0, 'sec-events'],
-  stories: [1, null], tools: [1, 'sec-tools'], field: [1, 'sec-tools'], posters: [1, 'sec-posters'], funded: [1, 'sec-posters'], unfunded: [1, 'sec-posters'], support: [1, 'sec-posters'], groups: [1, 'sec-tribes'], tribes: [1, 'sec-tribes'],
-  library: [1, 'sec-library'], partners: [1, 'sec-partners'], businesses: [1, 'sec-partners'], archive: [1, 'sec-archive'] };
-function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && document.getElementById(id); if (el) viewEl.scrollTop = Math.max(0, el.offsetTop - 8); }
+const PARTS = { now: [0, null], outlook: [0, 'sec-heat'], five: [0, 'sec-five'], heroes: [0, 'sec-five'], alerts: [0, 'sec-alarms'], constellations: [0, 'sec-cons'], cons: [0, 'sec-cons'], gigs: [0, 'sec-gigs'], events: [0, 'sec-gigs'],
+  stories: [1, null], signals: [1, 'sec-signals'], receive: [1, 'sec-signals'], groups: [1, 'sec-groups'], tools: [1, 'sec-tools'], field: [1, 'sec-tools'], briefs: [1, 'sec-briefs'], settings: [1, 'sec-set'], sources: [1, 'sec-src'] };
+function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && document.getElementById(id); if (!el) return; if (el.tagName === 'DETAILS') el.open = true; if (part === 'receive') openReceive(true); viewEl.scrollTop = Math.max(0, el.offsetTop - 8); }
 function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k;
   viewEl.innerHTML = k === 'now' ? viewNow() : viewStories();
   viewEl.scrollTop = 0;
-  if (k === 'now') { bindOutlook(); startHeroes(); } else { stopHeroes(); bindArchive(); fillMinis(); fillTools(); }
+  if (k === 'now') { bindOutlook(); if (S.open) startHeroes(); } else { stopHeroes(); bindStories(); }
   if (k === 'now' && (S.wx.tmax || 0) >= HEAT.hot) loadOverlays();
 }
-/* a refresh keeps the place on the page, and never takes a search from under the hand */
+/* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
-  flags(); if (S.mode) return;
-  const q = $('#ix-q'); if (q && (q.value || document.activeElement === q)) return;
+  flags(); if (S.mode || !S.open) return;
+  const a = document.activeElement; if (a && viewEl.contains(a) && /INPUT|TEXTAREA/.test(a.tagName)) return;
   const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st;
 }
 let refreshQ = 0;
-function refresh() { if (refreshQ) return; refreshQ = requestAnimationFrame(() => { refreshQ = 0; buildHeroes(); computeOrbit(); life.data(); refreshPanel(); if (S.mode) refreshRecord(); }); }
+function refresh() { if (refreshQ) return; refreshQ = requestAnimationFrame(() => { refreshQ = 0; buildHeroes(); life.data(); if (S.mode === 'ping') strings.refresh(); refreshPanel(); if (S.mode) refreshRecord(); }); }
 setInterval(() => { $$('#panel .cdn[data-up]').forEach(t => { t.textContent = elapsed(+t.dataset.up); }); }, 1000);
 /* a month chosen on the strip: the page and the ground show that stretch of three months */
 const pickMonth = k => { k = clamp(k, 0, OUT_N - 1); if (k === S.mo) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
-/* the search area of an animal lost: the whole of it on the ground */
-function searchFor(id) { const o = S.byId.get(id); if (!o) return; select(id); const R = life.searchOf(o); const dLat = R / 111000, dLng = R / (111000 * Math.cos(o.lat * Math.PI / 180)); if (S.mapReady) setTimeout(() => map.fitBounds([[o.lng - dLng, o.lat - dLat], [o.lng + dLng, o.lat + dLat]], { padding: framePad(), duration: reduced() ? 0 : 700 }), 60); }
-/* one vote per device for a poster; a second touch takes it back */
-async function vote(key) {
-  const r = S.resp.get(key); if (!r) return;
-  const gone = new Set(ledger.local.filter(x => x.type === 'redact').map(x => x.ref));
-  const mine = ledger.local.find(e => e.type === 'vote' && e.dev === S.me.dev && (e.data || {}).of === key && !gone.has(e.key));
-  if (mine) await ledgerAdd({ type: 'redact', ref: mine.key }); else await ledgerAdd({ type: 'vote', ref: r.cell, data: { of: key } });
-  tick(mine ? 1300 : 2100); buzz(6);
+/* the search area of an animal lost: shown, and the whole of it framed */
+function searchFor(id) {
+  const o = S.byId.get(id); if (!o) return; if (!prefs.areas) { prefs.areas = true; savePrefs(); }
+  select(id); const R = life.searchOf(o); const dLat = R / 111000, dLng = R / (111000 * Math.cos(o.lat * Math.PI / 180));
+  if (S.mapReady) setTimeout(() => map.fitBounds([[o.lng - dLng, o.lat - dLat], [o.lng + dLng, o.lat + dLat]], { padding: framePad(), duration: reduced() ? 0 : 700 }), 60);
 }
 viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
-  const vt = e.target.closest('[data-vote]'); if (vt) { vote(vt.dataset.vote); return; }
-  const sp = e.target.closest('[data-support]'); if (sp) { const r = S.resp.get(sp.dataset.key); const o = r && S.byId.get(r.cell); if (o) openViewer(o, r.ev, sp.dataset.support); return; }
-  const sl = e.target.closest('[data-poster]'); if (sl) { const r = S.resp.get(sl.dataset.poster); const o = r && S.byId.get(r.cell); if (o) openViewer(o, r.ev); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
-  const th = e.target.closest('[data-th]'); if (th) { libTheme = th.dataset.th; const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(); return; }
+  const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
+  const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
   if (e.target.closest('a[href]')) return;
   const tr = e.target.closest('[data-tribe]'); if (tr) { selectTribe(tr.dataset.tribe); return; }
-  const br = e.target.closest('[data-brief]'); if (br) { openBrief(br.dataset.brief, br.dataset.for); return; }
-  const b = e.target.closest('[data-id]'); if (b) { const v = b.dataset.id; select(/^\d+$/.test(v) ? +v : v); return; }
-  const z = e.target.closest('[data-bi]'); if (z) { selectBiz(+z.dataset.bi); return; }
-  const more = e.target.closest('[data-more]'); if (more) { partnersAll = !partnersAll; const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(); return; }
-  if (e.target.closest('#first')) { const q = $('#ix-q'); if (q) { goPart('archive'); q.placeholder = 'Your business'; q.focus(); } }
+  const b = e.target.closest('[data-id]'); if (b) { const v = b.dataset.id; select(/^\d+$/.test(v) ? +v : v); }
 });
-/* the rail keeps two flags: something hurt, dead or lost right now; a poster that needs support */
-function flags() {
-  const f = $$('#rail .flag');
-  f[0].hidden = !alarmsNow().length;
-  f[1].hidden = ![...S.resp.values()].some(needsSupport);
-}
+/* the rail keeps one flag: something hurt, dead or lost right now */
+function flags() { const f = $$('#rail .flag'); if (f[0]) f[0].hidden = !alarmsNow().length; }
 
-/* ───────── NOW — the months ahead as a warning, the five in greatest need, then what is happening around it ───────── */
-/* time to get ready, in the unit that reads best */
-function readyIn() {
-  const until = CONFIG.CHALLENGE && Date.parse(CONFIG.CHALLENGE.until); if (!until) return null; const d = Math.max(0, Math.ceil((until - Date.now()) / 864e5));
-  return d >= 45 ? [Math.round(d / 30.4), 'MONTHS'] : d >= 25 ? [1, 'MONTH'] : d >= 14 ? [Math.round(d / 7), 'WEEKS'] : [d, d === 1 ? 'DAY' : 'DAYS'];
-}
+/* ───────── NOW ───────── */
 const HORIZON = { f: 'FORECAST', m: 'MODELLED', p: 'NO OUTLOOK YET' };
+/* the next unseasonable stretch, and the days until it lands */
+function nextWindow() {
+  const k0 = nowK(); let best = null;
+  for (const w of OUT.windows) { const r = windowRun(w, k0); if (r && (!best || r.a < best.a)) best = { ...r, start: monthStart(r.a), now: r.a === k0 }; }
+  return best;
+}
 /* twelve months as a strip: each a bar in its degree of orange; the three chosen stand forward */
 function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK();
-  const groups = []; for (const k of ks) { const h = outMonth(k).h; const g = groups[groups.length - 1]; if (g && g.h === h) g.n++; else groups.push({ h, a: k, n: 1 }); }
   const span = k => k >= S.mo && k < S.mo + 3;
   const wins = OUT.windows.map(w => { const a = ks.find(k => inWin(w, outMonth(k).m)); let b = a; while (b + 1 < OUT_N && inWin(w, outMonth(b + 1).m)) b++; return { ...w, ka: a, kb: b }; }).filter(w => w.ka != null);
   return `<div class="mstrip" style="--n:${OUT_N}">`
-    + `<div class="ms-h">${groups.map(g => `<span class="mono h${g.h}" style="grid-column:${g.a + 1} / span ${g.n}">${HORIZON[g.h]}</span>`).join('')}</div>`
-    + `<div class="ms-m" role="group" aria-label="Months">${ks.map(k => { const M = outMonth(k); return `<button type="button" class="mo d${M.lv} h${M.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}" data-mo="${k}" aria-pressed="${k === S.mo}" data-tip="${MON[M.m]} ${M.y} · ${DEG[M.lv]}"><i></i><b class="mono">${MON[M.m].charAt(0)}</b></button>`; }).join('')}</div>`
+    + `<div class="ms-m" role="group" aria-label="Months">${ks.map(k => { const Mo = outMonth(k); return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}" data-mo="${k}" aria-pressed="${k === S.mo}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]} · ${HORIZON[Mo.h]}"><i></i><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; }).join('')}</div>`
     + `<div class="ms-w">${wins.map((w, i) => `<span class="mono" style="grid-column:${w.ka + 1} / ${w.kb + 2};grid-row:${i + 1}" data-tip="${esc(w.why)}">${w.w}</span>`).join('')}</div>`
     + `</div>`;
 }
@@ -1321,17 +1477,7 @@ function bindOutlook() {
   const st = $('#sec-heat .ms-m'); if (!st) return;
   st.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); pickMonth(S.mo + d); const b = $(`#sec-heat [data-mo="${S.mo}"]`); if (b) b.focus(); });
 }
-/* the five in greatest need: each moving its own way, with its degree, what is missing where it lives, and the brief that answers it */
-const heroesRanked = () => [...S.heroes].map(o => ({ o, deg: degOf(o), w: worstWhen(o) })).sort((a, b) => b.deg - a.deg || (b.o.n - a.o.n));
-function heroSection() {
-  if (!S.heroes.length) return '';
-  return `<section class="sec heroes" id="sec-heroes">${sh('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => {
-    const h = o.heroOf; const b = BRIEFS.find(x => x.id === h.brief); const line = needLine(o);
-    return `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(h.why)}"><canvas class="hero-cv" width="128" height="128" data-hero="${esc(o.id)}" aria-hidden="true"></canvas><span class="nm"><b>${esc(h.cn)}</b>${degChip(deg, w ? w.word : '')}${line ? `<small class="need mono">${esc(line)}</small>` : ''}</span></button>`
-      + (b ? `<button type="button" class="hero-brief" data-brief="${b.id}" data-for="${esc(o.id)}" data-tip="After ${esc(b.after)}, ${esc(b.city)}">${icon('next', 'sm')}<span>${esc(b.t)}</span></button>` : '') + `</li>`;
-  }).join('')}</ol></section>`;
-}
-/* the heroes on the page move as they do on the ground */
+const heroesRanked = () => [...S.heroes].map(o => ({ o, deg: degOf(o), w: whenOf(o) })).sort((a, b) => b.deg - a.deg || (b.o.n - a.o.n));
 let heroRaf = 0;
 function stopHeroes() { cancelAnimationFrame(heroRaf); heroRaf = 0; }
 function startHeroes() {
@@ -1348,183 +1494,660 @@ function startHeroes() {
   };
   heroRaf = requestAnimationFrame(draw);
 }
-/* the lives most in danger over the chosen months, one of each kind; the five above are not repeated */
-function inDanger(limit = 12) {
-  const seen = new Map(); const heroN = new Set(S.heroes.map(h => h.tx.n.toLowerCase()));
-  for (const o of cellsAll()) {
-    if (o.hero || o.story || isCold(o) || o.isEvent || isAlarm(o) || o.kind === 'refuge' || (o.hum && o.kind !== 'pulse' && o.kind !== 'need')) continue;
-    const sub = subjectOf(o); if (sub.tx && sub.tx.n && heroN.has(sub.tx.n.toLowerCase())) continue;
-    const k = nameOf(o); const deg = degOf(o); const score = deg * 10 + (o.isNew || o.arrived ? 4 : 0) + (o.specimen ? 3 : 0) + (o.tx && o.tx.th ? 2 : 0) + (o.rare || 0);
-    const g = seen.get(k); if (!g || score > g.score) seen.set(k, { o, score, deg });
-  }
-  return [...seen.values()].sort((a, b) => b.score - a.score).slice(0, limit);
-}
-/* the briefs that fit the chosen months: matched to the lives in danger now, one life each, none the five already carry */
-function briefsFor(lives, n = 3) {
-  const out = []; const used = new Set(S.heroes.map(h => h.heroOf.brief));
-  for (const { o } of lives) { for (const m of matchBriefs(o, 2)) { if (used.has(m.b.id)) continue; used.add(m.b.id); out.push({ b: m.b, o }); break; } if (out.length >= n) break; }
-  return out;
-}
-/* a brief and what it is connected to: the life it is for, or the kinds of life it serves, and the businesses that can carry it */
-const kindIcons = b => (b.g.includes('any') ? [glyphSVG('paw')] : b.g.slice(0, 4).map(g => glyphSVG(g))).join('');
-const briefRow = (b, o) => `<li><button type="button" class="brow" data-brief="${b.id}"${o ? ` data-for="${esc(String(o.id))}"` : ''}><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small>AFTER ${esc(b.after.toUpperCase())}${b.city ? ` · ${esc(b.city.toUpperCase())}` : ''}${b.yr ? ` ${b.yr}` : ''}</small><span class="link mono">${o ? `<span class="for">FOR</span><img class="pg xs" src="${pinOf(o)}" alt=""><span>${esc(nameOf(o).toUpperCase())}</span>` : `<span class="kinds" aria-hidden="true">${kindIcons(b)}</span>`}${b.roles.slice(0, 2).map(roleChip).join('')}</span></span></button>${b.url ? `<a class="src" href="${esc(b.url)}" target="_blank" rel="noopener" aria-label="Source">${icon('out', 'sm')}</a>` : ''}</li>`;
-const statusWord = o => { const b = life.badgeOf(o, 20); return b.fresh ? 'NEW' : b.sig ? 'THREATENED' : o.kind === 'need' ? 'NEEDED' : o.kind === 'pulse' ? 'CHECK-INS' : ''; };
-/* gigs and gatherings: a gig carries a hug, and the listing it came from */
-const eventRow = o => { const gig = isGig(o); const src = gigOf(o); const tags = (o.tags || []).filter(t => TAG_WORDS[t] && !['walk', 'kids', 'sound'].includes(t)).slice(0, 2).map(t => TAG_WORDS[t]);
-  return row(o, [dayWord(o.start), ...(gig ? [`<span class="gig">${icon('hug', 'sm')}${src ? src.w : 'GIG'}</span>`] : []), ...tags].join(' · ')); };
+const eventRow = o => { const gig = isGig(o); const src = gigOf(o); return row(o, [dayWord(o.start), o.start ? fmtClock(o.start) : '', ...(gig ? [`<span class="gig">${icon('hug', 'sm')}${src ? src.w : 'GIG'}</span>`] : [])].filter(Boolean).join(' · ')); };
 function viewNow() {
-  const ready = readyIn(); const alarms = alarmsNow(); const k0 = S.mo, k1 = Math.min(OUT_N - 1, S.mo + 2);
-  const lives = inDanger(8); const briefs = briefsFor(lives, 3);
+  const nw = nextWindow(); const alarms = alarmsNow(); const k0 = S.mo, k1 = Math.min(OUT_N - 1, S.mo + 2);
   const events = [...S.community, ...S.user].filter(o => o.isEvent && liveEvent(o)).sort((a, b) => (isGig(b) - isGig(a)) || (a.start || 0) - (b.start || 0));
-  const span = monthsWord(outMonth(k0).m, outMonth(k1).m); const h = outMonth(k0).h;
-  return `<section class="warn" id="sec-heat">
-      <div class="w-top"><span class="wt" aria-hidden="true"></span><span class="mono">CLIMATE EMERGENCY · ${esc(CONFIG.ELNINO)}</span></div>
-      <p class="w-lede">Likely the strongest El Niño on record, peaking this summer.</p>
-      ${ready ? `<div class="w-count"><b>${ready[0]}</b><span class="mono">${ready[1]} TO<br>GET READY</span></div>` : ''}
+  const lvNow = outMonth(nowK()).lv;
+  return `<section class="band" id="sec-heat">
+      <div class="b-top"><span class="mono">${esc(CONFIG.ELNINO)}</span>${degChip(lvNow)}</div>
+      ${nw ? `<div class="b-count" data-tip="${esc(nw.w.why)}"><b>${nw.now ? 'NOW' : daysTo(nw.start)}</b><span class="mono">${nw.now ? '' : 'DAYS TO<br>'}${esc(nw.w.w)}</span></div>` : ''}
       ${monthStrip()}
-      <p class="w-say"><b class="mono">${span} · ${HORIZON[h]}</b>${esc(OUT.say[h])}</p>
-      <a class="w-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">OFFICIAL WARNINGS ${icon('out', 'sm')}</a>
+      <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
+      <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    + heroSection()
-    + `<section class="sec alarms" id="sec-alarms">${sh('Local emergencies right now', 'red')}${alarms.length ? `<ol class="rows">${alarms.map(alarmRow).join('')}</ol>` : '<p class="calm mono">NOTHING HURT OR LOST NEARBY</p>'}<div class="calls2 mono"><a href="tel:000">000</a><a href="tel:0384007300">WILDLIFE VICTORIA (03) 8400 7300</a></div></section>`
-    + (lives.length ? `<section class="sec" id="sec-noticing">${sh('Noticing')}<ol class="rows">${lives.map(({ o, deg }) => { const w = deg ? worstWhen(o) : null; const st = statusWord(o); return row(o, [degChip(deg, w ? w.word : ''), st ? `<span>${st}</span>` : ''].filter(Boolean).join('')); }).join('')}</ol></section>` : '')
-    + (briefs.length ? `<section class="sec" id="sec-briefs">${sh(`Briefs for ${span}`)}<ol class="briefs">${briefs.map(x => briefRow(x.b, x.o)).join('')}</ol><button type="button" class="more mono" data-part="library">ALL ${BRIEFS.length} BRIEFS</button></section>` : '')
-    + `<section class="sec" id="sec-events">${sh('Gigs and gatherings')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener">${icon('hug', 'sm')}<span>${esc(g.n.toUpperCase())}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`
-    + emptyIf(!S.obs.length && !S.stories.length);
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why)}"><canvas class="hero-cv" width="128" height="128" data-hero="${esc(o.id)}" aria-hidden="true"></canvas><span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${whenChip(w)}</span></span></button></li>`).join('')}</ol></section>` : '')
+    + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
+    + consSection()
+    + `<section class="sec" id="sec-gigs">${lab('Gigs')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener" data-tip="${esc(g.n)}">${icon('hug', 'sm')}<span>${esc(g.w)}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`
+    + `<section class="sec calls"><div class="calls2 mono"><a href="tel:000">000</a><a href="tel:0384007300" data-tip="Wildlife Victoria">WILDLIFE (03) 8400 7300</a><a href="tel:136186" data-tip="DEECA: flying-foxes in heat stress">136 186</a></div></section>`;
 }
 
-/* ───────── STORIES — the tools first, then the posters people vote up, the groups, the briefs, the businesses, the archive ───────── */
-let partnersAll = false, libTheme = 'all';
-const THEMES = [['all', 'ALL'], ['heat', 'HEAT'], ['water', 'WATER'], ['pollinate', 'POLLINATORS'], ['diversity', 'DIVERSITY'], ['night', 'NIGHT'], ['food', 'FOOD'], ['circular', 'CIRCULAR'], ['cats', 'CATS']];
-const DOCS = [['posters', 'csv', 'The posters, who made them, their briefs, votes and support'], ['businesses', 'csv', 'Every business, its role and the lives in its radius'], ['records', 'csv', 'Every record on the map, its danger and what it needs'], ['briefs', 'csv', 'The fifty briefs and their precedents'], ['field', 'csv', 'The field list as a table'], ['blank', 'pdf', 'A blank poster to fill by hand']];
-function viewStories() {
-  const rs = [...S.resp.values()].filter(r => S.byId.get(r.cell)).sort((a, b) => (b.votes - a.votes) || (b.score - a.score) || (b.issued - a.issued));
-  const top = rs.slice(0, 20);
-  const det = [
-    'iNaturalist', DEMO ? 'Specimen stories, businesses and people: invented to show how it works' : '', 'Field list: sources in field.html',
-    ...OUT.src.map(x => x[0]), 'Canopy: Merri-bek, Yarra and City of Melbourne urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY,
-  ].filter(Boolean);
-  const card = (r, i) => { const o = S.byId.get(r.cell); const b = r.brief && BRIEFS.find(x => x.id === r.brief);
-    return `<li class="pcard${r.funded ? ' funded' : ''}"><button type="button" class="s-mini" data-key="${esc(r.key)}" data-poster="${esc(r.key)}" aria-label="Open the poster"><span class="blank"></span></button>`
-      + `<div class="pc-meta"><button type="button" class="pc-life" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span><b>${esc(nameOf(o))}</b><small>${esc(r.who || '')}${b ? ` · AFTER ${esc(b.after.toUpperCase())}` : ''}</small></span></button>`
-      + `<div class="pc-row"><span class="rank mono">${i + 1}</span><span class="pc-st mono${r.funded ? '' : ' need'}">${r.funded ? 'FUNDED' : 'UNFUNDED'}${r.hosts ? ' · ON SHOW' : ''}</span><button type="button" class="vote mono" data-vote="${esc(r.key)}" aria-pressed="${!!r.voted}" aria-label="${r.voted ? 'Take back your vote' : 'Vote it up'}" data-tip="${r.voted ? 'Take back your vote' : 'Vote it up'}">▲ ${r.votes}</button></div>`
-      + (r.funded ? '' : `<div class="sup">${r.hosts ? '' : `<button type="button" class="pill" data-support="host" data-key="${esc(r.key)}" data-tip="Put it up in your window or on your wall">${icon('host', 'sm')}HOST IT</button>`}<button type="button" class="pill" data-support="give" data-key="${esc(r.key)}" data-tip="Pay for the print and the work">${icon('give', 'sm')}GIVE</button></div>`)
-      + `</div></li>`; };
-  const lib = BRIEFS.filter(b => libTheme === 'all' || b.th === libTheme);
-  return `<section class="sec tools" id="sec-tools"><div class="tool-pair">`
-      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length} KINDS OF LIFE · THEIR MONTHS, THE HEAT AND WHO TO CALL</small><i class="go">${icon('out')}</i></a>`
-      + `<a class="tool" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><small class="mono">EVERY ICON, COLOUR, READING AND LINE</small><i class="go">${icon('out')}</i></a>`
-      + `</div><div class="docs">${DOCS.map(([k, t, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(t === 'pdf' ? 'print' : 'download')}<span>${k}</span><small>${t}</small></button>`).join('')}</div></section>`
-    + `<section class="sec" id="sec-posters">${sh(`Posters · top ${Math.min(20, rs.length)}`)}<ol class="pgrid">${top.map(card).join('')}</ol></section>`
-    + `<section class="sec" id="sec-tribes">${sh('Groups already caring')}<ol class="rows tribes">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><span class="nm"><b>${esc(t.n)}</b><small>${esc(t.w)}</small></span></button><a class="src" href="${esc(t.link)}" target="_blank" rel="noopener" aria-label="Their site">${icon('out', 'sm')}</a></li>`).join('')}</ol></section>`
-    + `<section class="sec" id="sec-library">${sh('Briefs')}<div class="themes">${THEMES.map(([k, w]) => `<button type="button" class="pill${libTheme === k ? ' on' : ''}" data-th="${k}" aria-pressed="${libTheme === k}">${w}</button>`).join('')}</div><ol class="briefs">${lib.map(b => briefRow(b, null)).join('')}</ol></section>`
-    + partnersSection()
-    + `<section class="sec" id="sec-archive">${sh('Archive')}<label class="find">${icon('search')}<input id="ix-q" type="search" aria-label="Search" placeholder="Search" autocomplete="off"></label><ol class="rows" id="ix-results"></ol>`
-    + `<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Your name" value="${esc(S.me.by)}"></label></div>`
-    + `<ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></section>`;
+/* ───────── constellations: every string figure, newest first, as it forms; the knots it shares with others ───────── */
+const conRow = c => {
+  const fresh = Date.now() - (c.t || 0) < 10 * 60e3;
+  const sh = (c.shared || []).slice(0, 3).map(x => `<button type="button" class="con-sh" data-con="${esc(String(x.id))}" data-tip="${x.ks.length} shared">${esc(x.name)}</button>`).join('');
+  return `<li class="con${fresh ? ' fresh' : ''}"><button type="button" class="con-row" data-con="${esc(String(c.id))}" aria-label="${esc(c.name)}"><span class="con-chart">${strings.chartOf(c.id, 44)}</span><span class="nm"><b>${esc(c.name)}</b><small class="mono"><i class="mk dia"></i>${c.people} <i class="mk dot"></i>${c.lives}${c.water ? ` <i class="mk wav"></i>${c.water}` : ''} · ${c.edges} ${icon('string', 'sm')} · ${ago(c.born)}</small></span></button>`
+    + `<button type="button" class="ib" data-con-play="${esc(String(c.id))}" aria-label="Play" data-tip="Play">${icon('play')}</button><button type="button" class="ib" data-con-trace="${esc(String(c.id))}" aria-label="How it formed" data-tip="How it formed">${icon('trace')}</button>`
+    + (sh ? `<p class="con-shs mono">${icon('string', 'sm')}${sh}</p>` : '') + `</li>`;
+};
+function consSection() {
+  const cs = strings.list(); if (!cs.length) return '';
+  return `<section class="sec cons" id="sec-cons"><div class="lab-row">${lab(`Constellations · ${cs.length}`)}<button type="button" class="ib" data-con-all aria-label="Play them all" data-tip="Play them all">${icon('play')}</button></div><ol class="cons-l">${cs.slice(0, 40).map(conRow).join('')}</ol></section>`;
 }
-/* the two tools, drawn: kinds of life in their colours; the icons of the guide */
-function fillTools() {
-  const art = (id, list) => { const host = $('#' + id); if (!host) return; host.innerHTML = list.map(b => `<img src="${badgeImg(b, 30)}" alt="">`).join(''); };
+/* one after another, each its own tune */
+let conQ = 0;
+function playAll() { clearTimeout(conQ); const cs = strings.list().slice(0, 8); let i = 0; const next = () => { if (i >= cs.length) return; const t = strings.playFig(cs[i++].id); conQ = setTimeout(next, (Math.max(0.6, t) + 0.5) * 1000); }; next(); }
+viewEl.addEventListener('click', e => {
+  const pl = e.target.closest('[data-con-play]'); if (pl) { e.stopPropagation(); clearTimeout(conQ); const v = pl.dataset.conPlay; if (!strings.playFig(/^\d+$/.test(v) ? +v : v)) tick(700); return; }
+  const tr = e.target.closest('[data-con-trace]'); if (tr) { e.stopPropagation(); const v = tr.dataset.conTrace; showConstellation(/^\d+$/.test(v) ? +v : v, 'trace'); return; }
+  const al = e.target.closest('[data-con-all]'); if (al) { e.stopPropagation(); playAll(); return; }
+  const c = e.target.closest('[data-con]'); if (c) { e.stopPropagation(); const v = c.dataset.con; showConstellation(/^\d+$/.test(v) ? +v : v, 'glow'); }
+}, true);
+
+/* ───────── STORIES: the signals board, newest first ───────── */
+const THEMES = { heat: 'HEAT', water: 'WATER', pollinate: 'POLLINATORS', diversity: 'DIVERSITY', night: 'NIGHT', food: 'FOOD', circular: 'CIRCULAR', cats: 'CATS' };
+const sigRow = (s, i) => {
+  const p = s.pin || {}; const kn = (s.edges || []).length;
+  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}" data-sig="${esc(s.key)}"><span class="rk mono">${i + 1}</span><span class="sg"><span class="sg-t"><b class="mono">${esc(s.code)}</b>${esc((s.lines || {}).h || '')}</span><small class="mono">${esc((p.cn || p.n || '').toUpperCase())} · ${esc(p.place || '')} · ${ago(s.at)}${kn ? ` · ${kn} ${icon('string', 'sm')}` : ''}${s.recv ? ' · RECEIVED' : ''}${s.ex ? ' · EX' : ''}</small></span></button></li>`;
+};
+function viewStories() {
+  const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
+  const sigs = S.signals;
+  return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false">${icon('receive', 'sm')}RECEIVE</button></div>`
+      + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="3" aria-label="Signal" placeholder="DA-…" spellcheck="false"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
+      + `<ol class="sigs">${sigs.map(sigRow).join('')}</ol></section>`
+    + `<section class="sec" id="sec-groups">${lab('Groups')}<ol class="rows tribes">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><span class="nm"><b>${esc(t.n)}</b><small>${esc(t.w)}</small></span></button><a class="src" href="${esc(t.link)}" target="_blank" rel="noopener" aria-label="Their site">${icon('out', 'sm')}</a></li>`).join('')}</ol></section>`
+    + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
+      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
+      + `<a class="tool" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
+      + `</div><div class="docs">${[['blank', 'print', 'BLANK SLIP', 'A blank W.I.S.H. slip to fill by hand'], ['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div></section>`
+    + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
+    + `<section class="sec" id="sec-set">${lab('Settings')}<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><button type="button" class="tog lb" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}<small>AREAS</small></button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
+    + `<details class="sec" id="sec-src"><summary>${lab('Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
+}
+function openReceive(on) { const f = $('#rx'), b = $('#rx-open'); if (!f) return; f.hidden = !on; b.setAttribute('aria-expanded', String(on)); if (on) setTimeout(() => $('#rx-t').focus(), 30); }
+function bindStories() {
+  const art = (id, list) => { const host = $('#' + id); if (host) host.innerHTML = list.map(b => `<img src="${badgeImg(b, 30)}" alt="">`).join(''); };
   art('art-field', ['bird', 'possum', 'bee', 'orb', 'lizard', 'frog', 'moth', 'turtle'].map(g => ({ tone: M.toneOf(g), g })));
   art('art-guide', [{ tone: 'k-mammal', g: 'flyingfox', dz: 3 }, { tone: 'injured', g: 'possum' }, { tone: 'lost', g: 'dog' }, { tone: 'event', i: 'hug' }, { tone: 'story', g: 'bee', carried: true }, { tone: 'need', i: 'shade' }, { tone: 'flora', g: 'plant' }, { tone: 'dead', g: 'bird' }]);
-}
-/* the businesses and brands of the area: a diamond each, filled when signed up; on notice in highlighter, to back in cobalt */
-const roleChip = role => { const R = ROLES[role]; return R ? `<i class="role${R.on ? ' on' : ''}" data-tip="${esc(R.duty)}">${R.w}</i>` : ''; };
-function partnersSection() {
-  const biz = S.biz || []; if (!biz.length) return '';
-  const signed = biz.filter(b => b[5] && b[5].partner).length; const onN = biz.filter(b => onNotice(roleOfRow(b))).length;
-  const rows = biz.map((b, i) => ({ i, b, z: bizOf(i), signed: !!(b[5] && b[5].partner), role: roleOfRow(b) })).sort((a, b) => (b.signed - a.signed) || (onNotice(b.role) - onNotice(a.role)) || (b.z ? b.z.cells.length : 0) - (a.z ? a.z.cells.length : 0) || a.b[0].localeCompare(b.b[0]));
-  const shown = partnersAll ? rows : rows.slice(0, 6);
-  return `<section class="sec partners" id="sec-partners">${sh('Businesses')}<div class="all"><b class="thin">${signed}<small>/${biz.length}</small></b><span class="mono">SIGNED UP</span></div>`
-    + `<div class="lattice" aria-hidden="true">${rows.map(r => `<i class="dm ${r.signed ? 'paid' : onNotice(r.role) ? 'on' : ''}"></i>`).join('')}</div>`
-    + `<p class="split mono"><span><i class="dm on"></i>${onN} ON NOTICE</span><span><i class="dm"></i>${biz.length - onN} TO BACK</span></p>`
-    + `${signed ? '' : '<button type="button" class="first" id="first">BE THE FIRST TO SIGN UP</button>'}`
-    + `<ol class="rows">${shown.map(r => `<li><button type="button" class="row" data-bi="${r.i}"><i class="dm big ${r.signed ? 'paid' : onNotice(r.role) ? 'on' : ''}"></i><span class="nm"><b>${esc(r.b[0])}</b><small>${roleChip(r.role)}</small></span></button></li>`).join('')}</ol>`
-    + (rows.length > 6 ? `<button type="button" class="more mono" data-more="partners">${partnersAll ? 'FEWER' : 'ALL ' + rows.length}</button>` : '') + `</section>`;
-}
-/* each poster in the lists as its own small image */
-const thumbs = new Map();
-function fillThumb(host) {
-  if (!host || host.dataset.done) return; const key = host.dataset.key; host.dataset.done = '1';
-  const put = node => { if (node && host.isConnected) { host.innerHTML = ''; const c = node.cloneNode(true); host.appendChild(c); fitMini(c); } };
-  if (thumbs.has(key)) { put(thumbs.get(key)); return; }
-  const r = S.resp.get(key); const o = r && S.byId.get(r.cell); if (!o) return;
-  posterThumb(o, r.ev).then(node => { if (node) { thumbs.set(key, node); put(node); } });
-}
-const fillMinis = () => $$('#view .s-mini, #r-resp .s-mini').forEach(fillThumb);
-function bindArchive() {
-  const q = $('#ix-q'); if (!q) return; q.addEventListener('input', debounce(() => search(q.value), 120));
+  $('#rx-open').addEventListener('click', () => { openReceive($('#rx').hidden); tick(1500); });
+  $('#rx').addEventListener('submit', e => { e.preventDefault(); const t = $('#rx-t').value.trim(); if (!t) { nudge($('#rx-t')); return; } receive(t); });
   $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); tick(); });
   $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', !prefs.motion); life.data(); tick(); });
+  $('#ix-areas').addEventListener('click', e => { prefs.areas = !prefs.areas; e.currentTarget.setAttribute('aria-pressed', String(prefs.areas)); savePrefs(); life.redraw(); tick(); });
+  const hb = $('#ix-hidden'); if (hb) hb.addEventListener('click', () => { const n = HIDE.size; showAllHidden(); life.data(); hb.remove(); toast(`${n} SHOWN`); snd.pluck(0.3, 0); });
   $('#ix-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });
-  $$('#view [data-doc]').forEach(b => b.addEventListener('click', () => takeAway(b.dataset.doc)));
-}
-const savePrefs = () => store.set('da.prefs', prefs);
-function search(q) {
-  const el = $('#ix-results'); if (!el) return; q = norm(q); if (q.length < 2) { el.innerHTML = ''; return; }
-  const out = []; const seen = new Set();
-  for (const o of [...cellsAll(), ...S.community, ...S.hist]) { const sub = subjectOf(o); const hay = norm([nameOf(o), sub.tx && sub.tx.n, o.who, o.title].filter(Boolean).join(' ')); if (hay.includes(q) && !seen.has(o.id)) { seen.add(o.id); out.push(row(o, typeof o.id === 'number' ? suburbOf(o.pg) : o.story ? esc(o.who || '') : '')); } }
-  for (const t of S.tribes) if (norm(`${t.n} ${t.w}`).includes(q)) out.push(`<li><button type="button" class="row" data-tribe="${esc(t.id)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><span class="nm"><b>${esc(t.n)}</b><small>${esc(t.w)}</small></span></button></li>`);
-  (S.biz || []).forEach((b, i) => { if (norm(`${b[0]} ${b[1]}`).includes(q)) out.push(`<li><button type="button" class="row" data-bi="${i}"><i class="dm big ${b[5] && b[5].partner ? 'paid' : onNotice(roleOfRow(b)) ? 'on' : ''}"></i><span class="nm"><b>${esc(b[0])}</b><small>${roleChip(roleOfRow(b))}</small></span></button></li>`); });
-  for (const b of BRIEFS) if (norm(`${b.t} ${b.after} ${b.city}`).includes(q)) out.push(briefRow(b, null));
-  el.innerHTML = out.slice(0, 40).join('') || '<li class="none"></li>';
 }
 /* data to take away */
 const csvCell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 const toCSV = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
-function download(name, text, type = 'text/csv') { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+function download(name, data, type = 'text/csv;charset=utf-8') { const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 function takeAway(k) {
-  const day = isoDay(new Date());
-  if (k === 'posters') download(`direct-action-posters-${day}.csv`, toCSV([['record', 'name', 'by', 'issued', 'brief', 'w', 'i', 's', 'h', 'votes', 'funded', 'givers', 'hosts', 'did', 'specimen'], ...[...S.resp.values()].map(r => [r.cell, nameOf(S.byId.get(r.cell)), r.who, new Date(r.issued).toISOString(), r.brief || '', r.data.w, r.data.i, r.data.s, r.data.h, r.votes, r.funded ? 1 : 0, r.given, r.hostList.join('; '), r.did.size, r.spec ? 1 : 0])]));
-  if (k === 'businesses') download(`direct-action-businesses-${day}.csv`, toCSV([['business', 'brand', 'role', 'on_notice', 'lat', 'lng', 'signed_up', 'lives_in_reach', 'specimen'], ...(S.biz || []).map((b, i) => { const z = bizOf(i); const role = roleOfRow(b); return [b[0], b[1], (ROLES[role] || {}).w || role, onNotice(role) ? 1 : 0, b[3], b[4], b[5] && b[5].partner ? 1 : 0, z ? z.cells.length : 0, DEMO && b[5] && b[5].id ? 1 : 0]; })]));
-  if (k === 'records') download(`direct-action-records-${day}.csv`, toCSV([['id', 'name', 'latin', 'lat', 'lng', 'kind', 'danger', 'worst_months', 'canopy_pc', 'needs', 'posters', 'link'], ...cellsAll().map(o => { const sub = subjectOf(o); const w = worstWhen(o); return [o.id, nameOf(o), sub.tx ? sub.tx.n : '', o.lat, o.lng, o.hum && !(sub.tx && sub.tx.n) ? 'PEOPLE' : (M.KINDS[lifeOf(o)] || '').toUpperCase(), DEG[degOf(o)], w ? w.word : '', canopyOf(o).pc, o.hum && !(sub.tx && sub.tx.n) ? '' : needLine(o), respsOf(o).length, typeof o.id === 'number' ? CONFIG.INAT_WEB + o.id : o.link || '']; })]));
+  const day = isoDay(new Date()); tick(1800);
+  if (k === 'signals') download(`direct-action-signals-${day}.csv`, toCSV([['code', 'issued', 'by', 'life', 'latin', 'lat', 'lng', 'place', 'threat', 'when', 'w', 'i', 's', 'h', 'knots', 'brief', 'example'], ...S.signals.map(s => { const p = s.pin || {}; return [s.code, new Date(s.at).toISOString(), s.who || '', p.cn || '', p.n || '', p.lat, p.lng, p.place || '', s.threat || '', s.when || '', ...['w', 'i', 's', 'h'].map(x => (s.lines || {})[x] || ''), (s.nodes || []).map(n => n.n).join('; '), s.brief || '', s.ex ? 1 : 0]; })]));
   if (k === 'briefs') download(`direct-action-briefs-${day}.csv`, toCSV([['id', 'brief', 'after', 'where', 'year', 'fact', 'source', 'theme', 'lives', 'roles', 'months', 'i', 's', 'h'], ...BRIEFS.map(b => [b.id, b.t, b.after, b.city, b.yr || '', b.fact, b.url, b.th, b.g.join(' '), b.roles.join(' '), b.m.map(m => MON[m]).join(' '), b.i, b.s, b.h])]));
   if (k === 'field') download(`direct-action-field-list-${day}.csv`, toCSV([['common_name', 'scientific_name', 'kind', 'status', 'where', 'active_jan_dec', 'young_jan_dec', 'time', 'heat', 'water', 'event', 'notice', 'do_no_harm', 'help', 'call', 'note', 'sources'], ...FIELD.map(e => [e.cn, e.n, e.g, e.st, e.where, e.act, e.brd, e.time, e.heat, e.water, e.event, e.aware, e.harm, e.help, e.call, e.note, (e.src || []).join(' ')])]));
-  if (k === 'blank') { const blank = { id: 'blank', user: true, b: 5, lat: (B.s + B.n) / 2, lng: (B.w + B.e) / 2, ev: { key: 'blank', data: {} } }; printDoc('notice', blank, { key: 'blank', at: Date.now(), who: '', data: { w: '', i: '', s: '', h: '' } }); }
+  if (k === 'places') download(`direct-action-places-${day}.csv`, toCSV([['name', 'part', 'role', 'address', 'suburb', 'site', 'what', 'lat', 'lng', 'approximate'], ...PLACES.map(p => [p.n, (FAMILIES[p.cat] || {}).w || p.cat, (ROLES[p.role] || {}).w || p.role, p.addr || '', p.sub || '', p.url || '', p.what || '', p.lat, p.lng, p.a ? 1 : 0])]));
+  if (k === 'blank') printBlank();
 }
-/* empty: a single point on an empty plane */
-const emptyIf = c => (c ? `<div class="empty"><i></i></div>` : '');
 function signalLost() { document.body.classList.add('nosignal'); if (!S.mode) renderView(); }
+
+/* ════════════════════════════════════════════════════════════════════
+   STRING FIGURES — inside an open life's radius every place, group, water, life and knot of your own is a knot,
+   and a thin thread runs from the life to each place that sells or leaves what harms it.
+   Click a knot to look: the string it would make, and its sound. Click it again, or right-click (hold, on a phone), to join it.
+   Right-click a joined knot to let it go. Click open ground in the radius to add a knot of your own.
+   Every figure is a constellation: named, kept on this device, listed on NOW, traced and played as a song.
+   ════════════════════════════════════════════════════════════════════ */
+const strings = (() => {
+  const FIGS = store.get('da.figs.v1', {});
+  const TAU = Math.PI * 2;
+  let cell = null, nodes = new Map(), fig = blank(), shownAt = 0, peekKey = null, peekAt = 0, ghost = null;
+  let glowUntil = 0, focus = null, focusAt = 0, trace = null;
+  const plucks = new Map();
+  const MAX_BIZ = 60;
+  const pk = $('#peek'), capEl = $('#trace');
+  function blank() { return { e: [], end: 'pin', prev: null, n: {}, c: {}, lb: {}, x: [], ts: {} }; }
+  const eKey = ([a, b]) => `${a}|${b}`;
+  const inFig = k => k === 'pin' || fig.e.some(([a, b]) => a === k || b === k);
+  const idOf = k => (/^\d+$/.test(k) ? +k : k);
+  function open(o) { cell = o; load(o); nodes = compute(o); shownAt = performance.now(); plucks.clear(); peekKey = null; ghost = null; focus = null; trace = null; pk.hidden = true; if (capEl) capEl.hidden = true; }
+  /* a signal remixed: its figure becomes this cell's, where the cell has none of its own yet */
+  function seed(o, s) {
+    if (FIGS[o.id] || !(s.edges || []).length) return; const key = k => (k === 'pin' ? 'pin' : `s:${s.code}:${k}`); const n = {};
+    for (const x of s.nodes || []) { const [la, ln] = dest(o.lat, o.lng, x.d, x.b); n[key(x.k)] = { t: x.t === 'custom' ? 'custom' : x.t, n: x.n, role: x.role, on: onNotice(x.role), fam: x.fam || (ROLES[x.role] || {}).cat, g: x.g, kind: x.kind, lat: +la.toFixed(5), lng: +ln.toFixed(5) }; }
+    const e = s.edges.map(([a, b]) => [key(a), key(b)]); const t = Date.now();
+    FIGS[o.id] = { e, end: e.length ? e[e.length - 1][1] : 'pin', prev: null, n, c: {}, lb: {}, x: [], ts: Object.fromEntries(e.map(x => [eKey(x), t])), born: t, t }; store.set('da.figs.v1', FIGS);
+  }
+  function close() { cell = null; nodes = new Map(); plucks.clear(); peekKey = null; ghost = null; focus = null; trace = null; pk.hidden = true; if (capEl) capEl.hidden = true; }
+  function refresh() { if (cell) { const o = S.byId.get(cell.id) || cell; cell = o; nodes = compute(o); if (peekKey && !nodes.has(peekKey) && !String(peekKey).startsWith('x:')) unpeek(); else if (peekKey) card(); life.redraw(); } }
+  /* ───────── the knots inside a radius ───────── */
+  function compute(o) {
+    const R = rangeOf(o); const out = new Map(); const press = new Set(PRESSURES[lifeOf(o)] || PRESSURES.paw || []);
+    out.set('pin', { key: 'pin', t: 'pin', n: nameOf(o), lat: o.lat, lng: o.lng, d: 0, g: lifeOf(o) });
+    const biz = [];
+    for (const b of bizNear(o.lat, o.lng, R)) {
+      const key = `b:${norm(b.n)}@${b.lat.toFixed(4)},${b.lng.toFixed(4)}`; if (out.has(key)) continue;
+      const n = { key, t: 'biz', n: b.n, brand: b.b, role: b.role, on: onNotice(b.role), fam: b.fam, h: b.h, harm: b.h.filter(h => press.has(h)), cur: b.cur, url: b.url, what: b.what, addr: b.addr, a: b.a, lat: b.lat, lng: b.lng, d: b.d };
+      out.set(key, n); biz.push(n);
+    }
+    /* listed places first, then the ones that harm this life, then the nearest */
+    biz.sort((a, b) => (b.cur - a.cur) || ((b.harm.length > 0) - (a.harm.length > 0)) || a.d - b.d).forEach((n, i) => { n.rank = i; });
+    for (const x of cellsAll()) {
+      if (x.id === o.id || x.hist || x.ob || isCold(x) || x.isTribe) continue; const d = haversine(o.lat, o.lng, x.lat, x.lng); if (d > R) continue;
+      out.set('o:' + x.id, { key: 'o:' + x.id, t: 'life', id: x.id, n: nameOf(x), g: lifeOf(x), hum: !!x.hum && !(x.tx && x.tx.n), kind: x.kind || '', user: !!x.user, lat: x.lat, lng: x.lng, d });
+    }
+    for (const t of S.tribes) {
+      const p = tribeNear(t, o.lat, o.lng); if (!p || p.d > R) continue;
+      const dd = haversine(o.lat, o.lng, p.lat, p.lng), k = dd > R * 0.85 ? (R * 0.85) / dd : 1;
+      out.set('t:' + t.tid, { key: 't:' + t.tid, t: 'group', n: t.n, kind: t.kind, what: t.w, link: t.link, lat: o.lat + (p.lat - o.lat) * k, lng: o.lng + (p.lng - o.lng) * k, d: p.d });
+    }
+    const wn = waterNear(o.lat, o.lng); if (wn.n && wn.d <= R) out.set('w:' + norm(wn.n), { key: 'w:' + norm(wn.n), t: 'water', n: wn.n, lat: wn.lat, lng: wn.lng, d: wn.d });
+    for (const [k, m] of Object.entries(fig.c || {})) out.set(k, { ...m, key: k, t: 'custom', d: haversine(o.lat, o.lng, m.lat, m.lng) });
+    /* knots tied before stay, even when the radius has shrunk or the places have not loaded yet */
+    for (const [k, m] of Object.entries(fig.n || {})) if (!out.has(k) && inFig(k)) out.set(k, { ...m, key: k, h: m.h || [], harm: (m.h || []).filter(r => press.has(r)), d: haversine(o.lat, o.lng, m.lat, m.lng), away: true });
+    return out;
+  }
+  const metaOf = n => ({ t: n.t, n: n.n, role: n.role, on: n.on, fam: n.fam, ...(n.h && n.h.length ? { h: n.h } : {}), g: n.g, kind: n.kind, id: n.id, hum: n.hum, ...(n.url ? { url: n.url } : {}), lat: +n.lat.toFixed(5), lng: +n.lng.toFixed(5) });
+  function load(o) {
+    const f = FIGS[o.id]; fig = f ? { e: (f.e || []).map(x => [...x]), end: f.end || 'pin', prev: f.prev || null, n: { ...(f.n || {}) }, c: { ...(f.c || {}) }, lb: { ...(f.lb || {}) }, x: [...(f.x || [])], ts: { ...(f.ts || {}) }, born: f.born || ((f.e || []).length ? f.t || 1 : null), name: f.name || '' } : blank();
+    if (!inFig(fig.end)) fig.end = 'pin';
+  }
+  function save() {
+    if (!cell) return; const keep = new Set(['pin', ...fig.e.flat(), ...((fig.prev && fig.prev.e) || []).flat(), ...Object.keys(fig.c)]);
+    const only = o => Object.fromEntries(Object.entries(o).filter(([k]) => keep.has(k)));
+    fig.n = only(fig.n); fig.lb = only(fig.lb); fig.x = fig.x.filter(k => keep.has(k)); const live = new Set(fig.e.map(eKey)); fig.ts = Object.fromEntries(Object.entries(fig.ts || {}).filter(([k]) => live.has(k)));
+    if (!fig.e.length && !fig.prev && !Object.keys(fig.c).length) delete FIGS[cell.id];
+    else FIGS[cell.id] = { e: fig.e, end: fig.end, prev: fig.prev, n: fig.n, c: fig.c, lb: fig.lb, x: fig.x, ts: fig.ts, born: fig.born || null, ...(fig.name ? { name: fig.name } : {}), t: Date.now() };
+    const ks = Object.keys(FIGS); if (ks.length > 80) ks.sort((a, b) => FIGS[a].t - FIGS[b].t).slice(0, ks.length - 80).forEach(k => delete FIGS[k]);
+    store.set('da.figs.v1', FIGS);
+  }
+  /* ───────── where each knot is on the screen: a life where it has moved to ───────── */
+  let itemsRef = null, itemIx = new Map();
+  const itemOf = id => { if (itemsRef !== life.items) { itemsRef = life.items; itemIx = new Map(itemsRef.map(it => [it.o.id, it])); } return itemIx.get(id); };
+  function pos(k) {
+    const n = nodes.get(k) || (k === 'pin' && cell ? { key: 'pin', lat: cell.lat, lng: cell.lng } : null); if (!n) return null;
+    if (n.t === 'life') { const it = itemOf(n.id); if (it) { n.x = it.x + it.dx; n.y = it.y + it.dy; n.r = it.b.d / 2; return n; } }
+    const p = map.project([n.lng, n.lat]); n.x = p.x; n.y = p.y; n.r = n.t === 'water' ? 7 : n.t === 'group' ? 5.5 : n.t === 'pin' ? 14 : n.t === 'custom' ? 5.5 : n.cur ? 5.2 : 4.4; return n;
+  }
+  const lifeNode = id => !!cell && nodes.has('o:' + id);
+  const focused = n => !!focus && (focus === n.key || (n.h || []).includes(focus) || (n.t === 'biz' && focus === 'fam:' + n.fam && !(n.harm || []).length));
+  const visible = n => n.t !== 'biz' || n.cur || (n.harm || []).length > 0 || n.rank < MAX_BIZ || inFig(n.key) || n.away || n.key === peekKey || focused(n);
+  /* ───────── drawing ───────── */
+  const back = k => { k = clamp(k, 0, 1); const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+  function curve(ctx, p, q, t0, now, i, part = 1) {
+    const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy) || 1; const nx = -dy / L, ny = dx / L;
+    const sag = Math.min(16, L * 0.055); let vib = 0;
+    if (t0 != null && !reduced()) { const t = (now - t0) / 1000; if (t >= 0 && t < 1.8) { const f = 3 + 7 * (1 - clamp(L / 420, 0, 1)); vib = Math.min(15, L * 0.085) * Math.exp(-t / 0.4) * Math.sin(TAU * f * t); } }
+    const sway = reduced() ? 0 : 0.7 * Math.sin(now / 1000 * 0.9 + i * 1.7);
+    const mx = (p.x + q.x) / 2 + nx * (vib + sway), my = (p.y + q.y) / 2 + sag + ny * (vib + sway); const cx = 2 * mx - (p.x + q.x) / 2, cy = 2 * my - (p.y + q.y) / 2;
+    ctx.moveTo(p.x, p.y);
+    if (part >= 1) { ctx.quadraticCurveTo(cx, cy, q.x, q.y); return; }
+    /* a string still being drawn: the first part of the curve */
+    const T = clamp(part, 0, 1), ax = p.x + (cx - p.x) * T, ay = p.y + (cy - p.y) * T, bx = cx + (q.x - cx) * T, by = cy + (q.y - cy) * T;
+    ctx.quadraticCurveTo(ax, ay, ax + (bx - ax) * T, ay + (by - ay) * T);
+  }
+  function lines(ctx, edges, at, now, tOf, alpha = 1, partOf = null, width = 1, hot = null) {
+    if (!edges.length) return;
+    ctx.save(); ctx.lineCap = 'round';
+    for (const [w, c] of [[3.2 * width, 'rgba(0,0,0,.38)'], [1.5 * width, '#FFFFFF']]) {
+      ctx.lineWidth = w;
+      edges.forEach((e, i) => { const p = at(e[0]), q = at(e[1]); if (!p || !q) return; const part = partOf ? partOf(e, i) : 1; if (part <= 0) return; const t0 = tOf(e, i); ctx.strokeStyle = c !== '#FFFFFF' || !hot || !hot(e) ? c : C.orange; ctx.globalAlpha = typeof alpha === 'function' ? alpha(e, i, t0) : alpha; ctx.beginPath(); curve(ctx, p, q, t0, now, i, part); ctx.stroke(); });
+    }
+    ctx.restore();
+  }
+  /* a string to a place that sells or leaves what harms this life */
+  const hotIn = nodeOf => e => e.some(k => { const n = k !== 'pin' && nodeOf(k); return !!n && n.t === 'biz' && (n.harm || []).length > 0; });
+  /* the human ecology, drawn small: a diamond for a shop or a brand, filled by what it does; a room for a third space; three linked dots for a network */
+  function placeMark(ctx, n, x, y, k, tied) {
+    const r = (n.cur ? 5 : 4) * k * (tied ? 1.18 : 1); const harm = (n.harm || []).length > 0;
+    const dia = (rr, fill, stroke, lw = 1.4) => { ctx.beginPath(); ctx.moveTo(x, y - rr); ctx.lineTo(x + rr, y); ctx.lineTo(x, y + rr); ctx.lineTo(x - rr, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
+    ctx.save();
+    if (n.fam === 'third') { const h = r * 0.95; ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.navy; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, h * 0.38, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
+    else if (n.fam === 'network') { const P = [[0, -r], [r * 0.95, r * 0.6], [-r * 0.95, r * 0.6]]; ctx.beginPath(); P.forEach(([a, b], i) => (i ? ctx.lineTo(x + a, y + b) : ctx.moveTo(x + a, y + b))); ctx.closePath(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.white; ctx.stroke(); for (const [a, b] of P) { ctx.beginPath(); ctx.arc(x + a, y + b, r * 0.42, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.navy; ctx.stroke(); } }
+    else if (n.fam === 'artists') { dia(r, C.white, C.navy); ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
+    else if (n.fam === 'circular') dia(r, C.teal, C.navy);
+    else if (n.fam === 'brand' && !harm) dia(r, C.cobalt, C.white, 1.2);
+    else dia(r, harm ? C.neon : C.white, harm ? C.navy : C.cobalt);
+    if (n.cur) { ctx.beginPath(); ctx.arc(x, y, r + 3.2, 0, TAU); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke(); }
+    ctx.restore();
+  }
+  function mark(ctx, n, x, y, k, tied) {
+    if (k <= 0) return;
+    if (n.t === 'biz') placeMark(ctx, n, x, y, k, tied);
+    else if (n.t === 'group') { ctx.save(); ctx.beginPath(); ctx.arc(x, y, 5.6 * k, 0, TAU); ctx.fillStyle = C.tribe[n.kind] || C.tribe.park; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = C.white; ctx.stroke(); ctx.restore(); }
+    else if (n.t === 'water') { ctx.save(); ctx.beginPath(); ctx.arc(x, y, 7.4 * k, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', x, y, 10 * k, C.cobalt); }
+    else if (n.t === 'custom') { const h = 5.4 * k; ctx.save(); ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = tied ? C.navy : C.white; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = tied ? C.white : C.navy; ctx.stroke(); ctx.restore(); M.icon(ctx, n.kind === 'person' ? 'people' : n.kind === 'idea' ? 'aware' : 'where', x, y, 8 * k, tied ? C.white : C.navy); }
+    else if (n.t === 'life' && n.away) M.badge(ctx, { tone: n.hum ? 'offer' : M.toneOf(n.g), g: n.hum ? null : n.g, i: n.hum ? 'people' : null, d: 16 * k }, x, y);
+  }
+  /* a knot joined: a white ring; the knot the next string leaves from: a ring that breathes */
+  function knotAt(ctx, k, x, y, r, now) {
+    const tied = k === 'pin' ? fig.e.length > 0 : inFig(k); const end = fig.end === k;
+    if (!tied && !end) return;
+    ctx.save();
+    if (tied && k !== 'pin') { ctx.beginPath(); ctx.arc(x, y, r + 3, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); }
+    if (end) { const s = reduced() ? 0 : Math.sin(now / 420); ctx.beginPath(); ctx.arc(x, y, r + 7 + s * 1.6, 0, TAU); ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.3; ctx.stroke(); }
+    ctx.restore();
+  }
+  function draw(ctx, now, e) {
+    if (!cell) return; const R = rangeOf(cell); const P = pos('pin');
+    for (const n of nodes.values()) pos(n.key);
+    /* threads of responsibility: from the life to each place that sells or leaves what harms it */
+    if (P) {
+      ctx.save(); ctx.lineCap = 'round';
+      for (const n of nodes.values()) {
+        if (n.t !== 'biz' || !(n.harm || []).length || n.x == null) continue; const k = reduced() ? 1 : clamp((e - 380 - (n.d / R) * 600) / 420, 0, 1); if (k <= 0) continue;
+        const on = focus ? focused(n) : true; ctx.globalAlpha = (focus ? (on ? 0.95 : 0.1) : 0.42) * k; ctx.lineWidth = focus && on ? 1.6 : 1; ctx.strokeStyle = C.orange;
+        ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.lineTo(P.x + (n.x - P.x) * k, P.y + (n.y - P.y) * k); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    /* the strings: whole, or drawn again one by one when the figure is traced */
+    const traced = trace && now < trace.end; const glow = glowUntil > now ? (glowUntil - now) / 2600 : 0;
+    const hot = hotIn(k => nodes.get(k));
+    if (glow > 0) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 14 * glow; lines(ctx, fig.e, k => nodes.get(k), now, x => plucks.get(eKey(x)), 0.5 + 0.5 * glow, null, 1 + glow, hot); ctx.restore(); }
+    lines(ctx, fig.e, k => nodes.get(k), now, x => plucks.get(eKey(x)), 1, traced ? (x, i) => clamp((now - trace.t0 - i * trace.step) / (trace.step * 0.8), 0, 1) : null, 1, hot);
+    if (traced) traceCaption(now);
+    else if (trace) { trace = null; if (capEl) capEl.hidden = true; }
+    /* the string it would make, before it is made */
+    let pv = peekKey && nodes.get(peekKey);
+    const preview = (p, q) => { ctx.save(); ctx.lineCap = 'round'; ctx.beginPath(); curve(ctx, p, q, null, now, 0); ctx.strokeStyle = 'rgba(11,37,69,.5)'; ctx.lineWidth = 4; ctx.stroke(); ctx.setLineDash([6, 5]); ctx.lineDashOffset = reduced() ? 0 : -now / 40; ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); };
+    if (pv && peekKey !== fig.end && !fig.e.some(([a, b]) => (a === fig.end && b === peekKey) || (b === fig.end && a === peekKey))) {
+      const p = nodes.get(fig.end) || P; if (p && p.x != null) preview(p, pv);
+    }
+    /* a life outside the radius, looked at: the way out to it */
+    if (peekKey && peekKey.startsWith('x:')) { const o = S.byId.get(idOf(peekKey.slice(2))); if (o && P) { const q = map.project([o.lng, o.lat]); pv = { x: q.x, y: q.y, r: 10 }; preview(P, pv); } }
+    for (const n of nodes.values()) {
+      if (n.t === 'pin' || !visible(n)) continue;
+      const k = reduced() ? 1 : back((e - 560 - (n.d / R) * 520) / 260); const tied = inFig(n.key);
+      if (n.t !== 'life' || n.away) mark(ctx, n, n.x, n.y, k, tied);
+      if (focus && focused(n) && k >= 1) { const q = clamp((now - focusAt) / 300, 0, 1); ctx.save(); ctx.beginPath(); ctx.arc(n.x, n.y, (n.r || 5) + 5 + (1 - q) * 8, 0, TAU); ctx.strokeStyle = C.orange; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.4 + 0.6 * q; ctx.stroke(); ctx.restore(); }
+      if (k >= 1) knotAt(ctx, n.key, n.x, n.y, n.r || 5, now);
+    }
+    if (pv && pv.x != null) { const q = clamp((now - peekAt) / 260, 0, 1); ctx.save(); ctx.beginPath(); ctx.arc(pv.x, pv.y, (pv.r || 5) + 6 + (1 - q) * 10, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.5 + 0.5 * q; ctx.stroke(); ctx.restore(); }
+    drawLead(ctx);
+    /* a constellation born: rings out from the life */
+    if (fig.born && now - bornAt < 1400 && P) { const q = (now - bornAt) / 1400; for (const dq of [0, 0.18]) { const qq = clamp(q - dq, 0, 1); ctx.save(); ctx.beginPath(); ctx.arc(P.x, P.y, 16 + qq * 70, 0, TAU); ctx.strokeStyle = C.white; ctx.globalAlpha = (1 - qq) * 0.8; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); } }
+    if (ghost) { const p = map.project([ghost.lng, ghost.lat]); const q = reduced() ? 1 : back((now - ghost.t) / 300); ctx.save(); ctx.beginPath(); ctx.rect(p.x - 7 * q, p.y - 7 * q, 14 * q, 14 * q); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = C.navy; ctx.stroke(); ctx.restore(); M.icon(ctx, 'plus', p.x, p.y, 10 * q, C.navy); }
+  }
+  /* ───────── touch ───────── */
+  function hit(x, y, slack) {
+    if (!cell) return null; let best = null;
+    if (ghost) { const p = map.project([ghost.lng, ghost.lat]); if (Math.hypot(p.x - x, p.y - y) < 16) return { kind: 'node', key: '+', d: 0 }; }
+    for (const n of nodes.values()) {
+      if (!visible(n) || n.x == null) continue; const d = Math.hypot(n.x - x, n.y - y) - (n.r || 5) - (n.t === 'biz' ? 3 : 0);
+      if (d <= slack && (!best || d < best.d)) best = { kind: 'node', key: n.key, d };
+    }
+    return best;
+  }
+  const panOf = k => { const n = pos(k); return n ? clamp((n.x / (innerWidth || 1)) * 2 - 1, -1, 1) : 0; };
+  const lenOf = ([a, b]) => { const p = nodes.get(a), q = nodes.get(b); return p && q && cell ? clamp(haversine(p.lat, p.lng, q.lat, q.lng) / Math.max(100, rangeOf(cell)), 0, 1) : 0.5; };
+  /* ───────── sound: each knot its own, each string its note ───────── */
+  const SCALE = [196, 220.5, 245, 294, 326.7, 392, 441, 490, 588];
+  const noteOf = len => SCALE[clamp(Math.round((1 - clamp(len, 0, 1)) * (SCALE.length - 1)), 0, SCALE.length - 1)];
+  function soundOf(n) {
+    if (!n) return { g: 'paw' };
+    if (n.t === 'biz') return { fam: n.fam || (ROLES[n.role] || {}).cat || 'service' };
+    if (n.t === 'group') return { fam: 'network' };
+    if (n.t === 'water') return { g: 'aquatic' };
+    if (n.t === 'custom') return n.kind === 'person' ? { fam: 'people' } : n.kind === 'idea' ? { g: 'butterfly' } : { g: 'plant' };
+    if (n.t === 'life') return n.hum ? { fam: 'people' } : { g: n.g || 'paw' };
+    return { g: n.g || 'paw' };
+  }
+  const voiceOf = k => soundOf(nodes.get(k));
+  function changed() { life.redraw(); life.retag(); if (peekKey) card(); if (typeof stringsChanged === 'function') stringsChanged(); }
+  /* ───────── the hand: a click looks, a second click (or a right-click) joins ───────── */
+  function tap(k) {
+    if (!cell) return;
+    if (k === '+') { newKnot(); return; }
+    if (k === 'pin') { unpeek(); playOpen(); return; }
+    if (String(k).startsWith('x:')) { if (k === peekKey) bringIn(idOf(k.slice(2)), true); return; }
+    if (!nodes.has(k)) return;
+    if (k !== peekKey) { peek(k); return; }
+    act(k);
+  }
+  /* right-click, or a long press: join a knot at once, or let it go */
+  function join(k) {
+    if (!cell || k === 'pin' || k === '+') return;
+    if (String(k).startsWith('x:')) { bringIn(idOf(k.slice(2)), true); return; }
+    if (!nodes.has(k)) return;
+    if (inFig(k)) { untie(k); if (peekKey === k) card(); return; }
+    tieTo(k, fig.end); if (peekKey && peekKey !== k) unpeek(); save(); changed();
+  }
+  let bornAt = 0;
+  function tieTo(k, from, at = 0, quiet = false) {
+    const n = nodes.get(k); if (!n || inFig(k)) return null; const now = performance.now();
+    const e = [from, k]; fig.e.push(e); fig.n[k] = metaOf(n); if (from !== 'pin' && nodes.get(from)) fig.n[from] = metaOf(nodes.get(from));
+    fig.ts[eKey(e)] = Date.now(); plucks.set(eKey(e), now + at * 1000); fig.end = k; fig.prev = null;
+    if (!fig.born) { fig.born = Date.now(); bornAt = now; snd.born(); }
+    if (!quiet) { const L = lenOf(e); snd.pluck(L, panOf(k)); snd.knot(voiceOf(k), noteOf(L), 0.12, 0.9, panOf(k)); }
+    return e;
+  }
+  /* what a second click on a knot already looked at does: join it, carry on from it, or cut it */
+  function act(k) {
+    const n = nodes.get(k); if (!cell || !n || k === 'pin') return;
+    if (k === fig.end) {
+      for (let i = fig.e.length - 1; i >= 0; i--) { const [a, b] = fig.e[i]; if (a === k || b === k) { fig.e.splice(i, 1); fig.end = a === k ? b : a; break; } }
+      if (!inFig(fig.end)) fig.end = 'pin';
+      snd.snap(panOf(k)); save(); changed(); return;
+    }
+    if (inFig(k)) { fig.end = k; snd.tick(2300); buzz(4); save(); changed(); return; }
+    tieTo(k, fig.end); save(); changed();
+  }
+  /* every place that does one thing, joined to the life at once: a fan of strings, plucked one after another */
+  function joinAll(keys) {
+    if (!cell) return 0; const ks = keys.filter(k => nodes.has(k) && !inFig(k)); if (!ks.length) return 0; const seq = [];
+    ks.forEach((k, i) => { const e = tieTo(k, 'pin', i * 0.11, true); if (!e) return; const L = lenOf(e); seq.push({ f: noteOf(L), t: i * 0.11, pan: panOf(k), g: 0.07 }); });
+    seq.push({ spec: voiceOf(ks[ks.length - 1]), f: noteOf(0.5), t: ks.length * 0.11 + 0.1, v: 0.8, pan: 0 });
+    snd.song(seq); save(); changed(); return ks.length;
+  }
+  /* untie a knot wholly: every string to it */
+  function untie(k) { const was = fig.e.length; fig.e = fig.e.filter(([a, b]) => a !== k && b !== k); if (!inFig(fig.end)) fig.end = fig.e.length ? fig.e[fig.e.length - 1][1] : 'pin'; if (fig.e.length !== was) { snd.snap(panOf(k)); save(); changed(); } }
+  function undo() {
+    if (!fig.e.length) { tick(600); return; } const e = fig.e.pop(); fig.end = inFig(e[0]) ? e[0] : 'pin';
+    snd.snap(panOf(e[1])); save(); changed();
+  }
+  function reset() {
+    if (!fig.e.length) { tick(600); return; } const lens = fig.e.map(lenOf);
+    fig.prev = { e: fig.e, end: fig.end }; fig.e = []; fig.end = 'pin';
+    snd.strum(lens.reverse(), -1); save(); changed();
+  }
+  function restore() {
+    if (!fig.prev) { tick(600); return; } fig.e = fig.prev.e.map(x => [...x]); fig.end = fig.prev.end; fig.prev = null;
+    const now = performance.now(); fig.e.forEach((e, i) => { plucks.set(eKey(e), now + i * 45); fig.ts[eKey(e)] = fig.ts[eKey(e)] || Date.now(); }); nodes = compute(cell);
+    snd.strum(fig.e.map(lenOf), 1); save(); changed();
+  }
+  function strum(dir) { const now = performance.now(); fig.e.forEach((e, i) => plucks.set(eKey(e), now + i * 45)); snd.strum(fig.e.map(lenOf), dir); life.redraw(); }
+  const busy = now => (S.mode === 'sig' && now - sigT < 2200) || !!ghost || !!peekKey || !!focus || glowUntil > now || !!trace || songUntil > now || (!!cell && (now - shownAt < 1800 || [...plucks.values()].some(t => now - t < 1800)));
+  /* one kind of place lit up together; looked at a second time, joined together */
+  function focusOn(f) { focus = f; focusAt = performance.now(); unpeek(); life.redraw(); }
+  const unfocus = () => { if (focus) { focus = null; life.redraw(); } };
+
+  /* ───────── looking: a small card beside the knot, its sound, and the string it would make ───────── */
+  const ROLEW = r => (ROLES[r] || {}).w || '';
+  const FAMW = f => (FAMILIES[f] || {}).w || '';
+  const KINDW = { place: 'PLACE', person: 'PERSON', idea: 'IDEA' };
+  function peek(k) { peekKey = k; peekAt = performance.now(); ghost = null; focus = null; buzz(3); card(); life.redraw(); life.retag(); const n = nodes.get(k); if (n) snd.knot(soundOf(n), noteOf(clamp((n.d || 0) / Math.max(100, rangeOf(cell)), 0, 1)), 0, 0.75, panOf(k)); if (typeof peekChanged === 'function') peekChanged(k); }
+  function unpeek() { if (!peekKey && !ghost) return; peekKey = null; ghost = null; pk.hidden = true; lead = null; life.redraw(); life.retag(); if (typeof peekChanged === 'function') peekChanged(null); }
+  /* a life outside the radius: looked at without losing the one open; a second click brings it in and joins it */
+  function peekOut(id) {
+    const o = S.byId.get(id); if (!o || !cell) return; if (peekKey === 'x:' + id) { bringIn(id, true); return; }
+    peekKey = 'x:' + id; peekAt = performance.now(); ghost = null; card(); life.redraw(); snd.knot({ g: lifeOf(o) }, noteOf(0.9), 0, 0.7, 0);
+  }
+  function bringIn(id, tie) {
+    const o = S.byId.get(id); if (!o || !cell) return; const d = haversine(cell.lat, cell.lng, o.lat, o.lng); if (d > CONFIG.RADIUS.max - 25) { tick(600); return; }
+    if (d > rangeOf(cell)) { S.radius.set(cell.id, Math.min(CONFIG.RADIUS.max, Math.ceil((d + 25) / 10) * 10)); nodes = compute(cell); life.moved(); refreshRecord(); if (typeof placesAround === 'function') placesAround(cell.lat, cell.lng, rangeOf(cell) + 80); }
+    const k = 'o:' + id; if (!nodes.has(k)) return; if (tie) { unpeek(); tieTo(k, fig.end); save(); changed(); } else peek(k);
+  }
+  /* the score of a knot's sound: its notes as dots on five lines, or a small wave for a person */
+  function scoreSVG(spec) {
+    const d = snd.describe(spec); if (d.people) return `<svg class="score" viewBox="0 0 44 14" aria-hidden="true"><path d="M2 7c4-6 6 6 10 0s6 6 10 0 6 6 10 0 6 6 10 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>`;
+    let x = 4; const tot = d.notes.reduce((a, n) => a + n[1], 0) || 1; const dots = d.notes.map(([s2, dur]) => { const cx = x + (dur / tot) * 18; x += (dur / tot) * 36; return `<circle cx="${cx.toFixed(1)}" cy="${(11 - clamp(s2, -7, 24) * 0.36).toFixed(1)}" r="1.7"/>`; }).join('');
+    return `<svg class="score" viewBox="0 0 44 14" aria-hidden="true"><path d="M0 2.5h44M0 5h44M0 7.5h44M0 10h44M0 12.5h44" stroke="currentColor" stroke-width=".4" opacity=".5"/><g fill="currentColor">${dots}</g></svg>`;
+  }
+  function card() {
+    if (!peekKey) { pk.hidden = true; return; }
+    if (peekKey === '+') return;
+    let h = '';
+    if (peekKey.startsWith('x:')) {
+      const o = S.byId.get(idOf(peekKey.slice(2))); if (!o) { unpeek(); return; } const d = haversine(cell.lat, cell.lng, o.lat, o.lng);
+      h = `${head(o, nameOf(o), `${esc((M.KINDS[lifeOf(o)] || '').toUpperCase())} · ${metres(d)}`, null, { g: lifeOf(o) }, 'open')}${!o.hum ? `<p class="pk-line">${esc(threatOf(o))}</p>` : ''}`;
+    } else {
+      const n = nodes.get(peekKey); if (!n) { unpeek(); return; }
+      /* a place: what it does that harms this life comes first; what it is, after */
+      const hr = n.t === 'biz' ? (n.harm || []) : []; const rw = hr.length ? ROLEW(hr[0]) : ROLEW(n.role);
+      const what = n.t === 'biz' ? `${FAMW(n.fam)}${rw && rw !== FAMW(n.fam) ? ` · ${rw}` : ''}` : n.t === 'group' ? 'GROUP' : n.t === 'water' ? 'WATER' : n.t === 'custom' ? KINDW[n.kind] || 'KNOT' : esc((M.KINDS[n.g] || '').toUpperCase());
+      const meta = [what, n.d ? metres(n.d) : ''].filter(Boolean).join(' · ');
+      const o = n.t === 'life' ? S.byId.get(n.id) : null;
+      const line = n.t === 'biz' ? (hr.length && !n.what ? (ROLES[hr[0]] || {}).duty : n.what || (ROLES[n.role] || {}).duty || '') : n.t === 'group' ? n.what || '' : o && !n.hum ? threatOf(o) : '';
+      const harms = hr.slice(1).map(r => ROLEW(r)).filter(Boolean);
+      h = `${head(o, labelOf(peekKey), meta, n, soundOf(n), o ? 'open' : (n.url || n.link) ? 'link' : '')}${line ? `<p class="pk-line">${esc(cap(line))}</p>` : ''}${harms.length ? `<p class="pk-harm mono">ALSO ${harms.join(' · ')}</p>` : ''}${n.addr ? `<p class="pk-addr mono">${esc(n.addr.toUpperCase())}</p>` : ''}`;
+    }
+    pk.innerHTML = h.replace(/(\d) (K?M)\b/g, '$1 $2'); pk.hidden = false; pk.classList.remove('in'); void pk.offsetWidth; pk.classList.add('in'); place();
+  }
+  function head(o, name, meta, n, spec, go) {
+    const sub = o ? subjectOf(o) : null;
+    const img = sub && sub.ph && licOpen(sub.ph.l) ? `<img src="${esc(photoURL(sub.ph.u, 'small'))}" alt="">` : o ? `<img src="${badgeImg(life.badgeOf(o, 40), 44)}" alt="">` : n && n.t === 'biz' ? `<i class="fm fm-${esc(n.fam || 'service')}${(n.harm || []).length ? ' harm' : ''}"></i>` : n && n.t === 'group' ? `<i class="patch" style="--c:${C.tribe[n.kind] || C.tribe.park}"></i>` : n && n.t === 'water' ? icon('water') : n && n.t === 'custom' ? `<i class="sq big${inFig(n.key) ? ' tied' : ''}">${icon(n.kind === 'person' ? 'people' : n.kind === 'idea' ? 'aware' : 'where', 'sm')}</i>` : icon('where');
+    const url = n && (n.url || n.link);
+    const nm = go === 'open' ? `<button type="button" class="pk-nm" data-pk="open">${esc(name)}</button>` : go === 'link' && url ? `<a class="pk-nm" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>` : `<b class="pk-nm">${esc(name)}</b>`;
+    return `<div class="pk-top">${img}<span class="pk-id">${nm}<small>${meta}</small></span><button type="button" class="pk-x" data-pk="close" aria-label="Close">${icon('close', 'sm')}</button></div>`;
+  }
+  /* the card sits outside the radius, on the knot's side, so every knot inside stays in reach; a thread leads back to the knot */
+  let lead = null;
+  function place() {
+    lead = null; if (pk.hidden || !peekKey) return; let x0, y0;
+    if (peekKey === '+' && ghost) { const p = map.project([ghost.lng, ghost.lat]); x0 = p.x; y0 = p.y; }
+    else if (peekKey.startsWith('x:')) { const o = S.byId.get(idOf(peekKey.slice(2))); if (!o) return; const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; }
+    else { const n = pos(peekKey); if (!n) return; x0 = n.x; y0 = n.y; }
+    const c = map.getContainer(); const W = c.clientWidth, H = c.clientHeight; const open = S.open && !phone() ? Math.min(440, innerWidth * 0.4) : 0; const bottom = phone() && S.open ? innerHeight * 0.42 : H;
+    const w = pk.offsetWidth || 250, h = pk.offsetHeight || 120; const right = W - open - 8, low = bottom - 8;
+    const fits = (x, y) => x >= 8 && y >= 8 && x + w <= right && y + h <= low;
+    const ctr = cell ? map.project([cell.lng, cell.lat]) : null; let at = null;
+    if (ctr && !peekKey.startsWith('x:')) {
+      const e = map.project([cell.lng + rangeOf(cell) / (111320 * Math.cos(cell.lat * Math.PI / 180)), cell.lat]); const R = Math.abs(e.x - ctr.x) + 14;
+      /* clear of the circle: a rectangle whose nearest corner or edge is outside it */
+      const clear = (x, y) => { const nx = clamp(ctr.x, x, x + w), ny = clamp(ctr.y, y, y + h); return Math.hypot(nx - ctr.x, ny - ctr.y) >= R; };
+      let dx = x0 - ctr.x, dy = y0 - ctr.y; const L = Math.hypot(dx, dy); if (L < 4) { dx = 1; dy = 0; } else { dx /= L; dy /= L; }
+      const ext = Math.min(Math.abs(dx) > 1e-3 ? (w / 2) / Math.abs(dx) : 1e9, Math.abs(dy) > 1e-3 ? (h / 2) / Math.abs(dy) : 1e9);
+      const ty = clamp(y0 - h / 2, 8, Math.max(8, low - h)), tx = clamp(x0 - w / 2, 8, Math.max(8, right - w));
+      const cands = [[ctr.x + dx * (R + ext) - w / 2, ctr.y + dy * (R + ext) - h / 2], [ctr.x + R, ty], [ctr.x - R - w, ty], [tx, ctr.y + R], [tx, ctr.y - R - h], [8, 8], [right - w, 8], [8, low - h], [right - w, low - h]];
+      at = cands.find(([x, y]) => fits(x, y) && clear(x, y)) || null;
+    }
+    /* no room outside the circle: beside the knot, then docked at an edge, never over the knot or the life at the centre */
+    if (!at) {
+      const box = ([x, y]) => [clamp(x, 8, Math.max(8, right - w)), clamp(y, 8, Math.max(8, low - h))];
+      const over = ([x, y], px, py, m) => px > x - m && px < x + w + m && py > y - m && py < y + h + m;
+      const side = ctr && x0 < ctr.x ? -1 : 1;
+      const cands = [[side < 0 ? x0 - w - 18 : x0 + 18, y0 - h / 2], [side < 0 ? x0 + 18 : x0 - w - 18, y0 - h / 2], [x0 - w / 2, y0 - h - 18], [x0 - w / 2, y0 + 18], [8, 8], [right - w, 8], [8, low - h], [right - w, low - h]].map(box);
+      at = cands.find(c2 => !over(c2, x0, y0, 10) && !(ctr && over(c2, ctr.x, ctr.y, 16))) || cands.find(c2 => !over(c2, x0, y0, 10)) || cands[0];
+    }
+    let [x, y] = at;
+    x = clamp(x, 8, Math.max(8, right - w)); y = clamp(y, 8, Math.max(8, low - h));
+    pk.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    const lx = clamp(x0, x, x + w), ly = clamp(y0, y, y + h); if (Math.hypot(lx - x0, ly - y0) > 14) lead = { x0, y0, x1: lx, y1: ly };
+  }
+  /* the thread from the card back to its knot */
+  function drawLead(ctx) { if (!lead || pk.hidden) return; ctx.save(); ctx.beginPath(); ctx.moveTo(lead.x0, lead.y0); ctx.lineTo(lead.x1, lead.y1); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2; ctx.setLineDash([2, 3]); ctx.stroke(); ctx.restore(); }
+  pk.addEventListener('click', e => {
+    const b = e.target.closest('[data-pk]'); if (!b) return; const a = b.dataset.pk; const k = peekKey; if (!k) return;
+    if (a === 'close') { unpeek(); tick(900); return; }
+    if (a === 'open') { const id = idOf(k.startsWith('x:') ? k.slice(2) : String(nodes.get(k).id)); unpeek(); select(id); }
+  });
+  pk.addEventListener('contextmenu', e => { e.preventDefault(); if (peekKey) join(peekKey); });
+  /* ───────── knots of your own: a place, a person or an idea, anywhere in the radius ───────── */
+  function ground(ll) {
+    if (!cell) return; if (peekKey || ghost || focus) { unpeek(); unfocus(); tick(900); return; }
+    ghost = { lat: ll.lat, lng: ll.lng, t: performance.now() }; snd.tick(1300); life.redraw();
+  }
+  function newKnot() {
+    if (!ghost) return; peekKey = '+'; peekAt = performance.now();
+    pk.innerHTML = `<div class="pk-top">${icon('plus')}<span class="pk-id"><b class="pk-nm">&nbsp;</b><small>${metres(haversine(cell.lat, cell.lng, ghost.lat, ghost.lng))}</small></span><button type="button" class="pk-x" data-pk="close" aria-label="Close">${icon('close', 'sm')}</button></div>`
+      + `<form class="pk-new" id="pk-new"><input id="pk-n" type="text" maxlength="40" placeholder="Name" aria-label="Name" autocomplete="off"><div class="pk-kinds">${Object.entries(KINDW).map(([k, w], i) => `<button type="button" class="chip${i ? '' : ' on'}" data-kind="${k}" aria-pressed="${!i}">${w}</button>`).join('')}</div><button type="submit" class="pk-main" aria-label="Add">${icon('check', 'sm')}</button></form>`;
+    pk.hidden = false; pk.classList.remove('in'); void pk.offsetWidth; pk.classList.add('in'); place(); snd.tick(1700);
+    const f = $('#pk-new'); let kind = 'place';
+    f.addEventListener('click', e => { const c = e.target.closest('[data-kind]'); if (!c) return; kind = c.dataset.kind; f.querySelectorAll('[data-kind]').forEach(b => { b.classList.toggle('on', b === c); b.setAttribute('aria-pressed', String(b === c)); }); tick(1500); });
+    f.addEventListener('submit', e => { e.preventDefault(); const name = $('#pk-n').value.trim(); if (!name) { nudge($('#pk-n')); return; } const k = 'k:' + Date.now().toString(36); fig.c[k] = { t: 'custom', n: name, kind, lat: +ghost.lat.toFixed(5), lng: +ghost.lng.toFixed(5) }; ghost = null; save(); nodes = compute(cell); peek(k); changed(); });
+    if (!coarse()) setTimeout(() => { const i = $('#pk-n'); if (i) i.focus(); }, 60);
+  }
+  function removeKnot(k) { if (!fig.c[k]) return false; delete fig.c[k]; untie(k); save(); nodes = compute(cell); if (peekKey === k) unpeek(); changed(); snd.snap(0); return true; }
+  /* ───────── what the card and the slip read ───────── */
+  const labelOf = k => (fig.lb[k] != null ? fig.lb[k] : (nodes.get(k) || fig.n[k] || fig.c[k] || {}).n || '');
+  const included = k => !fig.x.includes(k);
+  function setInclude(k, on) { fig.x = fig.x.filter(x => x !== k); if (!on) fig.x.push(k); save(); }
+  function setLabel(k, t) { const orig = (nodes.get(k) || fig.n[k] || {}).n || ''; if (!t.trim() || t.trim() === orig) delete fig.lb[k]; else fig.lb[k] = t.trim().slice(0, 40); save(); }
+  const tied = () => { const seen = new Set(); const out = []; for (const [a, b] of fig.e) for (const k of [a, b]) if (k !== 'pin' && !seen.has(k)) { seen.add(k); const n = nodes.get(k) || (fig.n[k] && { ...fig.n[k], key: k }); if (n) out.push({ ...n, key: k, label: labelOf(k), inc: included(k) }); } return out; };
+  function reach() {
+    const order = { custom: 0, biz: 1, group: 2, water: 3, life: 4 };
+    return [...nodes.values()].filter(n => n.t !== 'pin').map(n => ({ ...n, tied: inFig(n.key) })).sort((a, b) => (b.tied - a.tied) || order[a.t] - order[b.t] || ((b.cur ? 1 : 0) - (a.cur ? 1 : 0)) || ((b.harm || []).length - (a.harm || []).length) || a.d - b.d);
+  }
+  /* who in the radius does what harms this life, and who can help: counted in plain words, each a set of knots */
+  function ledgerOf() {
+    const harm = new Map(), help = new Map();
+    for (const n of nodes.values()) {
+      if (n.t !== 'biz' || n.away) continue;
+      for (const r of n.harm || []) { if (!harm.has(r)) harm.set(r, []); harm.get(r).push(n.key); }
+      if (!(n.harm || []).length && !n.on) { const f = n.fam || 'service'; if (f === 'service') continue; if (!help.has(f)) help.set(f, []); help.get(f).push(n.key); }
+    }
+    const press = PRESSURES[lifeOf(cell)] || [];
+    return { harm: [...harm.entries()].sort((a, b) => press.indexOf(a[0]) - press.indexOf(b[0])), help: [...help.entries()].sort((a, b) => b[1].length - a[1].length), total: new Set([...harm.values()].flat()).size };
+  }
+  function tagHTML(k) {
+    const n = nodes.get(k); if (!n || k === peekKey) return ''; const d = n.d ? ` · ${metres(n.d)}` : '';
+    if (n.t === 'pin') return `<span class="tx"><b>${esc(n.n)}</b><small>${fig.e.length ? `${fig.e.length} ${icon('string', 'sm')}` : ''}</small></span>`;
+    const what = n.t === 'biz' ? `<i class="role${(n.harm || []).length ? ' on' : ''}">${(n.harm || []).length ? ROLEW(n.harm[0]) : FAMW(n.fam) || ROLEW(n.role)}</i>` : n.t === 'group' ? 'GROUP' : n.t === 'water' ? 'WATER' : n.t === 'custom' ? KINDW[n.kind] || 'KNOT' : esc((M.KINDS[n.g] || '').toUpperCase());
+    return `<span class="tx"><b>${esc(labelOf(k) || n.n)}</b><small>${what}${d}${inFig(k) ? ` · ${icon('string', 'sm')}` : ''}</small></span>`;
+  }
+  /* the figure carried by a signal: each knot kept as a bearing and a distance from the cell, so it can be drawn anywhere */
+  function snapshot() {
+    if (!cell) return { nodes: [], edges: [] }; const keys = []; const ix = k => { if (k === 'pin') return 'pin'; let i = keys.indexOf(k); if (i < 0) { keys.push(k); i = keys.length - 1; } return String.fromCharCode(97 + i); };
+    /* a knot left off the slip passes its strings on: whatever was tied through it joins up past it */
+    const rep = { pin: 'pin' }, seen = new Set(), edges = [];
+    for (const [a, b] of fig.e) {
+      const ra = rep[a] || (included(a) ? a : 'pin');
+      if (!included(b)) { if (!rep[b]) rep[b] = ra; continue; }
+      rep[b] = b; const id = [ra, b].sort().join('|'); if (ra === b || seen.has(id)) continue; seen.add(id); edges.push([ix(ra), ix(b)]);
+    }
+    const out = keys.map((k, i) => { const n = nodes.get(k) || fig.n[k] || fig.c[k] || {}; return { k: String.fromCharCode(97 + i), t: n.t, n: labelOf(k) || n.n, ...(n.role ? { role: n.role } : {}), ...(n.fam && n.t === 'biz' ? { fam: n.fam } : {}), ...(n.t === 'biz' ? { h: n.harm || (n.h || []).filter(r => (PRESSURES[lifeOf(cell)] || []).includes(r)) } : {}), ...(n.url ? { u: n.url } : {}), ...(n.g && n.t === 'life' ? { g: n.g } : {}), ...(n.kind && (n.t === 'group' || n.t === 'custom') ? { kind: n.kind } : {}), b: Math.round(bearing(cell.lat, cell.lng, n.lat, n.lng)), d: Math.round(haversine(cell.lat, cell.lng, n.lat, n.lng)) }; });
+    return { nodes: out, edges };
+  }
+  /* a signal's figure, read only: its strings plucked once as it opens */
+  let sigT = 0;
+  const showSig = () => { sigT = performance.now(); life.redraw(); };
+  function drawSig(ctx, now) {
+    const s = S.signals.find(x => x.key === S.sig); if (!s || !s.pin) return; const P = map.project([s.pin.lng, s.pin.lat]);
+    const at = k => { if (k === 'pin') return { x: P.x, y: P.y }; const n = (s.nodes || []).find(x => x.k === k); if (!n) return null; const [la, ln] = dest(s.pin.lat, s.pin.lng, n.d, n.b); const p = map.project([ln, la]); return { ...n, x: p.x, y: p.y }; };
+    const t0 = sigT || now;
+    const sn = k => { const n = (s.nodes || []).find(x => x.k === k); return n && { t: n.t, harm: harmsOfNode(n) }; };
+    lines(ctx, s.edges || [], at, now, (e, i) => t0 + 300 + i * 60, 1, null, 1, hotIn(sn));
+    for (const n of s.nodes || []) { const p = at(n.k); if (!p) continue; const k = reduced() ? 1 : back((now - t0 - 200) / 300); if (n.t === 'life') M.badge(ctx, { tone: M.toneOf(n.g || 'paw'), g: n.g || 'paw', d: 18 * k }, p.x, p.y); else mark(ctx, { ...n, on: onNotice(n.role), fam: n.fam || (ROLES[n.role] || {}).cat }, p.x, p.y, k, true); }
+  }
+  /* ───────── every figure the radar holds, faint; and played as a song from the radar's centre ───────── */
+  let songUntil = 0; const songT = new Map();
+  const figCells = () => Object.entries(FIGS).map(([id, f]) => ({ id: idOf(id), f, o: S.byId.get(idOf(id)) })).filter(c => c.o && (c.f.e || []).length && (!cell || c.o.id !== cell.id) && life.inScan(c.o.lat, c.o.lng) && !hiddenCell(c.o.id));
+  const figAt = c => k => { const m = k === 'pin' ? c.o : c.f.n[k] || (c.f.c || {})[k]; if (!m) return null; const p = map.project([m.lng, m.lat]); return { x: p.x, y: p.y }; };
+  function drawSaved(ctx, now) {
+    if (S.mode === 'sig') return;
+    for (const c of figCells()) { const press = new Set(PRESSURES[lifeOf(c.o)] || []); const mn = k => { const m = c.f.n[k]; return m && { t: m.t, harm: (m.h || []).filter(r => press.has(r)) }; };
+      lines(ctx, c.f.e, figAt(c), now, (e, i) => songT.get(`${c.id}|${i}`), (e, i, t0) => (t0 != null && now - t0 > -50 && now - t0 < 1400 ? 1 : 0.34), null, 1, hotIn(mn)); }
+  }
+  /* each figure its own register, so the figures in one song are told apart */
+  const REG = [1, 1.5, 0.75, 2, 1.125];
+  /* one figure as notes: each string plucked in the order it was tied, and the knot at its end answering in its own sound */
+  function figSeq(c, t0, reg, seq, now, open) {
+    const at = k => (k === 'pin' ? c.o : c.f.n[k] || (c.f.c || {})[k] || (open ? nodes.get(k) : null));
+    const panOfLL = (lat, lng) => clamp(map.project([lng, lat]).x / (innerWidth || 1) * 2 - 1, -1, 1); let t = t0, n = 0;
+    c.f.e.slice(0, 24).forEach((e, i) => {
+      const p = at(e[0]), q = at(e[1]); if (!p || !q) return; const L = clamp(haversine(p.lat, p.lng, q.lat, q.lng) / 600, 0, 1); const f = noteOf(L) * reg; const pan = panOfLL(q.lat, q.lng);
+      seq.push({ f, t, pan, lat: q.lat, lng: q.lng });
+      const sp = soundOf(q.t ? q : { t: 'pin', g: lifeOf(c.o) }); const d = snd.describe(sp);
+      seq.push({ spec: sp, f, t: t + 0.14, v: 0.85, pan, quiet: true });
+      if (open) plucks.set(eKey(e), now + t * 1000); else songT.set(`${c.id}|${i}`, now + t * 1000);
+      t += clamp(d.len * 0.85, 0.55, 1.1); n++;
+    });
+    /* each tune comes home to its own life, softly */
+    if (n) { seq.push({ spec: { g: lifeOf(c.o) }, f: SCALE[0] * reg * 2, t, v: 0.6, pan: panOfLL(c.o.lat, c.o.lng), lat: c.o.lat, lng: c.o.lng }); t += 1.1; }
+    return t;
+  }
+  function song() {
+    const seq = []; let t = 0; const c0 = S.scan; const now = performance.now(); songT.clear();
+    const cells = figCells().sort((a, b) => bearing(c0.lat, c0.lng, a.o.lat, a.o.lng) - bearing(c0.lat, c0.lng, b.o.lat, b.o.lng));
+    const all = cell && fig.e.length ? [{ id: cell.id, o: cell, f: fig, open: true }, ...cells] : cells;
+    all.forEach((c, ci) => { if (t < 60) t = figSeq(c, t, REG[ci % REG.length], seq, now, !!c.open); });
+    /* no strings yet: the lives the radar has found, each in its own sound, in the order the hand meets them */
+    if (!seq.length) {
+      life.items.filter(it => it.inS && life.seen().has(it.o.id) && life.shown(it) && !it.o.hist).sort((a, b) => a.sb - b.sb).slice(0, 16).forEach((it, i) => { const sp = { g: lifeOf(it.o) }; seq.push({ spec: sp, f: SCALE[(i * 3) % SCALE.length], t, v: 0.8, pan: clamp(it.x / (innerWidth || 1) * 2 - 1, -1, 1), lat: it.lat, lng: it.lng }); t += clamp(snd.describe(sp).len * 0.7, 0.4, 0.9); });
+    }
+    songUntil = now + t * 1000 + 1600; snd.song(seq); return seq.filter(n => n.lat != null).map(n => ({ ...n, at: now + n.t * 1000 }));
+  }
+  /* the open figure alone, as a song */
+  function playOpen() { if (!cell || !fig.e.length) { strum(1); return []; } const seq = []; const now = performance.now(); const t = figSeq({ id: cell.id, o: cell, f: fig }, 0, 1, seq, now, true); songUntil = now + t * 1000 + 1200; snd.song(seq); life.redraw(); return seq; }
+  /* ───────── constellations: every figure, named, kept, listed on NOW ───────── */
+  const nameFor = (o, f) => (f && f.name) || (o ? `${nameOf(o)} · ${title(placeOf(o))}` : 'A constellation');
+  function list() {
+    const all = Object.entries(FIGS).filter(([, f]) => (f.e || []).length).map(([id, f]) => {
+      const o = S.byId.get(idOf(id)); const keys = [...new Set(f.e.flat())].filter(k => k !== 'pin'); const m = k => f.n[k] || (f.c || {})[k] || {};
+      const people = keys.filter(k => ['biz', 'group'].includes(m(k).t) || (m(k).t === 'custom' && m(k).kind === 'person') || m(k).hum).length;
+      const lives = keys.filter(k => m(k).t === 'life' && !m(k).hum).length, water = keys.filter(k => m(k).t === 'water').length;
+      return { id: idOf(id), o, f, name: nameFor(o, f), keys, people, lives, water, edges: f.e.length, born: f.born || f.t, t: f.t };
+    }).filter(c => c.o).sort((a, b) => b.t - a.t);
+    /* knots shared with other constellations: the web between webs */
+    const by = new Map(); for (const c of all) for (const k of c.keys) { if (/^(k:|s:)/.test(k)) continue; if (!by.has(k)) by.set(k, []); by.get(k).push(c.id); }
+    for (const c of all) { const sh = new Map(); for (const k of c.keys) for (const id of by.get(k) || []) if (id !== c.id) { if (!sh.has(id)) sh.set(id, []); sh.get(id).push(k); } c.shared = [...sh.entries()].map(([id, ks]) => ({ id, ks, name: (all.find(x => x.id === id) || {}).name || '' })); }
+    return all;
+  }
+  function rename(id, name) { const f = FIGS[id]; if (!f) return; const t = String(name || '').trim().slice(0, 48); if (t && t !== nameFor(S.byId.get(idOf(id)), {})) f.name = t; else delete f.name; store.set('da.figs.v1', FIGS); if (cell && String(cell.id) === String(id)) fig.name = f.name || ''; }
+  /* a constellation drawn as a star chart: the life at the centre ringed, people as small diamonds, lives as dots */
+  function chartOf(id, size = 56) {
+    const f = FIGS[id] || (cell && String(cell.id) === String(id) ? fig : null); const o = S.byId.get(idOf(id)); if (!f || !o) return '';
+    const pts = { pin: { x: 0, y: 0, t: 'pin' } }; const kx = Math.cos(o.lat * Math.PI / 180);
+    for (const k of new Set(f.e.flat())) { if (k === 'pin') continue; const m = f.n[k] || (f.c || {})[k]; if (m) pts[k] = { x: (m.lng - o.lng) * kx, y: -(m.lat - o.lat), t: m.t }; }
+    const ext = Math.max(1e-5, ...Object.values(pts).map(p => Math.max(Math.abs(p.x), Math.abs(p.y)))); const s = (size / 2 - 6) / ext; const c = size / 2;
+    const P = k => pts[k] && [c + pts[k].x * s, c + pts[k].y * s];
+    const ln = f.e.map(([a, b]) => { const p = P(a), q = P(b); return p && q ? `M${p[0].toFixed(1)} ${p[1].toFixed(1)}L${q[0].toFixed(1)} ${q[1].toFixed(1)}` : ''; }).join('');
+    const dots = Object.entries(pts).map(([k, p]) => { const [x, y] = P(k); return p.t === 'pin' ? `<circle cx="${x}" cy="${y}" r="3.2" fill="none" stroke="currentColor" stroke-width="1.2"/>` : p.t === 'biz' || p.t === 'group' ? `<path d="M${x} ${(y - 2.4).toFixed(1)}l2.4 2.4-2.4 2.4-2.4-2.4z" fill="currentColor"/>` : `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="currentColor"/>`; }).join('');
+    return `<svg class="chart" viewBox="0 0 ${size} ${size}" aria-hidden="true"><path d="${ln}" fill="none" stroke="currentColor" stroke-width=".8" opacity=".7"/>${dots}</svg>`;
+  }
+  /* the whole web at once: every string lit, every knot in view */
+  function glow() { glowUntil = performance.now() + 2600; strum(1); life.redraw(); }
+  function extent() {
+    if (!cell) return null; const ks = [...new Set(fig.e.flat())]; const pts = ks.map(k => (k === 'pin' ? cell : nodes.get(k) || fig.n[k] || fig.c[k])).filter(Boolean); if (pts.length < 2) return null;
+    return [[Math.min(...pts.map(p => p.lng)), Math.min(...pts.map(p => p.lat))], [Math.max(...pts.map(p => p.lng)), Math.max(...pts.map(p => p.lat))]];
+  }
+  /* its origin story: the strings drawn again in the order they were tied, each with its sound, and a line that says which */
+  function traceIt() {
+    if (!cell || !fig.e.length) return; const now = performance.now(); const step = 900; const n = Math.min(fig.e.length, 24);
+    trace = { t0: now + 250, step, end: now + 250 + n * step + 900, n };
+    const seq = []; fig.e.slice(0, n).forEach((e, i) => { const q = nodes.get(e[1]) || fig.n[e[1]] || fig.c[e[1]]; const L = lenOf(e); const f = noteOf(L); const t = 0.25 + i * step / 1000; seq.push({ f, t: t + 0.05, pan: panOf(e[1]) }); if (q) seq.push({ spec: soundOf(q.t ? q : { g: 'paw' }), f, t: t + 0.2, v: 0.85, pan: panOf(e[1]) }); plucks.set(eKey(e), now + (t + 0.05) * 1000); });
+    snd.song(seq); songUntil = trace.end; life.redraw();
+  }
+  function traceCaption(now) {
+    if (!capEl || !trace) return; const i = clamp(Math.floor((now - trace.t0) / trace.step), 0, trace.n - 1); if (now < trace.t0) return;
+    if (capEl.dataset.i === String(i) && !capEl.hidden) return; capEl.dataset.i = String(i);
+    const [a, b] = fig.e[i]; const nm = k => (k === 'pin' ? nameOf(cell) : labelOf(k) || (nodes.get(k) || {}).n || ''); const ts = fig.ts[eKey(fig.e[i])];
+    capEl.innerHTML = `<b class="mono">${i + 1}/${trace.n}</b><span>${esc(nm(a))} <i>→</i> ${esc(nm(b))}</span>${ts ? `<small class="mono">${fmtStamp(ts)}</small>` : ''}`; capEl.hidden = false;
+  }
+  /* one constellation as a song, from the list, wherever it is */
+  function playFig(id) {
+    const f = FIGS[id] || (cell && String(cell.id) === String(id) ? fig : null); const o = S.byId.get(idOf(id)); if (!f || !o) return 0;
+    const seq = []; const now = performance.now(); const t = figSeq({ id: idOf(id), o, f, open: !!cell && cell.id === o.id }, 0, 1, seq, now, !!cell && cell.id === o.id); songUntil = now + t * 1000 + 1000; snd.song(seq); life.redraw(); return t;
+  }
+  return { open, seed, close, refresh, draw, drawSig, drawSaved, showSig, knotAt, hit, tap, join, act, joinAll, untie, undo, reset, restore, strum, busy, pos, lifeNode, tied, reach, ledgerOf, tagHTML, snapshot,
+    peek, unpeek, peekOut, bringIn, ground, place, song, playOpen, labelOf, included, setInclude, setLabel, removeKnot, focusOn, unfocus, soundOf, scoreSVG,
+    list, rename, chartOf, glow, extent, traceIt, playFig, nameFor,
+    get cell() { return cell; }, get fig() { return fig; }, get nodes() { return nodes; }, get peeked() { return peekKey; }, get ghost() { return ghost; }, get focus() { return focus; }, get tracing() { return !!trace; }, inFig };
+})();
 
 
 /* ════════════════════════════════════════════════════════════════════
-   THE CARD — every life, poster, person and business opens as one card on the white page:
-   the picture large, the name, what the months ahead hold for it and what the ground around it holds,
-   the briefs that fit, its posters as images, and the places it can go.
-   The card turns over to write the four lines from a brief, and turns again to become the poster.
+   THE CARD — the photograph large, the name, what El Niño does to this life and how long until it lands,
+   something to learn, the strings tied so far and a note. DIRECT RESPONSE turns it over to a blank slip of four lines;
+   what else it carries is chosen before it is issued, and the slip issued becomes a signal.
    ════════════════════════════════════════════════════════════════════ */
-const rec = $('#record'), rScroll = $('#r-scroll'), heroBtn = $('#r-act');
-const nameOf = o => {
-  if (!o) return ''; const sub = subjectOf(o); const d = (o.ev && o.ev.data) || {};
-  if (o.isEvent || o.comm || (o.user && o.hum && o.title)) return o.title;
-  if (sub.tx) return sub.tx.cn || sub.tx.n;
-  return d.text || d.note || d.h || o.title || (o.hum ? 'People' : SCALES[bandOf(o)].label.split(' · ')[0]);
-};
-const codeOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.story ? o.sid : o.comm ? o.hid : o.fid ? o.fid : o.user ? toCode(String(o.ev.key).slice(-6)) : String(o.id).toUpperCase());
-const hashOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.story ? o.sid : o.comm ? o.hid : o.fid ? o.fid : o.user ? 'U' + o.ev.key : '');
-const isAlarm = o => !!o && (o.kind === 'injured' || o.kind === 'lost' || o.kind === 'dead');
+const rec = $('#record'), rScroll = $('#r-scroll'), heroBtn = $('#r-act'), altBtn = $('#r-alt');
 /* the four lines, and what each one asks for */
-const WISH = { W: ['What we know', 'The evidence: news, data or theory.'], I: ['It would be great', 'The belief: what should be true.'], S: ["So let's create", 'The principle to work by.'], H: ['Here is how it works', 'The tactic: what someone does.'] };
-const wishTip = k => `${k} · ${WISH[k][0]}. ${WISH[k][1]}`;
+const WISH = { w: ['What we know', 'The evidence: news, data, a theory'], i: ['It would be great', 'The belief: what should be true'], s: ["So let's create", 'The principle to work by'], h: ['Here is how it works', 'The tactic: what someone does'] };
+/* a record opened from the bare map closes back to the bare map; one opened from a page closes back to that page */
 function openRecord() {
-  rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); if (!S.open) setOpen(true);
+  if (!S.open) { S.from = 'map'; setOpen(true); } else if (rec.hidden) S.from = 'view';
+  rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); stopHeroes();
+  $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', 'false'));
   rScroll.scrollTop = 0; life.placeHandle(); life.moved();
 }
-function closeRecord(fromView) {
-  S.sel = null; S.bizSel = null; S.mode = null; S.place = null; S.filed = null; S.brief = null; S.tribeSel = null;
-  rec.hidden = true; viewEl.hidden = false; document.body.classList.remove('rec', 'placing');
-  $('#radius').hidden = true; if (!fromView) renderView(); life.data();
-  try { history.replaceState(null, '', S.view ? '#' + VIEWS[S.view].k : location.pathname + location.search); } catch (e) { /* file:// */ }
+/* how: nothing (back to where it came from), 'switch' (another record follows), 'view' (a page replaces it) */
+function closeRecord(how) {
+  S.sel = null; S.mode = null; S.place = null; S.tribeSel = null; S.sig = null; S.issued = null;
+  strings.close(); document.body.classList.remove('placing'); $('#radius').hidden = true;
+  if (how === 'switch') return;
+  const from = S.from; S.from = null;
+  rec.hidden = true; viewEl.hidden = false; document.body.classList.remove('rec'); life.data();
+  if (!how) { if (from === 'map') setOpen(false); else { renderView(); $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === S.view))); } }
+  try { history.replaceState(null, '', S.open ? '#' + VIEWS[S.view].k : location.pathname + location.search); } catch (e) { /* file:// */ }
 }
-$('#r-x').addEventListener('click', () => closeRecord());
-$('#r-back').addEventListener('click', () => { if (face === 'back' || face === 'filed') { showFace('front'); return; } closeRecord(); });
-addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (!$('#viewer').hidden) { closeViewer(); return; } if (S.mode) { if (face !== 'front' && S.mode === 'ping') showFace('front'); else closeRecord(); } });
+function goBack() {
+  if (face === 'wish' || (face === 'signal' && S.mode === 'ping')) { showFace('front'); tick(1100); return; }
+  if (face === 'place') { cancelPlace(); return; }
+  tick(900); closeRecord();
+}
+$('#r-back').addEventListener('click', goBack);
+$('#r-x').addEventListener('click', () => { if (S.mode === 'place') { cancelPlace(); return; } tick(800); closeRecord(); });
+addEventListener('keydown', e => { if ((e.key === 'Delete' || e.key === 'Backspace') && S.mode === 'ping' && String(strings.peeked || '').startsWith('k:') && !/INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) { e.preventDefault(); strings.removeKnot(strings.peeked); return; } if (e.key !== 'Escape') return; if (S.mode === 'ping' && strings.focus) { strings.unfocus(); fillLedger(); return; } if (S.mode === 'ping' && (strings.peeked || strings.ghost)) { e.preventDefault(); strings.unpeek(); tick(900); return; } if (S.mode) { e.preventDefault(); goBack(); } else if (S.open) setOpen(false); });
 
 let face = 'front', flipping = null;
-/* front to back and back to poster turn the card over; everything else arrives as a line becoming a plane */
+/* front to slip and back turn the card over; everything else arrives as a wipe */
 function showFace(f) {
-  const turn = !reduced() && ((face === 'front' && f === 'back') || (face === 'back' && (f === 'front' || f === 'filed')) || (face === 'filed' && f === 'front')) && !rec.hidden;
+  if (f !== face && f !== 'front' && typeof strings !== 'undefined' && strings.peeked) strings.unpeek();
+  const turn = !reduced() && face !== f && ['front', 'wish', 'signal'].includes(face) && ['front', 'wish', 'signal'].includes(f) && !rec.hidden;
   if (turn && rec.animate) {
     const dir = f === 'front' ? 1 : -1; if (flipping) flipping.cancel();
     const a = rec.animate([{ transform: 'perspective(1600px) rotateY(0deg)' }, { transform: `perspective(1600px) rotateY(${90 * dir}deg)` }], { duration: 170, easing: 'cubic-bezier(.5,0,1,.5)' }); flipping = a;
@@ -1535,75 +2158,112 @@ function showFace(f) {
   }
   paintFace(f, true);
 }
-const heroWord = (ic, w) => { heroBtn.innerHTML = `<span class="hw">${w}</span>${icon(ic)}`; heroBtn.setAttribute('aria-label', w.charAt(0) + w.slice(1).toLowerCase()); };
+const heroWord = (ic, w) => { heroBtn.innerHTML = `<span class="hw">${w}</span>${icon(ic)}`; heroBtn.setAttribute('aria-label', cap(w.toLowerCase())); };
+const altWord = (ic, w) => { altBtn.innerHTML = `<span class="mono">${w}</span>${icon(ic)}`; };
 function paintFace(f, wipe) {
-  face = f; for (const [k, id] of [['front', 'r-front'], ['back', 'r-form'], ['filed', 'r-filed'], ['place', 'r-place']]) { const el = $('#' + id); el.hidden = k !== f; if (k === f && wipe) { el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); } }
+  face = f; for (const [k, id] of [['front', 'r-front'], ['wish', 'r-wish'], ['signal', 'r-signal'], ['place', 'r-place']]) { const el = $('#' + id); el.hidden = k !== f; if (k === f && wipe) { el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); } }
   rec.dataset.face = f; rScroll.scrollTop = 0; document.body.classList.toggle('placing', f === 'place');
-  heroBtn.hidden = f === 'filed';
-  const o = S.mode === 'ping' ? S.byId.get(S.sel) : null; const calls = f === 'front' && o && (o.kind === 'injured' || o.kind === 'dead') && !!telOf(o);
-  const [hi, hw] = f === 'back' ? ['check', 'MAKE THE POSTER'] : f === 'place' ? ['check', 'PLACE IT'] : S.mode === 'biz' ? ['print', 'SIGN-UP SHEET'] : S.mode === 'tribe' ? ['out', 'JOIN THEM'] : calls ? ['phone', o.kind === 'dead' ? 'REPORT IT' : 'CALL NOW'] : ['next', 'IMAGINE THE POSTER'];
-  heroWord(hi, hw);
-  rec.classList.toggle('alarm', calls); $('#r-alt').hidden = !calls;
-  if (f === 'back' && !coarse()) setTimeout(() => { const t = $$('#r-form textarea').find(x => !x.value); if (t) t.focus({ preventScroll: true }); }, 380);
+  const o = S.mode === 'ping' ? S.byId.get(S.sel) : null; const tel = f === 'front' && o && (o.kind === 'injured' || o.kind === 'dead') ? telOf(o) : '';
+  const lost = f === 'front' && o && o.kind === 'lost';
+  altBtn.hidden = true; heroBtn.hidden = false; rec.classList.toggle('alarm', !!tel || lost); heroBtn.classList.remove('go'); altBtn.classList.add('go');
+  if (f === 'wish') heroWord('receipt', 'DIRECT ACTION');
+  else if (f === 'signal') heroWord('print', 'PRINT');
+  else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
+  else if (S.mode === 'tribe') heroWord('out', 'JOIN');
+  else if (tel) { heroWord('phone', o.kind === 'dead' ? 'REPORT' : 'CALL'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
+  else if (lost) { heroWord('lost', 'SEARCH'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
+  else { heroWord('next', 'NOTICED'); heroBtn.classList.add('go'); }
+  if (f === 'wish' && !coarse()) setTimeout(() => { const t = WKEYS.map(k => $('#w-' + k)).find(x => !x.value); if (t) t.focus({ preventScroll: true }); }, 380);
+  /* the way out is always the first thing in the bar */
+  $('#r-back').classList.toggle('cancel', f === 'place'); $('#r-back').setAttribute('aria-label', f === 'place' ? 'Cancel' : 'Back');
+  const o2 = S.mode === 'ping' ? S.byId.get(S.sel) : null; $('#r-hide').hidden = !(f === 'front' && o2 && !o2.hero);
+  if (o2) $('#r-hide').dataset.tip = o2.user ? 'Delete' : 'Hide from the map';
+  $('#r-note').hidden = f !== 'front' || S.mode !== 'ping';
 }
 
 /* ───────── opening ───────── */
-function select(id, brief) {
+function select(id) {
   const o = S.byId.get(id); if (!o) return;
-  S.sel = id; S.bizSel = null; S.mode = 'ping'; S.filed = null; S.place = null; S.brief = brief || null; S.tribeSel = null;
+  const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = null; S.issued = null;
+  strings.open(o); openRecord();
   if (S.mapReady) map.easeTo({ center: [o.lng, o.lat], zoom: Math.max(map.getZoom(), 15.4), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
-  life.stopTour(); life.hover(null); life.select();
-  fillFront(o); showFace('front'); openRecord();
-  if (!o.ob) loadBusinesses();
-  try { history.replaceState(null, '', '#' + hashOf(o)); } catch (e) { /* file:// */ }
-}
-function selectBiz(i) {
-  const z = bizOf(i); if (!z) return;
-  S.bizSel = i; S.sel = null; S.mode = 'biz'; S.place = null; S.filed = null; S.brief = null; S.tribeSel = null;
-  if (S.mapReady) map.easeTo({ center: [z.lng, z.lat], zoom: Math.max(map.getZoom(), 15), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
-  life.stopTour(); life.hover(null); fillBiz(z); showFace('front'); openRecord();
-  try { history.replaceState(null, '', `#B${toCode(i)}`); } catch (e) { /* file:// */ }
+  life.hover(null); life.select();
+  fillFront(o); showFace('front');
+  if (was !== id) { snd.tick(1900); buzz(6); }
+  if (!o.ob) placesAround(o.lat, o.lng, rangeOf(o) + 80);
+  try { history.replaceState(null, '', '#' + (hashOf(o) || '')); } catch (e) { /* file:// */ }
 }
 function refreshRecord() {
-  if (S.mode === 'ping') { const o = S.byId.get(S.sel); if (!o) return; if (face === 'front') fillFront(o, true); else if (face === 'back') fillPatrons(o, true); }
-  else if (S.mode === 'biz') { const z = bizOf(S.bizSel); if (z) fillBiz(z, true); }
+  if (S.mode === 'ping') { const o = S.byId.get(S.sel); if (!o) return; if (face === 'front') fillFront(o, true); else if (face === 'wish') fillKnots(); }
   else if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); if (t) fillTribe(t, true); }
   life.placeHandle();
 }
-/* a group already caring for a patch of ground: what it does, the lives in its care, and the briefs to bring it */
+/* a group already caring for a patch of ground */
 function selectTribe(id) {
   const t = S.byId.get(id); if (!t || !t.isTribe) return;
-  S.tribeSel = id; S.sel = null; S.bizSel = null; S.mode = 'tribe'; S.place = null; S.filed = null; S.brief = null;
+  if (S.mode) closeRecord('switch');
+  S.tribeSel = id; S.sel = null; S.mode = 'tribe'; S.place = null; S.sig = null; strings.close();
+  openRecord();
   if (S.mapReady) { const la = t.blobs.map(b => b[0]), lo = t.blobs.map(b => b[1]); map.fitBounds([[Math.min(...lo) - 0.002, Math.min(...la) - 0.002], [Math.max(...lo) + 0.002, Math.max(...la) + 0.002]], { padding: framePad(), duration: reduced() ? 0 : 700, maxZoom: 16 }); }
-  life.stopTour(); life.hover(null); life.select(); fillTribe(t); showFace('front'); openRecord();
+  life.hover(null); life.select(); fillTribe(t); showFace('front'); snd.tick(1700);
   try { history.replaceState(null, '', '#' + t.tid); } catch (e) { /* file:// */ }
 }
-/* a brief chosen anywhere: open the life it fits best, with the brief on top */
-function openBrief(id, forId) {
-  const b = BRIEFS.find(x => x.id === id); if (!b) return;
-  let o = forId != null ? S.byId.get(/^\d+$/.test(forId) ? +forId : forId) : null;
-  if (!o) { let best = null; for (const c of cellsAll()) { if (isCold(c) || isAlarm(c) || c.isTribe) continue; const g = lifeOf(c); if (!b.g.includes(g) && !b.g.includes('any')) continue; const sc = degOf(c) * 10 + (c.story ? 3 : 0) + (c.rare || 0); if (!best || sc > best.sc) best = { c, sc }; } o = best && best.c; }
-  if (!o) { toast('Nothing on the map fits this brief yet.'); return; }
-  select(o.id, id);
+
+/* ───────── hiding: any cell can leave the map on this device; a record placed here is deleted ───────── */
+function toastUndo(msg, fn) { const t = $('#toast'); toast(msg, 4500); t.innerHTML = `<span>${esc(msg)}</span><button type="button">UNDO</button>`; t.querySelector('button').onclick = () => { fn(); t.hidden = true; tick(1600); }; }
+function hideCell(id) {
+  const o = S.byId.get(id); if (!o || o.hero) return;
+  if (S.mode === 'ping' && S.sel === id) closeRecord();
+  snd.snap(0); buzz(8);
+  if (o.user && o.ev) { ledgerAdd({ type: 'redact', ref: o.ev.key }).then(ev => toastUndo('DELETED', () => { ledger.local = ledger.local.filter(e => e.key !== ev.key); store.set('da.ledger.v4', ledger.local); derive(); refresh(); })); return; }
+  setHidden(id, true); life.data(); if (S.mode === 'ping') strings.refresh(); refreshPanel();
+  toastUndo('HIDDEN', () => { setHidden(id, false); life.data(); if (S.mode === 'ping') strings.refresh(); refreshPanel(); });
 }
+$('#r-hide').addEventListener('click', () => { if (S.sel != null) hideCell(S.sel); });
+/* ───────── the five: each can be changed to any life seen here or listed, or one of your own ───────── */
+const guessGlyph = q => { for (const [re, g] of NAME_GLYPH) if (re.test(q)) return g; return 'paw'; };
+function fiveOptions() {
+  const m = new Map();
+  for (const x of [...S.obs, ...S.hist]) { const t = x.tx; if (!t || !t.n || x.hum || !t.cn) continue; const k = t.n.toLowerCase(); if (!m.has(k)) m.set(k, { n: t.n, cn: t.cn, ic: t.ic, th: !!t.th, g: glyphOf(x), seen: 0 }); m.get(k).seen++; }
+  for (const f of FIELD) { const k = f.n.toLowerCase(); if (!m.has(k)) m.set(k, { n: f.n, cn: f.cn.replace(/\s*\(.*\)$/, ''), ic: IC_OF_GLYPH[f.g] || 'Mammalia', th: f.st === 'T', g: f.g, seen: 0 }); }
+  return [...m.values()];
+}
+function fiveResults(q) {
+  const qq = norm(q); const all = fiveOptions(); const list = (qq ? all.filter(x => norm(`${x.cn} ${x.n}`).includes(qq)) : all.sort((a, b) => b.seen - a.seen)).slice(0, 8);
+  const own = q.trim() && !list.some(x => norm(x.cn) === qq) ? { n: q.trim(), cn: cap(q.trim()), ic: IC_OF_GLYPH[guessGlyph(q)] || 'Animalia', g: guessGlyph(q), own: true } : null;
+  $('#five-r').innerHTML = [...list, ...(own ? [own] : [])].map(x => `<li><button type="button" class="nrow" data-pick="${esc(JSON.stringify(x))}">${glyphSVG(x.g)}<span class="n">${esc(x.cn)}</span><small class="mono">${x.own ? 'YOUR OWN' : x.seen ? `${x.seen} SEEN` : ''}</small></button></li>`).join('');
+}
+function openFive(slot) {
+  const el = $('#r-five'); if (!el.hidden && +el.dataset.slot === slot) { el.hidden = true; tick(1100); return; }
+  el.dataset.slot = slot; el.hidden = false; tick(1600);
+  el.innerHTML = `<input id="five-q" type="search" placeholder="Species" aria-label="Species" autocomplete="off"><ol id="five-r"></ol>${(store.get('da.five.v1', [])[slot] || null) ? '<button type="button" class="pill quiet" data-five-reset>RESET</button>' : ''}`;
+  const q = $('#five-q'); q.addEventListener('input', debounce(() => fiveResults(q.value), 120)); fiveResults(''); if (!coarse()) q.focus();
+}
+$('#r-chips').addEventListener('click', e => { const b = e.target.closest('[data-five]'); if (b) openFive(+b.dataset.five); });
+$('#r-five').addEventListener('click', e => {
+  const slot = +$('#r-five').dataset.slot; const pick = e.target.closest('[data-pick]'); const reset = e.target.closest('[data-five-reset]'); if (!pick && !reset) return;
+  if (reset) setFive(slot, null); else { const x = JSON.parse(pick.dataset.pick); setFive(slot, { n: x.n, cn: x.cn, ic: x.ic, th: !!x.th, g: x.g }); }
+  snd.pluck(0.3, 0); buzz(8); const h = S.heroes.find(o => o.slot === slot); refresh(); if (h) select(h.id);
+});
 
 /* ───────── the picture: the photograph, large; or the thing itself, large, on its own colour ───────── */
-const TONE_BG = { fauna: C.cobalt, night: C.navy, danger: C.orange, flora: C.tealDeep, event: C.navy, need: C.white, offer: C.navy, injured: C.red, dead: C.black, lost: C.white, story: C.cobalt, cold: '#9AA39D', hist: '#9AA39D' };
+const TONE_BG = { fauna: C.cobalt, night: C.navy, flora: C.tealDeep, event: C.navy, need: '#F1F3F2', offer: C.navy, injured: C.red, dead: C.black, lost: '#F1F3F2', story: C.cobalt, cold: '#9AA39D', hist: '#9AA39D' };
 function figure(o) {
-  const img = $('#r-img'), cv = $('#r-glyph'), cr = $('#r-credit'), fig = $('#r-fig'); const sub = o && (o.isBiz || o.isTribe) ? null : subjectOf(o);
-  img.hidden = true; cv.hidden = true; cr.textContent = ''; fig.classList.toggle('alarm', isAlarm(o)); fig.dataset.kind = o.kind || (o.isBiz ? 'biz' : '');
-  const own = o && !o.isBiz && !o.isTribe ? o.photo || (sub && sub.photo) : null;
-  if (own) { img.onerror = null; img.hidden = false; img.alt = nameOf(o); img.src = own; cr.textContent = o.who ? `© ${o.who}` : ''; return; }
+  const img = $('#r-img'), cv = $('#r-glyph'), cr = $('#r-credit'), fig = $('#r-fig'); const sub = o && !o.isTribe ? subjectOf(o) : null;
+  img.hidden = true; cv.hidden = true; cr.textContent = ''; fig.classList.toggle('alarm', isAlarm(o)); fig.dataset.kind = o.kind || ''; fig.classList.remove('loaded');
+  const own = o && !o.isTribe ? o.photo || (sub && sub.photo) : null;
+  const show = () => { img.hidden = false; requestAnimationFrame(() => fig.classList.add('loaded')); };
+  if (own) { img.onload = show; img.onerror = null; img.alt = nameOf(o); img.src = own; if (img.complete && img.naturalWidth) show(); cr.textContent = o.who ? `© ${o.who}` : ''; return; }
   if (sub && sub.ph && licOpen(sub.ph.l)) {
-    img.hidden = false; img.alt = nameOf(o); img.src = photoURL(sub.ph.u, 'large');
-    img.onerror = () => { if (!img.src.includes('/medium.')) img.src = photoURL(sub.ph.u, 'medium'); else { img.hidden = true; drawFigure(o); } };
+    img.alt = nameOf(o); img.onload = show; img.onerror = () => { if (!img.src.includes('/medium.')) img.src = photoURL(sub.ph.u, 'medium'); else { img.hidden = true; drawFigure(o); } };
+    img.src = photoURL(sub.ph.u, 'large'); if (img.complete && img.naturalWidth) show();
     cr.textContent = sub.ph.a || licLabel(sub.ph.l); return;
   }
   drawFigure(o);
-  if (sub && sub.ph) cr.innerHTML = `<a href="${CONFIG.INAT_WEB}${sub.id}" target="_blank" rel="noopener">© ${esc(sub.u.n || sub.u.l || '')}</a>`;
+  if (sub && sub.ph && typeof sub.id === 'number') cr.innerHTML = `<a href="${CONFIG.INAT_WEB}${sub.id}" target="_blank" rel="noopener">© ${esc(sub.u.n || sub.u.l || '')}</a>`;
 }
 function drawFigure(o) {
-  const cv = $('#r-glyph'); cv.hidden = false; const x = cv.getContext('2d'); const w = cv.width, h = cv.height; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
+  const cv = $('#r-glyph'); cv.hidden = false; $('#r-fig').classList.add('loaded'); const x = cv.getContext('2d'); const w = cv.width, h = cv.height; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
   if (o.isTribe) {   /* the patch itself, as it lies on the ground */
     const col = C.tribe[o.kind] || C.tribe.park; x.fillStyle = '#F1F3F2'; x.fillRect(0, 0, w, h);
     const la = o.blobs.map(b => b[0]), lo = o.blobs.map(b => b[1]); const a0 = Math.min(...la), a1 = Math.max(...la), b0 = Math.min(...lo), b1 = Math.max(...lo);
@@ -1612,9 +2272,8 @@ function drawFigure(o) {
     for (const [a, b, r] of o.blobs) { const px = w / 2 + ((b - (b0 + b1) / 2) * kx) * k, py = h / 2 - ((a - (a0 + a1) / 2) * ky) * k; life.blob(x, px, py, Math.max(2, r * k), ((a * 7919 + b * 104729) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2)); }
     x.fill(); x.restore(); return;
   }
-  if (o.isBiz) { const on = onNotice(o.role); x.fillStyle = on ? C.neon : C.cobalt; x.fillRect(0, 0, w, h); M.pin(x, { f: 'partner', s: !on, on, r: h * 0.12 }, w / 2, h / 2); return; }
-  const b = life.badgeOf(o, 40); const kc = g => C.kind[M.GROUP[g]] || C.kind.other;
-  const bg0 = /^k-/.test(b.tone) ? C.kind[b.tone.slice(2)] : b.tone === 'story' && b.g ? kc(b.g) : TONE_BG[b.tone] || C.cobalt; const bg = bg0 === C.white ? '#F1F3F2' : bg0; const fg = b.tone === 'dead' ? C.red : [C.orange, '#F1F3F2'].includes(bg) ? C.navy : C.white;
+  const b = life.badgeOf(o, 40);
+  const bg = /^k-/.test(b.tone) ? C.kind[b.tone.slice(2)] : TONE_BG[b.tone] || C.cobalt; const fg = b.tone === 'dead' ? C.red : bg === '#F1F3F2' ? C.navy : C.white;
   x.fillStyle = bg; x.fillRect(0, 0, w, h);
   if (o.kind === 'lost') { x.save(); x.setLineDash([18, 14]); x.lineWidth = 6; x.strokeStyle = C.red; x.beginPath(); x.arc(w / 2, h / 2, h * 0.42, 0, Math.PI * 2); x.stroke(); x.restore(); }
   if (o.kind === 'dead') { x.strokeStyle = C.red; x.lineWidth = 8; x.beginPath(); x.arc(w / 2, h / 2, h * 0.4, 0, Math.PI * 2); x.stroke(); }
@@ -1623,292 +2282,316 @@ function drawFigure(o) {
 
 /* ───────── the front ───────── */
 const TAG_WORDS = { sound: 'SOUND', nature: 'NATURE', free: 'FREE', 'first-nations': 'FIRST NATIONS-LED', h5: 'BIRD FLU WATCH', refuge: 'COOL ROOM', kids: 'ALL AGES', walk: 'WALK' };
-const cap = t => (t ? String(t).charAt(0).toUpperCase() + String(t).slice(1) : '');
-const ago = t => { const m = Math.max(1, Math.round((Date.now() - t) / 60000)); return m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
-/* the danger to a life in one sentence */
-const dangerOf = o => { const D = window.DA_DANGER || {}; return D[lifeOf(o)] || D.mammal || ''; };
-/* a fact, and the step it asks for */
-const doRow = (ic, fact, step, opt = {}) => `<li${opt.focus ? ` data-focus="${opt.focus}"` : ''}${opt.cls ? ` class="${opt.cls}"` : ''}><span class="di">${icon(ic)}</span><span class="dt"><b>${fact}</b>${step ? `<span class="ds">${opt.href ? `<a href="${opt.href}"${/^http/.test(opt.href) ? ' target="_blank" rel="noopener"' : ''}>${step}${icon('next', 'sm')}</a>` : opt.act ? `<button type="button" data-do="${opt.act}">${step}${icon('next', 'sm')}</button>` : step}</span>` : ''}</span></li>`;
-/* only what is urgent or practical: an animal hurt, dead or lost; a gathering's time and place; what a person asked for */
+const chip = (t, cls = '', tip = '') => `<i class="c ${cls}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${t}</i>`;
+const live = o => !o.hist && !o.isEvent && !(o.hum && !(subjectOf(o).tx && subjectOf(o).tx.n) && o.kind !== 'need' && o.kind !== 'pulse');
+/* a kind of life, whatever the record's age: its threat, its season, something to learn */
+const kindLife = o => { if (o.isEvent || o.isTribe) return false; const sub = subjectOf(o); return !!(sub.tx && sub.tx.n) || !!o.g; };
+function fillFront(o, quiet) {
+  const sub = subjectOf(o); const L = live(o);
+  $('#r-no').textContent = o.hero ? `${o.slot + 1} / ${HEROES.length} · IN GREATEST NEED` : `No. ${codeOf(o)}`;
+  $('#r-name').textContent = nameOf(o);
+  $('#r-latin').innerHTML = sub.tx && sub.tx.cn && sub.tx.n && sub.tx.cn !== sub.tx.n ? `<i>${esc(sub.tx.n)}</i>` : '';
+  if (!quiet) figure(o);
+  /* the chips: danger, when it lands, young, status, when and where it was seen */
+  const dg = L && !isCold(o) ? degOf(o) : 0; const w = L && !isAlarm(o) ? whenOf(o) : null; const y = L && !isAlarm(o) ? youngOf(o) : null;
+  const seenAt = o.hero ? (o.curated ? 'KNOWN SITES' : `${o.n} PAST SIGHTINGS`) : o.isEvent && o.start ? `${dayWord(o.start)} · ${fmtClock(o.start)}` : o.hist ? `${dayMonth(o.d)} ${String(o.d).slice(0, 4)}` : `${o.t ? fmtClock(o.t) + ' · ' : o.at && (o.comm || o.user) ? fmtClock(o.at) + ' · ' : ''}${o.d ? dayMonth(o.d) : ''}`;
+  const st = sub.tx && !o.hum ? (sub.tx.th ? 'THREATENED' : sub.tx.intro ? 'INTRODUCED' : sub.tx.na ? 'NATIVE' : '') : '';
+  const voice = (sub.so && sub.so.u) || o.sound;
+  $('#r-chips').innerHTML = [
+    dg ? chip(DEG[dg], `dg d${dg}`, 'Danger in the months ahead') : '',
+    w ? chip(`${w.now ? 'NOW' : `${daysTo(w.start)} D`} · ${esc(w.w)}`, `wn${w.now ? ' now' : ''}`, w.why) : '',
+    y ? chip(y.now ? 'YOUNG NOW' : `YOUNG · ${MON[y.m]}`, 'yg', 'When its young are due') : '',
+    st ? chip(st, st === 'THREATENED' ? 'th' : '') : '',
+    chip(esc([seenAt, placeOf(o)].filter(Boolean).join(' · ')), 'at'),
+    o.n > 1 && !o.hero ? chip(`×${o.n}`) : '',
+    typeof o.id === 'number' ? `<a class="c lk" href="${CONFIG.INAT_WEB}${o.id}" target="_blank" rel="noopener" data-tip="iNaturalist">iNat ${icon('out', 'sm')}</a>` : sub.tx && sub.tx.id ? `<a class="c lk" href="${CONFIG.INAT_TAXA}${sub.tx.id}" target="_blank" rel="noopener" data-tip="iNaturalist">iNat ${icon('out', 'sm')}</a>` : '',
+    voice ? `<button type="button" class="c play" data-u="${esc(voice)}" aria-label="Play the call">${icon('play')}</button>` : '',
+  ].join('');
+  if (o.user && o.said && nameOf(o) !== o.said) $('#r-chips').insertAdjacentHTML('afterbegin', `<q class="said">${esc(o.said)}</q>`);
+  if (o.hero) $('#r-chips').insertAdjacentHTML('beforeend', `<button type="button" class="c swap" data-five="${o.slot}" data-tip="Change this one">${icon('remix', 'sm')}CHANGE</button>`);
+  $('#r-five').hidden = true; $('#r-note').value = noteOf(o);
+  /* the threat, in a line; the hero's own reason under the pointer */
+  const K = live(o) || kindLife(o); const th = K && !isAlarm(o) ? threatOf(o) : '';
+  $('#r-threat').innerHTML = th ? `<span>${esc(th)}</span>` : ''; $('#r-threat').hidden = !th; $('#r-threat').className = `r-threat d${dg}`; $('#r-threat').dataset.tip = o.hero ? o.heroOf.why : (w ? w.why : '');
+  /* something to learn: the field list's line, else iNaturalist's */
+  const learn = K ? learnOf(o) : ''; const lr = $('#r-learn'); lr.textContent = learn ? cap(learn) : ''; lr.hidden = !learn;
+  const tid = sub.tx && sub.tx.id; const sl = $('#r-season'); if (!quiet) { sl.innerHTML = ''; sl.hidden = true; }
+  if (K && tid && !quiet) {
+    if (!learn) taxonInfo(tid).then(v => { if (S.sel !== o.id || !v) return; if (v.sum) { lr.textContent = v.sum; lr.hidden = false; } if (v.cs && !st.includes(v.cs)) $('#r-chips').insertAdjacentHTML('beforeend', chip(esc(v.cs), 'th', 'Conservation status')); });
+    seasonOf(tid).then(m => { if (S.sel !== o.id || !m || !m.some(Boolean)) return; sl.innerHTML = season(m); sl.hidden = false; });
+  }
+  /* who in its radius sells or leaves what harms it, and who can help */
+  fillLedger();
+  $('#r-do').innerHTML = urgentOf(o);
+  fillStrings();
+}
+$('#r-chips').addEventListener('click', e => { const b = e.target.closest('.play'); if (b) life.play(b.dataset.u, b); });
+/* the months it is seen here, from iNaturalist, under the outlook's danger */
+function season(m) {
+  const top = Math.max(...m); const now = new Date().getMonth(); const lvOf = mm => { for (let k = 0; k < OUT_N; k++) { const x = outMonth(k); if (x.m === mm) return x.lv; } return 0; };
+  return `<div class="ss" data-tip="Seen here by month · iNaturalist">${m.map((v, i) => `<span class="d${lvOf(i)}${i === now ? ' now' : ''}" style="--i:${i}"><i style="height:${Math.max(4, Math.round(v / top * 100))}%"></i><b class="mono">${MON[i].charAt(0)}</b></span>`).join('')}</div>`;
+}
+/* only what is urgent or practical: an animal hurt, dead or lost; a gathering's place; a contact */
 function urgentOf(o) {
   const fe = fieldOf(o); const L = [];
-  if (o.kind === 'injured') { const tel = telOf(o); L.push(doRow('injured', `Hurt ${ago(o.at)}`, tel === 'tel:1800675888' ? 'Call 1800 675 888' : 'Call Wildlife Victoria', { href: tel, cls: 'red' })); if (fe && fe.harm) L.push(doRow('harm', 'Do not handle it', cap(fe.harm))); }
-  if (o.kind === 'dead') { const tel = telOf(o); L.push(doRow('harm', 'Dead · do not touch it', tel ? 'Report it: 1800 675 888' : 'Tell the council', { href: tel || (LINKS.find(l => /MERRI-BEK/.test(l[0])) || [])[1], cls: 'black' })); }
-  if (o.kind === 'lost') { L.push(doRow('lost', `Lost ${ago(o.at)}`, 'Search the area', { act: 'search', cls: 'red' })); const ln = LINKS.find(l => /LOST/.test(l[0]) && (o.lat > -37.7835 ? /MERRI/.test(l[0]) : /MELBOURNE/.test(l[0]))); if (ln) L.push(doRow('out', 'Found it?', 'Council lost and found', { href: ln[1] })); }
-  if (o.isEvent && o.start) L.push(doRow('day', `${dayWord(o.start)} · ${fmtClock(o.start)}`, o.venue ? esc(o.venue) : '', o.link ? { href: o.link } : {}));
-  if (o.hum && !o.isEvent && !isAlarm(o) && !o.story) L.push(doRow(o.kind === 'offer' ? 'give' : o.kind === 'refuge' ? 'refuge' : 'people', o.kind === 'offer' ? 'Offered' : o.kind === 'refuge' ? 'A cool room' : o.kind === 'pulse' ? 'Check-ins' : 'Needed', o.link ? 'Open' : '', o.link ? { href: o.link } : {}));
+  const rowA = (ic, b, s, attrs = '', tag = 'a') => `<${tag} class="do" ${attrs}>${icon(ic)}<b>${b}</b>${s ? `<small>${s}</small>` : ''}</${tag}>`;
+  if (o.kind === 'injured') { const tel = telOf(o); L.push(rowA('phone', tel === 'tel:1800675888' ? '1800 675 888' : tel === 'tel:136186' ? '136 186' : '(03) 8400 7300', `HURT · ${ago(o.at)}`, `href="${tel}"`)); if (fe && fe.harm) L.push(`<p class="harm">${icon('harm', 'sm')}${esc(cap(fe.harm))}</p>`); }
+  if (o.kind === 'dead') { const tel = telOf(o); L.push(tel ? rowA('phone', tel === 'tel:1800675888' ? '1800 675 888' : '136 186', 'DEAD · DO NOT TOUCH', `href="${tel}"`) : rowA('out', 'COUNCIL', 'DEAD · DO NOT TOUCH', `href="${esc((LINKS.find(l => /MERRI-BEK/.test(l[0])) || [])[1] || '')}" target="_blank" rel="noopener"`)); }
+  if (o.kind === 'lost') {
+    L.push(`<button type="button" class="do tog" data-do="areas" aria-pressed="${!!prefs.areas}">${icon('lost')}<b>SEARCH AREA</b><small>${metres(life.searchOf(o))}</small></button>`);
+    const ln = LINKS.find(l => /LOST/.test(l[0]) && (o.lat > -37.7835 ? /MERRI/.test(l[0]) : /MELBOURNE/.test(l[0]))); if (ln) L.push(rowA('out', 'FOUND IT?', ln[0], `href="${ln[1]}" target="_blank" rel="noopener"`));
+  }
+  if (o.isEvent) L.push(rowA('day', o.venue ? esc(o.venue) : dayWord(o.start), o.start ? `${dayWord(o.start)} · ${fmtClock(o.start)}` : '', o.link ? `href="${esc(o.link)}" target="_blank" rel="noopener"` : '', o.link ? 'a' : 'div'));
+  if (o.contact) L.push(rowA(/@/.test(o.contact) ? 'out' : 'phone', esc(o.contact), '', `href="${/@/.test(o.contact) ? 'mailto:' : 'tel:'}${esc(o.contact.replace(/\s/g, ''))}"`));
   return L.join('');
 }
-/* the triage, in four readings: the danger in the months ahead, then the three things this kind of life needs here,
-   each marked ok, low, missing, or a threat nearby (DA_NEEDS in config.js) */
-function triage(o) {
-  const w = worstWhen(o);
-  return `<li class="t-deg d${w ? w.deg : 0}" data-focus="heat" data-tip="Danger to this life over the months chosen on NOW: the Bureau's outlook, how hard heat and drought are on its kind, whether the heat lands while it breeds or flowers, and the canopy where it lives."><b>${w ? DEG[w.deg] : 'LOW'}</b><small>${w ? `DANGER · ${w.word}` : 'DANGER'}</small></li>`
-    + needsOf(o).map(n => `<li class="nd nd-${n.st}" data-tip="${esc(n.tip)}"><b>${esc(n.v)}</b><small>${n.w}</small><i class="st mono">${NEED_ST[n.st]}</i></li>`).join('');
-}
-/* the briefs that fit a record: its kind of life, the months chosen, and the places in its radius */
-const GROUPS = [['bird', 'parrot', 'waterbird', 'owl', 'raptor'], ['bee', 'butterfly', 'moth', 'fly', 'wasp', 'beetle', 'bug', 'grasshopper', 'mantis', 'dragonfly'], ['frog', 'turtle', 'aquatic', 'snail', 'segmented'], ['mammal', 'possum', 'flyingfox', 'bat', 'rodent', 'macropod'], ['plant', 'fungi'], ['lizard', 'snake'], ['cat', 'dog'], ['fox', 'rabbit']];
-const kinOf = g => GROUPS.find(x => x.includes(g)) || [g];
-function matchBriefs(o, n = 3) {
-  const g = lifeOf(o); const kin = kinOf(g); const months = [0, 1, 2].map(i => outMonth(Math.min(OUT_N - 1, S.mo + i)).m);
-  const roles = new Set((S.orbit.cell.get(o.id) || within(o)).map(b => b.role)); const mine = new Set(respsOf(o).map(r => r.brief).filter(Boolean));
-  const hero = o.hero ? o.heroOf.brief : null;
-  return BRIEFS.map(b => {
-    const exact = b.g.includes(g), near = !exact && b.g.some(x => kin.includes(x));
-    let sc = exact ? 6 : near ? 2 : b.g.includes('any') ? 2 : 0; if (!sc) return null;
-    const mo = b.m.some(m => months.includes(m)); if (mo) sc += 3;
-    const rl = b.roles.filter(r => roles.has(r)); if (rl.length) sc += 2; if (mine.has(b.id)) sc += 5; if (hero === b.id) sc += 6;
-    return { b, sc, why: { g: exact || near ? g : 'any', mo, rl } };
-  }).filter(x => x && x.sc >= 6).sort((a, b) => b.sc - a.sc || a.b.id.localeCompare(b.b.id)).slice(0, n);
-}
-/* the briefs a business can carry: those it leads first, then those whose lives its role touches */
-const briefsForRole = (role, n = 3) => { const R = ROLES[role] || {}; return BRIEFS.filter(b => b.roles.includes(role)).map(b => ({ b, sc: (b.roles[0] === role ? 2 : 0) + (b.g.some(g => (R.g || []).includes(g)) ? 1 : 0) - b.roles.indexOf(role) * 0.1 })).sort((a, b) => b.sc - a.sc).slice(0, n).map(x => ({ b: x.b, why: { role } })); };
-/* why a brief is here: the life it serves, the months it starts in, the places near that can carry it */
-function whyChips(b, why) {
-  if (!why) return '';
-  if (why.role) return `<span class="why mono"><span>CARRIED BY</span>${roleChip(why.role)}${b.g.length ? `<span class="kinds">${kindIcons(b)}</span>` : ''}</span>`;
-  if (why.tribe) { const common = b.g.filter(g => why.tribe.g.includes(g)); return `<span class="why mono"><span class="ok">IN THEIR CARE</span>${common.length ? `<span class="kinds">${common.slice(0, 4).map(g => glyphSVG(g)).join('')}</span>` : ''}</span>`; }
-  const mo = why.mo ? `<span class="ok">${b.m.filter(m => [0, 1, 2].some(i => outMonth(Math.min(OUT_N - 1, S.mo + i)).m === m)).map(m => MON[m]).slice(0, 3).join(' ')}</span>` : `<span>FROM ${MON[b.m[0]]}</span>`;
-  return `<span class="why mono">${why.g !== 'any' ? `<span class="ok">${glyphSVG(why.g)}${esc((M.KINDS[why.g] || why.g).toUpperCase())}</span>` : '<span>ANY LIFE</span>'}${mo}${why.rl.slice(0, 2).map(r => `${roleChip(r)}`).join('')}${why.rl.length ? '<span class="ok">NEARBY</span>' : ''}</span>`;
-}
-/* the nearest business in a radius that fits a brief: the one its {biz} names */
-function bizFor(o, b) {
-  const rows = (S.orbit.cell.get(o.id) || within(o) || []); const fit = rows.find(r => b.roles.includes(r.role)) || rows.find(r => !onNotice(r.role)) || rows[0];
-  if (fit) return fit; const near = o.lat ? bizNear(o.lat, o.lng, 800) : []; return near.find(r => b.roles.includes(r.role)) || near[0] || null;
-}
-/* two lines on the poster: each line is measured in the poster's own type, at the poster's own width */
-const PM = { w: $('#pm-w'), h: $('#pm-h') };
-function posterLines(text, k) { const p = k === 'h' ? PM.h : PM.w; p.textContent = text || ' '; const lh = parseFloat(getComputedStyle(p).lineHeight) || 1; return Math.round(p.scrollHeight / lh); }
-const fitsPoster = (text, k) => text.length <= 96 && posterLines(text, k) <= 2;
-/* a brief's lines, filled for this place; a long name gives way to a short one */
-function fillLine(t, o, b, k) {
-  const z = t.includes('{biz}') ? bizFor(o, b) : null; const place = title(placeOf(o));
-  const names = z ? [z.n, z.b || z.n.split(' ').slice(0, 2).join(' '), 'the shop'] : ['the shop'];
-  for (const n of names) { const s = t.replace(/\{biz\}/g, n).replace(/\{place\}/g, place); if (fitsPoster(s, k)) return s; }
-  return t.replace(/\{biz\}/g, 'the shop').replace(/\{place\}/g, place);
-}
-const briefCard = (b, on, why) => `<li class="${on ? 'on' : ''}"><button type="button" class="bcard" data-pick="${b.id}" aria-pressed="${!!on}"><b>${esc(b.t)}</b><small class="mono">AFTER ${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''}</small><span class="bf">${esc(cap(b.fact))}</span>${whyChips(b, why)}</button>${b.url ? `<a class="src" href="${esc(b.url)}" target="_blank" rel="noopener" aria-label="Source">${icon('out', 'sm')}</a>` : ''}</li>`;
-function fillFront(o, quiet) {
-  const sub = subjectOf(o); const rs = respsOf(o);
-  $('#r-no').textContent = o.hero ? `IN GREATEST NEED · ${HEROES.findIndex(h => h.id === o.hero) + 1} OF ${HEROES.length}` : `No. ${codeOf(o)}`; $('#r-spec').hidden = !o.spec;
-  $('#r-name').textContent = nameOf(o);
-  $('#r-latin').innerHTML = o.isEvent || o.comm && !o.tx ? '' : sub.tx && sub.tx.cn && sub.tx.n ? `<i>${esc(sub.tx.n)}</i>` : '';
-  if (!quiet) figure(o);
-  /* when and where: only on the card */
-  const when = o.hero ? (o.curated ? 'HOME · KNOWN SITES' : `HOME · ${o.n} PAST SIGHTINGS`) : o.isEvent ? '' : o.story ? `${esc(o.who || '')}` : o.hist ? `${dayMonth(o.d)} ${String(o.d).slice(0, 4)}` : `${o.t ? fmtClock(o.t) + ' · ' : o.at && (o.comm || o.user) ? fmtClock(o.at) + ' · ' : ''}${o.d ? dayMonth(o.d) : ''}`;
-  const where = placeOf(o);
-  const voice = (sub.so && sub.so.u) || o.sound;
-  $('#r-when').innerHTML = `<span>${[when, where].filter(Boolean).join(' · ')}</span>${o.n > 1 && !o.hero ? `<span>×${o.n}</span>` : ''}${o.spec ? '' : typeof o.id === 'number' ? `<a href="${CONFIG.INAT_WEB}${o.id}" target="_blank" rel="noopener">iNat ${icon('out', 'sm')}</a>` : ''}${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon('play')}</button>` : ''}`;
-  if (o.user && o.said && nameOf(o) !== o.said) $('#r-when').insertAdjacentHTML('afterbegin', `<q class="said">${esc(o.said)}</q>`);
-  if (o.contact) $('#r-when').insertAdjacentHTML('beforeend', `<a class="ct" href="${/@/.test(o.contact) ? 'mailto:' : 'tel:'}${esc(o.contact.replace(/\s/g, ''))}">${icon(/@/.test(o.contact) ? 'out' : 'phone', 'sm')}${esc(o.contact)}</a>`);
-  /* the ground and the months ahead, in five readings; then the danger in a sentence; then anything urgent */
-  const live = !o.hist && !(o.hum && !o.story && o.kind !== 'pulse' && o.kind !== 'need');
-  $('#r-tri').innerHTML = live ? triage(o) : ''; $('#r-tri').hidden = !live; $('#r-tri').classList.toggle('four', live);
-  const w = live && !isCold(o) ? windowOf(o) : null; const dg = live ? degOf(o) : 0; const dz = live && !isAlarm(o) && !o.isEvent ? (o.hero ? o.heroOf.why : dangerOf(o)) : '';
-  $('#r-danger').innerHTML = dz ? `<b class="mono">${w ? w.w : 'THE DANGER'}</b><span>${esc(dz)}</span>` : ''; $('#r-danger').hidden = !dz; $('#r-danger').className = `r-danger d${dg}`;
-  $('#r-do').innerHTML = urgentOf(o);
-  /* the briefs: the one chosen first */
-  const ms = isAlarm(o) || o.isEvent || o.hist ? [] : matchBriefs(o, 3);
-  if (S.brief && !ms.some(m => m.b.id === S.brief)) { const b = BRIEFS.find(x => x.id === S.brief); if (b) ms.unshift({ b }); }
-  if (!ms.some(m => m.b.id === S.brief)) S.brief = ms.length ? ms[0].b.id : null;
-  $('#r-brief').innerHTML = ms.length ? `<h3 class="sh">Briefs</h3><ol class="briefs cards">${ms.slice(0, 3).map(m => briefCard(m.b, m.b.id === S.brief, m.why)).join('')}</ol>` : '';
-  fillPosters(o, rs);
-  fillOrbit(o);
-  heroBtn.hidden = false;
-}
-$('#r-when').addEventListener('click', e => { const b = e.target.closest('.play'); if (b) life.play(b.dataset.u, b); });
-$('#r-brief').addEventListener('click', e => {
-  if (e.target.closest('a[href]')) return; const b = e.target.closest('[data-pick]'); if (!b) return; const id = b.dataset.pick; tick();
-  if (S.mode === 'biz') { const z = bizOf(S.bizSel); const L = z && linkedLife(z); const o = L ? L.o : null; if (o) { select(o.id, id); return; } toast('No life near enough for this brief.'); return; }
-  if (S.brief === id) { heroBtn.click(); return; }
-  if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); const lives = t ? livesIn(t) : []; const b = BRIEFS.find(x => x.id === id); const o = b && lives.filter(x => b.g.includes(lifeOf(x))).sort((a, c) => degOf(c) - degOf(a))[0]; if (o) { select(o.id, id); return; } openBrief(id); return; }
-  S.brief = id; $$('#r-brief li').forEach(li => { const on = li.querySelector('[data-pick]').dataset.pick === id; li.classList.toggle('on', on); li.querySelector('[data-pick]').setAttribute('aria-pressed', String(on)); }); fillOrbit(S.byId.get(S.sel)); life.moved();
-});
 $('#r-do').addEventListener('click', e => {
-  const b = e.target.closest('[data-do]'); if (!b) return; const a = b.dataset.do; tick();
-  if (S.mode === 'biz') { if (a === 'sign') printBiz(S.bizSel); if (a === 'life') { const z = bizOf(S.bizSel); const L = z && linkedLife(z); if (L) select(L.o.id); } return; }
-  const o = S.byId.get(S.sel); if (!o) return;
-  if (a === 'search') searchFor(o.id);
+  const b = e.target.closest('[data-do]'); if (!b) return; tick();
+  if (b.dataset.do === 'areas') { prefs.areas = !prefs.areas; savePrefs(); b.setAttribute('aria-pressed', String(prefs.areas)); life.redraw(); }
 });
-/* the posters on a record, as the posters themselves */
-function fillPosters(o, rs) {
-  const el = $('#r-resp'); if (!rs.length) { el.innerHTML = ''; return; }
-  const sorted = [...rs.filter(r => r.done || r.funded), ...rs.filter(r => !(r.done || r.funded))];
-  el.innerHTML = `<h3 class="sh">Posters</h3><ol class="pstrip">${sorted.map(r => `<li><button type="button" class="s-mini" data-key="${esc(r.key)}" data-poster="${esc(r.key)}" aria-label="Open the poster"><span class="blank"></span></button><small class="mono${r.funded ? '' : ' need'}">${r.funded ? 'FUNDED' : 'UNFUNDED'}${r.hosts ? ' · ON SHOW' : ''}</small></li>`).join('')}</ol>`;
-  fillMinis();
-}
-$('#r-resp').addEventListener('click', e => { const t = e.target.closest('[data-poster]'); if (!t) return; const r = S.resp.get(t.dataset.poster); const o = r && S.byId.get(r.cell); if (r && o) openViewer(o, r.ev); });
-/* where it goes: the places in its radius, by role; those that fit the chosen brief first */
-function fillOrbit(o) {
-  const el = $('#r-orbit'); if (o.ob || o.kind === 'refuge' || o.hist) { el.innerHTML = ''; return; }
-  if (!S.biz) { el.innerHTML = '<div class="empty sm"><i></i></div>'; return; }
-  const b = BRIEFS.find(x => x.id === S.brief); const fit = r => (b && b.roles.includes(r.role) ? 0 : 1);
-  const rows = [...(S.orbit.cell.get(o.id) || [])].sort((x, y) => fit(x) - fit(y) || x.d - y.d); const hosts = new Set(respsOf(o).flatMap(r => r.hostList.map(norm)));
-  if (!rows.length) { el.innerHTML = ''; return; }
-  const all = el.classList.contains('all'); const on = rows.filter(r => onNotice(r.role)).length;
-  const nFit = b ? rows.filter(r => b.roles.includes(r.role)).length : 0;
-  el.innerHTML = `<h3 class="sh">Where it goes</h3><p class="split mono">${b ? `<span class="fitn">${nFit} FIT THE BRIEF</span>` : ''}<span><i class="dm on"></i>${on} ON NOTICE</span><span><i class="dm"></i>${rows.length - on} TO BACK</span></p><ol class="orbit">${rows.slice(0, all ? 80 : 6).map(r => { const host = hosts.has(norm(r.n)), fits = !!(b && b.roles.includes(r.role)); return `<li class="${host ? 'host' : ''}${fits ? ' fit' : ''}"><button type="button" data-bi="${r.i}"><i class="dm ${host ? 'paid' : onNotice(r.role) ? 'on' : ''}"></i><span class="n">${esc(r.n)}</span>${roleChip(r.role)}${host ? '<small class="mono">ON SHOW</small>' : fits ? '<small class="mono fitw">FITS</small>' : ''}</button></li>`; }).join('')}</ol>${rows.length > 6 ? `<button type="button" class="more mono">${all ? 'FEWER' : 'ALL ' + rows.length}</button>` : ''}`;
-}
-$('#r-orbit').addEventListener('click', e => { const b = e.target.closest('[data-bi]'); if (b) { selectBiz(+b.dataset.bi); return; } if (e.target.closest('.more')) { $('#r-orbit').classList.toggle('all'); const o = S.byId.get(S.sel); if (o) fillOrbit(o); } });
 
-/* the web follows the pointer: the places, the danger, a poster's hosts, one business */
-const focusFrom = t => {
-  const b = t.closest('[data-bi]'); if (b && b.closest('#r-orbit, #pat-list')) { life.focus('biz', +b.dataset.bi); return; }
-  const p = t.closest('[data-poster]'); if (p && p.closest('#r-resp')) { life.focus('poster', p.dataset.poster); return; }
-  const f = t.closest('[data-focus]'); life.focus(f ? f.dataset.focus : null);
-};
-rScroll.addEventListener('pointerover', e => { if (e.pointerType === 'mouse' && S.mode === 'ping') focusFrom(e.target); });
-rScroll.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') life.focus(null); });
-rScroll.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' && S.mode === 'ping') focusFrom(e.target); }, { passive: true });
-
-/* ───────── a business: its role, the radius it answers for, the life it touches most, and the briefs it can carry ───────── */
-function fillBiz(z, quiet) {
-  const R = ROLES[z.role] || ROLES.owner; const on = !!R.on;
-  $('#r-no').textContent = `No. B${toCode(z.i)}`; $('#r-spec').hidden = !DEMO; $('#r-name').textContent = z.n; $('#r-latin').innerHTML = roleChip(z.role);
-  if (!quiet) figure({ isBiz: true, partner: z.partner, role: z.role });
-  $('#r-when').innerHTML = `<span>${suburbAt(z.lat, z.lng)}${z.brand ? ` · ${esc(z.brand.toUpperCase())}` : ''}</span>`;
-  const lives = cellsAll().filter(o => !o.hum && !isCold(o) && haversine(z.lat, z.lng, o.lat, o.lng) <= BIZ_R); const atRisk = lives.filter(o => degOf(o) >= 3).length;
-  $('#r-tri').hidden = false; $('#r-tri').classList.add('four');
-  $('#r-tri').innerHTML = `<li class="t-role${on ? ' on' : ''}" data-tip="${esc(R.duty)}"><b>${R.w}</b><small>${on ? 'ON NOTICE' : 'TO BACK'}</small></li><li data-tip="The radius a business answers for."><b>${BIZ_R} M</b><small>RADIUS</small></li><li data-tip="Lives recorded inside its radius."><b>${lives.length}</b><small>LIVES</small></li><li class="t-deg d${atRisk ? 3 : 0}" data-tip="Lives inside its radius in severe danger over the months chosen on NOW."><b>${atRisk}</b><small>AT RISK</small></li>`;
-  $('#r-danger').hidden = false; $('#r-danger').className = `r-danger duty${on ? ' on' : ''}`;
-  $('#r-danger').innerHTML = `<b class="mono">${on ? 'ON NOTICE' : 'WORTH BACKING'}</b><span>${esc(R.duty)}.${R.line ? ` ${esc(R.line)}` : ''}</span>${R.src ? `<a class="src" href="${esc(R.src)}" target="_blank" rel="noopener" aria-label="Source">${icon('out', 'sm')}</a>` : ''}`;
-  const L = linkedLife(z);
-  $('#r-do').innerHTML = (L ? doRow('fauna', `${esc(nameOf(L.o))} · ${L.d < 1000 ? Math.round(L.d / 10) * 10 + ' m' : (L.d / 1000).toFixed(1) + ' km'}`, 'The life it touches most', { act: 'life' }) : '')
-    + doRow('partner', z.partner ? 'Signed up' : 'Not signed up yet', z.partner ? '' : 'Print the sign-up sheet', z.partner ? {} : { act: 'sign' });
-  const ms = briefsForRole(z.role, 3);
-  $('#r-brief').innerHTML = ms.length ? `<h3 class="sh">Briefs it can carry</h3><ol class="briefs cards">${ms.map(m => briefCard(m.b, false, m.why)).join('')}</ol>` : '';
-  $('#r-resp').innerHTML = '';
-  $('#r-orbit').innerHTML = lives.length ? `<h3 class="sh">Lives in its radius</h3><ol class="orbit lives">${lives.sort((a, b) => degOf(b) - degOf(a)).slice(0, 12).map(o => `<li><button type="button" data-cell="${esc(String(o.id))}"><img class="pg sm" src="${pinOf(o)}" alt=""><span class="n">${esc(nameOf(o))}</span>${degChip(degOf(o))}</button></li>`).join('')}</ol>` : '';
+/* ───────── the strings, on the card: the constellation as it forms, its song, and the print it will make ───────── */
+const KNOT_W = { place: 'PLACE', person: 'PERSON', idea: 'IDEA' };
+const FAM_W = f => (FAMILIES[f] || {}).w || '';
+const KIND_ROW = n => n.t === 'biz' ? `<i class="role${(n.harm || []).length ? ' on' : ''}">${(n.harm || []).length ? (ROLES[n.harm[0]] || {}).w || '' : FAM_W(n.fam) || (ROLES[n.role] || {}).w || ''}</i>` : n.t === 'group' ? '<i class="role">GROUP</i>' : n.t === 'water' ? '<i class="role">WATER</i>' : n.t === 'custom' ? `<i class="role">${KNOT_W[n.kind] || 'KNOT'}</i>` : `<i class="role">${esc((M.KINDS[n.g] || '').toUpperCase())}</i>`;
+const nodeMark = n => n.t === 'biz' ? `<i class="fm fm-${esc(n.fam || (ROLES[n.role] || {}).cat || 'service')}${(n.harm || []).length || (n.on && !n.harm) ? ' harm' : ''}${n.tied ? ' tied' : ''}"></i>` : n.t === 'group' ? `<i class="patch" style="--c:${C.tribe[n.kind] || C.tribe.park}"></i>` : n.t === 'water' ? icon('water', 'sm') : n.t === 'custom' ? `<i class="sq${n.tied ? ' tied' : ''}"></i>` : glyphSVG(n.g || 'paw');
+function fillStrings() {
+  const el = $('#r-strings'); const o = S.byId.get(S.sel); if (!o || S.mode !== 'ping' || o.ob) { el.innerHTML = ''; el.hidden = true; return; }
+  const f = strings.fig; const n = f.e.length; const all = strings.reach(); const det = el.querySelector('details'); const open = det ? det.open : false; const pk = strings.peeked;
+  const name = n ? strings.nameFor(o, f) : '';
+  el.hidden = false;
+  el.innerHTML = `<div class="st-bar"><span class="st-n mono" data-tip="Strings">${icon('string')}<b>${n}</b></span>`
+    + `<button type="button" class="ib" data-st="playOpen" aria-label="Play" data-tip="Play"${n ? '' : ' disabled'}>${icon('play')}</button>`
+    + `<button type="button" class="ib" data-st="trace" aria-label="Trace it" data-tip="How it formed"${n > 1 ? '' : ' disabled'}>${icon('trace')}</button>`
+    + `<span class="st-sp"></span>`
+    + `<button type="button" class="ib" data-st="undo" aria-label="Undo" data-tip="Undo"${n ? '' : ' disabled'}>${icon('undo')}</button>`
+    + `<button type="button" class="ib" data-st="reset" aria-label="Cut all" data-tip="Cut all"${n ? '' : ' disabled'}>${icon('reset')}</button>`
+    + `<button type="button" class="ib" data-st="restore" aria-label="Bring back" data-tip="Bring back"${f.prev ? '' : ' disabled'}>${icon('restore')}</button></div>`
+    + (n ? `<div class="st-con"><button type="button" class="st-print" data-st="print" aria-label="The print it will make" data-tip="The print it will make"><canvas id="st-print" width="120" height="200"></canvas></button><div class="st-meta"><input class="con-n" id="con-n" value="${esc(name)}" maxlength="48" aria-label="The constellation's name" spellcheck="false"><span class="chart-wrap">${strings.chartOf(o.id, 72)}</span></div></div>` : '')
+    + (all.length ? `<details class="reach"${open ? ' open' : ''}><summary class="mono">IN REACH · ${all.length}<span>${metres(rangeOf(o))}</span></summary><ol>${all.slice(0, 160).map(x => `<li><button type="button" class="nrow${x.tied ? ' on' : ''}${x.key === pk ? ' pk' : ''}" data-node="${esc(x.key)}">${nodeMark(x)}<span class="n">${esc(strings.labelOf(x.key) || x.n)}</span>${KIND_ROW(x)}<small class="mono">${metres(x.d)}</small></button><button type="button" class="tie${x.tied ? ' on' : ''}" data-tie="${esc(x.key)}" aria-pressed="${x.tied}" aria-label="${x.tied ? 'Let go' : 'Join'}">${icon(x.tied ? 'close' : 'string', 'sm')}</button></li>`).join('')}</ol></details>` : '');
+  if (n) drawMini($('#st-print'), o);
 }
-for (const id of ['#r-resp', '#r-orbit']) $(id).addEventListener('click', e => { const c = e.target.closest('[data-cell]'); if (c) { const v = c.dataset.cell; select(/^\d+$/.test(v) ? +v : v); } });
+$('#r-strings').addEventListener('click', e => {
+  const s2 = e.target.closest('[data-st]'); if (s2) { const a = s2.dataset.st; if (a === 'print') { const o = S.byId.get(S.sel); if (o) toWish(o); return; } if (a === 'trace') { strings.traceIt(); fitWeb(); return; } strings[a](); return; }
+  const t = e.target.closest('[data-tie]'); if (t) { strings.join(t.dataset.tie); return; }
+  const n = e.target.closest('[data-node]'); if (n) { const k = n.dataset.node; if (k === strings.peeked) strings.act(k); else { strings.peek(k); bringIntoView(k); } }
+});
+$('#r-strings').addEventListener('contextmenu', e => { const n = e.target.closest('[data-node]'); if (!n) return; e.preventDefault(); strings.join(n.dataset.node); });
+$('#r-strings').addEventListener('change', e => { if (e.target.id === 'con-n' && S.sel != null) { strings.rename(S.sel, e.target.value); tick(1500); } });
+/* a knot chosen in the list is brought into view on the ground */
+function bringIntoView(k) {
+  const n = strings.pos(k); if (!n || !S.mapReady) return; const c = map.getContainer(); const right = c.clientWidth - (phone() ? 0 : Math.min(440, innerWidth * 0.4)); const bottom = phone() && S.open ? innerHeight * 0.42 : c.clientHeight;
+  if (n.x < 40 || n.y < 40 || n.x > right - 40 || n.y > bottom - 40) map.easeTo({ center: [n.lng, n.lat], offset: sheetOffset(), duration: reduced() ? 0 : 500 });
+}
+/* the whole web in view */
+function fitWeb() { const ex = strings.extent(); if (ex && S.mapReady) map.fitBounds(ex, { padding: framePad(), maxZoom: 17, duration: reduced() ? 0 : 700 }); }
+function peekChanged(k) { if (face === 'front') $$('#r-strings .nrow').forEach(b => b.classList.toggle('pk', b.dataset.node === k)); }
+/* anything that changes the figure changes the card, the ledger and the slip */
+function stringsChanged() { if (S.mode !== 'ping') return; if (face === 'front') { fillStrings(); fillLedger(); } else if (face === 'wish') fillKnots(); }
+/* places arriving (or not) for the life that is open */
+function placesChanged() { if (S.mode !== 'ping') return; strings.refresh(); if (face === 'front') { fillLedger(); fillStrings(); } const lg = $('#r-ledger'); if (lg) lg.classList.toggle('busy', S.bizState === 'loading'); }
+/* ───────── the ledger: who in its radius sells or leaves what harms it, and who can help, counted plainly ───────── */
+const HELP_W = { circular: ['repairs, reuses or refills', 'repair, reuse or refill'], artists: ['artist or studio', 'artists and studios'], third: ['third space', 'third spaces'], network: ['network', 'networks'], brand: ['local label', 'local labels'] };
+/* "15 sell takeaway containers", "1 sells pesticides" */
+const plainN = (r, n) => { const t = (ROLES[r] || {}).plain || ''; return n === 1 ? t.replace(/^(\w+)/, w => (/(sh|ch|s)$/.test(w) ? w + 'es' : w + 's')) : t; };
+function fillLedger() {
+  const el = $('#r-ledger'); const o = S.byId.get(S.sel); if (!el) return; if (!o || S.mode !== 'ping' || o.ob || !strings.cell) { el.hidden = true; return; }
+  const L = strings.ledgerOf(); const fo = strings.focus; const f = strings.fig; const allIn = ks => ks.every(k => f.e.some(([a, b]) => a === k || b === k));
+  const row = (key, ks, mk, words) => `<li><button type="button" class="lg-row${fo === key ? ' on' : ''}${allIn(ks) ? ' in' : ''}" data-lg="${esc(key)}" data-n="${ks.length}">${mk}<b class="mono">${ks.length}</b><span>${esc(words)}</span>${allIn(ks) ? icon('string', 'sm') : fo === key ? `<i class="lg-go">${icon('string', 'sm')}</i>` : ''}</button></li>`;
+  const harm = L.harm.map(([r, ks]) => row(r, ks, `<i class="fm fm-service harm"></i>`, plainN(r, ks.length)));
+  const help = L.help.map(([fam, ks]) => row('fam:' + fam, ks, `<i class="fm fm-${fam}"></i>`, (HELP_W[fam] || [])[ks.length === 1 ? 0 : 1] || FAM_W(fam).toLowerCase()));
+  el.innerHTML = (harm.length ? `<h4 class="lab red">${L.total} · HARM IT</h4><ol>${harm.join('')}</ol>` : '') + (help.length ? `<h4 class="lab">CAN HELP</h4><ol>${help.join('')}</ol>` : '');
+  el.hidden = !harm.length && !help.length; el.classList.toggle('busy', S.bizState === 'loading');
+}
+/* a row once: those places lit on the ground; twice: all of them joined to the life */
+$('#r-ledger').addEventListener('click', e => {
+  const b = e.target.closest('[data-lg]'); if (!b) return; const key = b.dataset.lg; const L = strings.ledgerOf();
+  const ks = key.startsWith('fam:') ? (L.help.find(([f]) => 'fam:' + f === key) || [0, []])[1] : (L.harm.find(([r]) => r === key) || [0, []])[1];
+  if (strings.focus === key) { const n = strings.joinAll(ks); if (!n) tick(700); strings.unfocus(); fitWeb(); }
+  else { strings.focusOn(key); tick(1600); }
+  fillLedger();
+});
+$('#r-ledger').addEventListener('contextmenu', e => { const b = e.target.closest('[data-lg]'); if (!b) return; e.preventDefault(); const key = b.dataset.lg; const L = strings.ledgerOf(); const ks = key.startsWith('fam:') ? (L.help.find(([f]) => 'fam:' + f === key) || [0, []])[1] : (L.harm.find(([r]) => r === key) || [0, []])[1]; strings.joinAll(ks); strings.unfocus(); fillLedger(); });
+/* a constellation from NOW: its life opened, the whole web framed, then lit or traced */
+function showConstellation(id, how) {
+  const o = S.byId.get(id); if (!o) return; select(id);
+  setTimeout(() => { fitWeb(); setTimeout(() => { if (how === 'trace') strings.traceIt(); else strings.glow(); }, reduced() ? 30 : 760); }, 80);
+}
+/* notes on a cell, kept on this device, above NOTICED; the slip can carry them */
+const NOTES = store.get('da.notes.v1', {});
+const noteOf = o => (o && NOTES[o.id]) || '';
+function setNote(o, t) { if (!o) return; if (t.trim()) NOTES[o.id] = t.slice(0, 280); else delete NOTES[o.id]; store.set('da.notes.v1', NOTES); }
+$('#r-note').addEventListener('input', debounce(e => setNote(S.byId.get(S.sel), e.target.value), 250));
 
-/* ───────── a group already caring for a patch of ground: what it does, the lives in its care, the briefs to bring it ───────── */
+/* ───────── a group already caring for a patch of ground ───────── */
 function fillTribe(t, quiet) {
   const col = C.tribe[t.kind] || C.tribe.park;
-  $('#r-no').textContent = `No. ${t.tid}`; $('#r-spec').hidden = true; $('#r-name').textContent = t.n; $('#r-latin').innerHTML = `<i class="role tribe" style="--c:${col}">${esc(t.w)}</i>`;
+  $('#r-no').textContent = `No. ${t.tid}`; $('#r-name').textContent = t.n; $('#r-latin').innerHTML = '';
   if (!quiet) figure(t);
-  $('#r-when').innerHTML = `<span>${esc(t.when || 'Their next days out are on their site')}</span>`;
-  const lives = livesIn(t).sort((a, b) => degOf(b) - degOf(a)); const atRisk = lives.filter(o => degOf(o) >= 3).length;
-  const posters = [...S.resp.values()].filter(r => { const o = S.byId.get(r.cell); return o && inTribe(t, o.lat, o.lng); });
-  $('#r-tri').hidden = false; $('#r-tri').classList.add('four');
-  $('#r-tri').innerHTML = `<li data-tip="Lives recorded inside the ground they care for."><b>${lives.length}</b><small>LIVES</small></li><li class="t-deg d${atRisk ? 3 : 0}" data-tip="Lives there in severe danger over the months chosen on NOW."><b>${atRisk}</b><small>AT RISK</small></li><li data-tip="Posters made for lives on their ground."><b>${posters.length}</b><small>POSTERS</small></li><li data-tip="Briefs that fit what they care for."><b>${t.briefs.length}</b><small>BRIEFS</small></li>`;
-  $('#r-danger').hidden = false; $('#r-danger').className = 'r-danger tribe'; $('#r-danger').style.setProperty('--c', col);
-  $('#r-danger').innerHTML = `<b class="mono">WHAT THEY DO</b><span>${esc(t.what)}</span>`;
-  $('#r-do').innerHTML = doRow('out', 'Join them', 'Their site', { href: t.link });
-  const ms = t.briefs.map(id => BRIEFS.find(b => b.id === id)).filter(Boolean);
-  $('#r-brief').innerHTML = ms.length ? `<h3 class="sh">Briefs to bring them</h3><ol class="briefs cards">${ms.map(b => briefCard(b, false, { tribe: t })).join('')}</ol>` : '';
-  $('#r-resp').innerHTML = posters.length ? `<h3 class="sh">Posters on their ground</h3><ol class="pstrip">${posters.map(r => `<li><button type="button" class="s-mini" data-key="${esc(r.key)}" data-poster="${esc(r.key)}" aria-label="Open the poster"><span class="blank"></span></button><small class="mono${r.funded ? '' : ' need'}">${r.funded ? 'FUNDED' : 'UNFUNDED'}</small></li>`).join('')}</ol>` : '';
-  fillMinis();
-  $('#r-orbit').innerHTML = lives.length ? `<h3 class="sh">Lives in their care</h3><ol class="orbit lives">${lives.slice(0, 12).map(o => `<li><button type="button" data-cell="${esc(String(o.id))}"><img class="pg sm" src="${pinOf(o)}" alt=""><span class="n">${esc(nameOf(o))}</span>${degChip(degOf(o))}</button></li>`).join('')}</ol>` : '';
+  const lives = livesIn(t); const atRisk = lives.filter(o => degOf(o) >= 3).length;
+  $('#r-chips').innerHTML = chip(esc(t.w), 'tb', t.what) + chip(`${lives.length} LIVES`, '', 'Recorded on their ground') + (atRisk ? chip(`${atRisk} AT RISK`, 'dg d3', 'Severe danger in the months ahead') : '') + (t.when ? chip(esc(t.when.toUpperCase()), 'at') : '');
+  $('#r-chips').style.setProperty('--c', col);
+  $('#r-threat').hidden = true; $('#r-learn').hidden = true; $('#r-season').hidden = true; $('#r-ledger').hidden = true; $('#r-do').innerHTML = '';
+  $('#r-strings').innerHTML = lives.length ? `<details class="reach"><summary class="mono">LIVES · ${lives.length}</summary><ol>${lives.sort((a, b) => degOf(b) - degOf(a)).slice(0, 40).map(o => `<li><button type="button" class="nrow" data-cell="${esc(String(o.id))}"><img class="pg sm" src="${pinOf(o)}" alt=""><span class="n">${esc(nameOf(o))}</span>${degChip(degOf(o))}</button></li>`).join('')}</ol></details>` : '';
+  $('#r-strings').hidden = !lives.length;
 }
+$('#r-strings').addEventListener('click', e => { const c = e.target.closest('[data-cell]'); if (c) { const v = c.dataset.cell; select(/^\d+$/.test(v) ? +v : v); } });
 
-/* ───────── the back: a brief becomes four lines, each in its box; the places that could host it or give ───────── */
+/* ───────── the slip: four blank lines; whatever else it carries is chosen before it is issued ───────── */
+const WKEYS = ['w', 'i', 's', 'h'];
 const draftKey = o => 'da.draft.' + o.id;
-let remixOf = null;
-function remix(o, r) { remixOf = r.key; S.brief = r.brief || S.brief; fillBack(o, r.data); showFace('back'); tick(); }
-/* the first line is what is known about this life; the other three come from the brief, filled for this place */
-function fromBrief(o, b) { return { w: dangerOf(o), i: b ? fillLine(b.i, o, b, 'i') : '', s: b ? fillLine(b.s, o, b, 's') : '', h: b ? fillLine(b.h, o, b, 'h') : '' }; }
-function fillBack(o, from) {
-  /* a record that opened on its call (hurt, dead) has no brief chosen yet: the best fit comes first. A lost animal's poster is its own. */
-  if (!S.brief && o.kind !== 'lost') { const m = matchBriefs(o, 1)[0]; if (m) S.brief = m.b.id; }
-  const b = BRIEFS.find(x => x.id === S.brief);
-  $('#r-no').innerHTML = `No. ${codeOf(o)}${remixOf ? ` · ${icon('remix', 'sm')} REMIX` : ''}`;
-  if (!from) remixOf = null;
-  const draft = from || store.get(draftKey(o), null) || fromBrief(o, b);
-  for (const k of ['w', 'i', 's', 'h']) { const t = $('#w-' + k); t.value = (draft[k] || '').slice(0, +t.maxLength || 96); fitBox(t); }
-  briefHead(o);
-  $('#w-sign').value = S.me.by || '';
-  fillPatrons(o);
+const KINS = [['bird', 'parrot', 'waterbird', 'owl', 'raptor'], ['bee', 'butterfly', 'moth', 'fly', 'wasp', 'beetle', 'bug', 'grasshopper', 'mantis', 'dragonfly'], ['frog', 'turtle', 'aquatic', 'snail', 'segmented'], ['mammal', 'possum', 'flyingfox', 'bat', 'rodent', 'macropod', 'ape'], ['plant', 'fungi'], ['lizard', 'snake'], ['cat', 'dog'], ['fox', 'rabbit']];
+const kinOf = g => KINS.find(x => x.includes(g)) || [g];
+/* the brief a figure points to, kept with the signal: the life, the roles tied, a group or water tied, the months ahead */
+function webBriefs(o, tied, n = 4) {
+  if (!tied.length) return [];
+  const g = lifeOf(o); const kin = kinOf(g); const roles = new Set(tied.filter(x => x.t === 'biz').flatMap(x => [x.role, ...(x.harm || [])])); const lifeGs = new Set(tied.filter(x => x.t === 'life').map(x => x.g));
+  const group = tied.some(x => x.t === 'group'), water = tied.some(x => x.t === 'water'); const months = [0, 1, 2].map(i => outMonth(Math.min(OUT_N - 1, S.mo + i)).m);
+  return BRIEFS.map(b => {
+    let sc = b.g.includes(g) ? 6 : b.g.some(x => kin.includes(x)) ? 2 : b.g.includes('any') ? 2 : 0;
+    const rl = b.roles.filter(r => roles.has(r)).length; sc += Math.min(2, rl) * 3;
+    if (b.g.some(x => lifeGs.has(x))) sc += 2; if (water && b.th === 'water') sc += 2; if (group && b.roles.some(r => ['space', 'market', 'grower'].includes(r))) sc += 1;
+    if (b.m.some(m => months.includes(m))) sc += 1; if (o.hero && o.heroOf.brief === b.id) sc += 3;
+    return { b, sc, rl };
+  }).filter(x => x.sc >= 5 && (x.rl || !roles.size)).sort((a, b) => b.sc - a.sc || a.b.id.localeCompare(b.b.id)).slice(0, n).map(x => x.b);
 }
-/* which brief the lines came from, and the others that fit */
-function briefHead(o) {
-  const ms = o.kind === 'lost' ? [] : matchBriefs(o, 6).map(m => m.b); const b = BRIEFS.find(x => x.id === S.brief); if (b && !ms.includes(b)) ms.unshift(b);
-  const i = Math.max(0, ms.findIndex(x => x.id === S.brief));
-  $('#w-brief').innerHTML = ms.length ? `<button type="button" class="ib" data-bstep="-1" aria-label="Previous brief"${ms.length < 2 ? ' disabled' : ''}>${icon('back')}</button><span class="wb-t"><small class="mono">BRIEF ${i + 1}/${ms.length}</small><b>${esc(ms[i].t)}</b><small class="mono">AFTER ${esc(ms[i].after.toUpperCase())}</small></span><button type="button" class="ib" data-bstep="1" aria-label="Next brief"${ms.length < 2 ? ' disabled' : ''}>${icon('next')}</button>` : '';
-  $('#w-brief').dataset.list = ms.map(x => x.id).join(',');
+/* the slip, as it will print: filled from the cell, the four lines left blank */
+function fillSlipHead(host, d) {
+  host.querySelector('.sl-code').textContent = d.code || 'DA-····'; host.querySelector('.sl-time').textContent = fmtStamp(d.at || Date.now());
+  const p = d.pin;
+  host.querySelector('.sl-life').innerHTML = `<b>${esc((p.cn || p.n || '').toUpperCase())}</b>${p.cn && p.n && p.cn !== p.n ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${d.when ? `<dt class="sl-win">WINDOW</dt><dd class="sl-win">${esc(d.when)}${d.deg >= 2 ? ` · ${DEG[d.deg]}` : ''}</dd>` : ''}</dl>`;
 }
-$('#w-brief').addEventListener('click', e => {
-  const st = e.target.closest('[data-bstep]'); if (!st) return; const o = S.byId.get(S.sel); if (!o) return;
-  const list = ($('#w-brief').dataset.list || '').split(',').filter(Boolean); if (list.length < 2) return;
-  const i = (list.indexOf(S.brief) + +st.dataset.bstep + list.length) % list.length; S.brief = list[i]; const b = BRIEFS.find(x => x.id === S.brief);
-  const f = fromBrief(o, b); for (const k of ['i', 's', 'h']) { const t = $('#w-' + k); t.value = f[k]; fitBox(t); } briefHead(o); fillPatrons(o); tick();
+function pinData(o) { const sub = subjectOf(o); return { id: typeof sub.id === 'number' ? sub.id : null, lat: +o.lat.toFixed(5), lng: +o.lng.toFixed(5), n: (sub.tx && sub.tx.n) || '', cn: nameOf(o), ic: (sub.tx && sub.tx.ic) || '', g: lifeOf(o), place: placeOf(o) }; }
+function whenWord(o) { const w = whenOf(o); return w ? `${w.w} · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''; }
+let remixLines = null;
+/* what the slip carries besides its four lines, remembered on this device */
+const SLIP = Object.assign({ threat: true, note: true }, store.get('da.slip.v1', {}));
+const saveSlip = () => store.set('da.slip.v1', SLIP);
+/* the statement a slip opens with: a hero's own, else its kind's. Rewritten on the slip, it stays rewritten for that cell on this device */
+const STS = store.get('da.st.v1', {});
+const stDefault = o => { if (!o || isAlarm(o) || !(live(o) || kindLife(o))) return ''; if (o.hero && o.heroOf && o.heroOf.st) return o.heroOf.st; return STATEMENT[lifeOf(o)] || STATEMENT.paw || threatOf(o); };
+const statementOf = o => (o && typeof STS[o.id] === 'string' ? STS[o.id] : stDefault(o));
+function setStatement(o, t) { if (!o) return; if (t.trim() === stDefault(o).trim()) delete STS[o.id]; else STS[o.id] = t.slice(0, 320); store.set('da.st.v1', STS); }
+const autoH = t => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight + 2}px`; };
+/* the statement and its window go on the slip together, or neither does */
+function stOn() { const on = $('#w-threat-on').checked && !!$('#w-st').value.trim(); $('#w-threat').classList.toggle('off', !on); $$('#w-slip .sl-win').forEach(e => e.classList.toggle('off', !on)); }
+function fillWish(o, from) {
+  const slip = $('#w-slip'); const d = { pin: pinData(o), when: whenWord(o), deg: degOf(o), at: Date.now() };
+  fillSlipHead(slip, d); $('#r-no').textContent = `No. ${codeOf(o)}`;
+  const ta = $('#w-st'); ta.value = statementOf(o); ta.placeholder = 'A statement: what is happening to this life here'; $('#w-st-reset').hidden = ta.value === stDefault(o);
+  $('#w-threat-on').checked = SLIP.threat; stOn();
+  const draft = from || store.get(draftKey(o), null) || {};
+  for (const k of WKEYS) { const t = $('#w-' + k); t.value = (draft[k] || '').slice(0, SIG.line); count(t); }
+  $('#w-sign').value = S.me.by || ''; $('#w-foot').textContent = CONFIG.COUNTRY;
+  const note = noteOf(o); $('#w-note-t').value = note; $('#w-note-on').checked = SLIP.note && !!note; $('#w-note').classList.toggle('off', !(SLIP.note && note));
+  fillKnots(); fillWishFig(o);
+  requestAnimationFrame(() => autoH(ta));
+}
+/* what each relation is, in a word: what it does that matters to this life, else what it is */
+const knotWord = n => n.t === 'biz' ? ((ROLES[(n.harm || [])[0]] || ROLES[n.role] || {}).w || '') : n.t === 'group' ? 'GROUP' : n.t === 'water' ? 'WATER' : n.t === 'custom' ? KNOT_W[n.kind] || '' : String(M.KINDS[n.g] || '').toUpperCase();
+function fillKnots() {
+  const t = relOrder(strings.tied()); const el = $('#w-knots'); let no = 0;
+  el.innerHTML = t.map((n, i) => { const g = relKind(n); const first = !i || relKind(t[i - 1]) !== g;
+    return `<li class="${g}${n.inc ? '' : ' off'}"${first ? ` data-g="${REL_G[g]} · ${t.filter(x => relKind(x) === g).length}"` : ''}><label class="ck" data-tip="On the slip"><input type="checkbox" data-inc="${esc(n.key)}"${n.inc ? ' checked' : ''} aria-label="On the slip"><i></i></label><b class="mono kn-i">${n.inc ? pad2(++no) : '··'}</b><input class="kn" type="text" data-lb="${esc(n.key)}" value="${esc(n.label)}" maxlength="40" aria-label="Name on the slip" spellcheck="false"><small class="mono${g === 'harm' ? ' red' : ''}">${esc(knotWord(n))}</small></li>`; }).join('');
+  el.hidden = !t.length;
+}
+$('#w-knots').addEventListener('change', e => { const c = e.target.closest('[data-inc]'); if (!c) return; strings.setInclude(c.dataset.inc, c.checked); let no = 0; $$('#w-knots li').forEach(li => { const on = li.querySelector('[data-inc]').checked; li.classList.toggle('off', !on); li.querySelector('.kn-i').textContent = on ? pad2(++no) : '··'; }); tick(c.checked ? 1800 : 1100); });
+$('#w-knots').addEventListener('input', debounce(e => { const i = e.target.closest('[data-lb]'); if (i) strings.setLabel(i.dataset.lb, i.value); }, 250));
+$('#w-threat-on').addEventListener('change', e => { SLIP.threat = e.target.checked; saveSlip(); stOn(); tick(SLIP.threat ? 1800 : 1100); });
+$('#w-st').addEventListener('input', e => { autoH(e.target); const o = S.byId.get(S.sel); if (!o) return; setStatement(o, e.target.value); $('#w-st-reset').hidden = statementOf(o) === stDefault(o); if (e.target.value.trim() && !$('#w-threat-on').checked) { $('#w-threat-on').checked = true; SLIP.threat = true; saveSlip(); } stOn(); });
+$('#w-st-reset').addEventListener('click', () => { const o = S.byId.get(S.sel); if (!o) return; delete STS[o.id]; store.set('da.st.v1', STS); const ta = $('#w-st'); ta.value = stDefault(o); autoH(ta); $('#w-st-reset').hidden = true; stOn(); tick(1500); });
+$('#w-note-on').addEventListener('change', e => { SLIP.note = e.target.checked; saveSlip(); $('#w-note').classList.toggle('off', !SLIP.note); tick(SLIP.note ? 1800 : 1100); });
+$('#w-note-t').addEventListener('input', debounce(e => { const o = S.byId.get(S.sel); setNote(o, e.target.value); const on = !!e.target.value.trim(); if (on && !$('#w-note-on').checked && SLIP.note) $('#w-note-on').checked = true; $('#w-note').classList.toggle('off', !($('#w-note-on').checked && on)); }, 250));
+/* ───────── the photograph on the slip: the life's own, another of its kind seen near it, your own, or none ───────── */
+const sameImg = (a, b) => !!a && !!b && a.k === b.k && (a.k !== 'inat' || a.u === b.u);
+function imgList(o) { const all = photoChoices(o); const c = IMGS[o.id]; if (c && c.k === 'inat' && c.u && !all.some(x => sameImg(x, c))) all.unshift(c); if (OWN[o.id]) all.push({ k: 'own' }); return all; }
+const wishCredit = (c, o) => c.k === 'rec' ? (o.who ? `© ${o.who}` : 'Photograph from the record') : figCredit({ img: c });
+let wfN = 0;
+async function fillWishFig(o) {
+  const fig = $('#w-fig'), cv = $('#w-img'); const c = imgChoice(o); const list = imgList(o); const i = list.findIndex(x => sameImg(x, c)); const my = ++wfN;
+  const none = c.k === 'none'; fig.classList.toggle('none', none); $('#w-imgs [data-img="none"]').setAttribute('aria-pressed', String(none));
+  $$('#w-imgs [data-img="prev"], #w-imgs [data-img="next"]').forEach(b => { b.disabled = list.length < 2 && !none; });
+  $('#w-imgn').textContent = !none && list.length > 1 ? `${i + 1}/${list.length}` : '';
+  $('#w-cap').textContent = none ? (list.length ? 'FIG. 1 · NONE' : 'FIG. 1 · NO OPEN PHOTOGRAPH') : `FIG. 1 · ${wishCredit(c, o)}`;
+  if (none) { cv.width = 1; cv.height = 1; cv.dataset.img = ''; return; }
+  const want = `${o.id}|${c.k}|${c.u || ''}`; if (cv.dataset.img !== want) { const x0 = cv.getContext('2d'); x0.fillStyle = '#E6E5DE'; x0.fillRect(0, 0, cv.width, cv.height); }
+  cv.classList.add('wait');
+  /* the card turns over first; then the photograph develops */
+  await new Promise(r => setTimeout(r, reduced() ? 0 : 420)); if (my !== wfN) return;
+  for (let i = 0; i < 40 && !fig.clientWidth; i++) await new Promise(r => setTimeout(r, 25));
+  const W = fig.clientWidth || 320, H = Math.round(W * 0.75); const k = Math.min(2, devicePixelRatio || 1); const src = imgSrc(c, o.id, o, false);
+  try { const bw = await bwCanvas(src, Math.round(W * k), Math.round(H * k), 2); if (my !== wfN) return; cv.width = bw.width; cv.height = bw.height; cv.getContext('2d').drawImage(bw, 0, 0); cv.classList.remove('grey'); }
+  catch (e) {   /* a host that will not share its pixels: the photograph greyed by the browser instead */
+    try { const im = await loadImage(src); if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); const sc = Math.max(cv.width / im.naturalWidth, cv.height / im.naturalHeight); x.drawImage(im, (cv.width - im.naturalWidth * sc) / 2, (cv.height - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); cv.classList.add('grey'); }
+    catch (e2) { if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); x.fillStyle = '#E6E5DE'; x.fillRect(0, 0, cv.width, cv.height); M.glyph(x, lifeOf(o), cv.width / 2, cv.height / 2, cv.height * 0.6, '#141412'); }
+  }
+  if (my === wfN) { cv.classList.remove('wait'); cv.dataset.img = want; }
+}
+$('#w-imgs').addEventListener('click', e => {
+  const b = e.target.closest('[data-img]'); const o = S.byId.get(S.sel); if (!b || !o || b.disabled) return; const a = b.dataset.img;
+  if (a === 'own') { $('#w-file').click(); return; }
+  const list = imgList(o); const c = imgChoice(o);
+  if (a === 'none') IMGS[o.id] = c.k === 'none' ? (list[0] || { k: 'none' }) : { k: 'none' };
+  else { if (!list.length) { toast('NO OPEN PHOTOGRAPH'); return; } let i = list.findIndex(x => sameImg(x, c)); i = i < 0 ? 0 : (i + (a === 'next' ? 1 : -1) + list.length) % list.length; IMGS[o.id] = list[i]; }
+  saveImgs(); fillWishFig(o); tick(a === 'none' ? 1100 : 1700); buzz(4);
 });
-/* each place near the record can host the poster, give, or both; the ones the brief needs come first */
-const placeRow = (b, c = {}) => `<li data-n="${esc(b.n)}"${b.i != null ? ` data-bi="${b.i}"` : ''} class="${c.on ? 'on' : ''}${c.host ? ' host' : ''}"><span class="n">${esc(b.n)}${roleChip(b.role)}</span><button type="button" class="hs" aria-pressed="${!!c.host}" data-tip="Put the poster up there">${icon('host', 'sm')}HOST</button><button type="button" class="tg" aria-pressed="${!!c.on}" data-tip="Ask it to give">${icon('give', 'sm')}GIVE</button></li>`;
-function fillPatrons(o, keep) {
-  const b = BRIEFS.find(x => x.id === S.brief); const fit = r => (b && b.roles.includes(r.role) ? 0 : onNotice(r.role) ? 1 : 2);
-  const zone = [...(S.orbit.cell.get(o.id) || (o.lat ? within(o) : []))].sort((x, y) => fit(x) - fit(y) || x.d - y.d).slice(0, 6);
-  const near = o.lat ? bizNear(o.lat, o.lng, 1500).filter(x => !zone.some(z => z.i === x.i)).sort((x, y) => fit(x) - fit(y) || x.d - y.d).slice(0, Math.max(0, 6 - zone.length)) : [];
-  const rows = [...zone, ...near];
-  const chosen = keep ? new Map($$('#pat-list li[data-n]').map(li => [li.dataset.n, { on: li.classList.contains('on'), host: li.classList.contains('host') }])) : new Map();
-  $('#pat-list').innerHTML = rows.map(r => placeRow(r, chosen.get(r.n))).join('');
-}
-$('#pat-list').addEventListener('click', e => {
-  const btn = e.target.closest('.hs, .tg'); if (!btn) return; const li = btn.closest('li'); const cls = btn.classList.contains('hs') ? 'host' : 'on';
-  const on = !li.classList.contains(cls); li.classList.toggle(cls, on); btn.setAttribute('aria-pressed', String(on)); tick();
+/* your own photograph, made small enough to keep on this device */
+$('#w-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; const o = S.byId.get(S.sel); if (!f || !o) return;
+  try {
+    const url = URL.createObjectURL(f); const im = await loadImage(url); const N = 800; const k = Math.min(1, N / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+    OWN[o.id] = c.toDataURL('image/jpeg', 0.8); saveOwn(); IMGS[o.id] = { k: 'own' }; saveImgs(); fillWishFig(o); tick(2200); buzz(8);
+  } catch (err) { toast('PHOTO WILL NOT OPEN'); }
+  e.target.value = '';
 });
-$('#r-form').addEventListener('submit', e => e.preventDefault());
-/* who the poster asks: places to host it, places to give; no amounts until someone gives */
-function readPlaces() {
-  return { patrons: $$('#pat-list li.on').map(li => ({ n: li.dataset.n, bi: li.dataset.bi != null ? +li.dataset.bi : null, st: 'asked' })), hosts: $$('#pat-list li.host').map(li => li.dataset.n) };
-}
-/* two lines at most on the poster: no new lines, and the words stop where the poster's second line ends.
-   The box grows to show every word; on a narrow screen that can take a third line on the card, never on the poster. */
-function fitBox(t) {
-  const k = t.id.slice(2); let guard = 200;
-  while (t.value.length && !fitsPoster(t.value, k) && guard--) t.value = t.value.slice(0, -1);
-  t.style.height = ''; if (t.scrollHeight > t.clientHeight + 1) t.style.height = `${t.scrollHeight}px`;
-  t.closest('.w').dataset.left = String(fitsPoster(`${t.value} mm`, k) ? t.maxLength - t.value.length : 0);
-}
-$$('#r-form textarea').forEach(t => {
-  t.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
-  t.addEventListener('input', () => { if (t.value.includes('\n')) t.value = t.value.replace(/\s*\n\s*/g, ' '); fitBox(t); });
-  t.addEventListener('input', debounce(() => { const o = S.byId.get(S.sel); if (o && S.mode === 'ping') store.set(draftKey(o), { w: $('#w-w').value, i: $('#w-i').value, s: $('#w-s').value, h: $('#w-h').value }); }, 300));
+/* the characters left on a line, shown only when few are left */
+function count(t) { const left = SIG.line - t.value.length; const li = t.closest('li'); li.dataset.left = left <= 12 ? String(left) : ''; li.classList.toggle('full', !!t.value); }
+const saveDraft = debounce(() => { const o = S.byId.get(S.sel); if (o && S.mode === 'ping') store.set(draftKey(o), Object.fromEntries(WKEYS.map(k => [k, $('#w-' + k).value]))); }, 300);
+WKEYS.forEach(k => {
+  const t = $('#w-' + k); t.maxLength = SIG.line;
+  t.addEventListener('input', () => { count(t); saveDraft(); });
+  t.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const i = WKEYS.indexOf(k); if (i < 3) $('#w-' + WKEYS[i + 1]).focus(); else heroBtn.click(); } });
 });
 $('#w-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });
-function nextLetterFor(o) { const used = new Set(respsOf(o).map(r => r.letter)); for (const c of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') if (!used.has(c)) return c; return 'Z'; }
+$('#r-wish').addEventListener('submit', e => e.preventDefault());
 
-/* ───────── the hero: imagine the poster, make it, place a record, call ───────── */
+/* ───────── the main button ───────── */
 heroBtn.addEventListener('click', async () => {
-  if (S.mode === 'biz') { printBiz(S.bizSel); return; }
+  if (face === 'place') { placeIt(false); return; }
+  if (face === 'signal') { const s = S.issued || S.signals.find(x => x.key === S.sig); if (s) printSlip(s); return; }
   if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); if (t) window.open(t.link, '_blank', 'noopener'); return; }
-  if (face === 'place') { placeIt(); return; }
   const o = S.byId.get(S.sel); if (!o) return;
-  if (face === 'front' && (o.kind === 'injured' || o.kind === 'dead')) { const tel = telOf(o); if (tel) { location.href = tel; return; } }
   if (face === 'front') {
-    if (!S.stats.get(o.id) || !statOf(o).joins.has(S.me.dev)) ledgerAdd({ type: 'join', ref: o.id, lat: o.lat, lng: o.lng, b: bandOf(o) });
-    fillBack(o); showFace('back'); buzz(6); return;
+    if (o.kind === 'injured' || o.kind === 'dead') { const tel = telOf(o); if (tel) { location.href = tel; return; } }
+    if (o.kind === 'lost') { searchFor(o.id); return; }
+    toWish(o); return;
   }
-  if (face === 'back') {
-    const v = k => $('#w-' + k).value.trim(); const W = { w: v('w'), i: v('i'), s: v('s'), h: v('h') };
-    const missing = ['w', 'i', 's', 'h'].find(k => !W[k]); if (missing) { nudge($('#w-' + missing)); return; }
-    const sign = $('#w-sign').value.trim(); if (!sign) { nudge($('#w-sign')); return; }
-    const subject = subjectOf(o);
-    const ev = await ledgerAdd({ type: 'notice', ref: o.id, lat: +o.lat.toFixed(4), lng: +o.lng.toFixed(4), b: bandOf(o), who: sign, data: { ...W, letter: nextLetterFor(o), issued: Date.now(), valid: Date.now() + CONFIG.VALID_DAYS * 864e5, brief: S.brief || null, snap: typeof subject.id === 'number' ? snapshot(subject) : null, after: remixOf || undefined, ...readPlaces() } });
-    remixOf = null;
-    store.set(draftKey(o), null); showFiled(o, ev); life.select(); buzz([14, 50, 24]);
-  }
+  if (face === 'wish') issue(o);
 });
-/* an animal hurt or dead: the call comes first; a poster can still answer it */
-$('#r-alt').addEventListener('click', () => { const o = S.byId.get(S.sel); if (!o) return; if (!S.stats.get(o.id) || !statOf(o).joins.has(S.me.dev)) ledgerAdd({ type: 'join', ref: o.id, lat: o.lat, lng: o.lng, b: bandOf(o) }); fillBack(o); showFace('back'); tick(); });
-function snapshot(o) { return { id: o.id, d: o.d, t: o.t, lat: +o.lat.toFixed(4), lng: +o.lng.toFixed(4), ob: o.ob, cap: o.cap, q: o.q, pg: suburbOf(o.pg), tx: o.tx, u: o.u, ph: o.ph }; }
-
-/* ───────── made: the poster ───────── */
-function showFiled(o, ev) {
-  S.filed = { o, ev }; showFace('filed');
-  const host = $('#r-sheet'); host.innerHTML = '<div class="blank"></div>';
-  posterThumb(o, ev).then(node => { if (node && S.filed && S.filed.ev === ev) { host.innerHTML = ''; host.appendChild(node); fitMini(node); } });
+altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (o) toWish(o); });
+function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; showFace('wish'); buzz(6); snd.tick(1700); }
+/* issued: the slip feeds out of the printer and becomes a signal */
+async function issue(o) {
+  const L = Object.fromEntries(WKEYS.map(k => [k, $('#w-' + k).value.trim()]));
+  const missing = WKEYS.find(k => !L[k]); if (missing) { nudge($('#w-' + missing)); return; }
+  const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o);
+  const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;
+  const sig = makeSignal(o, L, $('#w-sign').value.trim(), { statement: st, note: $('#w-note-on').checked ? $('#w-note-t').value.trim() : '', img });
+  /* an own photograph stays on this device, kept under the signal's code */
+  const own = c.k === 'own' ? OWN[o.id] : c.k === 'rec' ? o.photo : null; if (own && sig.img) { OWN[sig.code] = own; saveOwn(); }
+  const ev = await ledgerAdd({ type: 'signal', ref: o.id, lat: sig.pin.lat, lng: sig.pin.lng, who: sig.who, data: sig });
+  store.set(draftKey(o), null);
+  const slip = $('#w-slip'); slip.querySelector('.sl-code').textContent = sig.code;
+  snd.printer(1250); rec.classList.add('feeding');
+  setTimeout(() => { rec.classList.remove('feeding'); S.issued = S.signals.find(x => x.key === ev.key) || { key: ev.key, ...sig }; fillSignal(S.issued); showFace('signal'); snd.tear(); buzz([12, 40, 18]); try { history.replaceState(null, '', '#' + sig.code); } catch (e) { /* file:// */ } }, reduced() ? 0 : 1250);
 }
-$('#r-sheet').addEventListener('click', () => { if (S.filed) openViewer(S.filed.o, S.filed.ev); });
-$('#f-print').addEventListener('click', () => printDoc('notice'));
-$('#f-share').addEventListener('click', () => { if (S.filed) share(S.filed.o, S.filed.ev); });
 
-/* ───────── a new record by hand: a touch on empty ground, a long press, or a right-click ─────────
-   Say what it is in a few words and add a photo if there is one. The words choose the kind, the species and how many. */
+/* ───────── a new record by hand: a touch on empty ground in the radar, a long press, or a right-click ───────── */
 const PLACE_KINDS = [
-  { f: 'fauna', type: 'noticed', b: 1, word: 'SEEN', go: 'PLACE IT' }, { f: 'flora', type: 'noticed', b: 5, word: 'PLANT', go: 'PLACE IT' }, { f: 'injured', type: 'injured', b: 0, word: 'HURT', go: 'ALERT' },
-  { f: 'dead', type: 'dead', b: 0, word: 'DEAD', go: 'ALERT' }, { f: 'lost', type: 'lost', b: 0, word: 'LOST', go: 'ALERT' }, { f: 'need', type: 'need', b: 0, word: 'NEED', go: 'ASK' },
-  { f: 'offer', type: 'offer', b: 0, word: 'OFFER', go: 'OFFER IT' }, { f: 'event', type: 'event', b: 0, word: 'GATHER', go: 'INVITE' },
+  { f: 'fauna', type: 'noticed', b: 1, word: 'SEEN' }, { f: 'flora', type: 'noticed', b: 5, word: 'PLANT' }, { f: 'injured', type: 'injured', b: 0, word: 'HURT' },
+  { f: 'dead', type: 'dead', b: 0, word: 'DEAD' }, { f: 'lost', type: 'lost', b: 0, word: 'LOST' }, { f: 'need', type: 'need', b: 0, word: 'NEED' },
+  { f: 'offer', type: 'offer', b: 0, word: 'OFFER' }, { f: 'event', type: 'event', b: 0, word: 'GATHER' },
 ];
 const KIND_WORDS = [[3, /\b(dead|died|carcass|roadkill)\b/], [2, /\b(hurt|injur\w*|bleed\w*|hit by|limp\w*|dying|trapped|stuck|tangled|on the ground|can'?t fly|wounded)\b/], [4, /\b(lost|missing|escaped|has anyone seen|run away|ran off)\b/], [7, /\b(tonight|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|walk|gig|workshop|meet|gathering|\d{1,2}(:\d{2})?\s?(am|pm))\b/], [5, /\b(need|needs|please help|looking for|wanted)\b/], [6, /\b(offer\w*|free|giving|spare|available|happy to)\b/], [1, /\b(tree|plant|flower\w*|grass|gum|wattle|moss|fung\w*|mushroom\w*|weed|seedling\w*|orchid\w*)\b/]];
 const kindFrom = t => { for (const [k, re] of KIND_WORDS) if (re.test(t)) return k; return 0; };
@@ -1930,7 +2613,7 @@ const speciesFrom = t => {
 };
 const nightNow = () => { const h = new Date().getHours(); return h >= 20 || h < 6; };
 /* what it is, by touch, when the words do not say: the kinds most often met here, and any other animal */
-const LIFE_CHIPS = [['bird', 'BIRD'], ['possum', 'POSSUM'], ['bat', 'BAT'], ['bee', 'BEE'], ['butterfly', 'BUTTERFLY'], ['beetle', 'BEETLE'], ['spider', 'SPIDER'], ['lizard', 'LIZARD'], ['snake', 'SNAKE'], ['frog', 'FROG'], ['turtle', 'TURTLE'], ['plant', 'PLANT'], ['paw', 'OTHER']];
+const LIFE_CHIPS = [['paw', 'ANIMAL'], ['bird', 'BIRD'], ['possum', 'POSSUM'], ['bat', 'BAT'], ['bee', 'BEE'], ['butterfly', 'BUTTERFLY'], ['beetle', 'BEETLE'], ['spider', 'SPIDER'], ['lizard', 'LIZARD'], ['snake', 'SNAKE'], ['frog', 'FROG'], ['turtle', 'TURTLE'], ['dog', 'DOG'], ['cat', 'CAT'], ['plant', 'PLANT']];
 const LIFE_KINDS = ['fauna', 'flora', 'injured', 'dead', 'lost'];
 /* a phone number or an email, nothing else */
 const contactOK = v => !v || /^[^@\s/]+@[^@\s/]+\.[a-z]{2,}$/i.test(v) || /^\+?[\d\s()-]{8,18}$/.test(v);
@@ -1943,15 +2626,22 @@ const countFrom = t => {
 };
 let placeImg = null;
 function startPlace(lngLat) {
-  S.mode = 'place'; S.sel = null; S.bizSel = null; S.filed = null; S.tribeSel = null; S.place = { id: 'place', lat: lngLat.lat, lng: lngLat.lng, b: 1, kind: 0, auto: true, photo: null, tx: null, g: null };
-  placeImg = null; $('#r-spec').hidden = true; $('#r-name').textContent = ''; $('#r-latin').innerHTML = '';
+  if (S.mode) closeRecord('switch');
+  S.mode = 'place'; S.sel = null; S.tribeSel = null; S.sig = null; S.place = { id: 'place', lat: lngLat.lat, lng: lngLat.lng, b: 1, kind: 0, auto: true, photo: null, tx: null, g: null };
+  placeImg = null; $('#r-name').textContent = ''; $('#r-latin').innerHTML = '';
   $('#pl-text').value = ''; $('#pl-shot').classList.remove('has'); $('#pl-when').value = ''; $('#pl-contact').value = '';
-  fillPlace(); showFace('place'); openRecord(); life.select(); loadBusinesses(); tick(1300);
+  openRecord(); fillPlace(); showFace('place'); life.select(); placesAround(lngLat.lat, lngLat.lng, 400); snd.tick(1300); buzz(8);
   if (S.mapReady) map.easeTo({ center: [lngLat.lng, lngLat.lat], zoom: Math.max(map.getZoom(), 15.2), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
   if (!coarse()) setTimeout(() => $('#pl-text').focus({ preventScroll: true }), 320);
 }
+/* out of placing, by any way out; whatever was begun can be brought back for a moment */
+function cancelPlace() {
+  const keep = S.place ? { p: { ...S.place }, img: placeImg, text: $('#pl-text').value, when: $('#pl-when').value, contact: $('#pl-contact').value } : null;
+  snd.snap(0); closeRecord();
+  if (keep && (keep.text.trim() || keep.img)) toastUndo('CANCELLED', () => { startPlace(keep.p); S.place = keep.p; placeImg = keep.img; $('#pl-text').value = keep.text; $('#pl-when').value = keep.when; $('#pl-contact').value = keep.contact; $('#pl-shot').classList.toggle('has', !!keep.img); fillPlace(); life.select(); });
+}
 function movePlace(ll) { const p = S.place; if (!p) return; p.lat = ll.lat; p.lng = ll.lng; fillPlace(); life.select(); tick(1500); }
-/* the card as it will be: the photograph or the thing itself in a circle, the name, the kind */
+/* the record as it will be: the photograph or the thing itself in a circle */
 function drawPreview() {
   const p = S.place; const cv = $('#pl-disc'); const x = cv.getContext('2d'); const n = cv.width; const h = n / 2;
   x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, n, n);
@@ -1964,42 +2654,36 @@ function drawPreview() {
   M.badge(x, { ...life.badgeOf(p, 40), d: n * 0.98, fresh: false, sig: false, n: 0 }, h, h);
 }
 function fillPlace() {
-  const p = S.place; const k = PLACE_KINDS[p.kind]; const now = new Date(); const night = nightNow(); const text = $('#pl-text').value.trim();
+  const p = S.place; const k = PLACE_KINDS[p.kind]; const night = nightNow(); const text = $('#pl-text').value.trim();
   p.tx = text ? speciesFrom(text.toLowerCase()) : null;
   const fe = p.tx ? FIELD_IX.get(p.tx.n.toLowerCase()) || (GROUP_REP[p.tx.n.toLowerCase()] ? FIELD_IX.get(GROUP_REP[p.tx.n.toLowerCase()]) : null) : null;
   $('#r-no').textContent = 'No. ——— NEW';
-  /* the sky: night after eight, day before; the time large, the place small */
   const sky = $('#pl-sky'); sky.classList.toggle('night', night);
-  $('#pl-time').textContent = fmtClock(now); $('#pl-sw').innerHTML = `${icon(night ? 'night' : 'day')}<small>${night ? 'AFTER DARK' : 'DAYLIGHT'}</small>`;
+  $('#pl-time').textContent = fmtClock(Date.now()); $('#pl-sw').innerHTML = icon(night ? 'night' : 'day');
   $('#pl-where').textContent = suburbAt(p.lat, p.lng);
-  /* the card forming */
-  $('#pl-kind').className = `kind k-${k.f}`; $('#pl-kind').innerHTML = `<b>${k.word}</b>${icon('turn', 'sm')}`;
-  /* what happened, and what it is: each a row of choices; the words choose first, a touch overrides */
   $('#pl-kinds').innerHTML = PLACE_KINDS.map((x, i) => `<button type="button" class="chip k-${x.f}${i === p.kind ? ' on' : ''}" data-k="${i}" aria-pressed="${i === p.kind}">${x.word}</button>`).join('');
-  const lifeOn = LIFE_KINDS.includes(k.f); $('#pl-lives').hidden = !lifeOn; $('#pl-lives-h').hidden = !lifeOn;
+  const lifeOn = LIFE_KINDS.includes(k.f); $('#pl-lives').hidden = !lifeOn;
   const autoG = !p.g && p.tx ? glyphOf(p) : null;
-  if (lifeOn) $('#pl-lives').innerHTML = LIFE_CHIPS.map(([g, w]) => `<button type="button" class="lchip${p.g === g ? ' on' : autoG === g ? ' auto' : ''}" data-g="${g}" aria-pressed="${p.g === g}" aria-label="${w}" title="${w}">${glyphSVG(g)}<small>${w}</small></button>`).join('');
-  const chosen = p.g ? (M.KINDS[p.g] || '') : '';
-  const name = p.tx ? p.tx.cn : chosen && p.g !== 'paw' ? (k.f === 'injured' ? `${chosen}, hurt` : k.f === 'dead' ? `${chosen}, dead` : k.f === 'lost' ? `${chosen}, lost` : chosen) : k.f === 'injured' ? 'An animal, hurt' : k.f === 'dead' ? 'An animal, dead' : k.f === 'lost' ? 'An animal, lost' : k.f === 'flora' ? 'A plant' : k.f === 'fauna' ? 'An animal' : text ? text.slice(0, 48) : cap(k.word.toLowerCase());
+  if (lifeOn) $('#pl-lives').innerHTML = LIFE_CHIPS.map(([g, w]) => `<button type="button" class="lchip${p.g === g ? ' on' : autoG === g ? ' auto' : ''}" data-g="${g}" aria-pressed="${p.g === g}" aria-label="${w}" data-tip="${w}">${glyphSVG(g)}</button>`).join('');
+  const chosen = p.g && p.g !== 'paw' ? (M.KINDS[p.g] || '') : '';
+  const name = p.tx ? p.tx.cn : chosen ? (k.f === 'injured' ? `${chosen}, hurt` : k.f === 'dead' ? `${chosen}, dead` : k.f === 'lost' ? `${chosen}, lost` : chosen) : k.f === 'injured' ? 'An animal, hurt' : k.f === 'dead' ? 'An animal, dead' : k.f === 'lost' ? 'An animal, lost' : k.f === 'flora' ? 'A plant' : k.f === 'fauna' ? 'An animal' : text ? text.slice(0, 48) : cap(k.word.toLowerCase());
   $('#pl-name').textContent = name; $('#pl-latin').innerHTML = p.tx ? `<i>${esc(p.tx.n)}</i>` : '';
-  const tags = []; const n = countFrom(text.toLowerCase()); if (n > 1) tags.push([null, `×${n}`]);
-  if (night && ['fauna', 'injured', 'lost', 'dead'].includes(k.f)) tags.push(['night', 'AFTER DARK']);
-  if (fe && fe.st === 'I') tags.push([null, 'INTRODUCED']); if (fe && fe.st === 'T') tags.push([null, 'THREATENED']);
-  $('#pl-tags').innerHTML = tags.map(([ic, w]) => `<span>${ic ? icon(ic, 'sm') : ''}${w}</span>`).join('');
+  const tags = []; const n = countFrom(text.toLowerCase()); if (n > 1) tags.push(`×${n}`);
+  if (night && ['fauna', 'injured', 'lost', 'dead'].includes(k.f)) tags.push('AFTER DARK');
+  if (fe && fe.st === 'I') tags.push('INTRODUCED'); if (fe && fe.st === 'T') tags.push('THREATENED');
+  $('#pl-tags').innerHTML = tags.map(w => `<span>${w}</span>`).join('');
   drawPreview();
-  /* what to do, at once */
-  const tel = k.f === 'injured' ? ['tel:0384007300', '(03) 8400 7300', 'WILDLIFE VICTORIA'] : k.f === 'dead' && fe && BIRDS.has(fe.g) ? ['tel:1800675888', '1800 675 888', 'SICK OR DEAD WILD BIRDS'] : null;
+  const tel = k.f === 'injured' ? (fe && fe.g === 'flyingfox' ? ['tel:136186', '136 186', 'DEECA'] : ['tel:0384007300', '(03) 8400 7300', 'WILDLIFE VICTORIA']) : k.f === 'dead' && fe && BIRDS.has(fe.g) ? ['tel:1800675888', '1800 675 888', 'SICK OR DEAD WILD BIRDS'] : null;
   const lostL = k.f === 'lost' ? LINKS.find(l => /LOST/.test(l[0]) && (p.lat > -37.7835 ? /MERRI/.test(l[0]) : /MELBOURNE/.test(l[0]))) || null : null;
-  $('#pl-hint').innerHTML = (fe && fe.harm && !tel ? `<ul class="r-do">${doRow('harm', cap(fe.harm), '')}</ul>` : '')
+  $('#pl-hint').innerHTML = (fe && fe.harm && !tel ? `<p class="harm">${icon('harm', 'sm')}${esc(cap(fe.harm))}</p>` : '')
     + (tel ? `<a class="callline alarm" href="${tel[0]}">${icon('phone')}<span class="mono">${tel[1]}</span><small>${tel[2]}</small></a>` : '')
     + (lostL ? `<a class="callline" href="${lostL[1]}" target="_blank" rel="noopener">${icon('out')}<span class="mono">LOST + FOUND</span><small>${esc(lostL[0])}</small></a>` : '');
   $('#pl-when').hidden = k.type !== 'event'; $('#pl-sign').value = S.me.by || '';
-  heroWord('check', k.go); rec.classList.toggle('alarm', k.f === 'injured' || k.f === 'dead');
+  rec.classList.toggle('alarm', k.f === 'injured' || k.f === 'dead');
 }
 const pop = () => { const d = $('#pl-disc'); d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); };
 $('#pl-text').addEventListener('input', debounce(() => { const p = S.place; if (!p) return; const was = p.kind; if (p.auto) p.kind = kindFrom($('#pl-text').value.toLowerCase()); const had = p.tx && p.tx.n; fillPlace(); if (p.kind !== was || (p.tx && p.tx.n) !== had) { tick(p.kind !== was ? 1200 : 2000); pop(); } }, 160));
-$('#pl-text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); placeIt(); } });
-$('#pl-kind').addEventListener('click', () => { const b = $('#pl-kinds .chip.on') || $('#pl-kinds .chip'); if (b) b.focus(); tick(1200); });
+$('#pl-text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); placeIt(false); } });
 $('#pl-kinds').addEventListener('click', e => { const b = e.target.closest('[data-k]'); const p = S.place; if (!b || !p) return; p.kind = +b.dataset.k; p.auto = false; if (PLACE_KINDS[p.kind].f === 'flora' && p.g && !['plant', 'fungi'].includes(p.g)) p.g = null; if (PLACE_KINDS[p.kind].f !== 'flora' && ['plant', 'fungi'].includes(p.g)) p.g = null; fillPlace(); tick(1200); pop(); });
 $('#pl-lives').addEventListener('click', e => {
   const b = e.target.closest('[data-g]'); const p = S.place; if (!b || !p) return; const g = b.dataset.g;
@@ -2008,10 +2692,10 @@ $('#pl-lives').addEventListener('click', e => {
   fillPlace(); tick(1900); pop();
 });
 $('#pl-here').addEventListener('click', () => {
-  if (!navigator.geolocation) { toast('This device cannot say where it is.'); return; }
+  if (!navigator.geolocation) { toast('NO LOCATION'); return; }
   const b = $('#pl-here'); b.classList.add('busy'); tick();
-  navigator.geolocation.getCurrentPosition(pos => { b.classList.remove('busy'); const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude }; if (!inBox(ll.lat, ll.lng)) { toast('That is outside the map.'); return; } movePlace(ll); if (S.mapReady) map.easeTo({ center: [ll.lng, ll.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 600 }); },
-    () => { b.classList.remove('busy'); toast('Tap the map where it is.'); }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  navigator.geolocation.getCurrentPosition(pos => { b.classList.remove('busy'); const ll = { lat: pos.coords.latitude, lng: pos.coords.longitude }; if (!inBox(ll.lat, ll.lng)) { toast('OUTSIDE THE MAP'); return; } movePlace(ll); if (S.mapReady) map.easeTo({ center: [ll.lng, ll.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 600 }); },
+    () => { b.classList.remove('busy'); toast('TAP THE MAP'); }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
 });
 /* a photograph from the phone, made small enough to keep on this device */
 $('#pl-photo').addEventListener('change', async e => {
@@ -2020,258 +2704,448 @@ $('#pl-photo').addEventListener('change', async e => {
     const url = URL.createObjectURL(f); const im = await loadImage(url); const N = 720; const k = Math.min(1, N / Math.max(im.naturalWidth, im.naturalHeight));
     const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
     S.place.photo = c.toDataURL('image/jpeg', 0.78); placeImg = await loadImage(S.place.photo); $('#pl-shot').classList.add('has'); fillPlace(); tick(2200); buzz(8);
-  } catch (err) { toast('That photo will not open here.'); }
+  } catch (err) { toast('PHOTO WILL NOT OPEN'); }
   e.target.value = '';
 });
-async function placeIt() {
+/* placed: the record joins the map; DIRECT RESPONSE goes straight on to the slip */
+async function placeIt(respond) {
   const p = S.place; if (!p) return; const k = PLACE_KINDS[p.kind]; const text = $('#pl-text').value.trim(); const sign = $('#pl-sign').value.trim();
-  if (!text && !p.photo) { nudge($('#pl-text')); return; }
   if (k.type === 'event' && !$('#pl-when').value) { nudge($('#pl-when')); return; }
-  if (!sign) { nudge($('#pl-sign')); return; }
-  const contact = $('#pl-contact').value.trim(); if (!contactOK(contact)) { nudge($('#pl-contact')); toast('A phone number or an email, please. No social media.'); return; }
-  S.me.by = sign; store.set('da.me', S.me);
-  const dp = k.type === 'need' ? 3 : 4; const tx = p.tx || speciesFrom(text.toLowerCase()); const n = countFrom(text.toLowerCase());
+  const contact = $('#pl-contact').value.trim(); if (!contactOK(contact)) { nudge($('#pl-contact')); toast('PHONE OR EMAIL ONLY'); return; }
+  if (sign) { S.me.by = sign; store.set('da.me', S.me); }
+  const dp = k.type === 'need' ? 3 : 4; const tx = p.tx || (text ? speciesFrom(text.toLowerCase()) : null); const n = countFrom(text.toLowerCase());
   const g = LIFE_KINDS.includes(k.f) ? (p.g || (tx ? null : life.badgeOf(p, 20).g)) : null;
-  const data = { text: text || (tx ? tx.cn : p.g ? M.KINDS[p.g] : ''), ...(tx ? { tx } : {}), ...(g ? { g } : {}), ...(contact ? { contact } : {}), ...(n > 1 ? { n } : {}), ...(p.photo ? { photo: p.photo } : {}), ...(k.type === 'event' ? { start: new Date($('#pl-when').value).toISOString() } : {}) };
+  const data = { text: text || (tx ? tx.cn : p.g && p.g !== 'paw' ? M.KINDS[p.g] : ''), ...(tx ? { tx } : {}), ...(g ? { g } : {}), ...(contact ? { contact } : {}), ...(n > 1 ? { n } : {}), ...(p.photo ? { photo: p.photo } : {}), ...(k.type === 'event' ? { start: new Date($('#pl-when').value).toISOString() } : {}) };
   const ev = { type: k.type, lat: +p.lat.toFixed(dp), lng: +p.lng.toFixed(dp), b: tx && k.type === 'noticed' ? null : k.b, who: sign, data };
   const saved = await ledgerAdd(ev); $('#pl-text').value = '';
-  buzz([12, 40, 18]); tick(900); closeRecord(); select('u:' + saved.key);
+  buzz([12, 40, 18]); snd.pluck(0.3, 0);
+  const id = 'u:' + saved.key; S.mode = null; S.place = null; document.body.classList.remove('placing');
+  select(id); if (respond) { const o = S.byId.get(id); if (o) setTimeout(() => toWish(o), reduced() ? 0 : 420); }
 }
-const holdRing = $('#hold'); let pressT = 0, pressAt = null;
+const holdRing = $('#hold'); let pressT = 0, pressAt = null, held = false;
+/* the click that ends a hold is part of the hold, not a tap on the marker it made */
+function consumeHold() { const h = held; held = false; return h; }
 const ringOff = () => holdRing.classList.remove('on');
-const arm = e => { if (S.mode) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; life.offer(null); startPlace(e.lngLat); } }, 650); };
+const arm = e => { if (S.mode) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; held = true; life.offer(null); startPlace(e.lngLat); } }, 650); };
 map.on('mousedown', e => { if (e.originalEvent.button === 0 && !life.hit(e.point.x, e.point.y, true)) arm(e); });
 map.on('touchstart', e => { if (e.points && e.points.length > 1) { clearTimeout(pressT); pressAt = null; ringOff(); return; } if (!life.hit(e.point.x, e.point.y, true)) arm(e); });
 const disarm = e => { if (!pressAt) return; if (!e || !e.point || Math.hypot(e.point.x - pressAt.x, e.point.y - pressAt.y) > 6) { clearTimeout(pressT); pressAt = null; ringOff(); } };
 map.on('mousemove', disarm); map.on('touchmove', disarm); map.on('dragstart', () => disarm()); map.on('rotatestart', () => disarm()); map.on('pitchstart', () => disarm());
-map.on('mouseup', () => { clearTimeout(pressT); pressAt = null; ringOff(); }); map.on('touchend', () => { clearTimeout(pressT); pressAt = null; ringOff(); });
-
+const release = () => { clearTimeout(pressT); pressAt = null; ringOff(); if (held) setTimeout(() => { held = false; }, 450); };
+map.on('mouseup', release); map.on('touchend', release);
 
 /* ════════════════════════════════════════════════════════════════════
-   THE POSTER — A4, a climate emergency warning a passer-by can read in the order they need it:
-   the warning, what was seen, what it is, the months ahead and the danger they bring it,
-   then the four lines that ask something of them (a third of the sheet), a code to answer it, and who to call.
+   SIGNALS — a slip issued from a cell, set like an archive record: a photograph in black and white as half of it,
+   the life, where and when, its statement, four lines, the relations tied, a note, a name and a code.
+   It leaves through a 58 mm printer, raw ESC/POS, a pocket 1-bit printer, the Game Boy Printer, a mesh radio,
+   a pager or a link, and comes back in by pasting any of them.
    ════════════════════════════════════════════════════════════════════ */
 function portalBase() {
   if (CONFIG.PORTAL_URL) return CONFIG.PORTAL_URL.replace(/#.*$/, '');
   if (/^https?:$/.test(location.protocol) && !/^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname)) return location.origin + location.pathname;
   return '';
 }
-function renderQR(host, text) {
-  try { const qr = qrcode(0, 'M'); qr.addData(text); qr.make(); const n = qr.getModuleCount(), N = n + 4; let p = '', dark = 0;
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) { p += `M${c + 2} ${r + 2}h1v1h-1z`; dark++; }
-    host.innerHTML = `<svg viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" role="img" aria-label="QR code"><path d="${p}" fill="#000"/></svg>`; host._ratio = dark / (N * N);
-  } catch (e) { host.innerHTML = ''; host._ratio = 0; }
+const CROCK = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function codeFor(seed) { let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619); h >>>= 0; let s = ''; for (let i = 0; i < 4; i++) { s += CROCK[h % 32]; h = Math.floor(h / 32); } return 'DA-' + s; }
+/* opt: statement (what it says, or nothing), note (the notes, when kept), img (the photograph chosen) */
+function makeSignal(o, L, who, opt = {}) {
+  const at = Date.now(); const pin = pinData(o); const fig = strings.snapshot(); const st = opt.statement != null ? opt.statement : '';
+  const brief = (webBriefs(o, strings.tied(), 1)[0] || {}).id || null; const img = opt.img && opt.img.k !== 'none' ? opt.img : null;
+  return { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: st.slice(0, 320), when: st ? whenWord(o) : '', deg: st ? degOf(o) : 0, lines: L, nodes: fig.nodes, edges: fig.edges, ...(opt.note ? { note: opt.note.slice(0, 280) } : {}), ...(brief ? { brief } : {}), ...(img ? { img: img.k === 'inat' ? { k: 'inat', u: img.u, a: img.a || '', l: img.l || '', oid: img.oid || null } : { k: 'own', ...(img.a ? { a: img.a } : {}) } } : {}), who: who || '' };
 }
-function subjectFor(o, ev) {
-  const sub = subjectOf(o); if (sub && sub.tx) return sub;
-  const snap = ev && ev.data && ev.data.snap; if (snap) return { ...snap, age: 0 };
-  return { id: null, user: true, isEvent: o.isEvent, start: o.start, d: isoDay(new Date(ev ? ev.at : Date.now())), t: null, lat: o.lat, lng: o.lng, ob: o.id === 'blank', cap: false, q: '', pg: '', hum: o.hum, tx: { n: '', cn: o.id === 'blank' ? '' : nameOf(o), ic: o.hum ? 'Human' : SCALES[bandOf(o)].taxa[0], th: false, na: false, intro: false }, u: { l: '', n: (ev && ev.who) || '' }, ph: null };
+/* ───────── carrying it: a link, compact enough for a QR code on a 58 mm slip ───────── */
+const b64u = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4))));
+const INAT_PHOTOS = 'https://inaturalist-open-data.s3.amazonaws.com/photos/';
+const photoKey = u => { const m = String(u || '').match(/\/photos\/(\d+)\/\w+\.(\w+)/); return m ? `${m[1]}.${m[2]}` : ''; };
+/* the statement a life opens with, wherever the app runs: a link carries a flag instead of the words when it is unchanged */
+const stOf = p => { const h = HEROES.find(x => x.n && x.n === p.n); return (h && h.st) || STATEMENT[p.g] || ''; };
+function packSignal(s) {
+  const p = s.pin || {}; const im = s.img && s.img.k === 'inat' && photoKey(s.img.u) ? [photoKey(s.img.u), s.img.a || '', s.img.l || '', s.img.oid || 0].join('|') : '';
+  return b64u(JSON.stringify({ c: s.code, t: Math.round(s.at / 60000).toString(36), p: [p.lat, p.lng, p.g || '', p.cn || '', p.n || '', p.place || '', p.id || 0], l: WKEYS.map(k => (s.lines || {})[k] || ''), k: (s.nodes || []).map(n => [n.k, n.t, n.n, (n.t === 'biz' ? ((n.h || [])[0] ? '!' + n.h[0] : n.role) : n.g || n.kind) || '', n.b, n.d]), e: s.edges || [], ...(s.threat ? { s: s.threat === stOf(p) ? 1 : s.threat } : {}), ...(s.note ? { o: s.note } : {}), ...(im ? { i: im } : {}), ...(s.brief ? { b: s.brief } : {}), ...(s.who ? { y: s.who } : {}) }));
 }
-const codeFor = (o, ev) => (o.id === 'blank' ? '______' : codeOf(o));
-const targetFor = (o, ev) => {
-  const b = portalBase(); if (o.id === 'blank') return b || 'https://www.inaturalist.org';
-  if (b) return `${b}#${hashOf(o) || 'U' + ev.key}`;
-  return typeof o.id === 'number' ? `${CONFIG.INAT_WEB}${o.id}` : 'https://www.inaturalist.org';
-};
-async function buildNotice(o, ev) {
-  const d = ev.data || {}; const P = id => document.getElementById(id); const blank = o.id === 'blank';
-  const sub = blank ? null : subjectFor(o, ev); const resp = S.resp.get(ev.key); const fe = blank ? null : fieldOf(o);
-  const poster = P('poster'); poster.classList.toggle('blank', blank);
-  /* the warning */
-  P('p-kicker').textContent = `CLIMATE EMERGENCY RESPONSE · ${CONFIG.ELNINO}`;
-  /* the headline names the unseasonable stretch this life faces; otherwise the season itself */
-  const win = blank ? null : windowOf(o, nowK(), 6); P('p-head').textContent = win ? cap(win.w.toLowerCase()) : 'Hotter, drier';
-  /* what was seen: the photograph, plain; or the thing itself, large */
-  const ph = P('p-photo'); ph.innerHTML = ''; let credit = '';
-  const own = !blank && (o.photo || (sub && sub.photo));
-  const src = own || (!blank && sub.ph && licAdaptable(sub.ph.l) ? photoURL(sub.ph.u, 'large') : null);
-  if (src) { const im = await loadImage(src, !own).catch(() => null); if (im) { const el = document.createElement('img'); el.src = src; el.alt = ''; ph.appendChild(el); credit = own ? (o.who ? `PHOTO ${o.who}` : '') : `PHOTO © ${sub.u.n || sub.u.l} · ${licLabel(sub.ph.l)}`; } }
-  if (!ph.firstChild) {   /* no photograph: the thing itself, drawn as a vector so it prints sharp and survives every copy of the sheet */
-    const b = blank ? null : life.badgeOf(o, 40); const ref = b ? (b.g ? `k-${b.g}` : b.i ? `g-${b.i}` : '') : '';
-    ph.innerHTML = `<svg class="pw-glyph${b && b.i ? ' ic' : ''}" viewBox="0 0 16 16" aria-hidden="true">${ref ? `<use href="#${ref}"/>` : ''}</svg>`;
+function unpackSignal(x) {
+  const j = JSON.parse(unb64u(x)); const [lat, lng, g, cn, n, place, id] = j.p || [];
+  if (!/^DA-[0-9A-Z]{4}$/.test(j.c || '') || !Number.isFinite(+lat) || !Number.isFinite(+lng)) throw new Error('signal');
+  const pin = { lat: +lat, lng: +lng, g: g || 'paw', cn: cn || '', n: n || '', place: place || suburbAt(+lat, +lng), id: +id || null };
+  const nodes = (j.k || []).map(([k, t, nn, r, b, d]) => ({ k, t, n: nn, ...(t === 'biz' ? (String(r).startsWith('!') ? { role: r.slice(1), h: [r.slice(1)] } : { role: r, h: [] }) : t === 'life' ? { g: r } : t === 'group' ? { kind: r } : {}), b: +b, d: +d }));
+  const [ik, ia, il, io] = String(j.i || '').split('|'); const img = ik && /^\d+\.\w+$/.test(ik) ? { k: 'inat', u: `${INAT_PHOTOS}${ik.replace('.', '/medium.')}`, a: ia || '', l: il || '', oid: +io || null } : null;
+  return { v: 1, code: j.c, at: parseInt(j.t, 36) * 60000 || Date.now(), pin, threat: j.s === 1 ? stOf(pin) : j.s ? String(j.s).slice(0, 320) : '', when: '', deg: 0, lines: Object.fromEntries(WKEYS.map((k, i) => [k, String((j.l || [])[i] || '').slice(0, SIG.line)])), nodes, edges: (j.e || []).filter(e => Array.isArray(e) && e.length === 2), ...(j.o ? { note: String(j.o).slice(0, 280) } : {}), ...(img ? { img } : {}), ...(j.b ? { brief: j.b } : {}), who: j.y || '' };
+}
+const linkOf = s => { const b = portalBase(); return b ? `${b}#x=${packSignal(s)}` : ''; };
+/* ───────── plain text: a mesh message, a pager line, a slip in 32 columns ───────── */
+const ascii = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/°/g, '').replace(/×/g, 'x').replace(/·/g, '-').replace(/[^\x20-\x7E\n]/g, '');
+const bytes = t => new TextEncoder().encode(t).length;
+const NAME_UP = s => String((s.pin && (s.pin.cn || s.pin.n)) || '').toUpperCase();
+/* a mesh message, 200 bytes at most: the code, the life, where it is, and the four lines, the longest cut first.
+   The lines carry no letters: W.I.S.H. is how they are written, not what is sent */
+function meshText(s, max = SIG.mesh) {
+  const L = { ...(s.lines || {}) }; const p = s.pin || {};
+  const head = `${s.code} ${NAME_UP(s)}`; const where = `${(+p.lat).toFixed(4)},${(+p.lng).toFixed(4)}`;
+  const build = () => [head, where, ...WKEYS.map(k => L[k] || '')].join('\n');
+  let t = build(); let guard = 400;
+  while (bytes(t) > max && guard--) {
+    const k = ['i', 'w', 's', 'h'].sort((a, b) => (L[b] || '').length - (L[a] || '').length)[0]; const w = (L[k] || '').replace(/…$/, '').split(' ');
+    if (w.length <= 1) { L[k] = (L[k] || '').slice(0, -2) + '…'; } else { w.pop(); L[k] = w.join(' ') + '…'; }
+    t = build();
   }
-  P('p-prov').textContent = credit;
-  /* what it is */
-  const name = blank ? '' : (sub.tx && (sub.tx.cn || sub.tx.n)) || nameOf(o);
-  const night = !blank && (isNight(o) || (sub && isNight(sub)));
-  P('p-seen').textContent = blank ? '' : [o.kind === 'injured' ? 'HURT' : o.kind === 'dead' ? 'FOUND DEAD' : o.kind === 'lost' ? 'LOST' : o.isEvent ? 'GATHERING' : lifeOf(o) === 'human' ? 'PEOPLE' : 'SEEN', night ? 'AFTER DARK' : '', `IN ${placeOf(o)}`].filter(Boolean).join(' · ');
-  const nm = P('p-name'); nm.textContent = name; nm.style.fontSize = name.length > 30 ? 'calc(var(--pt) * 24)' : name.length > 20 ? 'calc(var(--pt) * 29)' : '';
-  P('p-latin').textContent = !blank && sub.tx && sub.tx.cn && sub.tx.n ? sub.tx.n : '';
-  /* why it matters: the months ahead, and the danger they bring this life; for an animal hurt or dead, what not to do */
-  const danger = blank ? '' : dangerOf(o);
-  const w = blank ? null : worstWhen(o, nowK(), 6); const k0 = nowK(); const span = monthsWord(outMonth(k0).m, outMonth(Math.min(OUT_N - 1, k0 + 2)).m);
-  const harm = o.kind === 'dead' ? 'Do not touch it. Report it.' : o.kind === 'injured' ? 'Do not handle it. Call for help.' : '';
-  /* said plainly, without headings: the months and their degree; the danger once, in bold; and the ground itself, its canopy
-     against the 40% that cools a street, with what this life is short of there (or, for a hunter brought here, what is at risk from it).
-     For an animal hurt or dead, what not to do comes before the ground. */
-  const cn = blank ? null : canopyOf(o); const said = danger && norm(d.w || '') === norm(danger);
-  const needs = blank || (o.hum && !(sub && sub.tx && sub.tx.n)) || o.isEvent ? [] : needsOf(o);
-  const short = needs.filter(n => n.st === 'none' || n.st === 'low').map(n => n.w); const near = needs.filter(n => n.st === 'near').map(n => n.w); const risk = needs.find(n => n.st === 'risk');
-  const within = `${Math.round(Math.max(300, rangeOf(o)) / 50) * 50} m`;
-  /* the canopy has its own line, so it is not said again among the needs */
-  const shortX = cn ? short.filter(x => x !== 'CANOPY') : short;
-  const lack = risk ? `${risk.n} NATIVE ANIMAL${risk.n === 1 ? '' : 'S'} AT RISK` : shortX.length ? `NEEDS ${shortX.slice(0, 2).join(' & ')}` : near.length ? `${near.slice(0, 2).join(' & ')} NEARBY` : '';
-  const ground = cn ? `<div class="pw-ground"><strong>CANOPY ${cn.pc}%</strong><strong>SHOULD BE ${CANOPY_TARGET}%+</strong>${lack ? `<strong>${lack}</strong>` : ''}<p>Canopy for ${esc(title(cn.sb))}, ${cn.yr}.${lack ? ` Counted within ${within}.` : ''}</p></div>`
-    : lack ? `<div class="pw-ground"><strong>${lack}</strong><p>Counted within ${within}.</p></div>` : '';
-  const cols = [`<div class="pw-out"><strong>${w ? `${w.word} · ${DEG[w.deg]} DANGER` : span}</strong><p>Hotter and drier than normal. Likely the strongest El Niño on record.</p></div>`];
-  if (danger && !said) cols.push(`<div class="pw-dz"><p>${esc(danger)}</p></div>`);
-  if (harm) cols.push(`<div><strong>DO NO HARM</strong><p>${esc(harm)}</p></div>`);
-  if (cols.length < 3) cols.push(ground);
-  P('p-why').innerHTML = blank ? '<div><strong>MONTHS · DANGER</strong><i class="ln"></i></div><div><strong>CANOPY · WHAT IT NEEDS HERE</strong><i class="ln"></i></div>' : cols.filter(Boolean).join('');
-  /* the four lines, each under its name in full */
-  const after = d.after && S.resp.get(d.after);
-  P('p-wish').innerHTML = ['W', 'I', 'S', 'H'].map(k => `<div class="pw-l${k === 'H' ? ' h' : ''}"><span class="pw-lab">${WISH[k][0].toUpperCase()}</span><p>${esc(d[k.toLowerCase()] || '')}</p></div>`).join('')
-    + (blank ? '' : `<div class="pw-sign">${esc(ev.who || '')}${after ? ` · AFTER ${esc(after.who || after.letter)}` : ''}</div>`);
-  /* the answer: a code, the precedent, the places it is on show, a contact, who to call */
-  renderQR(P('p-qr'), targetFor(o, ev));
-  const brief = !blank && d.brief && BRIEFS.find(x => x.id === d.brief);
-  P('p-after').innerHTML = brief ? `<b>AFTER</b>${esc(brief.after)}, ${esc(brief.city)}${brief.yr ? ` ${brief.yr}` : ''}` : '';
-  const hosts = resp ? resp.hostList : (d.hosts || []);
-  P('p-biz').innerHTML = blank ? '<b>ON SHOW AT</b><i class="ln"></i>' : hosts.length ? `<b>ON SHOW AT</b>${hosts.slice(0, 4).map(esc).join(' · ')}` : '';
-  P('p-contact').innerHTML = !blank && o.contact ? `<b>CONTACT</b>${esc(o.contact)}` : '';
-  P('p-emerg').innerHTML = '<b>HURT WILDLIFE</b>(03) 8400 7300 <b>EMERGENCY</b>000';
-  P('p-country').textContent = CONFIG.COUNTRY;
+  return t;
+}
+/* a pager line, 80 plain characters at most: the code, the life, and how it works */
+function pagerText(s, max = SIG.pager) {
+  let t = ascii(`${s.code} ${NAME_UP(s)}: ${(s.lines || {}).h || ''}`); if (t.length > max) t = t.slice(0, max - 3).replace(/\s+\S*$/, '') + '...'; return t;
+}
+const wrap = (t, n, indent = '') => { const out = []; let line = ''; for (const w of String(t || '').split(/\s+/).filter(Boolean)) { if (!line) line = w; else if ((line + ' ' + w).length <= n - (out.length ? indent.length : 0)) line += ' ' + w; else { out.push(line); line = w; } } if (line) out.push(line); return out.map((l, i) => (i ? indent + l : l)); };
+/* the story the relations tell: what harms the life, what cares for it, and what else is part of it */
+const CARE_FAMS = ['circular', 'artists', 'third', 'network', 'brand'];
+const harmsOfNode = n => (n.t !== 'biz' ? [] : Array.isArray(n.harm) ? n.harm : Array.isArray(n.h) ? n.h : onNotice(n.role) ? [n.role] : []);
+const relKind = n => (harmsOfNode(n).length ? 'harm' : n.t === 'biz' && !onNotice(n.role) && CARE_FAMS.includes(n.fam || (ROLES[n.role] || {}).cat) ? 'care' : 'also');
+const REL_G = { harm: 'HARM', care: 'CARE', also: 'ALSO' };
+const relOrder = nodes => ['harm', 'care', 'also'].flatMap(g => nodes.filter(n => relKind(n) === g));
+const urlOf = n => n.u || n.url || ((n.t === 'biz' && PLACES.find(p => p.n === n.n)) || {}).url || '';
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+/* "sells pesticides"; "repair"; "water" */
+const relPhrase = n => { const hs = harmsOfNode(n); return hs.length ? hs.slice(0, 2).map(r => plainN(r, 1)).join(', ') : relWord(n).toLowerCase(); };
+/* what each relation is, in a word */
+const relWord = n => n.t === 'biz' ? (ROLES[(n.h || [])[0]] || ROLES[n.role] || {}).w || '' : n.t === 'group' ? 'GROUP' : n.t === 'water' ? 'WATER' : n.t === 'custom' ? ({ place: 'PLACE', person: 'PERSON', idea: 'IDEA' })[n.kind] || '' : n.t === 'life' ? String(M.KINDS[n.g] || '').toUpperCase() : '';
+const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a ? im.a.replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, '') : '', im.oid ? `iNaturalist ${im.oid}` : 'iNaturalist'].filter(Boolean).join(' · ') : im.k === 'own' ? im.a || 'Photograph by the issuer' : ''; };
+/* the slip in 32 columns, as a thermal printer's first font sets it */
+function slipText(s, cols = 32) {
+  const rule = '-'.repeat(cols); const p = s.pin || {}; const out = [];
+  const pad = (a, b) => a + ' '.repeat(Math.max(1, cols - a.length - b.length)) + b;
+  const field = (k, v) => wrap(v, cols - 7).map((l, i) => (i ? '       ' : (k + '       ').slice(0, 7)) + l);
+  out.push(pad('DIRECT ACTION', s.code), fmtStamp(s.at), rule);
+  if (s.img && s.img.k !== 'none') out.push(...wrap(`FIG. 1  ${figCredit(s)}`, cols, '        '), rule);
+  out.push(...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols));
+  out.push(...field('SITE', `${p.place || ''} ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`.trim()));
+  if (s.when) out.push(...field('WINDOW', s.when));
+  if (s.threat) { out.push(rule); out.push(...wrap(s.threat, cols)); }
+  out.push(rule);
+  for (const k of WKEYS) out.push(...wrap((s.lines || {})[k] || '', cols));
+  const rels = relOrder(s.nodes || []);
+  if (rels.length) { out.push(rule, 'RELATIONS'); let g0 = ''; rels.forEach((n, i) => { const g = relKind(n); if (g !== g0) { out.push(`${REL_G[g]} · ${rels.filter(x => relKind(x) === g).length}`); g0 = g; } out.push(...wrap(`${pad2(i + 1)} ${n.n}`, cols, '   ')); const u = hostOf(urlOf(n)); out.push(...wrap(`${relPhrase(n)}${u ? ` · ${u}` : ''}`, cols - 3).map(l => '   ' + l)); }); }
+  if (s.note) { out.push(rule); out.push(...field('NOTE', s.note)); }
+  if (s.who) out.push(rule, `- ${s.who}`);
+  return ascii(out.join('\n'));
+}
+/* ───────── the QR code: the link when the app is hosted, else the mesh message itself ───────── */
+function qrOf(text, ec = 'L') { try { const qr = qrcode(0, ec); qr.addData(unescape(encodeURIComponent(text))); qr.make(); return qr; } catch (e) { return null; } }
+const qrText = s => linkOf(s) || meshText(s);
+function renderQR(host, text) {
+  const qr = qrOf(text); if (!qr) { host.innerHTML = ''; return; } const n = qr.getModuleCount(), N = n + 4; let p = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) p += `M${c + 2} ${r + 2}h1v1h-1z`;
+  host.innerHTML = `<svg viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" role="img" aria-label="QR code"><path d="${p}" fill="#000"/></svg>`;
+}
+
+/* ───────── the photograph: chosen before the slip is issued, printed in black and white ───────── */
+const IMGS = store.get('da.img.v1', {});      /* cell → the photograph chosen */
+const OWN = store.get('da.own.v1', {});       /* a cell's or a signal's own photograph, small, on this device */
+const saveImgs = () => store.set('da.img.v1', IMGS);
+function saveOwn() { const ks = Object.keys(OWN); while (ks.length > 14) delete OWN[ks.shift()]; while (!store.set('da.own.v1', OWN) && Object.keys(OWN).length) delete OWN[Object.keys(OWN)[0]]; }
+/* every photograph this life could print with: its own, then the same kind seen nearby; only licences that allow a black and white version */
+function photoChoices(o) {
+  const out = []; const seen = new Set(); const sub = subjectOf(o);
+  const add = (x, ph) => { if (!ph || !ph.u || !licAdaptable(ph.l) || seen.has(ph.u)) return; seen.add(ph.u); out.push({ k: 'inat', u: ph.u, a: ph.a || '', l: ph.l, oid: typeof x.id === 'number' ? x.id : null }); };
+  if (o.photo) out.push({ k: 'rec' });
+  if (sub && sub.ph) add(sub, sub.ph); for (const ph of (sub && sub.phs) || []) add(sub, ph);
+  const tn = sub && sub.tx && sub.tx.n; if (tn) [...S.obs, ...S.hist].filter(x => x.tx && x.tx.n === tn && x !== sub && x.ph).sort((a, b) => haversine(o.lat, o.lng, a.lat, a.lng) - haversine(o.lat, o.lng, b.lat, b.lng)).slice(0, 14).forEach(x => add(x, x.ph));
+  return out;
+}
+function imgChoice(o) {
+  const c = IMGS[o.id]; const all = photoChoices(o);
+  if (c && (c.k === 'none' || (c.k === 'own' && OWN[o.id]) || (c.k === 'inat' && all.some(x => x.u === c.u)) || (c.k === 'rec' && o.photo))) return c;
+  return all[0] || { k: 'none' };
+}
+const imgSrc = (c, key, o, big) => (c.k === 'inat' ? photoURL(c.u, big ? 'large' : 'medium') : c.k === 'own' ? OWN[key] || '' : c.k === 'rec' && o ? o.photo || '' : '');
+const sigSrc = (s, big) => (s.img ? imgSrc(s.img, s.code, null, big) : '');
+/* the contrast stretched, so a photograph holds up as dots */
+function autolevel(id) {
+  const d = id.data, n = d.length / 4; const hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) hist[Math.round(0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2])]++;
+  let lo = 0, hi = 255, acc = 0; for (; lo < 255 && (acc += hist[lo]) < n * 0.02; lo++); acc = 0; for (; hi > 0 && (acc += hist[hi]) < n * 0.02; hi--);
+  const k = 255 / Math.max(24, hi - lo); for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) d[i * 4 + c] = clamp((d[i * 4 + c] - lo) * k, 0, 255);
+  return id;
+}
+const BW = new Map();
+/* a photograph cut to a frame and dithered: two inks for a thermal head, four greys for a Game Boy */
+async function bwCanvas(src, W, H, levels = 2) {
+  const key = `${src.slice(0, 120)}|${src.length}|${W}|${H}|${levels}`; if (BW.has(key)) return BW.get(key);
+  const im = await loadImage(src, !/^data:/.test(src));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d', { willReadFrequently: true }); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight); x.drawImage(im, (W - im.naturalWidth * sc) / 2, (H - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc);
+  x.putImageData(dither(autolevel(x.getImageData(0, 0, W, H)), levels), 0, 0);
+  if (BW.size > 48) BW.clear(); BW.set(key, cv); return cv;
+}
+/* the frame is as tall as everything under it: the photograph is half the slip */
+function fitFig(host, cap) {
+  const fig = host.querySelector('.sl-fig'); const body = host.querySelector('.sl-body'); if (!fig || !body || fig.classList.contains('none') || fig.classList.contains('blank')) return;
+  const W = fig.clientWidth || 200; fig.style.height = `${Math.round(clamp(body.offsetHeight, W * 0.8, W * cap))}px`;
+}
+async function fillFig(host, s, press) {
+  const fig = host.querySelector('.sl-fig'); const im = host.querySelector('.sl-img'); if (!fig || !im) return;
+  const src = sigSrc(s, press); if (!src) { fig.classList.add('none'); return; }
+  /* a face still turning over has no size yet: wait for it */
+  for (let i = 0; i < 60 && !fig.clientWidth; i++) await new Promise(r => setTimeout(r, 25));
+  if (!fig.clientWidth || !fig.isConnected) return;
+  fitFig(host, press ? 1.6 : 1.2); const W = fig.clientWidth, H = fig.clientHeight; const k = press ? 416 / Math.max(1, W) : Math.min(2, devicePixelRatio || 1);
+  try { const cv = await bwCanvas(src, Math.round(W * k), Math.round(H * k), 2); im.src = cv.toDataURL('image/png'); im.classList.remove('grey'); }
+  catch (e) { im.src = src; im.classList.add('grey'); }   /* a host that will not share its pixels: grey by the browser instead */
+}
+/* the constellation, drawn as it sits on the ground: bearings and distances from the life */
+/* each point where it lies around the life, numbered as the index numbers it */
+function chartPts(s) { const pts = { pin: { x: 0, y: 0, t: 'pin' } }; relOrder(s.nodes || []).forEach((n, i) => { const r = n.b * Math.PI / 180; pts[n.k] = { x: Math.sin(r) * n.d, y: -Math.cos(r) * n.d, t: n.t, g: relKind(n), no: i + 1 }; }); return pts; }
+const chartFit = (pts, half, pad) => { const ext = Math.max(1, ...Object.values(pts).map(p => Math.max(Math.abs(p.x), Math.abs(p.y)))); return (half - pad) / ext; };
+function chartSVG(s, size = 64) {
+  const pts = chartPts(s); const k = chartFit(pts, size / 2, 7), c = size / 2; const P = key => pts[key] && [c + pts[key].x * k, c + pts[key].y * k]; const f = v => v.toFixed(1);
+  const seg = hot => (s.edges || []).filter(([a, b]) => ((pts[a] || {}).g === 'harm' || (pts[b] || {}).g === 'harm') === hot).map(([a, b]) => { const p = P(a), q = P(b); return p && q ? `M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}` : ''; }).join('');
+  const dots = Object.entries(pts).map(([key, p]) => { const [x, y] = P(key);
+    const mk = p.t === 'pin' ? `<circle cx="${f(x)}" cy="${f(y)}" r="2.8" fill="#fff" stroke="#000" stroke-width="1"/>` : p.t === 'biz' || p.t === 'group' ? `<path d="M${f(x)} ${f(y - 2.4)}l2.4 2.4-2.4 2.4-2.4-2.4z" fill="${p.g === 'harm' ? '#000' : '#fff'}" stroke="#000" stroke-width=".8"/>` : `<circle cx="${f(x)}" cy="${f(y)}" r="1.6" fill="#000"/>`;
+    return mk + (p.no ? `<text x="${f(x + 3)}" y="${f(y - 2.6)}" font-size="4.6" font-family="IBM Plex Mono, monospace" fill="#000">${p.no}</text>` : ''); }).join('');
+  const solid = seg(false), dashed = seg(true);
+  return `<svg class="sl-chart" viewBox="0 0 ${size} ${size}" aria-label="The constellation">${solid ? `<path d="${solid}" fill="none" stroke="#000" stroke-width=".7"/>` : ''}${dashed ? `<path d="${dashed}" fill="none" stroke="#000" stroke-width=".7" stroke-dasharray="1.6 1.2"/>` : ''}${dots}</svg>`;
+}
+function drawChart(x, s, cx, cy, size, lw = 1) {
+  const pts = chartPts(s); const k = chartFit(pts, size / 2, 7 * lw); const P = key => pts[key] && [cx + pts[key].x * k, cy + pts[key].y * k];
+  x.save(); x.strokeStyle = '#000'; x.fillStyle = '#000'; x.lineWidth = lw;
+  for (const hot of [false, true]) { x.setLineDash(hot ? [2 * lw, 1.6 * lw] : []); x.beginPath(); for (const [a, b] of s.edges || []) { if (((pts[a] || {}).g === 'harm' || (pts[b] || {}).g === 'harm') !== hot) continue; const p = P(a), q = P(b); if (p && q) { x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); } } x.stroke(); }
+  x.setLineDash([]); x.font = `500 ${Math.max(7, Math.round(6.5 * lw))}px "IBM Plex Mono", monospace`; x.textBaseline = 'alphabetic';
+  for (const [key, p] of Object.entries(pts)) { const [px, py] = P(key); x.beginPath();
+    if (p.t === 'pin') { x.arc(px, py, 3 * lw, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.stroke(); x.fillStyle = '#000'; }
+    else if (p.t === 'biz' || p.t === 'group') { const r = 2.6 * lw; x.moveTo(px, py - r); x.lineTo(px + r, py); x.lineTo(px, py + r); x.lineTo(px - r, py); x.closePath(); if (p.g === 'harm') x.fill(); else { x.fillStyle = '#fff'; x.fill(); x.stroke(); x.fillStyle = '#000'; } }
+    else { x.arc(px, py, 1.8 * lw, 0, Math.PI * 2); x.fill(); }
+    if (p.no && lw >= 0.9) x.fillText(String(p.no), px + 3.4 * lw, py - 2.8 * lw); }
+  x.restore();
+}
+/* ───────── the slip on the page, set like an archive record ───────── */
+function slipHTML(s, blank) {
+  const p = s.pin || {}; const hasImg = !blank && s.img && s.img.k !== 'none';
+  const rels = relOrder(s.nodes || []); const nOf = g => rels.filter(x => relKind(x) === g).length;
+  return `<div class="sl-perf" aria-hidden="true"></div><header class="sl-head mono"><span><b class="sl-code">${esc(s.code || 'DA-····')}</b>${s.ex ? '<i class="ex">EX</i>' : ''}</span><span class="sl-time">${blank ? '__.__.__ __:__' : fmtStamp(s.at)}</span></header>`
+    + (blank ? `<figure class="sl-fig blank"><span class="mono">FIG. 1</span></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">FIG. 1 · ${esc(figCredit(s))}</figcaption></figure>` : '')
+    + `<div class="sl-body"><div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}</dl>`}</div>`
+    + (s.threat ? `<p class="sl-threat">${esc(s.threat)}</p>` : '')
+    + `<ol class="sl-wish poem">${WKEYS.map(k => `<li>${blank ? `<small>${esc(WISH[k][0].toLowerCase())}</small>` : `<span>${esc((s.lines || {})[k] || '')}</span>`}</li>`).join('')}</ol>`
+    + (rels.length ? `<div class="sl-rel"><h5 class="sl-h">RELATIONS</h5><ol class="sl-knots">${rels.map((n, i) => { const g = relKind(n); const u = urlOf(n); const first = !i || relKind(rels[i - 1]) !== g; return `<li class="${g}"${first ? ` data-g="${REL_G[g]} · ${nOf(g)}"` : ''}><b class="mono">${pad2(i + 1)}</b><span>${esc(n.n)}${u ? ` <a class="sl-u mono" href="${esc(u)}" target="_blank" rel="noopener">${esc(hostOf(u))}</a>` : ''}</span><small${g === 'harm' ? ' class="red"' : ''}>${esc(relPhrase(n))}</small></li>`; }).join('')}</ol>${rels.length > 1 ? `<figure class="sl-fig2">${chartSVG(s, 72)}<figcaption class="mono">FIG. 2 · ${rels.length} RELATIONS · NORTH UP</figcaption></figure>` : ''}</div>` : '')
+    + (s.note ? `<p class="sl-note"><b class="mono">NOTE</b> ${esc(s.note)}</p>` : '')
+    + (s.who ? `<p class="sl-who mono">— ${esc(s.who)}</p>` : '')
+    + `<div class="sl-qr"></div><p class="sl-foot mono">${esc(CONFIG.COUNTRY)}</p></div>`;
+}
+function fillSignal(s) {
+  const host = $('#s-slip'); host.innerHTML = slipHTML(s); renderQR(host.querySelector('.sl-qr'), qrText(s)); fillFig(host, s, false);
+  host.classList.toggle('ex', !!s.ex);
+  $('#r-no').textContent = `${s.code}${s.ex ? ' · EX' : s.recv ? ' · RECEIVED' : ''}`;
+  /* each machine as itself, with a link to what it is */
+  $('#s-out').innerHTML = OUTPUTS.filter(m => m.k !== 'print').map(m => `<span class="out-w"><button type="button" class="out" data-out="${m.k}" data-tip="${esc(m.tip)}">${icon(m.ic)}<small>${m.w}</small></button><a class="out-ref" href="${esc(m.ref)}" target="_blank" rel="noopener" aria-label="What a ${esc(m.w)} is" data-tip="What it is">${icon('out', 'sm')}</a></span>`).join('');
+  const mine = !s.ex; $('#s-acts').innerHTML = `<button type="button" class="pill" data-sa="remix">${icon('remix', 'sm')}REMIX</button><button type="button" class="pill" data-sa="pin">${icon('where', 'sm')}PIN</button>${mine ? `<button type="button" class="pill quiet" data-sa="remove">${icon('close', 'sm')}REMOVE</button>` : ''}`;
+  $('#s-text').hidden = true;
+}
+$('#s-out').addEventListener('click', e => { const b = e.target.closest('[data-out]'); const s = S.issued || S.signals.find(x => x.key === S.sig); if (b && s) output(b.dataset.out, s, b); });
+$('#s-acts').addEventListener('click', async e => {
+  const b = e.target.closest('[data-sa]'); const s = S.issued || S.signals.find(x => x.key === S.sig); if (!b || !s) return; const a = b.dataset.sa; tick(1500);
+  if (a === 'remix') remixSignal(s);
+  if (a === 'pin' && S.mapReady) map.easeTo({ center: [s.pin.lng, s.pin.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 600 });
+  if (a === 'remove') { await ledgerAdd({ type: 'redact', ref: s.key }); snd.snap(0); closeRecord(); }
+});
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
+async function output(k, s, btn) {
+  const pre = $('#s-text'); const show = t => { pre.hidden = false; pre.textContent = t; pre.dataset.n = k === 'mesh' ? `${bytes(t)} B` : `${t.length}`; };
+  if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); buzz(6); return; }
+  if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); try { if (navigator.share && url) { await navigator.share({ title: s.code, text: (s.lines || {}).h || '', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
+  btn.classList.add('busy'); snd.printer(700);
+  try {
+    if (k === 'bits') download(`${s.code}-384.png`, await slipPNG(s, 384, 2));
+    if (k === 'gb') download(`${s.code}-gb-160.png`, await slipPNG(s, 160, 4));
+    if (k === 'escpos') download(`${s.code}.bin`, new Blob([await escpos(s)], { type: 'application/octet-stream' }));
+    snd.tear();
+  } finally { btn.classList.remove('busy'); }
+}
+/* ───────── images for small printers: 384 dots for a 58 mm thermal head, 160 for a Game Boy printer ───────── */
+const ATK = [[1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]];
+function dither(img, levels) {
+  const d = img.data, w = img.width, h = img.height; const g = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255 * (d[i * 4 + 3] / 255) + (1 - d[i * 4 + 3] / 255);
+  const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; let v;
+    if (levels === 2) {   /* Atkinson: an eighth of the error to six neighbours, a quarter let go: crisp, bright */
+      const o = g[i] < 0.5 ? 0 : 1; const err = (g[i] - o) / 8; v = o;
+      for (let j = 0; j < 6; j++) { const xx = x + ATK[j][0], yy = y + ATK[j][1]; if (xx >= 0 && xx < w && yy < h) g[yy * w + xx] += err; }
+    } else { const t = (B4[(y % 4) * 4 + (x % 4)] + 0.5) / 16 - 0.5; v = clamp(Math.round(g[i] * (levels - 1) + t), 0, levels - 1) / (levels - 1); }   /* ordered, as a Game Boy camera does */
+    const c = Math.round(v * 255); d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = c; d[i * 4 + 3] = 255;
+  }
+  return img;
+}
+/* the slip as an image: its words set first, to learn how tall they are; then the photograph as tall as the words under it */
+async function slipCanvas(s, W, levels) {
+  const k = W / 384; const pad = Math.round(14 * k); const mono = (px, wt = 500) => `${wt} ${Math.max(7, Math.round(px * k))}px "IBM Plex Mono", monospace`; const sans = (wt, px) => `${wt} ${Math.max(8, Math.round(px * k))}px Poppins, sans-serif`;
   try { await document.fonts.ready; } catch (e) { /* fallback type */ }
-  return estimateInk(poster);
+  const T = document.createElement('canvas'); T.width = W; T.height = 6000; const x = T.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, T.height); x.fillStyle = '#000'; x.textBaseline = 'top';
+  let y = Math.round(6 * k); const p = s.pin || {};
+  /* words set to the width they have, measured in the face they are set in */
+  const wrapPx = (t, maxW) => { const out = []; let line = ''; for (const w of String(t || '').split(/\s+/).filter(Boolean)) { const next = line ? `${line} ${w}` : w; if (!line || x.measureText(next).width <= maxW) line = next; else { out.push(line); line = w; } } if (line) out.push(line); return out; };
+  const text = (t, font, lh, indent = '', at = pad) => { x.font = font; for (const l of wrapPx(t, W - pad - at)) { x.fillText(l, at, y); y += lh; } };
+  const rule = () => { y += Math.round(6 * k); x.fillRect(pad, y, W - pad * 2, Math.max(1, Math.round(1.5 * k))); y += Math.round(10 * k); };
+  const field = (kk, v) => { x.font = mono(11, 600); x.fillText(kk, pad, y + Math.round(2 * k)); const y0 = y; text(v, mono(13), Math.round(18 * k), '', pad + Math.round(76 * k)); if (y === y0) y += Math.round(18 * k); };
+  if (s.img && s.img.k !== 'none') { text(`FIG. 1 · ${figCredit(s)}`, mono(10.5), Math.round(15 * k)); rule(); }
+  text(NAME_UP(s), sans(700, 21), Math.round(25 * k)); if (p.n && p.n !== p.cn) text(p.n, sans(400, 14), Math.round(19 * k));
+  y += Math.round(4 * k); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
+  if (s.threat) { rule(); text(s.threat, sans(500, 15), Math.round(20 * k)); }
+  rule();
+  for (const kk of WKEYS) { text((s.lines || {})[kk] || '', mono(16, 600), Math.round(21 * k)); y += Math.round(7 * k); }
+  const rels = relOrder(s.nodes || []);
+  if (rels.length) {
+    rule(); x.font = mono(11, 600); x.fillText('RELATIONS', pad, y); y += Math.round(17 * k); let g0 = '';
+    rels.forEach((n, i) => {
+      const g = relKind(n); if (g !== g0) { g0 = g; y += Math.round(3 * k); x.font = mono(10, 600); x.fillText(`${REL_G[g]} · ${rels.filter(r => relKind(r) === g).length}`, pad, y); y += Math.round(15 * k); }
+      x.font = mono(12, 600); x.fillText(pad2(i + 1), pad, y); text(n.n, mono(12, 600), Math.round(16 * k), '', pad + Math.round(28 * k));
+      const u = hostOf(urlOf(n)); text(`${relPhrase(n)}${u ? ` · ${u}` : ''}`, mono(11), Math.round(15 * k), '', pad + Math.round(28 * k));
+      y += Math.round(4 * k);
+    });
+    if (rels.length > 1) { const cw = Math.min(W - pad * 2, Math.round(150 * k)); y += Math.round(6 * k); drawChart(x, s, W / 2, y + cw / 2, cw, Math.max(1, k * 1.2)); y += cw + Math.round(4 * k); x.font = mono(9); text(`FIG. 2 · ${rels.length} RELATIONS · NORTH UP`, mono(9), Math.round(13 * k)); }
+  }
+  if (s.note) { rule(); field('NOTE', s.note); }
+  if (s.who) { rule(); text(`— ${s.who}`, mono(13), Math.round(18 * k)); }
+  /* the code: the link, or the mesh message; at a size a phone can read off thermal paper */
+  const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(10 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(8 * k); } }
+  text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); y += pad;
+  const textH = y;
+  /* the head of the slip, then the photograph: as tall as everything under it, between four fifths and eight fifths of its width */
+  const headH = Math.round(36 * k); const src = sigSrc(s, false); let photo = null; let imgH = 0;
+  if (src) { imgH = Math.round(clamp(textH, W * 0.8, W * 1.6)); try { photo = await bwCanvas(src, W, imgH, levels); } catch (e) { photo = null; } }
+  if (!photo) { imgH = src ? Math.round(W * 0.5) : 0; }
+  const out = document.createElement('canvas'); out.width = W; out.height = headH + imgH + Math.round(10 * k) + textH; const o2 = out.getContext('2d'); o2.fillStyle = '#fff'; o2.fillRect(0, 0, W, out.height); o2.fillStyle = '#000'; o2.textBaseline = 'top';
+  o2.font = mono(18, 600); o2.fillText(s.code, pad, Math.round(9 * k)); o2.font = mono(13); const st = fmtStamp(s.at); o2.fillText(st, W - pad - o2.measureText(st).width, Math.round(12 * k));
+  if (photo) o2.drawImage(photo, 0, headH);
+  else if (imgH) M.glyph(o2, p.g || 'paw', W / 2, headH + imgH / 2, imgH * 0.7, '#000');
+  o2.drawImage(T, 0, 0, W, textH, 0, headH + imgH + Math.round(10 * k), W, textH);
+  /* everything to the printer's inks: two for a thermal head, four greys for a Game Boy */
+  const id = o2.getImageData(0, 0, W, out.height); const d = id.data; for (let i = 0; i < d.length; i += 4) { const v = d[i] / 255; const q = levels === 2 ? (v < 0.55 ? 0 : 1) : Math.round(v * 3) / 3; d[i] = d[i + 1] = d[i + 2] = Math.round(q * 255); d[i + 3] = 255; }
+  o2.putImageData(id, 0, 0);
+  return out;
 }
-/* the sign-up sheet for a business: its role, the lives in its radius, and what signing up means */
-async function buildBizQuote(i) {
-  const z = bizOf(i); const P = id => document.getElementById(id); if (!z) return 0;
-  const R = ROLES[z.role] || ROLES.owner; const url = portalBase() ? `${portalBase()}#B${toCode(i)}` : 'https://www.inaturalist.org';
-  const lives = cellsAll().filter(o => !o.hum && !isCold(o) && haversine(z.lat, z.lng, o.lat, o.lng) <= BIZ_R).sort((a, b) => degOf(b) - degOf(a));
-  P('q-for').textContent = z.n;
-  P('q-act').innerHTML = `<b>${R.w} · ${R.on ? 'ON NOTICE' : 'WORTH BACKING'}</b><span>${esc(R.duty)} (${BIZ_R} m).${R.line ? ` ${esc(R.line)}` : ''}</span>${DEMO ? '<em>SPECIMEN</em>' : ''}`;
-  P('q-items').innerHTML = `<tbody>${lives.slice(0, 10).map(o => `<tr><td>${esc(nameOf(o))}</td><td class="r">${degOf(o) >= 2 ? DEG[degOf(o)] : ''}</td></tr>`).join('')}</tbody>`;
-  P('q-opts').innerHTML = ['SIGN UP', 'HOST POSTERS', 'FUND A BRIEF', 'SUPPLY IN KIND'].map(t => `<span><i></i>${t}</span>`).join('');
-  P('q-method').textContent = 'Signing up means a window for posters and support for the briefs near you. Nothing is owed.';
-  renderQR(P('q-qr'), url); P('q-country').textContent = CONFIG.COUNTRY;
-  try { await document.fonts.ready; } catch (e) { /* fallback type */ }
-  return estimateInk(P('quote'));
+async function slipPNG(s, W, levels) { const cv = await slipCanvas(s, W, levels); return new Promise(res => cv.toBlob(b => res(b), 'image/png')); }
+/* ───────── raw bytes for an ESC/POS receipt printer: the photograph as raster lines, the slip, a QR code, a cut ───────── */
+async function escpos(s) {
+  const b = []; const put = (...a) => { for (const v of a) b.push(v); }; const txt = t => { for (const ch of ascii(t)) put(ch.charCodeAt(0)); };
+  put(0x1B, 0x40, 0x1B, 0x74, 0x00);                                        /* initialise; code page 437 */
+  put(0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11); txt(s.code + '\n'); put(0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00);
+  /* the photograph: GS v 0, in bands of 255 rows, 48 bytes a row for 384 dots */
+  const src = sigSrc(s, false);
+  if (src) {
+    try {
+      const W = 384; const Hh = 384; const cv = await bwCanvas(src, W, Hh, 2); const d = cv.getContext('2d').getImageData(0, 0, W, Hh).data;
+      for (let y0 = 0; y0 < Hh; y0 += 255) {
+        const h = Math.min(255, Hh - y0); put(0x1D, 0x76, 0x30, 0x00, 48, 0, h & 0xFF, h >> 8);
+        for (let y = y0; y < y0 + h; y++) for (let xb = 0; xb < 48; xb++) { let v = 0; for (let bit = 0; bit < 8; bit++) if (d[(y * W + xb * 8 + bit) * 4] < 128) v |= 0x80 >> bit; put(v); }
+      }
+      put(0x0A);
+    } catch (e) { /* no pixels to share: the words alone */ }
+  }
+  txt(slipText(s).split('\n').slice(1).join('\n') + '\n');
+  const q = unescape(encodeURIComponent(qrText(s))); const n = q.length + 3;
+  if (q.length < 1200) {   /* up to about version 26 at three dots a module: still inside 384 dots */
+    put(0x1B, 0x61, 0x01);
+    put(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);              /* model 2 */
+    put(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, q.length > 600 ? 0x03 : q.length > 300 ? 0x04 : 0x06);   /* module size */
+    put(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x30);                    /* error correction L */
+    put(0x1D, 0x28, 0x6B, n & 0xFF, n >> 8, 0x31, 0x50, 0x30); for (const ch of q) put(ch.charCodeAt(0) & 0xFF);
+    put(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30);                    /* print it */
+    put(0x0A, 0x1B, 0x61, 0x00);
+  }
+  txt(CONFIG.COUNTRY + '\n'); put(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00);   /* feed, cut */
+  return new Uint8Array(b);
 }
-let dens = null;
-function glyphDensity() {
-  if (dens) return dens; const c = document.createElement('canvas'); c.width = 1100; c.height = 150; const x = c.getContext('2d', { willReadFrequently: true });
-  const sample = 'Afteryoufillthekettlerefillthedishinshade0123456789WISHOUTSIDEANIMALNEWS'; dens = {};
-  for (const wt of ['400', '700']) { x.clearRect(0, 0, c.width, c.height); x.fillStyle = '#000'; x.textBaseline = 'top'; x.font = `${wt} 40px Poppins, sans-serif`; const adv = x.measureText('M').width || 24;
-    for (let i = 0, r = 0; i < sample.length; i += 25, r++) x.fillText(sample.slice(i, i + 25), 0, r * 46);
-    const d = x.getImageData(0, 0, c.width, c.height).data; let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i] / 255; dens[wt] = { adv: adv / 40, k: a / (sample.length * adv * 40) }; }
-  return dens;
-}
-function estimateInk(doc) {
-  const W = doc.offsetWidth, H = doc.offsetHeight; if (!W) return 0; const D = glyphDensity(); let ink = 0;
-  const tw = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT); let n;
-  while ((n = tw.nextNode())) { const el = n.parentElement; if (!el || el.closest('[hidden]') || el.closest('svg')) continue; const ch = n.nodeValue.replace(/\s/g, '').length; if (!ch) continue;
-    const cs = getComputedStyle(el); const fs = parseFloat(cs.fontSize) || 12; const dd = D[parseInt(cs.fontWeight, 10) >= 600 ? '700' : '400']; ink += ch * dd.adv * fs * fs * dd.k; }
-  for (const el of doc.querySelectorAll('*')) { if (el.closest('[hidden]') || el.closest('svg')) continue; const cs = getComputedStyle(el); const w = el.offsetWidth, h = el.offsetHeight; if (!w && !h) continue;
-    for (const [side, len] of [['Top', w], ['Bottom', w], ['Left', h], ['Right', h]]) { const st = cs[`border${side}Style`]; if (st === 'none' || st === 'hidden') continue; let bw = parseFloat(cs[`border${side}Width`]) || 0; if (st === 'dotted') bw *= 0.5; else if (st === 'dashed') bw *= 0.6; ink += bw * len; }
-    /* a solid fill, such as the warning band, counts by how dark it is */
-    const bg = (cs.backgroundColor || '').match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
-    if (bg && el.tagName !== 'CANVAS' && el.tagName !== 'IMG') { const a = bg[4] == null ? 1 : +bg[4]; ink += a * (1 - (0.2126 * bg[1] + 0.7152 * bg[2] + 0.0722 * bg[3]) / 255) * w * h; } }
-  for (const m of doc.querySelectorAll('canvas, img')) { if (m.hidden || m.closest('[hidden]')) continue; ink += (m._ink != null ? m._ink : 0.36) * m.offsetWidth * m.offsetHeight; }
-  for (const g of doc.querySelectorAll('.pw-glyph')) if (g.querySelector('use')) ink += 0.16 * g.parentElement.offsetWidth * g.parentElement.offsetHeight;
-  for (const s of doc.querySelectorAll('.p-dia')) { const r = s.getBoundingClientRect(); ink += s._ink != null ? s._ink * (r.width / 210) * (r.width / 210) + 0.012 * r.width * r.height : 0.035 * r.width * r.height; }
-  for (const q of doc.querySelectorAll('.p-qr')) if (q._ratio) ink += q._ratio * q.offsetWidth * q.offsetHeight;
-  return clamp(ink / (W * H) * 100, 0, 100);
-}
+/* ───────── printed from the browser: a strip 58 mm wide, as long as the slip ───────── */
 let pressBusy = Promise.resolve();
 const serial = job => { const run = () => job(); pressBusy = pressBusy.then(run, run); return pressBusy; };
-function printSheet(which) {
-  $$('#press > .poster').forEach(p => p.classList.toggle('printing', p.id === which));
-  let st = $('#page-size'); if (!st) { st = document.createElement('style'); st.id = 'page-size'; document.head.appendChild(st); } st.textContent = '@page{size:A4 portrait;margin:0}';
+function printSheet(el) {
+  const mm = Math.ceil(el.offsetHeight * 25.4 / 96) + 6;
+  let st = $('#page-size'); if (!st) { st = document.createElement('style'); st.id = 'page-size'; document.head.appendChild(st); } st.textContent = `@page{size:58mm ${Math.max(60, mm)}mm;margin:0}`;
+  window.__lastSlip = { mm, text: el.textContent.replace(/\s+/g, ' ').trim() };
   window.print();
 }
-function printDoc(which, o, ev) {
-  if (!o || !ev) { if (!S.filed) return; ({ o, ev } = S.filed); }
-  document.body.classList.add('busy');
-  return serial(async () => { const ink = await buildNotice(o, ev); window.__lastInk = ink; document.body.classList.remove('busy'); printSheet('poster'); });
-}
-function printBiz(i) { document.body.classList.add('busy'); return serial(async () => { window.__lastInk = await buildBizQuote(i); document.body.classList.remove('busy'); printSheet('quote'); }); }
-async function share(o, ev) {
-  const url = targetFor(o, ev); const text = `${nameOf(o)}: ${(ev.data && ev.data.h) || ''}`;
-  try { if (navigator.share) { await navigator.share({ title: CONFIG.NAME, text, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Copied.'); } catch (e) { toast(url); }
-}
-
-/* ───────── the sheet, in the record and full size ───────── */
-const thumbCache = new Map();
-function cloneSheet(src) {
-  const c = src.cloneNode(true); const a = src.querySelectorAll('canvas'), b = c.querySelectorAll('canvas');
-  a.forEach((cv, i) => { b[i].width = cv.width; b[i].height = cv.height; b[i].getContext('2d').drawImage(cv, 0, 0); b[i]._ink = cv._ink; });
-  c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(e => e.removeAttribute('id')); c.classList.remove('printing'); return c;
-}
-function posterThumb(o, ev) {
-  const r = S.resp.get(ev.key); const key = `${ev.key}|${r ? r.patrons.map(p => p.n + p.st).join(',') + '|' + r.hostList.join(',') : ''}`;
+function printSlip(s, blank) {
   return serial(async () => {
-    if (!thumbCache.has(key)) { await buildNotice(o, ev); thumbCache.set(key, cloneSheet($('#poster'))); }
-    const w = document.createElement('div'); w.className = 'mini'; w.appendChild(cloneSheet(thumbCache.get(key)));
-    requestAnimationFrame(() => fitMini(w)); return w;
+    const el = $('#p-slip'); el.innerHTML = slipHTML(s, blank); el.classList.toggle('blank', !!blank);
+    if (!blank) renderQR(el.querySelector('.sl-qr'), qrText(s)); else el.querySelector('.sl-qr').innerHTML = '';
+    try { await document.fonts.ready; } catch (e) { /* fallback type */ }
+    if (!blank) await fillFig(el, s, true);
+    snd.printer(900); printSheet(el);
   });
 }
-function fitMini(w) { const p = w.firstElementChild; if (!p || !w.clientWidth) return; w.style.setProperty('--k', (w.clientWidth / p.offsetWidth).toFixed(4)); }
-addEventListener('resize', debounce(() => $$('.mini').forEach(fitMini), 120));
-/* ───────── the poster, full size: and the three ways to support it ───────── */
-let viewing = null, formMode = null;
-async function openViewer(o, ev, act) {
-  if (!o || !ev) return;
-  viewing = { o, ev }; const v = $('#viewer'); v.hidden = false; const host = $('#v-sheet'); host.innerHTML = '<div class="blank"></div>';
-  slip(); showForm(act === 'host' || act === 'give' ? act : null);
-  const names = new Set(); for (const b of bizNear(o.lat, o.lng, 1500)) names.add(b.n);
-  $('#v-list').innerHTML = [...names].slice(0, 300).map(n => `<option value="${esc(n)}">`).join('');
-  const node = await posterThumb(o, ev); if (!viewing || viewing.ev !== ev) return; host.innerHTML = ''; host.appendChild(node); fitMini(node);
+function printBlank() { printSlip({ code: 'DA-____', at: Date.now(), pin: {}, lines: {}, nodes: [] }, true); }
+/* ───────── the print it will make, small, on the card: so it can be seen before it exists ───────── */
+let miniN = 0;
+async function drawMini(cv, o) {
+  if (!cv || !o) return; const my = ++miniN; const x = cv.getContext('2d'); const W = cv.width, H = cv.height; const k = W / 120;
+  const fig = strings.snapshot(); const c = imgChoice(o); const src = imgSrc(c, o.id, o, false);
+  const paint = photo => {
+    if (my !== miniN) return; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.fillStyle = '#FCFBF7'; x.fillRect(0, 0, W, H);
+    x.fillStyle = '#141412'; let y = 6 * k; x.fillRect(6 * k, y, 30 * k, 3 * k); x.fillRect(W - 30 * k, y, 24 * k, 3 * k); y += 7 * k;
+    const ih = Math.round(H * 0.42); if (photo) x.drawImage(photo, 0, y, W, ih); else { x.fillStyle = '#E6E5DE'; x.fillRect(0, y, W, ih); M.glyph(x, lifeOf(o), W / 2, y + ih / 2, ih * 0.6, '#141412'); x.fillStyle = '#141412'; } y += ih + 6 * k;
+    x.fillRect(6 * k, y, Math.min(W - 12 * k, 8 * k + nameOf(o).length * 3.2 * k), 4.5 * k); y += 9 * k;
+    x.globalAlpha = 0.35; for (let i = 0; i < 2; i++) { x.fillRect(6 * k, y, (W - 12 * k) * (i ? 0.62 : 1), 2.4 * k); y += 5 * k; } x.globalAlpha = 1; y += 2 * k;
+    for (let i = 0; i < 4; i++) { x.fillRect(6 * k, y, (W - 12 * k) * [0.82, 0.7, 0.9, 0.66][i], 3 * k); y += 6.5 * k; }
+    y += 2 * k; const cw = Math.min(40 * k, H - y - 8 * k); x.globalAlpha = 0.5; for (let i = 0; i < Math.min(5, fig.nodes.length); i++) x.fillRect(6 * k, y + i * 5 * k, (W - 12 * k) * 0.5, 2.2 * k); x.globalAlpha = 1;
+    if (fig.nodes.length > 1 && cw > 16 * k) drawChart(x, fig, W - 6 * k - cw / 2, y + cw / 2, cw, Math.max(0.6, k * 0.55));
+  };
+  paint(null);
+  if (src) try { paint(await bwCanvas(src, W, Math.round(H * 0.42), 2)); } catch (e) { /* the mark stands in */ }
 }
-function slip() {
-  if (!viewing) return; const r = S.resp.get(viewing.ev.key); if (!r) return;
-  const mine = r.dev === S.me.dev; const did = r.did.has(S.me.dev);
-  const b = r.brief && BRIEFS.find(x => x.id === r.brief);
-  $('#v-head').innerHTML = `<b>${esc(nameOf(viewing.o))}</b><small class="mono">${esc(r.who || '')}${r.spec ? ' · SPECIMEN' : ''}</small>${b ? `<small class="mono vb">AFTER ${esc(b.after.toUpperCase())}${b.city ? ` · ${esc(b.city.toUpperCase())}` : ''}</small>` : ''}<span class="vst mono${r.funded ? '' : ' need'}">${r.funded ? 'FUNDED' : 'UNFUNDED'}${r.hosts ? ' · ON SHOW' : ''}</span>`;
-  const dd = $('#v-did'); dd.disabled = mine || did; dd.dataset.state = mine ? 'yours' : did ? 'done' : 'open';
+
+/* ───────── the board: open a signal, its figure on the ground ───────── */
+function openSignal(key) {
+  const s = S.signals.find(x => x.key === key || x.code === key); if (!s) return;
+  if (S.mode) closeRecord('switch');
+  S.mode = 'sig'; S.sig = s.key; S.issued = null; openRecord(); fillSignal(s); showFace('signal'); strings.showSig(); life.select(); snd.tick(1800); buzz(5);
+  if (S.mapReady && s.pin) map.easeTo({ center: [s.pin.lng, s.pin.lat], zoom: Math.max(map.getZoom(), 15.6), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
+  try { history.replaceState(null, '', '#' + s.code); } catch (e) { /* file:// */ }
 }
-function showForm(mode) {
-  formMode = mode; const f = $('#v-form'); f.hidden = !mode;
-  $('#v-host').classList.toggle('on', mode === 'host'); $('#v-give').classList.toggle('on', mode === 'give');
-  if (!mode) return; $('#v-ba').hidden = mode !== 'give'; $('#v-bn').value = ''; $('#v-ba').value = '';
-  $('#v-bn').placeholder = mode === 'host' ? 'Where it will go' : 'Your name'; $('#v-bn').setAttribute('list', mode === 'host' ? 'v-list' : ''); $('#v-ba').placeholder = 'e.g. $20';
-  setTimeout(() => $('#v-bn').focus(), 30);
+/* a signal's cell: the sighting itself when it is here, else a cell made from what the signal carries */
+function cellOfSignal(s) {
+  const p = s.pin || {}; if (p.id && S.byId.has(p.id)) return S.byId.get(p.id);
+  const id = 'sp:' + s.code; if (S.byId.has(id)) return S.byId.get(id);
+  const o = { id, sigPin: true, g: p.g || 'paw', lat: +p.lat, lng: +p.lng, d: isoDay(new Date(s.at)), age: 0, rare: 0.5, tx: { id: null, n: p.n || p.cn || '', cn: p.cn || p.n || '', ic: p.ic || IC_OF_GLYPH[p.g] || 'Animalia', th: false, na: true, intro: false } };
+  S.byId.set(id, o); return o;
 }
-$('#v-host').addEventListener('click', () => { showForm(formMode === 'host' ? null : 'host'); tick(); });
-$('#v-give').addEventListener('click', () => { showForm(formMode === 'give' ? null : 'give'); tick(); });
-$('#v-did').addEventListener('click', async () => { if (!viewing) return; const r = S.resp.get(viewing.ev.key); if (!r || r.dev === S.me.dev || r.did.has(S.me.dev)) return; await ledgerAdd({ type: 'did', ref: r.cell, data: { of: r.key } }); slip(); buzz([10, 30, 10]); tick(); });
-$('#v-form').addEventListener('submit', async e => {
-  e.preventDefault(); if (!viewing || !formMode) return; const r = S.resp.get(viewing.ev.key); if (!r) return;
-  const n = $('#v-bn').value.trim(); if (!n) { nudge($('#v-bn')); return; }
-  if (formMode === 'host') await ledgerAdd({ type: 'host', ref: r.cell, data: { of: r.key, n } });
-  else { const amt = parseFloat(String($('#v-ba').value).replace(/[^\d.]/g, '')) || 0; if (!amt) { nudge($('#v-ba')); return; } await ledgerAdd({ type: 'pledge', ref: r.cell, data: { of: r.key, n, amt, st: 'given' } }); }
-  showForm(null); slip(); buzz([10, 40, 10]); tick(); thumbCache.clear(); thumbs.clear();
-  const v = viewing; const node = await posterThumb(v.o, v.ev); if (viewing === v) { const host = $('#v-sheet'); host.innerHTML = ''; host.appendChild(node); fitMini(node); }
-});
-function closeViewer() { $('#viewer').hidden = true; viewing = null; showForm(null); }
-$('#v-print').addEventListener('click', () => { if (viewing) printDoc('notice', viewing.o, viewing.ev); });
-$('#v-share').addEventListener('click', () => { if (viewing) share(viewing.o, viewing.ev); });
-$('#v-remix').addEventListener('click', () => { if (!viewing) return; const { o, ev } = viewing; const r = S.resp.get(ev.key); closeViewer(); if (!r) return; if (S.sel !== o.id || S.mode !== 'ping') select(o.id, r.brief); remix(o, r); });
-$('#v-x').addEventListener('click', closeViewer);
-$('#viewer').addEventListener('click', e => { if (e.target.id === 'viewer') closeViewer(); });
+function remixSignal(s) {
+  const o = cellOfSignal(s); strings.seed(o, s); remixLines = { ...(s.lines || {}) };
+  if (s.img && s.img.k === 'inat' && !IMGS[o.id]) { IMGS[o.id] = s.img; saveImgs(); }
+  select(o.id); setTimeout(() => { if (S.sel === o.id) toWish(o); }, reduced() ? 0 : 450);
+}
+/* receiving: a link, the packed signal, or a mesh message pasted in */
+async function receive(text) {
+  let s = null; const t = String(text).trim();
+  try {
+    const m = t.match(/#x=([A-Za-z0-9_-]+)/) || t.match(/^([A-Za-z0-9_-]{40,})$/);
+    if (m) s = unpackSignal(m[1]);
+    else if (/^DA-[0-9A-Z]{4}\b/.test(t)) {
+      const L = t.split(/\n/); const code = L[0].slice(0, 7); const name = L[0].slice(8).trim(); const ll = (L[1] || '').match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+      if (!ll) throw new Error('where'); const lines = {}; L.slice(2).filter(l => l.trim()).slice(0, 4).forEach((l, i) => { const mm = l.match(/^([WISH])\s+(.*)$/); lines[mm ? mm[1].toLowerCase() : WKEYS[i]] = (mm ? mm[2] : l).trim().slice(0, SIG.line); });
+      s = { v: 1, code, at: Date.now(), pin: { lat: +ll[1], lng: +ll[2], cn: title(name), n: '', g: 'paw', place: suburbAt(+ll[1], +ll[2]) }, threat: '', when: '', deg: 0, lines, nodes: [], edges: [] };
+    }
+  } catch (e) { s = null; }
+  if (!s) { toast('NOT A SIGNAL'); nudge($('#rx-t')); return null; }
+  const have = S.signals.find(x => x.code === s.code);
+  if (!have) { const ev = await ledgerAdd({ type: 'signal', lat: s.pin.lat, lng: s.pin.lng, who: s.who || '', data: { ...s, recv: true } }); snd.pluck(0.4, 0); openSignal(ev.key); }
+  else openSignal(have.key);
+  return s;
+}
 
 
-/* ───────── deep links: a view by name; #S01 a story; #H01 a community record; #U… a placed record or a response; #B… a business; any other code an iNaturalist sighting ───────── */
+/* ───────── deep links: a page by name; #x=… a signal carried in the link; #DA-XXXX a signal here; #T01 a group;
+   #U… a record placed here; #E01 a gathering; any other code an iNaturalist sighting ───────── */
 let pendingHash = location.hash.replace(/^#/, '');
 const viewOfHash = h => { const p = PARTS[String(h).toLowerCase()]; return p ? p[0] : -1; };
-const isLocalHash = h => viewOfHash(h) >= 0 || /^[SHFET]\d{2}$/i.test(h);
+const isLocalHash = h => viewOfHash(h) >= 0 || /^(T\d{2}|E\d{2}|DA-[0-9A-Z]{4}|x=.+)$/i.test(h);
 async function handleHash() {
   const h = decodeURIComponent(pendingHash || ''); pendingHash = ''; if (!h) return;
   const v = viewOfHash(h); if (v >= 0) { const part = h.toLowerCase(); setView(v, false, PARTS[part][1] ? part : null); return; }
-  if (/^S\d{2}$/i.test(h)) { const id = 'story:' + h.toUpperCase(); if (S.byId.has(id)) { if (S.view !== 1) setView(1, true); select(id); } return; }
-  if (/^H\d{2}$/i.test(h)) { const id = 'h:' + h.toUpperCase(); if (S.byId.has(id)) select(id); return; }
-  if (/^F\d{2}$/i.test(h)) { const id = 'f:' + h.toUpperCase(); if (S.byId.has(id)) select(id); return; }
+  if (/^x=/.test(h)) { await receive('#' + h); return; }
+  if (/^DA-[0-9A-Z]{4}$/i.test(h)) { const s = S.signals.find(x => x.code === h.toUpperCase()); if (s) openSignal(s.key); return; }
+  if (/^T\d{2}$/i.test(h)) { const id = 'tribe:' + h.toUpperCase(); if (S.byId.has(id)) selectTribe(id); return; }
   if (/^E\d{2}$/i.test(h)) { const id = 'e:' + (+h.slice(1)); if (S.byId.has(id)) select(id); return; }
-  if (/^T\d{2}$/i.test(h)) { const id = 'tribe:' + h.toUpperCase(); if (S.byId.has(id)) { if (S.view !== 1) setView(1, true); selectTribe(id); } return; }
-  if (/^U[0-9a-z]{8,}$/i.test(h)) {
-    const key = h.slice(1); const r = S.resp.get(key); const id = r ? r.cell : 'u:' + key;
-    const o = S.byId.get(id); if (!o) { toast('Not on this device.'); return; }
-    select(id); if (r) setTimeout(() => openViewer(o, r.ev), 500);
-    return;
-  }
-  if (/^B[0-9A-Z]{1,3}$/.test(h)) { await loadBusinesses(); computeOrbit(); const i = parseInt(h.slice(1).toLowerCase(), 36); if (bizOf(i)) selectBiz(i); return; }
+  if (/^U[0-9a-z]{8,}$/i.test(h)) { const id = 'u:' + h.slice(1); if (S.byId.has(id)) select(id); else toast('NOT ON THIS DEVICE'); return; }
   const m = h.match(/^([0-9A-Za-z]{3,9})$/); if (!m) return; const id = parseInt(m[1].toLowerCase(), 36);
   if (S.byId.has(id)) { select(id); return; }
   try {
@@ -2290,7 +3164,7 @@ addEventListener('hashchange', () => {
 document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (Date.now() - S.lastSignal > CONFIG.REFRESH_MIN * 60000) { fetchSightings(true); loadWeather(); } else liveTick(); });
 setInterval(() => { if (!document.hidden) liveTick(); }, Math.max(1, CONFIG.LIVE_MIN || 5) * 60000);
 
-/* ───────── a word on hover: every [data-tip] explains itself in a line; on touch, a tap shows it for a moment ───────── */
+/* ───────── a word on hover: every [data-tip] says what it is; on touch, a tap shows it for a moment ───────── */
 const tipEl = $('#tip'); let tipFor = null, tipT = 0;
 function showTip(el) {
   const t = el && el.dataset.tip; if (!t) return; tipFor = el; tipEl.textContent = t; tipEl.hidden = false;
@@ -2305,17 +3179,20 @@ document.addEventListener('focusin', e => { const el = e.target.closest('[data-t
 document.addEventListener('focusout', () => hideTip());
 document.addEventListener('input', () => hideTip(), true);
 document.addEventListener('scroll', () => hideTip(), true);
-document.addEventListener('click', e => { if (!coarse()) return; const el = e.target.closest('[data-tip]'); if (!el || e.target.closest('button, a, textarea, input, select')) return; showTip(el); clearTimeout(tipT); tipT = setTimeout(hideTip, 2800); });
+document.addEventListener('click', e => { if (!coarse()) return; const el = e.target.closest('[data-tip]'); if (!el || e.target.closest('button, a, textarea, input, select, summary')) return; showTip(el); clearTimeout(tipT); tipT = setTimeout(hideTip, 2600); });
+/* every press answers with a small click, and the page's own buttons with a little more */
+document.addEventListener('click', e => { const b = e.target.closest('summary'); if (b) tick(1300); });
 
 /* ───────── boot ───────── */
 document.title = CONFIG.NAME.replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
-document.body.dataset.view = VIEWS[0].k; document.documentElement.classList.toggle('still', !prefs.motion);
+document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); document.documentElement.classList.toggle('still', !prefs.motion);
 S.mo = nowK();
-loadDemo(); derive(); buildTribes(); buildHeroes(); computeOrbit(); renderView(); flags(); loadEvents();
+derive(); buildTribes(); buildHeroes(); renderView(); flags(); loadEvents();
 if (isLocalHash(pendingHash)) handleHash();
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
-loadBusinesses();
+placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
-window.__da = { S, CONFIG, M, FIELD, BRIEFS, map, ledger, life, select, selectBiz, setView, closeRecord, refresh, computeOrbit, bizOf, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, openViewer, derive, startPlace,
-  degOf, worstWhen, windowOf, needsOf, needLine, waterNear, matchBriefs, openBrief, outMonth, nowK, canopyAt, canopyOf, pickMonth, linkedLife, roleOfRow, onNotice, suburbAt, placeOf, fromBrief, fitsPoster, dangerOf, lifeOf, selectTribe, inTribe, livesIn, vote, buildNotice, printDoc };
+window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
+  degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
+  webBriefs, makeSignal, meshText, pagerText, slipText, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, face: () => face };
 })();

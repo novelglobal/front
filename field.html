@@ -124,7 +124,6 @@ footer{padding:16px 24px 40px;border-top:1px solid var(--navy);font:400 10.5px/1
 <footer id="foot"></footer>
 <div class="tip" id="tip" hidden></div>
 <script src="field.js"></script>
-<script src="demo.js"></script>
 <script src="marks.js"></script>
 <script>
 (function () {
@@ -151,10 +150,9 @@ footer{padding:16px 24px 40px;border-top:1px solid var(--navy);font:400 10.5px/1
   var WORD = { heat: 'Heat', water: 'Drought' }, LEVEL = ['none', 'low', 'high', 'severe'];
   var dots = function (n, ic) { var s = '<span class="dots' + (ic === 'heat' ? ' h' : '') + '" data-tip="' + WORD[ic] + ': ' + LEVEL[n || 0] + '">' + use('g-' + ic); for (var i = 0; i < 3; i++) s += '<b class="' + (i < n ? 'on' : '') + '"></b>'; return s + '</span>'; };
   var TIME = { day: 'Out by day', night: 'Out after dark', dusk: 'Out at dusk and dawn', any: 'Out at any time' };
-  /* its latest sighting on the map: from this device's last load of iNaturalist, or a specimen */
+  /* its latest sighting on the map, from this device's last load of iNaturalist */
   var seen = {};
   try { var cache = JSON.parse(localStorage.getItem('da.obs.v3') || 'null'); (cache && cache.obs || []).forEach(function (o) { var k = o.tx && o.tx.n && o.tx.n.toLowerCase(); if (k && !o.ob && !seen[k]) seen[k] = o.id.toString(36).toUpperCase(); }); } catch (err) { /* no cache */ }
-  var D = window.DA_DEMO; if (D) { (D.stories || []).forEach(function (st) { var k = st.tx && st.tx.n && st.tx.n.toLowerCase(); if (k && !seen[k]) seen[k] = st.id; }); (D.sightings || []).forEach(function (f) { var k = f.tx && f.tx.n && f.tx.n.toLowerCase(); if (k && !f.hist && !seen[k]) seen[k] = f.id; }); }
   document.getElementById('count').textContent = F.length;
   document.getElementById('month').textContent = MON[m] + ' · ' + new Date().getFullYear();
   document.getElementById('months').innerHTML = '<svg viewBox="0 0 144 10" style="width:144px;height:10px;display:block">' + L.split('').map(function (c, i) { return '<text x="' + (6 + 12 * i) + '" y="8" style="font:500 7px var(--mono);fill:' + (i === m ? '#E8453C' : '#6B6B6B') + ';text-anchor:middle">' + c + '</text>'; }).join('') + '</svg>';

@@ -5,7 +5,7 @@
    ════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  /* the colours, as an open book: the teal page, the white page, a cobalt line, grey for the quiet specimen,
+  /* the colours, as an open book: the teal page, the white page, a cobalt line, grey for what has gone quiet,
      orange for the danger coming in the months ahead (deeper as it rises), red for now,
      and a highlighter for what a business is on notice for. Type sits on each page in the ink that page can carry. */
   const C = {
@@ -87,6 +87,29 @@
     host: [S('M3.6 4h8.8v9.6H3.6z', 1.3), F(circ(8, 4, 1.3)), S('M5.8 7.6h4.4M5.8 10h3', 1.1)],
     give: [S('M8 2.6L13.4 8 8 13.4 2.6 8z', 1.4), F('M8 5.4L10.6 8 8 10.6 5.4 8z')],
     remix: [S('M2.6 5h7.6l-2-2M13.4 11H5.8l2 2', 1.4), F(circ(13, 5, 1.3)), F(circ(3, 11, 1.3))],
+    trace: [S('M2.6 12.6L6 7.4l4 3.2 3.4-6.2', 1.2, [1.4, 1.4]), F(circ(2.6, 12.6, 1.4) + circ(6, 7.4, 1.4) + circ(10, 10.6, 1.4)), S('M11.2 4.6l2.4-.4.4 2.4', 1.2)],
+    /* the machines a signal leaves through */
+    roll: [S(ell(5, 8, 2.6, 5.6), 1.2), S(ell(5, 8, 0.9, 1.9), 1), S('M5 2.4h6.6v11.2H5M11.6 2.4v11.2l1-.9 1 .9V2.4', 1.2)],
+    epson: [S('M1.6 7.2h12.8v6.4H1.6z', 1.3), S('M3.4 7.2l1.2-2.6h6.8l1.2 2.6', 1.2), S('M5 4.6V1.4h6v3.2', 1.1), S('M6.4 2.8h3.2', 0.9), F(circ(12, 10.4, 0.9)), S('M3.6 11.6h4', 1)],
+    catprinter: [S('M2.6 6.6h10.8v7.2H2.6z', 1.3), S('M2.8 6.6L3.6 3l2.4 3.6M13.2 6.6L12.4 3 10 6.6', 1.2), S('M5.4 6.6V1.8h5.2v4.8', 1), F(circ(6, 10, 0.75) + circ(10, 10, 0.75))],
+    gbprinter: [S('M2 4.2h12v9.6H2z', 1.3), S('M5 4.2V1.4h6v2.8', 1.1), S('M3.6 6.8h8.8M3.6 8.6h8.8M3.6 10.4h8.8', 0.8), F(circ(12.2, 12.2, 0.8))],
+    lora: [S('M4 6.2h8v8H4z', 1.3), S('M10.4 6.2V1.6', 1.3), F(circ(10.4, 1.6, 0.9)), S('M12.6 2.6a3 3 0 0 1 0 3.4M14.2 1.4a5 5 0 0 1 0 5.8', 1), S('M5.8 8.6h4.4M5.8 10.6h2.4', 0.9)],
+    pager: [S('M1.8 4h12.4v8.4H1.8z', 1.3), S('M3.6 5.8h6.6v3.4H3.6z', 1), S('M11.6 6.2v2.6', 1.2), S('M5 14.2h6', 1.1), S('M4.6 7.5h4', 0.8)],
+    qr: [F('M2 2h5v5H2zM3.4 3.4v2.2h2.2V3.4zM9 2h5v5H9zM10.4 3.4v2.2h2.2V3.4zM2 9h5v5H2zM3.4 10.4v2.2h2.2v-2.2zM9 9h2v2H9zM12 9h2v2h-2zM9 12h2v2H9zM12 12h2v2h-2z', 'evenodd')],
+    hide: [S('M1.4 8c2.2-3.4 4.4-4.6 6.6-4.6s4.4 1.2 6.6 4.6c-2.2 3.4-4.4 4.6-6.6 4.6S3.6 11.4 1.4 8z', 1.3), F(circ(8, 8, 2)), S('M2.4 13.6L13.6 2.4', 1.5)],
+    note: [S('M3 2.2h7.4L13 4.8v9H3z', 1.3), S('M5.4 6.8h5.2M5.4 9.4h5.2M5.4 12h3', 1.1)],
+    /* strings and signals */
+    string: [F(circ(2.6, 5, 1.6) + circ(13.4, 5, 1.6)), S('M2.6 5Q8 12.6 13.4 5', 1.3)],
+    undo: [S('M5.4 3.6L2.4 6.6l3 3', 1.5), S('M2.6 6.6h6.4a3.6 3.6 0 0 1 0 7.2H6.2', 1.5)],
+    reset: [S(circ(4.2, 11.6, 2) + circ(11.8, 11.6, 2), 1.3), S('M5.6 10.2L12.6 2.4M10.4 10.2L3.4 2.4', 1.3)],
+    restore: [S('M10.6 3.6l3 3-3 3', 1.5), S('M13.4 6.6H7a3.6 3.6 0 0 0 0 7.2h2.8', 1.5)],
+    receipt: [S('M3.6 1.8h8.8v12.4l-1.47-1.2-1.47 1.2-1.46-1.2L8 14.2l-1.47-1.2-1.46 1.2-1.47-1.2-1.47 1.2z', 1.3), S('M5.8 5h4.4M5.8 7.6h4.4M5.8 10.2h2.6', 1.1)],
+    receive: [S('M8 2v7.6M4.8 6.4L8 9.6l3.2-3.2', 1.5), S('M2.4 10.4v3.2h11.2v-3.2', 1.4)],
+    mesh: [S('M3 12L8 3.4 13 12z', 1.1), F(circ(3, 12, 1.7) + circ(13, 12, 1.7) + circ(8, 3.4, 1.7))],
+    bits: [F('M2 2h3v3H2zM8 2h3v3H8zM5 5h3v3H5zM11 5h3v3h-3zM2 8h3v3H2zM8 8h3v3H8zM5 11h3v3H5zM11 11h3v3h-3z')],
+    gb: [S('M4 1.6h8v12.8H4z', 1.3), F('M5.6 3.4h4.8v4H5.6z'), F(circ(10.4, 10.8, 0.9) + circ(9, 12.2, 0.9)), S('M5.2 11.5h2.2M6.3 10.4v2.2', 1)],
+    escpos: [S('M3 7.4h10v5H3z', 1.3), S('M5 7.4V2.2h6v5.2M5 12.4v2.2h6v-2.2', 1.2), S('M6.6 4.2h2.8', 1)],
+    radar: [S(circ(8, 8, 6), 1.2), S(circ(8, 8, 3), 0.9), S('M8 8l4.2-4.2', 1.4), F(circ(8, 8, 1.1))],
     injured: [F(circ(8, 8, 2.2)), S('M12.6 10.8A5.4 5.4 0 1 1 13.3 6.6', 1.6)],
     lost: [S(circ(6.4, 9.6, 4), 1.3, [1.4, 1.6]), F(circ(13, 3, 1.8)), S('M9.3 6.8l2.3-2.4', 1.1, [0.8, 1.4])],
     /* the forms, for legends */
@@ -322,7 +345,7 @@
      in a shape that says what sort of record it is. Animals sit in discs (cobalt by day, navy after dark),
      plants in teal squares, gatherings in navy calendar pages, needs in rings and offers in discs,
      an animal hurt in red, an animal dead in black with a red mark, an animal lost in a white dashed disc,
-     a poster as a white sheet. A life the months ahead put in severe danger turns orange; a plant in danger wears an orange ring.
+     a signal as a white slip. A life the months ahead put in severe danger turns orange; a plant in danger wears an orange ring.
      b = { g: kind of life (GLYPHS), i: or an icon (ICONS), tone, d: diameter in px, sig, fresh, n, carried, hot, a } */
   const TONES = {
     'k-bird': [C.kind.bird, C.white], 'k-mammal': [C.kind.mammal, C.white], 'k-insect': [C.kind.insect, C.white], 'k-spider': [C.kind.spider, C.white],
@@ -351,7 +374,7 @@
     if (b.tone === 'lost') ctx.setLineDash([2.6, 2.2]); ctx.stroke(); ctx.setLineDash([]);
     /* a gathering: the rings of a calendar page */
     if (b.tone === 'event') { ctx.fillStyle = C.white; for (const sx of [-0.45, 0.45]) { ctx.beginPath(); ctx.arc(x + sx * r, y - r * 0.86, r * 0.13, 0, TAU); ctx.fill(); } }
-    /* a poster, carried: the sheet's top band */
+    /* a signal: the slip's top band */
     if (b.tone === 'story') { ctx.fillStyle = b.carried ? C.cobalt : C.grey; ctx.fillRect(x - r * 0.74 + 1, y - r * 1.04 + 1, r * 1.48 - 2, r * 0.42); }
     const gs = d * (b.tone === 'story' ? 0.58 : b.tone === 'event' ? 0.6 : 0.66), gy = b.tone === 'story' ? y + r * 0.18 : b.tone === 'event' ? y + r * 0.08 : y;
     if (b.i) icon(ctx, b.i, x, gy, gs * 0.9, fg, 1.1); else if (b.g) glyph(ctx, b.g, x, gy, gs, fg);
@@ -422,9 +445,10 @@
   const WORDS = {
     water: 'WATER', shade: 'SHADE', people: 'CHECK IN', still: 'LEAVE BE', plant: 'PLANT', corridor: 'CORRIDOR', refuge: 'COOL ROOM',
     canopy: 'CANOPY', wetland: 'WETLAND', mulch: 'MULCH', ground: 'GROUND', spray: 'NO SPRAY', cat: 'CATS IN', rain: 'RAIN',
-    where: 'PLACE', day: 'DAY', night: 'NIGHT', dusk: 'DUSK', any: 'ANY TIME', heat: 'DANGER', partner: 'PLACES', check: 'POSTERS', past: 'PAST YEARS',
-    sound: 'VOICE', out: 'LINK', human: 'PEOPLE', injured: 'HURT', lost: 'LOST', phone: 'CALL', fauna: 'LIVES', quote: 'SIGN-UP', story: 'STORIES',
-    aware: 'NOTICE', harm: 'NO HARM', aid: 'HELP', hug: 'GIG',
+    where: 'PLACE', day: 'DAY', night: 'NIGHT', dusk: 'DUSK', any: 'ANY TIME', heat: 'DANGER', partner: 'PLACES', check: 'DONE', past: 'PAST YEARS',
+    sound: 'VOICE', out: 'LINK', human: 'PEOPLE', injured: 'HURT', lost: 'LOST', phone: 'CALL', fauna: 'LIVES', story: 'SIGNALS',
+    aware: 'NOTICE', harm: 'NO HARM', aid: 'HELP', hug: 'GIG', string: 'STRING', undo: 'UNDO', reset: 'CUT ALL', restore: 'BRING BACK', receipt: 'DIRECT ACTION', hide: 'HIDE', note: 'NOTES', trace: 'TRACE', roll: '58 MM', epson: 'ESC/POS', catprinter: '1-BIT', gbprinter: 'GAME BOY', lora: 'MESH', pager: 'PAGER', qr: 'LINK',
+    receive: 'RECEIVE', mesh: 'MESH', bits: '1-BIT', gb: 'GAME BOY', escpos: 'ESC/POS', radar: 'RADAR',
   };
 
   /* the kinds of life, in words, for every hover */
@@ -452,7 +476,7 @@
     [{ tone: 'k-reptile', g: 'lizard' }, 'REPTILES'], [{ tone: 'k-water', g: 'frog' }, 'FROGS, FISH'], [{ tone: 'flora', g: 'plant', d: 16 }, 'PLANTS, CLOSE UP'], [{ tone: 'k-mammal', g: 'flyingfox', dz: 3 }, 'SEVERE DANGER'],
     [{ tone: 'k-reptile', g: 'turtle', dz: 4 }, 'EXTREME DANGER'], [{ tone: 'k-water', g: 'frog', sig: true }, 'THREATENED'], [{ tone: 'k-insect', g: 'bee', fresh: true }, 'NEW'], [{ tone: 'hist' }, 'PAST YEARS'],
     [{ tone: 'injured', g: 'possum' }, 'HURT'], [{ tone: 'dead', g: 'bird' }, 'DEAD'], [{ tone: 'lost', g: 'dog' }, 'LOST'], [{ tone: 'need', i: 'shade' }, 'NEED'],
-    [{ tone: 'offer', i: 'refuge' }, 'OFFER'], [{ tone: 'event', g: 'frog' }, 'GATHER'], [{ tone: 'event', i: 'hug' }, 'GIG'], [{ tone: 'story', g: 'bee', carried: true }, 'POSTER'],
+    [{ tone: 'offer', i: 'refuge' }, 'OFFER'], [{ tone: 'event', g: 'frog' }, 'GATHER'], [{ tone: 'event', i: 'hug' }, 'GIG'], [{ tone: 'story', g: 'bee', carried: true }, 'SIGNAL'],
   ];
   /* the five in greatest need move in a way of their own, across the ground they are known from */
   function heroMotion(move, t, ph = 0, amp = 1) {
