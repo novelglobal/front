@@ -4,442 +4,279 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Direct Action Guide</title>
-<meta name="description" content="The icons, the danger, the card, the briefs, the poster and the businesses, each with its word.">
+<meta name="description" content="The radar, the icons, the strings, the four lines and the outputs, each with its word.">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 @font-face{font-family:'Poppins';font-style:normal;font-weight:200;font-display:swap;src:url(vendor/fonts/poppins-latin-200-normal.woff2) format('woff2')}
 @font-face{font-family:'Poppins';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/poppins-latin-400-normal.woff2) format('woff2')}
 @font-face{font-family:'Poppins';font-style:italic;font-weight:400;font-display:swap;src:url(vendor/fonts/poppins-latin-400-italic.woff2) format('woff2')}
 @font-face{font-family:'Poppins';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/poppins-latin-600-normal.woff2) format('woff2')}
-@font-face{font-family:'Poppins';font-style:italic;font-weight:700;font-display:swap;src:url(vendor/fonts/poppins-latin-700-italic.woff2) format('woff2')}
+@font-face{font-family:'Poppins';font-style:normal;font-weight:700;font-display:swap;src:url(vendor/fonts/poppins-latin-700-normal.woff2) format('woff2')}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url(vendor/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2')}
 @font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url(vendor/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url(vendor/fonts/ibm-plex-mono-latin-600-normal.woff2) format('woff2')}
 :root{
-  --teal:#0CCBBD;--teal-lift:#7FE0D7;--teal-deep:#007A72;--white:#FFFFFF;--paper:#F2F2EF;--grey:#C8C8C8;--grey-text:#6B6B6B;--black:#0D0D0C;
-  --cobalt:#0067B8;--cobalt-deep:#004A87;--navy:#0B2545;--neon:#E6F84A;--red:#E8453C;--ground:#2C3631;
+  --teal:#0CCBBD;--teal-lift:#7FE0D7;--teal-deep:#007A72;--teal-wash:#E3F7F4;--white:#FFFFFF;--paper:#F1F2EF;--slip:#FCFBF7;--grey:#C8C8C8;--grey-text:#6B6B6B;--ink:#141412;
+  --cobalt:#0067B8;--navy:#0B2545;--neon:#E6F84A;--red:#E8453C;--ground:#1E2622;
   --orange:#FF7A00;--deg1:#FFE3C2;--deg2:#FFB15C;--deg3:#FF7A00;--deg4:#D95000;
   --sans:'Poppins',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--white:#0F1613;--paper:#1A2420;--grey:#34413C;--grey-text:#9AA8A2;--navy:#E6ECEA;--cobalt:#5AA9F0}}
+:root[data-theme="dark"]{color-scheme:dark;--white:#0F1613;--paper:#1A2420;--grey:#34413C;--grey-text:#9AA8A2;--navy:#E6ECEA;--cobalt:#5AA9F0}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--white);color:var(--navy);font:400 14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 .sprite{position:absolute;width:0;height:0;overflow:hidden}
-.mono{font-family:var(--mono)}
-a{color:var(--cobalt)}
+a{color:inherit}
 ul,ol{margin:0;padding:0;list-style:none}
 .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
 .mast{position:sticky;top:0;z-index:5;background:var(--white);border-bottom:1px solid var(--navy)}
 .mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:52px;font:500 10px/1 var(--mono);letter-spacing:.2em}
-.mast b{display:flex;align-items:center;gap:12px;font-weight:600;font-family:var(--sans);letter-spacing:.3em}
-.mast b i{width:6px;height:6px;border-radius:50%;background:var(--navy)}
+.mast b{font:600 11px/1 var(--sans);letter-spacing:.3em}
 .mast nav{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
 .mast nav a{color:var(--grey-text);text-decoration:none}
 .mast nav a:hover{color:var(--navy)}
-/* the opening plate: the warning, as on NOW */
-.warn{background:var(--black);color:var(--white)}
-.warn .band{background:var(--orange);color:var(--black);font:500 10px/1 var(--mono);letter-spacing:.16em}
-.warn .band .wrap{display:flex;align-items:center;gap:10px;height:36px}
-.wt{position:relative;flex:none;width:17px;height:15px;background:var(--black);clip-path:polygon(50% 0,100% 100%,0 100%)}
-.wt::after{content:"!";position:absolute;left:0;right:0;top:4px;text-align:center;font:700 9px/1 var(--sans);color:var(--orange)}
-.warn h1{margin:0;padding:40px 0 34px;font-size:clamp(44px,8vw,96px);font-weight:600;line-height:.92;letter-spacing:-.035em}
-.plate{padding:40px 0 44px;border-bottom:1px solid var(--navy)}
-.plate h2{margin:0 0 18px;font-size:28px;font-weight:600;line-height:1.08;letter-spacing:-.015em}
+.plate{padding:36px 0 40px;border-bottom:1px solid var(--navy)}
+.plate h2{margin:0 0 18px;font:600 10.5px/1 var(--mono);letter-spacing:.2em}
+.lbl{font:500 9.5px/1.3 var(--mono);letter-spacing:.1em}
 .grid{display:grid;border-top:1px solid var(--navy)}
-.key{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.key li,.kinds li,.roles li{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 0;border-bottom:1px dotted var(--grey)}
-.key canvas{flex:none}
-.key span,.kinds span{font:500 9.5px/1.25 var(--mono);letter-spacing:.1em}
-.kinds{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.kinds canvas{flex:none}
-.moves{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
-.moves li{padding:14px 14px 16px 0;border-bottom:1px dotted var(--grey)}
-.moves canvas{display:block}
-.moves b{display:block;margin-top:10px;font:500 9.5px/1 var(--mono);letter-spacing:.14em}
-/* the months, as on NOW */
-.months{background:var(--black);color:var(--white);padding:22px 22px 18px}
-.ms-h,.ms-m,.ms-w{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:4px}
-.ms-h span{padding-top:5px;border-top:1px solid rgba(255,255,255,.45);font:500 8px/1 var(--mono);letter-spacing:.1em;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden}
-.ms-h span.hf{border-top:2px solid var(--orange);color:var(--white)}
-.ms-h span.hm{border-top-color:var(--deg2)}
-.ms-m{margin-top:10px;align-items:end;height:84px}
-.ms-m div{display:flex;flex-direction:column;justify-content:flex-end;gap:6px;height:100%}
-.ms-m i{display:block}
-.ms-m b{font:500 10px/1 var(--mono);text-align:center}
-.ms-w{margin-top:10px;row-gap:5px}
-.ms-w span{padding-top:3px;border-top:2px solid var(--orange);font:500 8px/1 var(--mono);letter-spacing:.1em;color:var(--orange);white-space:nowrap;overflow:hidden}
-.degs{grid-template-columns:repeat(5,minmax(0,1fr));margin-top:18px}
-.degs li{padding:12px 10px 14px;border-bottom:1px dotted var(--grey)}
-.degs li b{display:inline-block;padding:2px 8px;font:600 10px/1.5 var(--mono);letter-spacing:.06em}
-.degs li small{display:block;margin-top:8px;font-size:12.5px;line-height:1.35}
-.rule{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));border-top:1px solid var(--navy)}
-.rule div{padding:12px 12px 14px 0;border-bottom:1px dotted var(--grey);font-size:13px;line-height:1.45}
-.rule b{display:block;margin-bottom:4px;font:500 9.5px/1 var(--mono);letter-spacing:.14em}
-/* the card's readings */
-.tri{display:grid;grid-template-columns:1.5fr repeat(4,minmax(0,1fr));max-width:560px;border-top:2px solid var(--navy);border-bottom:1px solid var(--navy)}
-.tri li{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;padding:10px 8px 9px;border-left:1px dotted var(--grey)}
-.tri li:first-child{border-left:0;background:var(--deg3)}
-.tri b{font-size:18px;font-weight:600;line-height:1}
-.tri small{font:500 8px/1.2 var(--mono);letter-spacing:.06em;color:var(--grey-text)}
-.tri li:first-child small{color:var(--navy)}
-.m{display:flex;gap:2px}.m i{width:9px;height:4px;background:#E2E4E3}.m2 i:nth-child(-n+2),.m3 i,.m1 i:nth-child(1){background:var(--navy)}
-.notes{border-top:1px solid var(--navy);margin-top:18px}
-.notes li{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;padding:10px 0;border-bottom:1px dotted var(--grey);font-size:13px;line-height:1.45}
-.notes li b{font:500 9.5px/1.5 var(--mono);letter-spacing:.14em;color:var(--grey-text)}
-.danger{max-width:560px;margin-top:10px;padding:12px 14px;background:var(--deg3);font-size:14.5px;font-weight:500;line-height:1.38}
-.danger b{display:block;font:500 9.5px/1 var(--mono);letter-spacing:.14em;margin-bottom:5px}
-/* briefs into four lines */
-.wish{max-width:560px}
-.w{position:relative;margin-top:10px;padding:9px 12px 8px;border:1px solid var(--navy)}
-.w.h{border-width:2px}
-.w label{display:flex;align-items:baseline;gap:9px;font:500 9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--grey-text)}
-.w label b{font:200 24px/1 var(--sans);letter-spacing:0;color:var(--navy)}
-.w p{margin:6px 0 0;font-size:13.5px;line-height:19px;min-height:38px;background:repeating-linear-gradient(to bottom,transparent 0 18px,#DADDDC 18px 19px)}
-.w.h p{font-weight:600}
-.w small{position:absolute;right:10px;top:9px;font:500 8.5px var(--mono);color:var(--grey-text)}
-.brief{display:grid;grid-template-columns:minmax(0,1fr) auto;max-width:560px;border:1px solid var(--navy);background:var(--navy);color:var(--white)}
-.brief div{padding:12px 14px 13px}
-.brief b{display:block;font-size:15px;font-weight:600}
-.brief small{display:block;margin-top:3px;font:500 8.5px/1.3 var(--mono);letter-spacing:.1em;opacity:.75}
-.brief span{display:block;margin-top:4px;font-size:12px;opacity:.85}
-/* the poster, by zone */
-.two{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:40px;align-items:start}
-.sheet{aspect-ratio:210/297;width:100%;max-width:320px;border:1px solid #000;background:#fff;color:#000;display:grid;grid-template-rows:9% 22% 1% 9% 8% 34% 10%;font:500 8px/1 var(--mono);letter-spacing:.12em}
-.sheet > div{display:flex;align-items:center;gap:8px;padding:0 6%;border-bottom:1px solid #000}
-.sheet .b{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;border-bottom:3px solid #000;font-family:var(--sans);font-size:15px;letter-spacing:-.01em;font-weight:600}
-.sheet .b small{font:500 5.5px/1 var(--mono);letter-spacing:.16em}
-.sheet .b span{display:flex;align-items:center;gap:6px}
-.sheet .b svg{width:16px;height:14px}
-.sheet .ph{margin:4% 6% 0;border:1px solid #000;justify-content:center;padding:0}
-.sheet .ph svg{width:30%;height:auto;aspect-ratio:1}
-.sheet .nm{font-family:var(--sans);font-size:15px;font-weight:600;letter-spacing:-.01em;border-bottom:0}
-.sheet .why{border-top:2px solid #000;border-bottom:0;justify-content:space-between;gap:6px;font-size:6px;letter-spacing:.06em}
-.sheet .why span{flex:1}
-.sheet .wh{flex-direction:column;align-items:stretch;justify-content:center;gap:3px;border-top:4px solid #000;font-family:var(--sans);font-size:10.5px;letter-spacing:0}
-.sheet .wh small{font:500 5px/1 var(--mono);letter-spacing:.14em}
-.sheet .wh p{margin:0}
-.sheet .wh p.h{font-weight:600;border:2px solid #000;padding:3px 5px}
-.sheet .ft{border-top:1px solid #000;border-bottom:0;font-size:6px;letter-spacing:.1em;line-height:1.5}
-.sheet .qr{width:30px;height:30px;background:repeating-conic-gradient(#000 0 25%,#fff 0 50%) 0 0/7px 7px;border:3px solid #000;flex:none}
-/* businesses */
-.roles{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
-.roles li{align-items:flex-start}
-.role{flex:none;display:inline-block;padding:1px 6px;font:500 9px/1.6 var(--mono);letter-spacing:.06em;color:var(--cobalt);border:1px solid var(--cobalt)}
-.role.on{background:var(--neon);color:var(--navy);border-color:var(--navy)}
-.roles small{font-size:12.5px;line-height:1.35}
-/* colour */
-.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));border-top:1px solid var(--navy)}
-.sw li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;padding:12px 10px 12px 0;border-bottom:1px dotted var(--grey)}
-.sw i{width:48px;height:48px;border:1px solid var(--navy)}
-.sw b{display:block;font:500 9.5px/1 var(--mono);letter-spacing:.14em}
-.sw small{display:block;margin-top:5px;font-size:12px;line-height:1.35}
-.honest li{padding:10px 0;border-bottom:1px dotted var(--grey);font-size:14px;line-height:1.5;max-width:760px}
-.foot{padding:28px 0 60px;font:400 10px/1.6 var(--mono);letter-spacing:.06em;color:var(--grey-text)}
-/* the five in greatest need */
-.heroes{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
-.heroes li{padding:14px 14px 16px 0;border-bottom:1px dotted var(--grey)}
-.heroes canvas{display:block}
-.heroes b{display:block;margin-top:10px;font-size:15px;font-weight:600;line-height:1.15}
-.heroes small{display:block;margin-top:5px;font-size:12.5px;line-height:1.38}
-.heroes em{display:block;margin-top:8px;font:500 9px/1.4 var(--mono);font-style:normal;letter-spacing:.08em;color:var(--cobalt)}
-/* needs */
-.tri.four{grid-template-columns:1.5fr repeat(3,minmax(0,1fr))}
-.tri .st{align-self:flex-start;padding:1px 4px;font:500 7.5px/1.5 var(--mono);font-style:normal;letter-spacing:.08em;border:1px solid var(--navy)}
-.tri .ok{background:#fff}.tri .ok .st{color:var(--teal-deep);border-color:var(--teal-deep)}
-.tri .low{background:var(--deg1)}
-.tri .none{background:var(--deg2)}.tri .none .st{background:var(--navy);color:#fff}
-.tri .near{background:var(--neon)}
-.states{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.states span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px}
-.states i{padding:1px 5px;font:500 8.5px/1.5 var(--mono);font-style:normal;letter-spacing:.08em;border:1px solid var(--navy)}
-.needs{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:18px}
-.needs li{display:flex;align-items:center;gap:12px;padding:9px 8px 9px 0;border-bottom:1px dotted var(--grey)}
-.needs canvas{flex:none}
-.needs span{font:500 9.5px/1.4 var(--mono);letter-spacing:.08em}
-.needs span b{display:block;font:600 13px/1.2 var(--sans);letter-spacing:0;margin-bottom:2px}
-/* placing */
-.chips{display:flex;flex-wrap:wrap;gap:6px;max-width:560px;margin-top:6px}
-.chips b{padding:6px 9px;font:500 10px/1 var(--mono);letter-spacing:.1em;border:1px solid var(--navy)}
-.chips b.on{background:var(--navy);color:#fff}
-.lives{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-width:560px;margin-top:10px}
-.lives span{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px 6px;border:1px solid var(--grey);font:500 7.5px/1 var(--mono);letter-spacing:.08em}
-.lives svg{width:20px;height:20px;color:var(--navy)}
-.sub{margin:22px 0 0;font:500 9.5px/1 var(--mono);letter-spacing:.14em;color:var(--grey-text)}
-/* groups */
-.groups{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-.groups li{display:grid;grid-template-columns:54px minmax(0,1fr);gap:14px;padding:14px 10px 16px 0;border-bottom:1px dotted var(--grey)}
-.groups canvas{display:block}
-.groups b{display:block;font-size:15px;font-weight:600;line-height:1.2}
-.groups i{display:block;margin-top:3px;font:500 9px/1.4 var(--mono);font-style:normal;letter-spacing:.1em;color:var(--grey-text)}
-.groups small{display:block;margin-top:5px;font-size:12.5px;line-height:1.4}
-.groups a{display:inline-block;margin-top:6px;font:500 9px/1 var(--mono);letter-spacing:.12em}
-/* gigs */
-.gigs{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
-.gigs a{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--navy);font:500 10px/1 var(--mono);letter-spacing:.1em;text-decoration:none;color:var(--navy)}
-.gigs svg{width:18px;height:18px}
-/* kind colours */
-.kc{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));border-top:1px solid var(--navy);margin-bottom:22px}
-.kc li{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 0;border-bottom:1px dotted var(--grey);font:500 9.5px/1.3 var(--mono);letter-spacing:.1em}
-.kc i{flex:none;width:26px;height:26px;border-radius:50%}
+.grid>li{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 0;border-bottom:1px dotted var(--grey)}
+.key,.kinds,.kc{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.kc i{flex:none;width:24px;height:24px;border-radius:50%}
+canvas{flex:none;display:block}
+/* the radar, drawn */
+.radar{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:36px;align-items:center}
+.radar canvas{width:100%;height:auto;background:var(--ground)}
+.steps{display:grid;gap:0;border-top:1px solid var(--navy)}
+.steps li{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:center;padding:10px 0;border-bottom:1px dotted var(--grey)}
+.steps b{font:600 10px/1.3 var(--mono);letter-spacing:.12em}
+.steps span{font-size:13px}
+.steps .i{width:18px;height:18px;vertical-align:-4px;margin-right:6px}
+/* the strings */
+.strings{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:36px;align-items:start}
+.strings canvas{width:100%;height:auto;background:var(--ground);position:sticky;top:72px}
+.dm{display:inline-block;width:10px;height:10px;transform:rotate(45deg);border:1.4px solid var(--cobalt);background:#fff;margin:0 4px}
+.dm.on{background:var(--neon);border-color:var(--navy)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#19A7C4;margin:0 4px}
+.sq{display:inline-block;width:10px;height:10px;border:1.4px solid #0B2545;background:#fff;margin:0 4px}
+/* the human ecology, as marked on the ground */
+.fm{display:inline-block;width:10px;height:10px;flex:none;margin:0 5px 0 3px;transform:rotate(45deg);border:1.4px solid var(--cobalt);background:#fff;vertical-align:0}
+.fm.harm{background:var(--neon);border-color:#0B2545}.fm.circ{background:var(--teal);border-color:#0B2545}.fm.lab{background:var(--cobalt)}
+.fm.art{border-color:#0B2545;background:radial-gradient(circle,#0B2545 0 1.6px,#fff 2.2px)}
+.fm.third{transform:none;border-color:#0B2545;background:radial-gradient(circle,#0B2545 0 1.8px,#fff 2.4px)}
+.fm.net{transform:none;width:12px;height:11px;border:0;background:radial-gradient(circle at 50% 2.5px,#0B2545 0 1.8px,transparent 2.3px),radial-gradient(circle at 2.5px 8.5px,#0B2545 0 1.8px,transparent 2.3px),radial-gradient(circle at 9.5px 8.5px,#0B2545 0 1.8px,transparent 2.3px);background-color:#fff}
+.thr{display:inline-block;width:18px;height:0;border-top:1.6px solid var(--orange);vertical-align:3px;margin-right:4px}
+.snd{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.snd li{gap:10px}
+.snd svg{flex:none;width:44px;height:14px;color:var(--navy)}
+.snd b{font:600 10px/1 var(--mono);letter-spacing:.12em;min-width:92px}
+.snd small{font:400 10px/1.3 var(--mono);color:var(--grey-text)}
+/* the slip */
+.slip .fig{height:150px;margin:10px 0 3px;background:#E6E5DE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23141412'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23141412'/%3E%3C/svg%3E")}
+.slip .cap{font-size:8px;letter-spacing:.1em;color:#55554F}
+.slip .st{padding:6px 0;border-top:1px solid var(--ink);font:600 11.5px/1.35 var(--sans);color:var(--ink)}
+.slip .rel{padding:6px 0;border-top:1px solid var(--ink);font-size:10px}
+.slip .rel p{margin:0;display:grid;grid-template-columns:18px 1fr auto;gap:6px}
+.slip .rel em{font-style:normal;font-size:8px;letter-spacing:.1em}
+.slip .rel em.on{background:linear-gradient(transparent 55%,var(--neon) 55%)}
+.slip{width:300px;max-width:100%;padding:12px 18px 16px;background:var(--slip);color:var(--ink);font:12px/1.45 var(--mono);box-shadow:0 10px 26px rgba(11,37,69,.13)}
+.slip ol li{padding:10px 0;border-bottom:1px dashed #D2D2CA;font-size:11px;color:#8C8C84}
+.slip ul{padding:8px 0;border-bottom:1px dashed #A9A9A2}
+.slip ul li{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:10.5px}
+.slip ul li.off{color:#B4B4AC;text-decoration:line-through}
+.slip .ck{flex:none;width:11px;height:11px;border:1.4px solid var(--ink);box-shadow:inset 0 0 0 2px var(--slip)}
+.slip .ck.on{background:var(--ink)}
+.slip .nt{display:flex;gap:8px;padding:8px 0 0;font-size:10.5px}
+.slip .hd{display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px dashed #A9A9A2;font-size:10.5px;letter-spacing:.06em}
+.wishrow{display:grid;grid-template-columns:300px minmax(0,1fr);gap:36px;align-items:start}
+/* outputs */
+.outs{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.outs li{align-items:flex-start;flex-direction:column;gap:6px}
+.outs .i{width:26px;height:26px}
+.outs a{display:inline-flex;align-items:center;gap:4px;font:400 10px/1.3 var(--mono);color:var(--cobalt);text-decoration:none}
+.outs a:hover{text-decoration:underline}
+.outs b{font:600 10.5px/1 var(--mono);letter-spacing:.12em}
+.outs small{font:400 10px/1.3 var(--mono);color:var(--grey-text)}
+/* danger */
+.degs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.dg{display:inline-block;padding:3px 7px;font:600 10px/1.4 var(--mono);letter-spacing:.06em;background:var(--deg1);color:#0B2545}
+.dg.d2{background:var(--deg2)}.dg.d3{background:var(--deg3);color:#fff}.dg.d4{background:var(--deg4);color:#fff}
+.wins{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:16px}
+.wins li{flex-direction:column;align-items:flex-start;gap:4px}
+.wins b{font:600 10px/1 var(--mono);letter-spacing:.12em;color:var(--orange)}
+.wins small{font:400 10px/1.3 var(--mono);color:var(--grey-text)}
+.heroes{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+.heroes li{flex-direction:column;align-items:flex-start}
+.heroes b{font-size:14px;font-weight:600;line-height:1.15}
+/* roles */
+.roles{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.role{display:inline-block;padding:2px 6px;font:500 9px/1.6 var(--mono);letter-spacing:.06em;color:var(--cobalt);border:1px solid var(--cobalt)}
+.role.on{background:var(--neon);color:#0B2545;border-color:#0B2545}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.groups{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.groups i{flex:none;width:16px;height:16px;border-radius:47% 53% 44% 56%/52% 45% 55% 48%}
+.groups a{text-decoration:none;font-weight:600;font-size:13.5px}
+.calls a{font:500 11px var(--mono);letter-spacing:.06em;text-decoration:none}
+.foot{padding:24px 0 56px;font:400 10px/1.6 var(--mono);letter-spacing:.06em;color:var(--grey-text)}
 @media (max-width:760px){
   .wrap{padding:0 16px}
   .mast nav{display:none}
-  .two{grid-template-columns:1fr}
+  .radar,.strings,.wishrow,.cols{grid-template-columns:1fr}
+  .strings canvas{position:static}
   .degs{grid-template-columns:1fr 1fr}
-  .notes li{grid-template-columns:100px minmax(0,1fr)}
-  .plate h2{font-size:23px}
-  .tri b{font-size:15px}
-  .months{padding:16px 12px}
 }
 </style>
 </head>
 <body>
 <svg class="sprite" aria-hidden="true" focusable="false"></svg>
-<header class="mast"><div class="wrap"><b>DIRECT ACTION<i></i>GUIDE</b><nav class="mono"><a href="#icons">ICONS</a><a href="#five">THE FIVE</a><a href="#danger">DANGER</a><a href="#card">CARD</a><a href="#wish">W.I.S.H.</a><a href="#poster">POSTER</a><a href="#placing">PLACING</a><a href="#groups">GROUPS</a><a href="#businesses">BUSINESSES</a><a href="#colour">COLOUR</a></nav><span>NOVEL.GLOBAL</span></div></header>
+<header class="mast"><div class="wrap"><b>DIRECT ACTION · GUIDE</b><nav><a href="#radar">RADAR</a><a href="#icons">ICONS</a><a href="#strings">STRINGS</a><a href="#sounds">SOUNDS</a><a href="#wish">W.I.S.H.</a><a href="#outputs">OUTPUTS</a><a href="#danger">DANGER</a><a href="#roles">PLACES</a><a href="#groups">GROUPS</a></nav></div></header>
 
-<section class="warn">
-  <div class="band"><div class="wrap"><span class="wt" aria-hidden="true"></span>CLIMATE EMERGENCY · EL NIÑO 2026–27</div></div>
-  <div class="wrap"><h1>Notice. Imagine.<br>Put it on a wall.</h1></div>
-</section>
+<section class="plate" id="radar"><div class="wrap">
+  <h2>RADAR</h2>
+  <div class="radar"><canvas id="radar-cv" width="840" height="620" aria-label="The radar"></canvas>
+    <ol class="steps" id="radar-steps"></ol></div>
+</div></section>
 
-<main class="wrap">
-<section class="plate" id="icons">
-  <h2>Every icon is the thing itself, in the colour of its kind</h2>
-  <ul class="kc" id="kind-colours"></ul>
-  <ul class="grid key" id="key"></ul>
-  <ul class="notes">
-    <li><b>THE MAP</b>No words on the ground. Point at an icon for its name; touch it for its card.</li>
-    <li><b>PLANTS</b>Small, and only close up, so the animals stay readable from above.</li>
-    <li><b>DANGER</b>An orange ring: thin for severe, thick for extreme. The worst few breathe.</li>
-  </ul>
-</section>
+<section class="plate" id="icons"><div class="wrap">
+  <h2>ICONS</h2>
+  <ul class="grid kc" id="kind-colours"></ul>
+  <ul class="grid key" id="key" style="margin-top:20px"></ul>
+</div></section>
 
-<section class="plate" id="kinds">
-  <h2>Kinds of life</h2>
-  <ul class="grid kinds" id="kinds-list"></ul>
-</section>
+<section class="plate" id="strings"><div class="wrap">
+  <h2>STRINGS</h2>
+  <div class="strings"><canvas id="strings-cv" width="840" height="620" aria-label="String figures"></canvas>
+    <ol class="steps" id="string-steps"></ol></div>
+</div></section>
 
-<section class="plate" id="five">
-  <h2>Five in greatest need</h2>
-  <ul class="grid heroes" id="heroes"></ul>
-  <ul class="notes">
-    <li><b>WHERE</b>Each is drawn where its past sightings gather, with a soft patch over the ground it is known from. With fewer than three sightings, the places it is known to live.</li>
-    <li><b>WHY THESE</b>Heat or drought lands on them at the worst moment, or their numbers are already falling.</li>
-    <li><b>ON NOW</b>Each moves its own way, with its degree of danger, what it is short of where it lives, and the brief that answers it.</li>
-  </ul>
-</section>
+<section class="plate" id="sounds"><div class="wrap">
+  <h2>SOUNDS</h2>
+  <div class="cols"><div><p class="lbl">LIVES · AN INSTRUMENT, A FEW NOTES</p><ul class="grid snd" id="snd-lives"></ul></div><div><p class="lbl">PEOPLE · A SMALL REAL SOUND</p><ul class="grid snd" id="snd-people"></ul></div></div>
+</div></section>
 
-<section class="plate" id="movement">
-  <h2>What moves</h2>
-  <ul class="grid moves" id="moves"></ul>
-</section>
+<section class="plate" id="wish"><div class="wrap">
+  <h2>W.I.S.H.</h2>
+  <div class="wishrow"><div class="slip" id="wish-slip"></div><ol class="steps" id="wish-steps"></ol></div>
+</div></section>
 
-<section class="plate" id="danger">
-  <h2>Orange is the months ahead. Red is now.</h2>
-  <div class="months" id="months"></div>
+<section class="plate" id="outputs"><div class="wrap">
+  <h2>OUTPUTS</h2>
+  <ul class="grid outs" id="outs"></ul>
+</div></section>
+
+<section class="plate" id="danger"><div class="wrap">
+  <h2>DANGER</h2>
   <ul class="grid degs" id="degs"></ul>
-  <div class="rule">
-    <div><b>FORECAST</b>The Bureau's three-month outlook.</div>
-    <div><b>MODELLED</b>El Niño persisting through summer into autumn.</div>
-    <div><b>NO OUTLOOK YET</b>Shown as possible, hatched.</div>
-    <div><b>WINDOWS</b>Heat or dry at the wrong moment: births, flowering, nights, drought.</div>
-  </div>
-</section>
+  <ul class="grid wins" id="wins"></ul>
+  <ul class="grid heroes" id="heroes" style="margin-top:20px"></ul>
+  <ol class="steps" id="five-steps" style="margin-top:20px"></ol>
+</div></section>
 
-<section class="plate" id="card">
-  <h2>A card: the danger, three needs, the briefs that fit</h2>
-  <ul class="tri four" aria-hidden="true"><li><b>SEVERE</b><small>DANGER · DEC</small></li><li class="ok"><i class="st">OK</i><b>6</b><small>FLOWERS</small></li><li class="none"><i class="st">MISSING</i><b>0</b><small>FRUIT</small></li><li class="low"><i class="st">LOW</i><b>14%</b><small>CANOPY</small></li></ul>
-  <p class="danger"><b>EARLY HEAT</b>At 42°, flying-foxes fall from the trees and die in their camps.</p>
-  <div class="states" aria-hidden="true"><span><i>OK</i>as much as a patch this size here usually holds</span><span><i>LOW</i>less than that; canopy under 40%</span><span><i>MISSING</i>none in the radius; canopy under 10%</span><span><i>NEARBY</i>a threat in the radius</span><span><i>AT RISK</i>native animals within a hunter's reach</span></div>
-  <p class="sub">THREE NEEDS, CHOSEN FOR EACH KIND</p>
-  <ul class="grid needs" id="needs"></ul>
-  <ul class="notes">
-    <li><b>DANGER</b>The outlook for the months chosen, how hard heat and drought are on this kind, whether the heat lands while it breeds, and the canopy where it lives.</li>
-    <li><b>CANOPY</b>Ground under trees, by suburb where measured, else by council. Streets start to cool near 40%.</li>
-    <li><b>WATER</b>The straight-line distance to the nearest creek, river or wetland.</li>
-    <li><b>RADIUS</b>Drag the square on the boundary; every reading follows it.</li>
-    <li><b>BRIEFS</b>Up to three. Each says why it is here: the life it serves, the months it starts in, and the businesses nearby that can carry it.</li>
-    <li><b>POSTERS</b>Every poster made for it, as the poster itself.</li>
-    <li><b>WHERE IT GOES</b>The places in the radius, by role: on notice, or to back.</li>
-  </ul>
-</section>
+<section class="plate" id="roles"><div class="wrap">
+  <h2>PLACES</h2>
+  <div class="cols"><div><p class="lbl">ON NOTICE</p><ul class="grid roles" id="roles-on"></ul></div><div><p class="lbl">TO BACK</p><ul class="grid roles" id="roles-back"></ul></div></div>
+</div></section>
 
-<section class="plate" id="wish">
-  <h2>A brief becomes four lines</h2>
-  <div class="brief"><div><b>Lights out for the migration</b><small>AFTER LIGHTS OUT CHICAGO · 1995</small><span>11 times fewer bird collisions in spring</span></div></div>
-  <div class="wish" id="wish-lines"></div>
-  <ul class="notes">
-    <li><b>W</b>Comes from the record: what is known about this life.</li>
-    <li><b>I · S · H</b>Come from the brief, filled with the suburb and the nearest business that fits: a studio, a label, a repairer, a maker.</li>
-    <li><b>TWO LINES</b>Each line stops where two lines end on the printed poster.</li>
-    <li><b>WHERE IT GOES</b>Mark places to host it or to give.</li>
-  </ul>
-</section>
-
-<section class="plate" id="poster">
-  <h2>A climate emergency poster, a third of it the call</h2>
-  <div class="two">
-    <div class="sheet" aria-hidden="true">
-      <div class="b"><small>CLIMATE EMERGENCY RESPONSE · EL NIÑO 2026–27</small><span><svg viewBox="0 0 30 27"><path d="M15 2.4 28 25H2z" fill="none" stroke="#000" stroke-width="2.6" stroke-linejoin="round"/><path d="M15 10v7.2" stroke="#000" stroke-width="2.8" stroke-linecap="round"/><circle cx="15" cy="21" r="1.7"/></svg>Dry flowering</span></div>
-      <div class="ph"><svg><use href="#k-moth"/></svg></div>
-      <div style="border:0"></div>
-      <div class="nm">Bogong Moth</div>
-      <div class="why"><span>JAN–FEB · SEVERE</span><span><b>Hot nights starve moths</b></span><span>CANOPY 14% · SHOULD BE 40%+</span></div>
-      <div class="wh"><small>WHAT WE KNOW</small><p>Bogong moths fell 99.5%…</p><small>IT WOULD BE GREAT · SO LET'S CREATE</small><p>Sydney Rd goes dark…</p><p class="h">Shopfronts switch lights off at close.</p></div>
-      <div class="ft"><i class="qr"></i><span>AFTER · ON SHOW AT · CONTACT · HURT WILDLIFE</span></div>
-    </div>
-    <ul class="notes">
-      <li><b>THE WARNING</b>Climate emergency response, El Niño 2026–27, under a warning sign drawn in line. No solid band: it saves ink.</li>
-      <li><b>THE HEADLINE</b>The unseasonable stretch this life faces.</li>
-      <li><b>THE LIFE</b>The photograph as taken, or the kind of life, large, drawn in line.</li>
-      <li><b>THE NAME</b>In full, never cut.</li>
-      <li><b>THE MONTHS</b>Its worst months and their degree.</li>
-      <li><b>THE DANGER</b>In bold, said once.</li>
-      <li><b>THE GROUND</b>The canopy against the 40% that cools a street, and what it is short of where it was seen; for a fox or a cat, the native animals at risk from it.</li>
-      <li><b>W.I.S.H.</b>Each line under its name in full; a third of the sheet; H boxed.</li>
-      <li><b>THE ANSWER</b>The code, the project it follows, where it is on show, a phone or email if one was left, and who to call.</li>
-    </ul>
-  </div>
-</section>
-
-<section class="plate" id="placing">
-  <h2>Placing a record: say it, or tap it</h2>
-  <p class="sub">WHAT HAPPENED · TAP TO CHANGE</p>
-  <div class="chips" id="place-kinds"></div>
-  <p class="sub">WHAT IT IS · OR SAY IT IN WORDS</p>
-  <div class="lives" id="place-lives"></div>
-  <ul class="notes">
-    <li><b>START</b>Touch the ground twice, or hold. It starts as any animal, with a paw.</li>
-    <li><b>WORDS FIRST</b>"Two kittens under a car" names it, counts it and finds its kind. A touch overrides the words.</li>
-    <li><b>PHOTO</b>Kept small, on this device.</li>
-    <li><b>CONTACT</b>A phone number or an email, if you want to be reached. No social media.</li>
-  </ul>
-</section>
-
-<section class="plate" id="groups">
-  <h2>Groups already caring, as patches on the ground</h2>
+<section class="plate" id="groups"><div class="wrap">
+  <h2>GROUPS · CALLS</h2>
   <ul class="grid groups" id="group-list"></ul>
-  <ul class="notes">
-    <li><b>ON STORIES</b>Each group shows as the patch of ground it cares for. Touch a patch for what they do, how to join, the lives in their care and the briefs that would bring them.</li>
-  </ul>
-</section>
+  <ul class="grid groups calls" id="calls" style="margin-top:20px"></ul>
+</div></section>
 
-<section class="plate" id="gigs">
-  <h2>Gigs and gatherings carry a hug</h2>
-  <div class="gigs" id="gig-links"></div>
-  <ul class="notes">
-    <li><b>GIG</b>A gathering in the events sheet tagged gig, rrr or ra shows a hug, and the listing it came from.</li>
-    <li><b>GATHER</b>Working bees, counts and walks, from the same sheet.</li>
-  </ul>
-</section>
-
-<section class="plate" id="businesses">
-  <h2>Every business has a role</h2>
-  <ul class="grid roles" id="roles"></ul>
-</section>
-
-<section class="plate" id="colour">
-  <h2>Colour</h2>
-  <ul class="sw" id="swatches"></ul>
-</section>
-
-<section class="plate" id="honesty">
-  <h2>What is real is labelled real</h2>
-  <ul class="honest">
-    <li>Sightings come from iNaturalist with their licences.</li>
-    <li>Stories, businesses and people in the demo are marked SPECIMEN, including the orangutan case study. No business is shown as signed up.</li>
-    <li>Degrees of danger are this archive's reading of the Bureau's outlook, not an official warning. Official warnings are linked from NOW.</li>
-    <li>Each brief names the project it comes from and links to it. Each group links to its own site.</li>
-    <li>Gig guides are linked, not copied. A gig carries a listing's name only when the events sheet says so.</li>
-  </ul>
-</section>
-</main>
-<footer class="foot"><div class="wrap">DIRECT ACTION · NOVEL.GLOBAL · MADE ON WURUNDJERI WOI-WURRUNG COUNTRY · MIT LICENCE</div></footer>
+<footer class="foot"><div class="wrap" id="foot"></div></footer>
 
 <script src="config.js"></script>
 <script src="briefs.js"></script>
 <script src="marks.js"></script>
 <script>
 (() => {
-  const M = window.DA_MARKS, C = M.C, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const OUT = window.DA_OUTLOOK, ROLES = window.DA_ROLES, BRIEFS = window.DA_BRIEFS || [], NEEDS = window.DA_NEEDS || {}, HEROES = window.DA_HEROES || [], TRIBES = window.DA_TRIBES || [], GIGS = window.DA_GIGS || {};
+  const M = window.DA_MARKS, C = M.C, CONFIG = window.DA_CONFIG, OUT = window.DA_OUTLOOK, ROLES = window.DA_ROLES;
   document.querySelector('svg.sprite').innerHTML = M.sprite();
-  const $ = s => document.querySelector(s);
-  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const tile = (w, h, bg) => { const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; c.style.width = w + 'px'; c.style.height = h + 'px'; const x = c.getContext('2d'); x.scale(2, 2); if (bg) { x.fillStyle = bg; x.fillRect(0, 0, w, h); } return [c, x]; };
-  const GROUND = '#5E6B62';
-  const toneOf = g => (g === 'plant' || g === 'fungi' ? 'flora' : M.toneOf(g));
-  /* the kinds, by colour */
-  $('#kind-colours').innerHTML = Object.entries(M.GROUP_WORDS).map(([k, w]) => `<li><i style="background:${C.kind[k]}"></i>${w}</li>`).join('') + `<li><i style="background:${C.tealDeep}"></i>PLANTS, FUNGI</li>`;
-  /* the icons */
-  for (const [b, w] of M.KEY) { const [c, x] = tile(52, 52, GROUND); M.badge(x, { d: 30, ...b }, 26, 26); const li = document.createElement('li'); li.appendChild(c); li.insertAdjacentHTML('beforeend', `<span>${w}</span>`); $('#key').appendChild(li); }
-  /* kinds of life */
-  for (const k of Object.keys(M.GLYPHS)) { const [c, x] = tile(40, 40); M.badge(x, { tone: toneOf(k), g: k, d: 32 }, 20, 20); const li = document.createElement('li'); li.appendChild(c); li.insertAdjacentHTML('beforeend', `<span>${(M.KINDS[k] || k).toUpperCase()}</span>`); $('#kinds-list').appendChild(li); }
-  /* the five, each moving its own way */
-  const heroes = HEROES.map((h, i) => { const [c, x] = tile(170, 110, GROUND); const b = BRIEFS.find(z => z.id === h.brief); const li = document.createElement('li'); li.appendChild(c);
-    li.insertAdjacentHTML('beforeend', `<b>${esc(h.cn)}</b><small>${esc(h.why)}</small>${b ? `<em>BRIEF · ${esc(b.t.toUpperCase())}</em>` : ''}`); $('#heroes').appendChild(li); return { h, x, ph: i * 0.37 }; });
-  /* what moves */
-  const MOVES = [
-    [{ tone: 'k-bird', g: 'bird' }, 'A BIRD HOPS'], [{ tone: 'k-water', g: 'frog' }, 'A FROG WAITS, THEN HOPS'], [{ tone: 'k-insect', g: 'bee' }, 'A BEE NEVER STOPS'], [{ tone: 'k-spider', g: 'orb' }, 'A SPIDER ON ITS THREAD'],
-    [{ tone: 'k-mammal', g: 'flyingfox', dz: 4 }, 'EXTREME DANGER: AN ORANGE RING'], [{ tone: 'injured', g: 'possum' }, 'HURT: A QUICK RED PULSE'], [{ tone: 'lost', g: 'dog' }, 'LOST: THE SEARCH AREA'],
-  ];
-  const movers = MOVES.map(([b, w], i) => { const [c, x] = tile(170, 110, GROUND); const li = document.createElement('li'); li.appendChild(c); li.insertAdjacentHTML('beforeend', `<b>${w}</b>`); $('#moves').appendChild(li); return { b, x, ph: i * 0.37 }; });
-  const still = { dx: 0, dy: 0, rot: 0, sx: 1, thread: 0 };
-  const draw = now => {
-    const t = now / 1000;
-    for (const m of movers) {
-      const x = m.x, b = m.b; x.clearRect(0, 0, 170, 110); x.fillStyle = GROUND; x.fillRect(0, 0, 170, 110);
-      if (b.tone === 'lost') M.radar(x, 85, 55, 46, reduced ? 0 : t, m.ph, '');
-      if (b.tone === 'injured' && !reduced) M.pulse(x, { pulse: 3, pc: C.red, r: 13, f: 'fauna' }, 85, 55, t, m.ph);
-      if (b.dz && !reduced) M.pulse(x, { pulse: 1, pc: C.orange, r: 18, f: 'fauna' }, 85, 55, t, m.ph);
-      const mv = reduced || ['injured', 'lost'].includes(b.tone) ? still : M.motion(b.g, t, m.ph, 1.6);
-      if (mv.thread) { x.strokeStyle = 'rgba(255,255,255,.8)'; x.lineWidth = 1; x.beginPath(); x.moveTo(85, 10); x.lineTo(85 + mv.dx, 55 + mv.dy - 15); x.stroke(); }
-      x.save(); x.translate(85 + mv.dx, 55 + mv.dy); x.rotate(mv.rot || 0); x.scale(mv.sx || 1, 1); M.badge(x, { ...b, d: 32 }, 0, 0); x.restore();
-    }
-    for (const m of heroes) {
-      const x = m.x; x.clearRect(0, 0, 170, 110); x.fillStyle = GROUND; x.fillRect(0, 0, 170, 110);
-      const g = { flyingfox: 'flyingfox', ringtail: 'possum', bogong: 'moth', turtle: 'turtle', froglet: 'frog' }[m.h.id] || 'paw';
-      x.save(); x.globalAlpha = 0.28; x.fillStyle = C.kind[M.GROUP[g]] || C.kind.other; x.beginPath(); x.arc(85, 55, 40, 0, Math.PI * 2); x.fill(); x.restore();
-      const mv = reduced ? still : M.heroMotion(m.h.move, t, m.ph, 1);
-      x.save(); x.translate(85 + mv.dx, 55 + mv.dy); x.rotate(mv.rot || 0); x.scale(mv.sx || 1, 1); M.badge(x, { tone: M.toneOf(g), g, d: 38, dz: 3, sig: !!m.h.th }, 0, 0); x.restore();
-    }
-    if (!reduced) requestAnimationFrame(draw);
-  };
-  requestAnimationFrame(draw);
-  /* the months, as on NOW */
+  const $ = s => document.querySelector(s); const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const icon = n => `<svg class="i" aria-hidden="true"><use href="#g-${n}"/></svg>`;
   const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  const H = { f: 'FORECAST', m: 'MODELLED', p: 'NO OUTLOOK YET' }; const COL = ['rgba(255,255,255,.25)', C.deg[1], C.deg[2], C.deg[3], C.deg[4]];
-  const ks = OUT.lv.map((lv, k) => ({ k, lv, h: OUT.h[k], m: (OUT.start[1] + k) % 12 }));
-  const groups = []; for (const q of ks) { const g = groups[groups.length - 1]; if (g && g.h === q.h) g.n++; else groups.push({ h: q.h, a: q.k, n: 1 }); }
-  const inWin = (w, m) => (w.a <= w.b ? m >= w.a && m <= w.b : m >= w.a || m <= w.b);
-  const wins = OUT.windows.map(w => { const a = ks.findIndex(q => inWin(w, q.m)); let b = a; while (b + 1 < ks.length && inWin(w, ks[b + 1].m)) b++; return { ...w, a2: a, b2: b }; });
-  $('#months').innerHTML = `<div class="ms-h">${groups.map(g => `<span class="h${g.h}" style="grid-column:${g.a + 1} / span ${g.n}">${H[g.h]}</span>`).join('')}</div>`
-    + `<div class="ms-m">${ks.map(q => `<div><i style="height:${[6, 16, 30, 46, 60][q.lv]}px;background:${q.h === 'p' ? 'repeating-linear-gradient(135deg,rgba(255,255,255,.5) 0 2px,transparent 2px 5px)' : COL[q.lv]}"></i><b>${MON[q.m].charAt(0)}</b></div>`).join('')}</div>`
-    + `<div class="ms-w">${wins.map((w, i) => `<span style="grid-column:${w.a2 + 1} / ${w.b2 + 2};grid-row:${i + 1}" title="${w.why}">${w.w}</span>`).join('')}</div>`;
-  const DEG = [['LOW', 'Nothing in the months ahead beyond the usual.'], ['WATCH', 'Warmer and drier than usual.'], ['HIGH', 'Heat or dry enough to cost it.'], ['SEVERE', 'Heat at the wrong moment, or bare ground.'], ['EXTREME', 'Deaths in numbers are possible.']];
-  $('#degs').innerHTML = DEG.map(([w, n], i) => `<li><b style="background:${i ? C.deg[i] : '#F1F3F2'};color:${i === 4 ? '#fff' : C.navy}">${w}</b><small>${n}</small></li>`).join('');
-  /* three needs for each kind: a few to show the idea */
-  const NW = { insects: 'INSECTS', flowers: 'FLOWERS', fruit: 'FRUIT', plants: 'PLANTS', prey: 'PREY', hollows: 'OLD GUMS', pollinators: 'POLLINATORS', kinds: 'DIVERSITY', cool: 'COOL ROOMS', checkins: 'CHECK-INS', water: 'WATER', canopy: 'CANOPY', cats: 'CATS', poison: 'BAITS', light: 'NIGHT LIGHT', litter: 'SINGLE-USE', runoff: 'RUNOFF', fibres: 'FIBRES', wildlife: 'WILDLIFE AT RISK' };
-  const SHOW = ['flyingfox', 'possum', 'bee', 'orb', 'moth', 'frog', 'turtle', 'owl', 'fox', 'plant', 'ape', 'human'];
-  for (const g of SHOW) { const n = NEEDS[g]; if (!n) continue; const [c, x] = tile(36, 36); M.badge(x, g === 'human' ? { tone: 'need', i: 'people', d: 30 } : { tone: toneOf(g), g, d: 30 }, 18, 18); const li = document.createElement('li'); li.appendChild(c);
-    li.insertAdjacentHTML('beforeend', `<span><b>${g === 'human' ? 'People' : esc(M.KINDS[g] || g)}</b>${n.map(k => NW[k] || k.toUpperCase()).join(' · ')}</span>`); $('#needs').appendChild(li); }
-  /* four lines, each in its box of two */
-  const W = [['W', 'What we know', 'Bogong moths fell 99.5% in three years. This spring, winds pushed survivors into city lights.'], ['I', 'It would be great', 'Sydney Rd goes dark enough for a moth to find its way to the mountains.'], ['S', "So let's create", 'Dark is a habitat.'], ['H', 'Here is how it works', 'Shopfronts switch window lights off at close, from now until December.']];
-  $('#wish-lines').innerHTML = W.map(([k, l, t]) => `<div class="w${k === 'H' ? ' h' : ''}"><label><b>${k}</b>${l}</label><p>${t}</p><small>${96 - t.length}</small></div>`).join('');
-  /* placing */
-  $('#place-kinds').innerHTML = ['SEEN', 'PLANT', 'HURT', 'DEAD', 'LOST', 'NEED', 'OFFER', 'GATHER'].map((w, i) => `<b class="${i ? '' : 'on'}">${w}</b>`).join('');
-  $('#place-lives').innerHTML = [['bird', 'BIRD'], ['possum', 'POSSUM'], ['bat', 'BAT'], ['bee', 'BEE'], ['butterfly', 'BUTTERFLY'], ['beetle', 'BEETLE'], ['spider', 'SPIDER'], ['lizard', 'LIZARD'], ['snake', 'SNAKE'], ['frog', 'FROG'], ['turtle', 'TURTLE'], ['plant', 'PLANT'], ['paw', 'OTHER']].map(([g, w]) => `<span><svg aria-hidden="true"><use href="#k-${g}"/></svg>${w}</span>`).join('');
-  /* groups, each drawn as the patch it cares for */
-  for (const t of TRIBES) { const [c, x] = tile(54, 54); const col = C.tribe[t.kind] || C.tribe.park; x.globalAlpha = 0.85; x.fillStyle = col; x.beginPath();
-    const P = t.kind === 'creek' ? [[12, 8, 7], [18, 18, 8], [24, 28, 7], [30, 38, 8], [38, 47, 6]] : t.kind === 'gardens' ? [[10, 12, 5], [30, 9, 4], [44, 20, 5], [18, 30, 4], [36, 38, 5], [12, 46, 4], [46, 46, 4]] : t.kind === 'farm' ? [[22, 24, 11], [33, 30, 9], [26, 36, 8]] : [[20, 20, 12], [34, 22, 11], [26, 34, 12], [38, 36, 9]];
-    for (const [a, b2, r] of P) { x.moveTo(a + r, b2); x.arc(a, b2, r, 0, Math.PI * 2); } x.fill();
-    const li = document.createElement('li'); li.appendChild(c); li.insertAdjacentHTML('beforeend', `<span><b>${esc(t.n)}</b><i>${esc(t.w)}</i><small>${esc(t.what)}</small><a href="${esc(t.link)}" target="_blank" rel="noopener">JOIN THEM ↗</a></span>`); $('#group-list').appendChild(li); }
-  /* the gig guides */
-  $('#gig-links').innerHTML = Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#g-hug"/></svg>${esc(g.n.toUpperCase())} ↗</a>`).join('');
-  /* businesses */
-  $('#roles').innerHTML = Object.keys(ROLES).map(k => { const R = ROLES[k]; return `<li><i class="role${R.on ? ' on' : ''}">${R.w}</i><small>${R.duty}.</small></li>`; }).join('');
-  /* colour */
-  const SW = [['ORANGE', C.deg[3], 'Danger in the months ahead: a ring round the icon, deeper as it rises.'], ['RED', C.red, 'Now: hurt, dead, lost, just arrived.'], ['HIGHLIGHTER', C.neon, 'A business on notice.'], ['COBALT', C.cobalt, 'A business to back; links.'], ['TEAL DEEP', C.tealDeep, 'Plants and fungi.'], ['NAVY', C.navy, 'People, ink, night.'], ['BLACK', '#0D0D0C', 'Ink on the poster: line, not fill.'], ['WHITE', '#FFFFFF', 'The page and the poster.']];
-  for (const [w, hx, n] of SW) $('#swatches').insertAdjacentHTML('beforeend', `<li><i style="background:${hx}"></i><span><b>${w}</b><small>${n}</small></span></li>`);
+  const badge = (b, size = 34) => { const c = document.createElement('canvas'); c.width = c.height = size * 2; const x = c.getContext('2d'); x.scale(2, 2); M.badge(x, { ...b, d: Math.round(size * 0.66), a: 1 }, size / 2, size / 2); c.style.width = c.style.height = size + 'px'; return c; };
+  const li = (host, node, text, cls = 'lbl') => { const l = document.createElement('li'); if (node) l.appendChild(node); if (text) { const s = document.createElement('span'); s.className = cls; s.innerHTML = text; l.appendChild(s); } host.appendChild(l); return l; };
+  const steps = (host, rows) => { host.innerHTML = rows.map(([ic, b, s]) => `<li><b>${ic ? icon(ic) : ''}${b}</b><span>${s}</span></li>`).join(''); };
+
+  /* the radar, as it looks */
+  const ground = (x, w, h) => { x.fillStyle = '#26302B'; x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(255,255,255,.05)'; for (let i = 0; i < w; i += 22) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.stroke(); } for (let j = 0; j < h; j += 22) { x.beginPath(); x.moveTo(0, j); x.lineTo(w, j); x.stroke(); } };
+  (function radar() {
+    const cv = $('#radar-cv'), x = cv.getContext('2d'), W = cv.width, H = cv.height, cx = W * 0.46, cy = H * 0.5, R = H * 0.38; ground(x, W, H);
+    x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fillStyle = 'rgba(190,245,238,.06)'; x.fill();
+    for (let i = 0; i < 18; i++) { const a = -Math.PI / 2 + (-i * 3) * Math.PI / 180 + 0.9, a0 = a - 0.052; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, R, a0, a); x.closePath(); x.fillStyle = `rgba(190,245,238,${0.2 * Math.pow(1 - i / 18, 1.6)})`; x.fill(); }
+    const ha = -Math.PI / 2 + 0.9; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(ha) * R, cy + Math.sin(ha) * R); x.stroke();
+    x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.lineWidth = 2; x.stroke();
+    for (let i = 0; i < 36; i++) { const a = i * Math.PI / 18, k = i % 3 ? 7 : 15; x.beginPath(); x.moveTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); x.lineTo(cx + Math.cos(a) * (R - k), cy + Math.sin(a) * (R - k)); x.lineWidth = 1.6; x.stroke(); }
+    const put = (b, px, py) => M.badge(x, { ...b, a: 1 }, px, py);
+    [[{ tone: 'k-bird', g: 'bird', d: 34 }, -0.3, -0.5], [{ tone: 'k-insect', g: 'bee', d: 30 }, 0.15, -0.62], [{ tone: 'k-spider', g: 'orb', d: 30 }, 0.55, -0.2], [{ tone: 'k-reptile', g: 'lizard', d: 32 }, 0.35, 0.45], [{ tone: 'k-mammal', g: 'possum', d: 34, dz: 3 }, -0.55, 0.3]].forEach(([b, u, v]) => put(b, cx + u * R, cy + v * R));
+    put({ tone: 'lost', g: 'dog', d: 34 }, W * 0.9, H * 0.18); put({ tone: 'injured', g: 'possum', d: 36 }, W * 0.92, H * 0.78); put({ tone: 'k-mammal', g: 'flyingfox', d: 48, dz: 4 }, W * 0.08, H * 0.82);
+    x.beginPath(); x.arc(cx, cy, 5, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = C.navy; x.stroke();
+    x.save(); x.translate(cx + R, cy); x.rotate(Math.PI / 4); x.fillStyle = '#fff'; x.fillRect(-8, -8, 16, 16); x.strokeStyle = C.navy; x.strokeRect(-8, -8, 16, 16); x.restore();
+    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', 'hurt · dead · lost · extreme · threatened · the five'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
+  })();
+
+  /* icons */
+  for (const [k, w] of Object.entries(M.GROUP_WORDS)) { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.kind[k]}"></i><span class="lbl">${w}</span>`; $('#kind-colours').appendChild(l); }
+  { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.tealDeep};border-radius:5px"></i><span class="lbl">PLANTS</span>`; $('#kind-colours').appendChild(l); }
+  for (const [b, w] of M.KEY) li($('#key'), badge(b), w);
+
+  /* strings: a frog, the places around it, threads to what harms it, and a figure tied */
+  (function figure() {
+    const cv = $('#strings-cv'), x = cv.getContext('2d'), W = cv.width, H = cv.height, cx = W * 0.44, cy = H * 0.52, R = H * 0.42; ground(x, W, H);
+    x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fillStyle = 'rgba(255,255,255,.07)'; x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+    const at = (u, v) => [cx + u * R, cy + v * R];
+    const P = { pin: [cx, cy], t1: at(0.55, -0.42), t2: at(0.68, 0.12), t3: at(-0.2, -0.72), b1: at(0.3, 0.62), c1: at(-0.6, -0.3), l1: at(-0.72, 0.28), a1: at(-0.3, 0.7), s1: at(0.12, -0.38), n1: at(0.8, -0.18), g1: at(-0.85, -0.05) };
+    /* threads of responsibility: thin orange lines from the life to each place that sells or leaves what harms it */
+    x.save(); x.strokeStyle = C.orange; x.lineWidth = 2; x.globalAlpha = 0.7; for (const k of ['t1', 't2', 't3', 'b1']) { x.beginPath(); x.moveTo(...P.pin); x.lineTo(...P[k]); x.stroke(); } x.restore();
+    const str = (p, q) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]); const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2 + L * 0.06; x.beginPath(); x.moveTo(...p); x.quadraticCurveTo(2 * mx - (p[0] + q[0]) / 2, 2 * my - (p[1] + q[1]) / 2, ...q); };
+    for (const [w, c] of [[6, 'rgba(0,0,0,.4)'], [2.6, '#fff']]) { x.lineWidth = w; x.strokeStyle = c; x.lineCap = 'round'; for (const [p, q] of [['pin', 't1'], ['t1', 'c1'], ['pin', 'a1']]) { str(P[p], P[q]); x.stroke(); } }
+    str(P.c1, P.s1); x.lineWidth = 6; x.strokeStyle = 'rgba(11,37,69,.5)'; x.stroke(); x.setLineDash([9, 7]); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); x.setLineDash([]);
+    const dia = (p, r, fill, stroke) => { x.beginPath(); x.moveTo(p[0], p[1] - r); x.lineTo(p[0] + r, p[1]); x.lineTo(p[0], p[1] + r); x.lineTo(p[0] - r, p[1]); x.closePath(); x.fillStyle = fill; x.fill(); x.lineWidth = 2.6; x.strokeStyle = stroke; x.stroke(); };
+    for (const k of ['t1', 't2', 't3', 'b1']) dia(P[k], 12, C.neon, C.navy);
+    dia(P.c1, 12, C.teal, C.navy); dia(P.l1, 12, C.cobalt, '#fff');
+    dia(P.a1, 12, '#fff', C.navy); x.beginPath(); x.arc(...P.a1, 3.6, 0, Math.PI * 2); x.fillStyle = C.navy; x.fill();
+    x.fillStyle = '#fff'; x.fillRect(P.s1[0] - 11, P.s1[1] - 11, 22, 22); x.lineWidth = 2.6; x.strokeStyle = C.navy; x.strokeRect(P.s1[0] - 11, P.s1[1] - 11, 22, 22); x.beginPath(); x.arc(...P.s1, 4, 0, Math.PI * 2); x.fillStyle = C.navy; x.fill();
+    for (const [u, v] of [[0, -11], [10, 7], [-10, 7]]) { x.beginPath(); x.arc(P.n1[0] + u, P.n1[1] + v, 5, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = C.navy; x.stroke(); }
+    x.beginPath(); x.arc(...P.g1, 11, 0, Math.PI * 2); x.fillStyle = C.tribe.creek; x.fill(); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke();
+    for (const k of ['t1', 'c1', 'a1']) { x.beginPath(); x.arc(...P[k], 19, 0, Math.PI * 2); x.strokeStyle = '#fff'; x.lineWidth = 3; x.stroke(); }
+    x.beginPath(); x.arc(...P.s1, 21, 0, Math.PI * 2); x.strokeStyle = '#fff'; x.lineWidth = 3.4; x.stroke();
+    M.badge(x, { tone: 'k-water', g: 'frog', d: 46, dz: 3, a: 1 }, cx, cy);
+    steps($('#string-steps'), [['aware', 'LOOK', 'click a knot · its sound · its string'], ['string', 'JOIN', 'click again · right-click · hold'], ['', 'LET GO', 'right-click a joined knot'], ['', 'CARRY ON', 'a joined knot, twice'], ['', 'CUT', 'the last knot, twice'], ['plus', 'ADD', 'click open ground · Delete removes'], ['', 'OUTSIDE', 'right-click a life past the radius'], ['', '<i class="thr"></i>HARM IT', 'a row lights them · again joins all · strings to them run orange'], ['trace', 'TRACE', 'how it formed'], ['', 'CONSTELLATIONS', 'every figure · NOW'], ['undo', 'UNDO', ''], ['reset', 'CUT ALL', ''], ['restore', 'BRING BACK', ''],
+      ['', '<i class="fm harm"></i>ON NOTICE', ''], ['', '<i class="fm circ"></i>CIRCULAR', ''], ['', '<i class="fm lab"></i>LABEL', ''], ['', '<i class="fm art"></i>ARTISTS', ''], ['', '<i class="fm third"></i>THIRD SPACE', ''], ['', '<i class="fm net"></i>NETWORK', ''], ['', '<i class="dot"></i>GROUP', ''], ['water', 'WATER', ''], ['', '<i class="sq"></i>YOURS', '']]);
+  })();
+
+  /* sounds: each life an instrument and a few notes; each part of the human ecology a small real sound */
+  const score = (notes, people) => people ? `<svg viewBox="0 0 44 14" aria-hidden="true"><path d="M2 7c4-6 6 6 10 0s6 6 10 0 6 6 10 0 6 6 10 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>` : `<svg viewBox="0 0 44 14" aria-hidden="true"><path d="M0 2.5h44M0 5h44M0 7.5h44M0 10h44M0 12.5h44" stroke="currentColor" stroke-width=".4" opacity=".5"/><g fill="currentColor">${notes.map((s2, i) => `<circle cx="${6 + i * 32 / Math.max(1, notes.length - 1 || 1)}" cy="${(11 - s2 * 0.36).toFixed(1)}" r="1.7"/>`).join('')}</g></svg>`;
+  [['WHISTLE', 'birds', [12, 16, 19]], ['HOLLOW WHISTLE', 'owls', [7, 3]], ['KALIMBA', 'frogs · beetles', [7, 12]], ['MUSIC BOX', 'bees · moths · butterflies', [12, 14, 16, 19]], ['GLASS', 'bats · flying-foxes · water', [19, 24, 21]], ['WOOD', 'lizards · turtles', [0, 3]], ['BOOP', 'possums · mammals', [5, 2, 7]], ['STRING', 'spiders · snails', [7, 9, 12, 7]]]
+    .forEach(([w, who, n]) => { const l = document.createElement('li'); l.innerHTML = `${score(n)}<b>${w}</b><small>${who}</small>`; $('#snd-lives').appendChild(l); });
+  const FW = { brand: 'brands', circular: 'circular', service: 'services', artists: 'artists', third: 'third spaces', network: 'networks', people: 'people' };
+  const SW = { swish: 'A SLEEVE', taps: 'TWO TAPS', cup: 'A CUP', pencil: 'A PENCIL', hum: 'A HUM', hums: 'TWO HUMS', breath: 'A BREATH' };
+  for (const [k, f] of Object.entries(window.DA_FAMILIES || {})) { const l = document.createElement('li'); l.innerHTML = `${score([], true)}<b>${SW[f.sound] || ''}</b><small>${FW[k] || ''}</small>`; $('#snd-people').appendChild(l); }
+
+  /* W.I.S.H. */
+  $('#wish-slip').innerHTML = `<div class="hd"><b>DA-····</b><span>DD.MM.YY HH:MM</span></div><div class="fig"></div><p class="cap">FIG. 1 · © OBSERVER · INATURALIST</p><p class="st">STATEMENT · what El Niño does to it here</p><ol>${['What we know: the theory', 'It would be great: the belief', "So let's create: the principle", 'Here is how it works: the tactic'].map(w => `<li>${w}</li>`).join('')}</ol><div class="rel"><p><span>01</span>Corner store<em class="on">TAKEAWAY</em></p><p><span>02</span>Op shop<em>REUSE</em></p><p><span>03</span>Side gate tap<em>PLACE</em></p></div><p class="cap">FIG. 2 · 3 RELATIONS · NORTH UP</p>`;
+  steps($('#wish-steps'), [['next', 'NOTICED', 'the card turns over'], ['', 'FIG. 1', '← → another · your own · none'], ['', 'STATEMENT', 'rewrite · ↺ as it was'], ['', 'W.I.S.H.', `four lines · ${(CONFIG.SIGNAL || {}).line || 48} characters · letters never print`], ['check', 'RELATIONS', 'tick · rename'], ['receipt', 'DIRECT ACTION', 'issued · DA-XXXX']]);
+
+  /* outputs */
+  const SG = CONFIG.SIGNAL || { mesh: 200, pager: 80 };
+  const OTIP = { print: '58 mm slip', escpos: 'raw bytes · receipt printer', bits: `384 px · pocket thermal printer`, gb: '160 px · four greys', mesh: `${SG.mesh} bytes · LoRa`, pager: `${SG.pager} characters`, link: 'the whole signal' };
+  for (const m of window.DA_OUTPUTS || []) { const l = document.createElement('li'); l.innerHTML = `${icon(m.ic)}<b>${m.w}</b><small>${OTIP[m.k] || ''}</small><a href="${esc(m.ref)}" target="_blank" rel="noopener">${esc(new URL(m.ref).hostname.replace(/^www\./, ''))} ↗</a>`; $('#outs').appendChild(l); }
+  { const l = document.createElement('li'); l.innerHTML = `${icon('receive')}<b>RECEIVE</b><small>paste a link or a mesh message</small>`; $('#outs').appendChild(l); }
+
+  /* danger */
+  ['LOW', 'WATCH', 'HIGH', 'SEVERE', 'EXTREME'].forEach((w, i) => { const l = document.createElement('li'); l.innerHTML = `<span class="dg d${i}">${w}</span>`; $('#degs').appendChild(l); });
+  for (const w of OUT.windows) { const l = document.createElement('li'); l.innerHTML = `<b>${esc(w.w)}</b><small>${MON[w.a]}–${MON[w.b]}</small>`; l.title = w.why; $('#wins').appendChild(l); }
+  steps($('#five-steps'), [['remix', 'CHANGE', 'any of the five · for any life, or your own'], ['', 'RESET', 'as it was']]);
+  for (const h of window.DA_HEROES) { const l = li($('#heroes'), badge({ tone: M.toneOf(h.id === 'ringtail' ? 'possum' : h.id === 'bogong' ? 'moth' : h.id === 'froglet' ? 'frog' : h.id), g: h.id === 'ringtail' ? 'possum' : h.id === 'bogong' ? 'moth' : h.id === 'froglet' ? 'frog' : h.id, dz: 3 }, 48)); l.insertAdjacentHTML('beforeend', `<b>${esc(h.cn)}</b>`); l.title = h.why; }
+
+  /* places */
+  for (const [k, r] of Object.entries(ROLES)) { const l = document.createElement('li'); l.innerHTML = `<span class="role${r.on ? ' on' : ''}">${r.w}</span>`; l.title = r.duty; $(r.on ? '#roles-on' : '#roles-back').appendChild(l); }
+
+  /* groups and calls */
+  for (const t of window.DA_TRIBES) { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.tribe[t.kind] || C.tribe.park}"></i><a href="${esc(t.link)}" target="_blank" rel="noopener">${esc(t.n)}</a>`; l.title = t.what; $('#group-list').appendChild(l); }
+  for (const [n, w, tel] of window.DA_CONTACTS) { const l = document.createElement('li'); l.innerHTML = `<a href="${tel}">${n}</a><span class="lbl">${w}</span>`; $('#calls').appendChild(l); }
+  $('#foot').textContent = `${CONFIG.NAME} · ${CONFIG.BY} · ${CONFIG.COUNTRY}`;
 })();
 </script>
 </body>
