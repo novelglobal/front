@@ -18,6 +18,12 @@
   --ease:cubic-bezier(.2,.7,.2,1); --spring:cubic-bezier(.3,1.4,.5,1);
   --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
 }
+/* night: the page darkens, the ground dims under it. A slip, a receipt, stays paper, as it would in the hand */
+html.night{color-scheme:dark;--white:#111916;--paper:#1B2521;--grey:#34413C;--grey-text:#93A19B;--navy:#E3E9E7;--cobalt:#6AB2F2;--teal-wash:#12302B;--ground:#080C0B}
+html.night .maplibregl-canvas{filter:brightness(.52) saturate(.72) contrast(1.06)}
+html.night .band{--slip:#1B2521;--ink:#E3E9E7;box-shadow:inset 0 0 0 1px var(--grey)}
+html.night .mo.d4 i,html.night .b-count .sun.d4{box-shadow:inset 0 0 0 1px rgba(227,233,231,.32)}
+html.night .s-acts .tty-b[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--white)}
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--ground);color:var(--navy);font-family:var(--sans);font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;border-radius:0}
@@ -214,7 +220,8 @@ details.sec[open]>summary .lab::after{content:" –"}
 .band{margin:0 var(--gut);padding:12px 14px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8}
 .b-top{display:flex;align-items:center;justify-content:space-between;font:600 10px var(--mono);letter-spacing:.12em}
 .b-top .el{font:600 15px/1 var(--mono);letter-spacing:.06em}
-.b-head{margin:14px 0 8px;font:400 clamp(38px,11.5vw,52px)/.9 'VT323',ui-monospace,monospace;letter-spacing:.01em;white-space:nowrap;color:var(--ink)}
+.band{container-type:inline-size}
+.b-head{margin:14px 0 8px;font:400 34px/.9 'VT323',ui-monospace,monospace;font-size:min(42px,10.8cqi);letter-spacing:.01em;white-space:nowrap;color:var(--ink)}
 .b-count{display:flex;align-items:center;gap:10px;margin:0 0 12px}
 .b-count .cd{font:400 26px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
 .b-count .sun{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--deg1);color:var(--ink)}
@@ -238,19 +245,27 @@ details.sec[open]>summary .lab::after{content:" –"}
 .mo.on b{color:var(--ink)}
 .mo.now b{font-weight:600}
 .mo.now i{box-shadow:inset 0 -3px var(--ink)}
-.ms-w{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px 2px}
-.ms-w span{font:500 8.5px/1.6 var(--mono);letter-spacing:.06em;border-top:1px solid rgba(20,20,18,.45);color:var(--ink);white-space:nowrap;overflow:visible}
 .b-span{margin-top:8px;font-size:10px;letter-spacing:.06em;color:var(--grey-text)}
 .b-span b{color:var(--ink);font-weight:600}
 .b-off{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;letter-spacing:.08em;color:var(--cobalt);text-decoration:none}
 /* every kind of life the months ahead reach, us among them: each kind's mark over its danger */
-.kinds{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:3px;margin:10px 0 2px}
-.kinds span{display:flex;flex-direction:column;align-items:center;gap:3px}
-.kinds .i{width:18px;height:18px;color:var(--ink)}
-.kinds i{display:block;width:100%;height:4px;background:var(--deg0)}
-.kinds .d1 i{background:var(--deg1)}.kinds .d2 i{background:var(--deg2)}.kinds .d3 i{background:var(--deg3)}.kinds .d4 i{background:var(--deg4)}
-.kinds .us .i{color:var(--cobalt)}
 /* the five: a strip of five, each its photograph with its mark, its danger and the days until it lands */
+/* the calendar's lanes: the five on the month their danger begins; under each month, the kinds its heat reaches */
+.ms-h{display:grid;grid-template-columns:repeat(var(--n),1fr);grid-auto-flow:row dense;justify-items:center;gap:3px 2px;margin-top:8px}
+.ms-h .hero-row{width:auto;padding:0;border-radius:50%;transition:transform .18s var(--ease)}
+.ms-h .hero-row:hover{background:none;transform:scale(1.12)}
+.ms-h .h-pic{width:26px;height:26px}
+.ms-h .h-pic img,.ms-h .h-pic .hero-cv{width:26px;height:26px;box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg1)}
+.ms-h .d2 .h-pic img,.ms-h .d2 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg2)}
+.ms-h .d3 .h-pic img,.ms-h .d3 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg3)}
+.ms-h .d4 .h-pic img,.ms-h .d4 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg4)}
+.ms-h .h-pic .i{display:none}
+.ms-k{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;margin-top:8px}
+.ms-k span{display:flex;flex-direction:column;align-items:center;gap:3px;opacity:.38}
+.ms-k span.d3,.ms-k span.d4{opacity:.62}
+.ms-k span.on{opacity:1}
+.ms-k .i{width:13px;height:13px;color:var(--ink)}
+.ms-k .us .i{color:var(--cobalt)}
 .hero-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .hero-row{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:4px 2px 6px;text-align:center}
 .hero-row:hover{background:var(--paper)}
@@ -325,30 +340,29 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .docs button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px;border:1px solid var(--paper);font:500 9px var(--mono);letter-spacing:.06em}
 .docs button:hover{border-color:var(--navy)}
 /* a pack of cells: read here, seen, then sent for approval */
-/* tracks: quiet rows; a dot that breathes while its beat plays, the voices lighting as they sound, a fine trace feeding past */
+/* tracks: quiet rows. A light on the left: seen on the map. The voices, lighting as they sound. Play on the right.
+   Under the voices, a fine trace of the beat, feeding past while it plays */
 .deck{display:grid;gap:4px}
-.deck li{display:flex;align-items:center;gap:4px}
-.trk{flex:1;min-width:0;display:grid;grid-template-columns:8px 1fr;grid-template-rows:auto 12px;column-gap:12px;row-gap:3px;align-items:center;padding:8px 10px 6px;border:1px solid var(--paper);background:var(--white);color:var(--navy);text-align:left}
-.trk:hover:not(:disabled){border-color:#C9CCC6}
-.trk:disabled{opacity:.4;cursor:default}
-.trk .dot{grid-row:1 / 3;width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1.2px var(--navy);transition:background .3s}
-.trk.on .dot{background:var(--navy);animation:breathe 2.4s ease-in-out infinite}
-@keyframes breathe{0%,100%{box-shadow:inset 0 0 0 1.2px var(--navy),0 0 0 0 rgba(11,37,69,.18)}50%{box-shadow:inset 0 0 0 1.2px var(--navy),0 0 0 5px rgba(11,37,69,0)}}
-.vox{display:flex;align-items:center;gap:8px;min-width:0;min-height:15px;overflow:hidden}
-.vox .v{display:grid;place-items:center;flex:none;opacity:.42;transition:opacity .2s,transform .2s}
+.tk{display:grid;grid-template-columns:24px 1fr 28px;grid-template-rows:auto 12px;column-gap:8px;row-gap:2px;align-items:center;padding:6px 6px 6px 4px;border:1px solid var(--paper);background:var(--white);color:var(--navy)}
+.tk-see{grid-row:1 / 3;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.tk-see i{width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 1.3px var(--navy);transition:background .25s,box-shadow .25s}
+.tk.seen .tk-see i{background:var(--navy);box-shadow:inset 0 0 0 1.3px var(--navy),0 0 0 3px rgba(11,37,69,.08)}
+.tk-see:hover i{box-shadow:inset 0 0 0 1.3px var(--navy),0 0 0 3px rgba(11,37,69,.12)}
+.tk-play{grid-column:3;grid-row:1 / 3;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;color:var(--navy)}
+.tk-play:hover:not(:disabled){background:var(--paper)}
+.tk-play:disabled{opacity:.3}
+.tk.on .tk-play{background:var(--navy);color:var(--white)}
+.vox{grid-column:2;display:flex;align-items:center;gap:8px;min-width:0;min-height:15px;overflow:hidden}
+.vox .v{display:grid;place-items:center;flex:none;opacity:.35;transition:opacity .2s,transform .2s}
 .vox .v .i{width:14px;height:14px}
-.trk.on .vox .v{opacity:.7}
+.tk.seen .vox .v{opacity:.62}
+.tk.on .vox .v{opacity:.8}
 .vox .v.hit{opacity:1;transform:translateY(-1px)}
-.trk .beat{display:block;height:12px;overflow:hidden;color:var(--navy)}
-.trk .beat svg{display:block;width:200%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.22}
-.trk.on .beat svg{opacity:.6;animation:feed 2.4s linear infinite}
-.trk[data-trk="c"] .vox{display:none}
-.trk[data-trk="c"]{grid-template-rows:12px}
-.trk[data-trk="c"] .dot{grid-row:1}
-.trk[data-trk="c"].on .beat svg{animation-duration:14s}
+.tk .beat{grid-column:2;display:block;height:12px;overflow:hidden;color:var(--navy)}
+.tk .beat svg{display:block;width:200%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.2}
+.tk.on .beat svg{opacity:.6;animation:feed 2.4s linear infinite}
 @keyframes feed{to{transform:translateX(-50%)}}
-.still .trk.on .dot,.still .trk.on .beat svg{animation:none}
-.trk-x{flex:none;width:26px;height:26px;color:var(--grey-text)}
+.still .tk.on .beat svg{animation:none}
 .pack{margin-top:8px}
 .pack-up{display:flex;justify-content:space-between;gap:8px;margin:0;font-size:9.5px;letter-spacing:.08em}
 .pack-up label,.pack-up a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px dashed var(--navy);color:var(--navy);text-decoration:none;cursor:pointer}
@@ -659,13 +673,16 @@ p.sl-note{font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-
 .slip.tty .sl-hero.art{background:var(--slip)}
 .slip.tty .sl-hero.art .sl-hi{display:none}
 .slip.tty .sl-hero.art .sl-ha{display:block;width:58%;height:58%;color:var(--ink)}
-.slip.tty .sl-fig,.slip.tty .sl-meta,.slip.tty .sl-threat,.slip.tty .sl-rel,.slip.tty .sl-note,.slip.tty .sl-who,.slip.tty .sl-src{display:none}
+.slip.tty .sl-fig,.slip.tty .sl-meta>:not(.sid),.slip.tty .sl-meta dt,.slip.tty .sl-threat,.slip.tty .sl-rel,.slip.tty .sl-note,.slip.tty .sl-who,.slip.tty .sl-src{display:none}
 .slip.tty .sl-head{padding:14px 20px 0;border:0;font-size:15px}
 .slip.tty .sl-code{font-size:21px;letter-spacing:.1em}
 .slip.tty .sl-body{padding:0 20px}
 .slip.tty .sl-life{padding:14px 0 2px;gap:2px}
 .slip.tty .sl-life b{font-size:28px;font-weight:400;line-height:.95;letter-spacing:.02em}
 .slip.tty .sl-life i{font-style:normal;font-size:16px;color:#55554F}
+.slip.tty .sl-meta{display:block;margin-top:6px;font-size:13px;color:#55554F}
+.slip.tty .sl-meta .sl-code{font-size:15px;letter-spacing:.08em}
+.sl-meta .sl-code{font-size:inherit;letter-spacing:.03em}
 .slip.tty .sl-wish{margin-top:12px;border:0}
 .slip.tty .sl-wish>li{padding:3px 0;border:0}
 .slip.tty .sl-wish span{font-weight:400;font-size:19px;line-height:1.15;padding-left:1.2ch;text-indent:-1.2ch}

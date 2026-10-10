@@ -93,7 +93,7 @@ Each output machine is drawn as its hardware and links to a reference page about
 
 ### The pages
 
-- **NOW** shows the El Niño outlook strip, the five in greatest need (each of which can be swapped for any life), anything hurt or lost right now, the constellations, and gigs.
+- **NOW** shows DIRECT ACTION, a countdown to the first month of extreme heat, and a calendar: twelve months in their degree, the five in greatest need on the month their window opens (each can be swapped for any life), the kinds each month reaches; then anything hurt or lost right now, the tracks, the constellations, and gigs.
 - **STORIES** shows the signals board (the device's own signals plus three examples marked EX), the six caring groups, the tools (the field list, the guide, a blank slip to fill by hand, and four CSV downloads) and the settings.
 - `field.html` is a field list of 204 kinds of life. `guide.html` is a visual key to every mark, kept under about 620 words.
 
@@ -185,7 +185,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 │       ├── 60-paper.js    signals: pack and unpack, text, QR, dithering, slip HTML, PNG, ESC/POS (58 or 80 mm), print, story cells, remix, receive
 │       ├── 65-share.js    the shared board, DIRECT ACTION, the outbox, the sender's receipts, partners, RECEIVE by code
 │       ├── 66-packs.js    cell packs: .md, .csv or .json read on the device, previewed, sent for approval, drawn once shown (docs/cell-packs.md)
-│       ├── 68-tracks.js   TRACKS on NOW: two beats from the radar (lives; places), scheduled on snd.knot; one's own track in IndexedDB
+│       ├── 68-tracks.js   STATIONS on NOW (tracks in the code): the lives, the places, each approved pack of cells; each seen on the map or not (seeTrack, prefs.trk) and played or not (snd.knot)
 │       └── 70-boot.js     start-up, hash routing, live polling, tooltips, the debug handle window.__da
 └── test/
     ├── run.mjs            Playwright end-to-end checks; every outside host is mocked, and /api/ goes to the real Worker on a fresh local database
@@ -220,9 +220,8 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.notes.v1`, `da.st.v1`, `da.slip.v1`, `da.draft.<id>` | Notes, rewritten statements, slip options and drafts |
 | `da.img.v1`, `da.own.v1` | The chosen photograph for each cell, and the user's own photographs (at most 14, as 800 px JPEGs) |
 | `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
-| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
+| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `trk`: each track seen on the map or not; `night`: night chosen, else the device's; `start2`, once a first visit has started at the print location or the visitor's place, and `scan`, the radar since), the user's name and device id, the swapped five, and hidden cells |
 | `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
-| IndexedDB `da.tracks` | One's own track (the audio file, its name and the shape of its sound), added on STORIES; never sent |
 
 ### What the server stores (D1)
 

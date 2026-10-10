@@ -77,6 +77,7 @@ map.on('click', e => {
     if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
     if (h.kind === 'tribe') { selectTribe(h.id); return; }
     if (h.kind === 'partner') { selectPartner(h.id); return; }
+    if (h.kind === 'place') { life.hover(h); tick(1500); return; }   /* a place on the places' track: its name, also on a phone */
     select(h.id); return;
   }
   if (S.mode) { closeRecord(); return; }
@@ -90,7 +91,7 @@ let hoverT = 0, hoverKey = null, hoverLast = null;
 function hoverAt(e) {
   const h = life.hit(e.point.x, e.point.y, true); const canvas = map.getCanvas();
   canvas.style.cursor = h ? 'pointer' : S.mode === 'ping' || S.mode === 'place' || life.inScan(map.unproject(e.point).lat, map.unproject(e.point).lng) ? '' : 'crosshair';
-  const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'partner' ? 'p:' + h.id : null) : null;
+  const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'partner' ? 'p:' + h.id : h.kind === 'place' ? 'pl:' + h.id : null) : null;
   if (key !== hoverKey) { hoverKey = key; life.hover(h && key ? h : null); }
 }
 /* at most one look every 40 ms, and always one where the pointer comes to rest */

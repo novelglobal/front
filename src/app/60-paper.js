@@ -38,7 +38,7 @@ function unpackSignal(x) {
 }
 const linkOf = s => { const b = portalBase(); return b ? `${b}#x=${packSignal(s)}` : ''; };
 /* ───────── plain text: a mesh message, a pager line, a slip in 32 columns ───────── */
-const ascii = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/°/g, '').replace(/×/g, 'x').replace(/·/g, '-').replace(/[^\x20-\x7E\n]/g, '');
+const ascii = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/©/g, '(c)').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/°/g, '').replace(/×/g, 'x').replace(/·/g, '-').replace(/[^\x20-\x7E\n]/g, '');
 const bytes = t => new TextEncoder().encode(t).length;
 const NAME_UP = s => String((s.pin && (s.pin.cn || s.pin.n)) || '').toUpperCase();
 /* a mesh message, 200 bytes at most: the code, the life, where it is, and the four lines, the longest cut first.
@@ -77,12 +77,20 @@ const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a 
    the life's photograph as its hero, then its code, its name and the four lines, in VT323, and nothing more */
 const isTty = () => prefs.slip === 'tty';
 /* the terminal's hero: the slip's own photograph, else an open one of the same kind of life seen here */
+/* an open photograph of the same kind of life seen here, with its credit: for a slip with none of its own, such as the examples */
+function kindPhoto(s) {
+  const n = (s.pin || {}).n; if (!n) return null;
+  for (const o of S.obs) { if (!o.tx || o.tx.n !== n) continue; if (o.ph && o.ph.u && licOpen(o.ph.l)) return o.ph; const t = o.tx.id && TXI[o.tx.id]; if (t && t.ph && t.ph.u) return t.ph; }
+  return null;
+}
+const ownOrKind = s => !s.img || s.img.k === 'kind';
 function heroSrc(s, big) {
   const own = sigSrc(s, big); if (own) return own;
-  const n = (s.pin || {}).n; if (!n) return '';
-  for (const o of S.obs) { if (!o.tx || o.tx.n !== n) continue; if (o.ph && o.ph.u && licOpen(o.ph.l)) return photoURL(o.ph.u, big ? 'large' : 'medium'); const t = o.tx.id && TXI[o.tx.id]; if (t && t.ph && t.ph.u) return photoURL(t.ph.u, big ? 'large' : 'medium'); }
-  return '';
+  const ph = ownOrKind(s) ? kindPhoto(s) : null; return ph ? photoURL(ph.u, big ? 'large' : 'medium') : '';
 }
+/* what prints at the head of a slip: its own photograph, else its kind's (unless none was chosen) */
+const printSrc = (s, big) => sigSrc(s, big) || (ownOrKind(s) ? heroSrc(s, big) : '');
+const printCredit = s => { if (s.img && s.img.k === 'none') return ''; if (s.img && s.img.k !== 'kind') return figCredit(s); const ph = kindPhoto(s); return ph ? [String(ph.a || '').replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, ''), 'iNaturalist'].filter(Boolean).join(' · ') : ''; };
 const SCRAMBLE = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789#%&*/<>=+';
 function scramble(el, word, ms = 520) {
   if (!el || reduced()) { if (el) el.textContent = word; return; }
@@ -99,16 +107,16 @@ function slipText(s, cols = 32, tty = isTty()) {
   const pad = (a, b) => padTo(a, b, cols);
   const field = (k, v) => wrap(v, cols - 7).map((l, i) => (i ? '       ' : (k + '       ').slice(0, 7)) + l);
   if (tty) {
-    out.push(s.code, fmtStamp(s.at), '', ...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols));
+    out.push(...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols)); out.push(`${s.code} . ${fmtStamp(s.at)}`);
     const L = linesOf(s); if (L.length) { out.push(''); for (const l of L) out.push(...wrap(`> ${l}`, cols, '  ')); }
     return ascii(out.join('\n'));
   }
-  out.push(pad('DIRECT ACTION', s.code), fmtStamp(s.at), rule);
-  if (s.img && s.img.k !== 'none') out.push(...wrap(figCredit(s), cols, '  '), rule);
   out.push(...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols));
-  out.push(...field('SITE', `${p.place || ''} ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`.trim()));
+  if (printCredit(s)) out.push(...wrap(printCredit(s), cols, '  '));
+  out.push(rule, ...field('SITE', `${p.place || ''} ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`.trim()));
   if (s.when) out.push(...field('WINDOW', s.when));
   if (modeOf(s)) out.push(...field('MODE', modeOf(s)));
+  out.push(...field('CODE', s.code), ...field('ISSUED', fmtStamp(s.at)));
   if (s.threat) { out.push(rule); out.push(...wrap(s.threat, cols)); }
   const L = linesOf(s); if (L.length) { out.push(rule); for (const l of L) out.push(...wrap(l, cols)); }
   const rels = relOrder(s.nodes || []);
@@ -180,7 +188,7 @@ async function fillHero(host, s, press) {
 }
 async function fillFig(host, s, press) {
   const fig = host.querySelector('.sl-fig'); const im = host.querySelector('.sl-img'); if (!fig || !im) return;
-  const src = sigSrc(s, press); if (!src) { fig.classList.add('none'); return; }
+  const src = printSrc(s, press); if (!src) { fig.classList.add('none'); return; }
   /* a face still turning over has no size yet: wait for it */
   for (let i = 0; i < 60 && !fig.clientWidth; i++) await new Promise(r => setTimeout(r, 25));
   if (!fig.clientWidth || !fig.isConnected) return;
@@ -217,13 +225,13 @@ function drawChart(x, s, cx, cy, size, lw = 1) {
 /* the lines written, in order: a slip can carry all four, some, or none */
 const linesOf = s => WKEYS.map(k => String((s.lines || {})[k] || '').trim()).filter(Boolean);
 function slipHTML(s, blank) {
-  const p = s.pin || {}; const hasImg = !blank && s.img && s.img.k !== 'none'; const L = linesOf(s);
+  const p = s.pin || {}; const hasImg = !blank && !!printSrc(s, false); const L = linesOf(s);
   const rels = relOrder(s.nodes || []); const nOf = g => rels.filter(x => relKind(x) === g).length;
   const src = blank ? [] : [...new Set(s.src || [])];
   /* the terminal's hero, drawn on every slip and shown only in that style: the photograph, or the life's own mark */
-  return `<div class="sl-perf" aria-hidden="true"></div>${blank ? '' : `<figure class="sl-hero" aria-hidden="true"><img class="sl-hi" alt="">${glyphSVG(p.g || 'paw', 'sl-ha')}</figure>`}<header class="sl-head mono"><span><b class="sl-code">${esc(s.code || 'DA-····')}</b>${s.ex ? '<i class="ex">EX</i>' : ''}</span><span class="sl-time">${blank ? '__.__.__ __:__' : fmtStamp(s.at)}</span></header>`
-    + (blank ? `<figure class="sl-fig blank"></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">${esc(figCredit(s))}</figcaption></figure>` : '')
-    + `<div class="sl-body"><div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}${modeOf(s) ? `<dt>MODE</dt><dd>${esc(modeOf(s))}</dd>` : ''}</dl>`}</div>`
+  return `<div class="sl-perf" aria-hidden="true"></div>${blank ? '' : `<figure class="sl-hero" aria-hidden="true"><img class="sl-hi" alt="">${glyphSVG(p.g || 'paw', 'sl-ha')}</figure>`}<header class="sl-head mono"><span>${blank ? `<b class="sl-code">${esc(s.code || 'DA-····')}</b>` : ''}${s.ex ? '<i class="ex">EX</i>' : ''}</span><span class="sl-time">${blank ? '__.__.__ __:__' : fmtStamp(s.at)}</span></header>`
+    + (blank ? `<figure class="sl-fig blank"></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">${esc(printCredit(s))}</figcaption></figure>` : '')
+    + `<div class="sl-body"><div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt class="sid">CODE</dt><dd class="sid sl-code">${esc(s.code)}</dd><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}${modeOf(s) ? `<dt>MODE</dt><dd>${esc(modeOf(s))}</dd>` : ''}</dl>`}</div>`
     + (s.threat ? `<p class="sl-threat">${esc(s.threat)}</p>` : '')
     + (blank ? `<ol class="sl-wish poem">${WKEYS.map(k => `<li><small>${esc(WISH[k][0].toLowerCase())}</small></li>`).join('')}</ol>` : L.length ? `<ol class="sl-wish poem">${L.map(t => `<li><span>${esc(t)}</span></li>`).join('')}</ol>` : '')
     /* the figure first, as it lies on the ground; then each relation, numbered as the figure numbers it */
@@ -320,10 +328,11 @@ async function slipCanvas(s, W, levels, tty = isTty()) {
   const text = (t, font, lh, indent = '', at = pad) => { x.font = font; for (const l of wrapPx(t, W - pad - at)) { x.fillText(l, at, y); y += lh; } };
   const rule = () => { y += Math.round(6 * k); x.fillRect(pad, y, W - pad * 2, Math.max(1, Math.round(1.5 * k))); y += Math.round(10 * k); };
   const field = (kk, v) => { x.font = mono(10, 600); x.fillText(kk, pad, y + Math.round(2 * k)); const y0 = y; text(v, mono(12), Math.round(16 * k), '', pad + Math.round(70 * k)); if (y === y0) y += Math.round(16 * k); };
-  if (s.img && s.img.k !== 'none') { text(figCredit(s), mono(10), Math.round(14 * k)); rule(); }
   const sansT = (wt, px) => (tty ? mono(px) : sans(wt, px));
-  text(NAME_UP(s), sansT(700, 18), Math.round(22 * k)); if (p.n && p.n !== p.cn) text(p.n, sansT(400, 12), Math.round(16 * k));
-  y += Math.round(3 * k); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
+  text(NAME_UP(s), sansT(700, 20), Math.round(24 * k)); if (p.n && p.n !== p.cn) text(p.n, sansT(400, 12), Math.round(16 * k));
+  if (printCredit(s)) text(printCredit(s), mono(9), Math.round(13 * k));
+  rule(); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
+  field('CODE', s.code); field('ISSUED', fmtStamp(s.at));
   if (s.threat) { rule(); text(s.threat, sansT(500, 15), Math.round(20 * k)); }
   const lines = linesOf(s); if (lines.length) { rule(); for (const l of lines) { text(l, mono(16, 600), Math.round(21 * k)); y += Math.round(7 * k); } }
   const rels = relOrder(s.nodes || []);
@@ -346,11 +355,10 @@ async function slipCanvas(s, W, levels, tty = isTty()) {
   text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); y += pad;
   const textH = y;
   /* the head of the slip, then the photograph: as tall as everything under it, between four fifths and eight fifths of its width */
-  const headH = Math.round(36 * k); const src = sigSrc(s, false); let photo = null; let imgH = 0;
+  const headH = 0; const src = printSrc(s, false); let photo = null; let imgH = 0;
   if (src) { imgH = Math.round(clamp(textH, W * 0.8, W * 1.6)); try { photo = await bwCanvas(src, W, imgH, levels); } catch (e) { photo = null; } }
   if (!photo) { imgH = src ? Math.round(W * 0.5) : 0; }
   const out = document.createElement('canvas'); out.width = W; out.height = headH + imgH + Math.round(10 * k) + textH; const o2 = out.getContext('2d'); o2.fillStyle = '#fff'; o2.fillRect(0, 0, W, out.height); o2.fillStyle = '#000'; o2.textBaseline = 'top';
-  o2.font = mono(18, 600); o2.fillText(s.code, pad, Math.round(9 * k)); o2.font = mono(13); const st = fmtStamp(s.at); o2.fillText(st, W - pad - o2.measureText(st).width, Math.round(12 * k));
   if (photo) o2.drawImage(photo, 0, headH);
   else if (imgH) M.glyph(o2, p.g || 'paw', W / 2, headH + imgH / 2, imgH * 0.7, '#000');
   o2.drawImage(T, 0, 0, W, textH, 0, headH + imgH + Math.round(10 * k), W, textH);
@@ -366,8 +374,8 @@ async function ttyCanvas(s, W, levels, k, pad, mono) {
   let y = Math.round(12 * k);
   const wrapPx = (t, maxW) => { const out = []; let line = ''; for (const w of String(t || '').split(/\s+/).filter(Boolean)) { const next = line ? `${line} ${w}` : w; if (!line || x.measureText(next).width <= maxW) line = next; else { out.push(line); line = w; } } if (line) out.push(line); return out; };
   const text = (t, font, lh, at = pad) => { x.font = font; for (const l of wrapPx(t, W - pad - at)) { x.fillText(l, at, y); y += lh; } };
-  x.font = mono(16); x.fillText(s.code, pad, y); const st = fmtStamp(s.at); x.fillText(st, W - pad - x.measureText(st).width, y); y += Math.round(30 * k);
   text(NAME_UP(s), mono(24), Math.round(28 * k)); if (p.n && p.n !== p.cn) text(p.n, mono(13), Math.round(18 * k));
+  text(`${s.code} · ${fmtStamp(s.at)}`, mono(11), Math.round(16 * k));
   const lines = linesOf(s); if (lines.length) { y += Math.round(12 * k); for (const l of lines) { x.font = mono(17); x.fillText('>', pad, y); text(l, mono(17), Math.round(22 * k), pad + Math.round(16 * k)); y += Math.round(6 * k); } }
   const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(16 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(10 * k); } }
   text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); y += pad;
@@ -400,11 +408,13 @@ async function escpos(s, paper = '58', tty = isTty()) {
     if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = W; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, W); M.glyph(x, (s.pin || {}).g || 'paw', W / 2, W / 2, W * 0.62, '#000'); }
     img(cv);
   }
-  put(0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11); txt(s.code + '\n'); put(0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00);
-  /* the photograph, square, the width of the paper */
-  const src = tty ? '' : sigSrc(s, false);
+  /* the photograph, square, the width of the paper: its own, else its kind's */
+  const src = tty ? '' : printSrc(s, false);
   if (src) { try { img(await bwCanvas(src, W, W, 2)); } catch (e) { /* no pixels to share: the words alone */ } }
-  const lines = slipText(s, P.cols, tty).split('\n').slice(1); const ri = lines.indexOf('RELATIONS');
+  /* the life is the heading, tall and bold; the code is one of its details */
+  const all = slipText(s, P.cols, tty).split('\n'); const nh = wrap(NAME_UP(s), P.cols).length;
+  put(0x1B, 0x45, 0x01, 0x1D, 0x21, 0x01); txt(all.slice(0, nh).join('\n') + '\n'); put(0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00);
+  const lines = all.slice(nh); const ri = lines.indexOf('RELATIONS');
   txt((ri < 0 ? lines : lines.slice(0, ri)).join('\n') + '\n');
   if (ri >= 0) {
     /* the figure as it lies on the ground, above the relations it numbers */

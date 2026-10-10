@@ -72,8 +72,17 @@ const title = s => String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpper
 const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLowerCase() : ''; if (s) for (const n of SUBURBS) if (s.includes(n.toLowerCase()) && CENTRES.some(c => c[0] === n.toUpperCase())) return n.toUpperCase(); return suburbAt(o.lat, o.lng); };
 
 /* ───────── state ───────── */
+/* tracks: collections of the map, each seen on it or not. The lives are seen, the places are not, a pack of cells is */
+const TRK_SEE = { life: true, places: false };
+const seeTrack = id => { const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v; };
+/* the print location: the first partner place with a W.I.S.H. printer */
+const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
+/* night: as the device is set, until chosen in Settings. The page darkens and the ground dims; a slip stays paper */
+const darkNow = () => (prefs.night != null ? !!prefs.night : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+const applyNight = () => document.documentElement.classList.toggle('night', darkNow());
+applyNight(); try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (prefs.night == null) applyNight(); }); } catch (e) { /* no media queries */ }
 const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));
 if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; store.set('da.me', me); }
 const S = {
@@ -83,8 +92,9 @@ const S = {
   lastVisit: store.get('da.lastVisit', 0), lastSignal: 0, stale: false, me,
   biz: null, bizLoading: null, radius: new Map(), orbit: { cell: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
   heroes: [], tribes: [], signals: [], shared: [], partnerSel: null,
-  /* the radar: where it is pinned and how far it reaches, kept between visits */
-  scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 520, min: 250, max: 1500 }; const p = prefs.scan || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: clamp(+p.r || c.r, c.min || 250, c.max || 1500) }; })(),
+  /* the radar: where it is pinned and how far it reaches, kept between visits. A first visit starts at the print location,
+     at 500 m, until the visitor's own place is known (findStart) */
+  scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 500, min: 250, max: 1500 }; const p = prefs.start2 ? prefs.scan || {} : printAt() || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: prefs.start2 ? clamp(+p.r || c.r, c.min || 250, c.max || 1500) : c.r }; })(),
 };
 const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -200,6 +210,8 @@ const snd = (() => {
   }
   return {
     describe,
+    /* woken inside a touch itself, as phones require: true once sound can play */
+    wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
     /* a dry click for a press */
     tick(f = 1700) {
       buzz(3); if (!ready()) return;
