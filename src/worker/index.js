@@ -39,6 +39,8 @@ const readied = new WeakMap();
 function ready(db) {
   if (!readied.has(db)) readied.set(db, (async () => {
     await db.batch(SCHEMA.map(q => db.prepare(q)));
+    /* live: shown online on the map, switched on the approval page (a column added after the first release) */
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN live INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* every partner place has a print queue from the start; a printer joins it when its token is made on the approval page */
     if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)').bind(p.id, p.n, p.paper, now())));
   })().catch(e => { readied.delete(db); throw e; }));
@@ -141,10 +143,10 @@ async function receipt(db, id) {
 }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
-  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.token IS NOT NULL AS paired, p.seen,
+  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.live, p.token IS NOT NULL AS paired, p.seen,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'printed') AS printed FROM printers p ORDER BY p.created`).all();
-  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, mesh: !!p.mesh && !!p.paired, ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
+  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, mesh: !!p.mesh && !!p.paired, live: !!p.live, ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
 }
 
 /* ───────── a printer's receiver: it asks for the next job, prints it, and says how it went ───────── */
@@ -195,7 +197,7 @@ async function admin(db, env, req, parts) {
   }
   if (what === 'photos' && id) return photo(db, id, true);
   if (what === 'printers' && !id) {
-    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.token IS NOT NULL AS paired, p.seen,
+    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.seen,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'printed') AS printed,
@@ -207,7 +209,7 @@ async function admin(db, env, req, parts) {
     /* a printer's token is shown once, here, and kept only as a hash */
     if (b.action === 'token') { const tok = rid(32); await db.prepare('UPDATE printers SET token = ? WHERE id = ?').bind(await sha256(tok), id).run(); return json({ token: tok }); }
     if (b.action === 'unpair') { await db.prepare('UPDATE printers SET token = NULL, seen = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }
-    if (b.action === 'auto' || b.action === 'mesh') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
+    if (b.action === 'auto' || b.action === 'mesh' || b.action === 'live') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
     if (b.action === 'paper' && ['58', '80'].includes(String(b.paper))) { await db.prepare('UPDATE printers SET paper = ? WHERE id = ?').bind(String(b.paper), id).run(); return json({ ok: true }); }
     if (b.action === 'test') { await db.prepare("INSERT INTO jobs (id, printer, code, mesh, status, created) VALUES (?, ?, 'DA-TEST', ?, 'queued', ?)").bind(rid(), id, 'DIRECT ACTION - test print', now()).run(); return json({ ok: true }); }
     return fail(400, 'action');

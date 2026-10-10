@@ -152,27 +152,33 @@ const heroPic = o => { const ph = heroPhoto(o); return `<span class="h-pic">${ph
 let heroAsked = false;
 function askHeroPhotos() { if (heroAsked) return; heroAsked = true; const want = S.heroes.filter(o => !heroPhoto(o) && o.tx && o.tx.id); if (want.length) Promise.all(want.map(o => taxonInfo(o.tx.id))).then(() => { if (S.view === 0) refreshPanel(); }); }
 const eventRow = o => { const gig = isGig(o); const src = gigOf(o); return row(o, [dayWord(o.start), o.start ? fmtClock(o.start) : '', ...(gig ? [`<span class="gig">${icon('hug', 'sm')}${src ? src.w : 'GIG'}</span>`] : [])].filter(Boolean).join(' · ')); };
+/* the countdown to act: to the first month of extreme heat ahead, ticking; NOW while it is here */
+function extremeAhead() {
+  const k0 = nowK(); let k = -1; for (let i = k0; i < OUT_N; i++) if (outMonth(i).lv >= 4) { k = i; break; }
+  if (k < 0) return null; const Mo = outMonth(k); return { now: k === k0, to: monthStart(k), tip: `${DEG[4]} · ${MON[Mo.m]} ${Mo.y}` };
+}
+const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
+const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
+setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
 function viewNow() {
   const nw = nextWindow(); const alarms = alarmsNow(); const k0 = S.mo, k1 = Math.min(OUT_N - 1, S.mo + 2);
   const events = [...S.community, ...S.user].filter(o => o.isEvent && liveEvent(o)).sort((a, b) => (isGig(b) - isGig(a)) || (a.start || 0) - (b.start || 0));
   const lvNow = outMonth(nowK()).lv;
-  /* the headline is the act; the heat it answers sits beside it as a mark: a sun in its degree, pulsing while it is now */
+  const ex = extremeAhead();
+  /* the headline is the act; under it, the time left to act before extreme heat, ticking */
   return `<section class="band" id="sec-heat">
       <div class="b-top"><span class="mono el">${esc(CONFIG.ELNINO)}</span>${degChip(lvNow)}</div>
-      <h2 class="b-head">DIRECT<br>ACTION</h2>
-      ${nw ? `<div class="b-count${nw.now ? ' now' : ''}" data-tip="${esc(nw.w.why)}"><i class="sun d${lvNow}">${icon('heat')}</i><b class="mono">${nw.now ? 'NOW' : `${daysTo(nw.start)} DAYS TO`}</b><span class="mono">${esc(nw.w.w)}</span></div>` : ''}
+      <h2 class="b-head">DIRECT ACTION</h2>
+      ${ex ? `<div class="b-count${ex.now ? ' now' : ''}" data-tip="${esc(ex.tip)}"><i class="sun d4">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</div>` : ''}
       ${monthStrip()}
       ${kindsRow()}
       <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    /* what W.I.S.H. is, in one breath */
-    + `<section class="sec praxis" id="sec-praxis"><p><span class="mono">W.I.S.H.</span><b>A poem for praxis, printed to act</b><small>thinking into doing and back, as we help each other adapt to disaster</small></p></section>`
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
     + consSection()
     + `<section class="sec" id="sec-gigs">${lab('Gigs')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener" data-tip="${esc(g.n)}">${icon('hug', 'sm')}<span>${esc(g.w)}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why || o.heroOf.cn)}">${heroPic(o)}<span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
-    + `<section class="sec calls"><div class="calls2 mono"><a href="tel:000">000</a><a href="tel:0384007300" data-tip="Wildlife Victoria">WILDLIFE (03) 8400 7300</a><a href="tel:136186" data-tip="DEECA: flying-foxes in heat stress">136 186</a></div></section>`;
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why || o.heroOf.cn)}">${heroPic(o)}<span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '');
 }
 
 /* ───────── constellations: every string figure, newest first, as it forms; the knots it shares with others ───────── */
@@ -214,8 +220,6 @@ function viewStories() {
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
       + `</div><div class="docs">${[['blank', 'print', 'BLANK SLIP', 'A blank W.I.S.H. slip to fill by hand'], ['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div>`
-      /* the whole of it, open source: the live version as a zip, to run, change and keep */
-      + (CONFIG.SOURCE_URL ? `<p class="src-dl mono"><a href="${esc(CONFIG.SOURCE_URL)}/archive/refs/heads/main.zip" download data-tip="The live version, clean: run it, change it, keep it">${icon('download', 'sm')}OPEN SOURCE · .ZIP</a><a href="${esc(CONFIG.SOURCE_URL)}" target="_blank" rel="noopener">MIT ${icon('out', 'sm')}</a></p>` : '')
       + packSection()
       + `</section>`
     + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`

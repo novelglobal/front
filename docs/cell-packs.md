@@ -7,7 +7,7 @@ A cell pack is a small file listing places that help life through the heat, such
 - water left out for wildlife
 - shade, gardens and cool refuges
 
-Send one from **STORIES → Tools → ADD YOUR CELLS**. The site reads the file on your device and shows you what it found. You then choose **SEND FOR APPROVAL**.
+Send one from **STORIES → Tools → CELLS**. The site reads the file on your device and shows you what it found. You then choose **SEND**.
 
 Nothing goes on the map until it is approved on the approval page. Once shown, the cells stand on the map for everyone. Like everything else there, they fade as they age.
 
