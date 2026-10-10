@@ -6,14 +6,14 @@
 (function () {
   'use strict';
   /* the colours, as an open book: the teal page, the white page, a cobalt line, grey for what has gone quiet,
-     orange for the danger coming in the months ahead (deeper as it rises), red for now,
+     the danger coming in the months ahead from orange through red to black as it rises, red for now,
      and a highlighter for what a business is on notice for. Type sits on each page in the ink that page can carry. */
   const C = {
     teal: '#0CCBBD', tealLift: '#7FE0D7', tealDeep: '#007A72',
     white: '#FFFFFF', grey: '#C8C8C8', greyText: '#6B6B6B', ink: '#1C1C1A',
     cobalt: '#0067B8', cobaltDeep: '#004A87', navy: '#0B2545',
     neon: '#E6F84A', red: '#E8453C', black: '#000000',
-    orange: '#FF7A00', deg: ['#FFFFFF', '#FFE3C2', '#FFB15C', '#FF7A00', '#D95000'],
+    orange: '#FF7A00', deg: ['#FFC27A', '#FF9A2E', '#FF6A00', '#D62E1F', '#141412'],
     /* each kind of animal in its own colour, clear of the orange, red and highlighter that carry danger, now and notice */
     kind: { bird: '#1F6FD1', mammal: '#8E44C9', insect: '#D6336C', spider: '#7A5230', reptile: '#5F8A1C', water: '#0B93AE', other: '#56677A' },
     /* the patches people already care for */
@@ -354,6 +354,24 @@
     event: [C.navy, C.white], need: [C.white, C.navy], offer: [C.navy, C.white], injured: [C.red, C.white], dead: [C.black, C.red],
     lost: [C.white, C.navy], story: [C.white, C.navy], cold: ['#9AA39D', C.white], hist: ['rgba(255,255,255,.3)', C.white],
   };
+  /* a W.I.S.H. receipt printer, as it stands on a counter: its body, its slot, a slip feeding out with lines of print and a
+     torn edge, and a light. on: the printer is there and listening, the light teal. t: seconds, for the slip feeding a little and back */
+  function printer(ctx, x, y, d, t, on) {
+    const k = d / 32; ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    const feed = t ? 2 + 2.4 * (0.5 + 0.5 * Math.sin(t * 1.4)) : 3.2; const top = -15 - feed;
+    ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5;
+    /* the slip: paper rising from the slot, its torn edge, three lines of print */
+    ctx.beginPath(); ctx.moveTo(-7.5, -3); ctx.lineTo(-7.5, top + 2); for (let i = 0; i <= 6; i++) ctx.lineTo(-7.5 + i * 2.5, top + (i % 2 ? 0 : 2)); ctx.lineTo(7.5, -3); ctx.closePath();
+    ctx.fillStyle = '#FCFBF7'; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.1; ctx.strokeStyle = C.ink; ctx.stroke();
+    ctx.fillStyle = C.ink; [9, 6, 8].forEach((w, i) => { const yy = top + 5 + i * 3.2; if (yy < -4) ctx.fillRect(-4.6, yy, w, 1.3); });
+    /* the body, the slot, the light */
+    ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.beginPath(); rrect(ctx, -12.5, -4, 25, 16, 3.2); ctx.fillStyle = C.white; ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1.6; ctx.strokeStyle = C.ink; ctx.stroke();
+    ctx.fillStyle = C.ink; ctx.fillRect(-8.5, -4.8, 17, 2.2);
+    ctx.beginPath(); ctx.arc(8, 7.2, 2, 0, TAU); ctx.fillStyle = on ? C.teal : '#9AA39D'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8, 7.2); ctx.lineTo(3, 7.2); ctx.lineWidth = 1.2; ctx.strokeStyle = '#C8C8C8'; ctx.stroke();
+    ctx.restore();
+  }
   function rrect(ctx, x, y, w, h, r) { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   function shape(ctx, tone, x, y, r) {
     ctx.beginPath();
@@ -378,9 +396,9 @@
     if (b.tone === 'story') { ctx.fillStyle = b.carried ? C.cobalt : C.grey; ctx.fillRect(x - r * 0.74 + 1, y - r * 1.04 + 1, r * 1.48 - 2, r * 0.42); }
     const gs = d * (b.tone === 'story' ? 0.58 : b.tone === 'event' ? 0.6 : 0.66), gy = b.tone === 'story' ? y + r * 0.18 : b.tone === 'event' ? y + r * 0.08 : y;
     if (b.i) icon(ctx, b.i, x, gy, gs * 0.9, fg, 1.1); else if (b.g) glyph(ctx, b.g, x, gy, gs, fg);
-    /* danger in the months ahead: an orange ring, heavier at extreme */
+    /* danger in the months ahead: a red ring when severe, a black ring at the extreme */
     const dz = b.dz || (b.hot ? 3 : 0);
-    if (dz >= 3) { ctx.beginPath(); ctx.arc(x, y, r + (dz >= 4 ? 3.6 : 2.6), 0, TAU); ctx.lineWidth = dz >= 4 ? 4 : 2; ctx.strokeStyle = C.orange; ctx.stroke(); }
+    if (dz >= 3) { const R0 = r + (dz >= 4 ? 3.6 : 2.6); if (dz >= 4) { ctx.beginPath(); ctx.arc(x, y, R0, 0, TAU); ctx.lineWidth = 5.6; ctx.strokeStyle = C.white; ctx.stroke(); } ctx.beginPath(); ctx.arc(x, y, R0, 0, TAU); ctx.lineWidth = dz >= 4 ? 3.4 : 2.2; ctx.strokeStyle = C.deg[dz]; ctx.stroke(); }
     /* threatened: a dashed ring */
     if (b.sig) { ctx.beginPath(); ctx.arc(x, y, r + (dz >= 3 ? 7 : 3.4), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = C.white; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]); }
     /* new: a red point at the shoulder */
@@ -492,5 +510,5 @@
     return { dx: dx * amp, dy: dy * amp, rot, sx };
   }
 
-  window.DA_MARKS = { C, ICONS, GLYPHS, WORDS, KINDS, KEY, TONES, STILL, GROUP, GROUP_WORDS, toneOf, sprite, icon, glyph, pin, pulse, cluster, label, lattice, badge, badgeSprite, motion, heroMotion, radar };
+  window.DA_MARKS = { C, ICONS, GLYPHS, WORDS, KINDS, KEY, TONES, STILL, GROUP, GROUP_WORDS, toneOf, sprite, icon, glyph, pin, printer, pulse, cluster, label, lattice, badge, badgeSprite, motion, heroMotion, radar };
 })();

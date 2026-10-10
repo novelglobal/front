@@ -6,3 +6,15 @@
   Cross-Origin-Opener-Policy: same-origin
   Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), serial=(), bluetooth=()
   Strict-Transport-Security: max-age=31536000
+
+# the approval page: never kept, never indexed, never framed, and its script only from here
+/admin
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+/admin.js
+  Cache-Control: no-store

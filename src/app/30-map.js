@@ -30,14 +30,16 @@ const map = new maplibregl.Map({
   attributionControl: false, fadeDuration: 0, renderWorldCopies: false,
   maxBounds: [[B.w - 0.07, B.s - 0.06], [B.e + 0.07, B.n + 0.06]],
 });
-map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME} · ${CONFIG.BY.toUpperCase()}</a> · iNaturalist · © OpenStreetMap · Open-Meteo` }), 'bottom-left');
+/* the information corner: who made it, where everything comes from, the build this page came from, and the way to the approval page */
+const buildWord = (BUILD.sha ? ` · <span class="da-build" title="The version of the site you are looking at">BUILD ${esc(BUILD.sha.toUpperCase())}${BUILD.branch ? ` · ${esc(BUILD.branch.toUpperCase())}` : ''}</span>` : '') + ' · <a class="da-admin" href="admin" target="_blank" rel="noopener" title="Approval">ADMIN</a>';
+map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME} · ${CONFIG.BY.toUpperCase()}</a> · iNaturalist · © OpenStreetMap · Open-Meteo${buildWord}` }), 'bottom-left');
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); setView(1, false, 'sources'); } });
 map.on('load', () => {
   S.mapReady = true;
-  const open = S.byId.get(S.sel); const sg = S.mode === 'sig' && S.signals.find(x => x.key === S.sig);
+  const open = S.byId.get(S.sel);
   if (open) map.jumpTo({ center: [open.lng, open.lat], zoom: 15.6 });
-  else if (sg && sg.pin) map.jumpTo({ center: [sg.pin.lng, sg.pin.lat], zoom: 15.6 });
-  else { const z = scanZoom(); if (!reduced()) { map.jumpTo({ center: [S.scan.lng, S.scan.lat], zoom: z - 0.8 }); map.easeTo({ zoom: z, duration: 1600, easing: t => 1 - Math.pow(1 - t, 3) }); } else map.jumpTo({ center: [S.scan.lng, S.scan.lat], zoom: z }); }
+  /* the radar framed in the ground left open beside the page (NOW lands open), settling in as it comes */
+  else { const z = scanZoom(); if (!reduced()) { map.jumpTo({ center: [S.scan.lng, S.scan.lat], zoom: z - 0.8 }); map.easeTo({ center: [S.scan.lng, S.scan.lat], zoom: z, offset: sheetOffset(), duration: 1600, easing: t => 1 - Math.pow(1 - t, 3) }); } else map.easeTo({ center: [S.scan.lng, S.scan.lat], zoom: z, offset: sheetOffset(), duration: 0 }); }
   const fold = () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); };
   fold(); setTimeout(fold, 200);
   life.start(); refresh();
@@ -65,6 +67,7 @@ map.on('click', e => {
     if (h && h.kind === 'node') { strings.tap(h.key); return; }
     if (h && h.kind === 'cell') { if (h.id === S.sel) strings.tap('pin'); else strings.peekOut(h.id); return; }
     if (h && h.kind === 'zoom') return;
+    if (h && h.kind === 'partner') { selectPartner(h.id); return; }
     const o = S.byId.get(S.sel); if (o && haversine(o.lat, o.lng, e.lngLat.lat, e.lngLat.lng) <= rangeOf(o)) { strings.ground(e.lngLat); return; }
     strings.unpeek(); tick(800); return;
   }
@@ -73,7 +76,7 @@ map.on('click', e => {
     if (h.kind === 'node') { strings.tap(h.key); return; }
     if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
     if (h.kind === 'tribe') { selectTribe(h.id); return; }
-    if (h.kind === 'sig') { openSignal(h.key); return; }
+    if (h.kind === 'partner') { selectPartner(h.id); return; }
     select(h.id); return;
   }
   if (S.mode) { closeRecord(); return; }
@@ -87,7 +90,7 @@ let hoverT = 0, hoverKey = null, hoverLast = null;
 function hoverAt(e) {
   const h = life.hit(e.point.x, e.point.y, true); const canvas = map.getCanvas();
   canvas.style.cursor = h ? 'pointer' : S.mode === 'ping' || S.mode === 'place' || life.inScan(map.unproject(e.point).lat, map.unproject(e.point).lng) ? '' : 'crosshair';
-  const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'sig' ? 's:' + h.key : null) : null;
+  const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'partner' ? 'p:' + h.id : null) : null;
   if (key !== hoverKey) { hoverKey = key; life.hover(h && key ? h : null); }
 }
 /* at most one look every 40 ms, and always one where the pointer comes to rest */
@@ -106,7 +109,7 @@ map.on('contextmenu', e => {
   /* on open ground the right button backs out: whatever is open closes and the radar carries on */
   if (!h || h.kind === 'zoom') { if (S.mode) { tick(900); closeRecord(); } return; }
   if (S.mode === 'ping') { if (h.kind === 'node') strings.join(h.key); else if (h.kind === 'cell') { if (h.id === S.sel) strings.playOpen(); else strings.join('x:' + h.id); } return; }
-  if (h.kind === 'cell') select(h.id); else if (h.kind === 'tribe') selectTribe(h.id); else if (h.kind === 'sig') openSignal(h.key);
+  if (h.kind === 'cell') select(h.id); else if (h.kind === 'tribe') selectTribe(h.id); else if (h.kind === 'partner') selectPartner(h.id);
 });
 /* on a phone a long press on a knot is the right button: it joins at once, or lets go */
 let knotT = 0, knotPt = null, knotHeld = false;

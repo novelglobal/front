@@ -22,7 +22,8 @@ window.DA_CONFIG = {
   ],
   OVERLAY_API: 'https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/',
   RADIUS: { min: 50, max: 1500 },                                   // a cell's own radius, in metres
-  SCAN: { lat: -37.7690, lng: 144.9630, r: 520, min: 250, max: 1500, turn: 8 },   // the radar: where it starts, its radius in metres, seconds per sweep
+  SCAN: { lat: -37.7690, lng: 144.9630, r: 520, min: 250, max: 1500, turn: 8, find: 1500 },   // the radar: where it starts, its radius in metres, seconds per sweep; on a first visit it moves up to `find` metres to where most kinds of life have been seen lately
+  FRESH_H: 24,                                                      // outside the radar, only what is from the last 24 hours: pins, sightings, events, animals hurt, dead or lost
   SIGNAL: { line: 48, mesh: 200, pager: 80 },                       // characters per W.I.S.H. line · bytes per mesh message · characters per pager line
   PORTAL_URL: 'https://novel.global/',                               // where it is hosted: printed codes link back here
   EVENTS_URL: '',                                                   // a sheet of gatherings published as CSV: title, start, venue, lat, lng, tags, link
@@ -353,6 +354,22 @@ window.DA_OUTPUTS = [
   { k: 'mesh', ic: 'lora', w: 'MESH', ref: 'https://meshtastic.org/', tip: '200 bytes over a LoRa mesh radio' },
   { k: 'pager', ic: 'pager', w: 'PAGER', ref: 'https://en.wikipedia.org/wiki/Pager', tip: '80 characters for a pager' },
   { k: 'link', ic: 'qr', w: 'LINK', ref: 'https://en.wikipedia.org/wiki/QR_code', tip: 'The whole signal in a link' },
+];
+
+/* Receipt paper: the dots a printer's head has across, and the characters a line holds in its first font.
+   An Epson TM-T88V on 80 mm paper prints about 512 dots: confirm with its self-test (hold FEED while switching it on). */
+window.DA_PRINTERS = {
+  58: { w: '58 MM', dots: 384, cols: 32 },
+  80: { w: '80 MM', dots: 512, cols: 42 },
+};
+
+/* Partner places: DIRECT ACTION sends a slip to one of them to print. Each id is that place's print queue, and its name,
+   address and site are its entry in places.js. printer: a W.I.S.H. receipt printer is there now, and the place is marked
+   on the map, always. paper: its printer's paper, above. */
+window.DA_PARTNERS = [
+  { id: 'pickles', printer: true, paper: 80 },
+  { id: 'kines', printer: false, paper: 80 },
+  { id: 'elsie', printer: false, paper: 80 },
 ];
 
 /* Where the gigs are listed. A gathering in the events sheet tagged rrr or ra carries that listing's name; gig marks any gig. */

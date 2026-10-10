@@ -5,6 +5,7 @@ import path from 'path';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { observations, businesses, demTile, satTile, photo, ensemble, forecast, com, sensors, historic } from './fixtures.mjs';
+import { createTestHarness } from 'wrangler';
 const require = createRequire(import.meta.url);
 const jsQR = require('jsqr');
 const sharp = require('sharp');
@@ -16,8 +17,15 @@ const OBS = observations(230); const BIZ = businesses(); const HIST = [historic(
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.md': 'text/markdown' };
 const cache = new Map(); const unexpected = new Set();
 const BASE_CONFIG = fs.readFileSync(path.join(DIST, 'config.js'), 'utf8');
+/* the app's own server: the real Worker with a fresh local database, behind https://oan.test/api/ */
+const ADMIN_KEY = 'test-admin-key-not-a-real-one';
+const apiServer = createTestHarness({ root: ROOT, workers: [{ configPath: './wrangler.jsonc', secrets: { ADMIN_KEY } }] });
+const API_O = (await apiServer.listen()).url.origin;
+const admin = async (p, body) => { const r = await apiServer.fetch(new URL('/api/admin/' + p, API_O), { method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${ADMIN_KEY}`, 'content-type': 'application/json', origin: API_O }, body: body ? JSON.stringify(body) : undefined }); return r.json(); };
 
-async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false } } = {}) {
+async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false } = {}) {
+  /* the radar stays where it is pinned, unless a check is about a first visit */
+  if (!first) await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', '{"found":true}'); } catch (e) { /* no storage */ } });
   await ctx.route('**/*', async route => {
     const url = route.request().url(); const u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -25,6 +33,11 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
     const ok = (body, type, extra = {}) => route.fulfill({ status: 200, body, headers: { 'content-type': type, 'access-control-allow-origin': '*', ...extra } });
     const json = o => ok(JSON.stringify(o), 'application/json');
     try {
+      if ((u.host === 'oan.test' || u.host === 'novel.global') && u.pathname.startsWith('/api/')) {
+        const rq = route.request(); const headers = { ...rq.headers(), origin: API_O }; delete headers.host;
+        const r = await apiServer.fetch(new URL(u.pathname + u.search, API_O), { method: rq.method(), headers, body: rq.postDataBuffer() || undefined });
+        return route.fulfill({ status: r.status, body: Buffer.from(await r.arrayBuffer()), headers: Object.fromEntries(r.headers) });
+      }
       if (u.host === 'oan.test' || u.host === 'novel.global') {
         let p = decodeURIComponent(u.pathname); if (p.endsWith('/')) p += 'index.html';
         if (p === '/config.js' && config) return ok(config, MIME['.js']);
@@ -80,7 +93,9 @@ const watch = (page, tag) => { page.on('console', m => { if (m.type() === 'error
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const results = []; const check = (name, cond, info = '') => results.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${info ? ' — ' + info : ''}`);
 const shot = async (page, file, opt = {}) => { try { await page.screenshot({ path: `${SHOTS}/${file}`, animations: 'disabled', timeout: 90000, ...opt }); } catch (e) { results.push(`WARN  screenshot ${file}: ${e.message.split('\n')[0]}`); } };
-const ready = (page, extra = '') => page.waitForFunction(new Function(`return !!(window.__da && window.__da.S.obs.length > 100 && window.__da.S.mapReady && window.__da.life.items.length > 100${extra})`), null, { timeout: 90000 });
+/* loaded, with NOW closed again (the site lands on NOW), so each check starts from the bare radar; keep: leave it open */
+const ready = (page, extra = '', keep = false) => page.waitForFunction(new Function(`return !!(window.__da && window.__da.S.obs.length > 100 && window.__da.S.mapReady && window.__da.life.items.length > 100${extra})`), null, { timeout: 90000 })
+  .then(() => (keep ? null : page.evaluate(() => { const da = window.__da; if (da.S.open && !da.S.mode) da.setOpen(false); })));
 const tap = async (page, sel, opt = {}) => { try { await page.click(sel, { timeout: 20000, ...opt }); } catch (e) { throw new Error(`click ${sel}: ${e.message.split('\n').find(l => /intercepts|Timeout|not/.test(l)) || e.message.split('\n')[0]}`); } };
 const xy = (page, id) => page.evaluate(id => { const da = window.__da; const o = da.S.byId.get(id); if (!o) return null; const p = da.map.project([o.lng, o.lat]); const r = da.map.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; }, id);
 const settle = page => page.evaluate(() => new Promise(res => { const m = window.__da.map; if (!m.isMoving()) { m.once('idle', res); m.triggerRepaint(); } else m.once('idle', res); setTimeout(res, 12000); }));
@@ -113,16 +128,31 @@ if (ONLY.includes('dbg')) try {
 // ───────── smoke: the bare radar, then the two pages ─────────
 if (run('smoke')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'smoke');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(600);
+  await page.goto('https://oan.test/index.html#stories'); await ready(page, '', true); await settle(page);
+  const land = await page.evaluate(() => { const da = window.__da; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const panel = document.querySelector('#panel').getBoundingClientRect(); return { open: da.S.open, view: da.S.view, five: document.querySelectorAll('#sec-five .hero-row').length, radarLeftOfPage: c.x < panel.left, hash: location.hash }; });
+  check('the site lands on NOW, the radar beside it, even from a link to another page', land.open && land.view === 0 && land.five === 5 && land.radarLeftOfPage && land.hash === '#now', JSON.stringify(land));
+  const adm = await page.evaluate(() => { const a = document.querySelector('.maplibregl-ctrl-attrib a.da-admin'); return a ? { href: a.getAttribute('href'), text: a.textContent, nextTo: !!(a.previousElementSibling && a.previousElementSibling.classList.contains('da-build')) } : null; });
+  check('a small ADMIN link sits beside the build in the information corner', adm && adm.href === 'admin' && adm.text === 'ADMIN' && adm.nextTo, JSON.stringify(adm));
+  await page.evaluate(() => window.__da.setOpen(false)); await sleep(600);
   const a = await page.evaluate(() => { const da = window.__da; const vis = el => !!el && !el.hidden && el.getBoundingClientRect().width > 0; const panel = document.querySelector('#panel').getBoundingClientRect();
     return { shut: document.body.classList.contains('shut'), panelOff: panel.left >= innerWidth - 2, tabs: document.querySelectorAll('#rail .tab').length, knob: vis(document.querySelector('#knob')), ring: vis(document.querySelector('#ring')), seen: da.life.seen().size, sweep: da.life.sweep, words: document.body.innerText.replace(/\s+/g, ' ').trim().split(' ').filter(w => /[a-z]{3,}/i.test(w)).length }; });
-  check('the map opens bare: the page closed, only the radar and its two handles', a.shut && a.panelOff && a.tabs === 2 && a.knob && a.ring && a.words <= 12, JSON.stringify(a));
+  check('closed, the page leaves only the radar and its two handles', a.shut && a.panelOff && a.tabs === 2 && a.knob && a.ring && a.words <= 12, JSON.stringify(a));
   await sleep(3500);
   const b = await page.evaluate(() => ({ seen: window.__da.life.seen().size, sweep: window.__da.life.sweep }));
   check('the sweep turns and finds what lies inside it', b.sweep !== a.sweep && b.seen > a.seen, `${JSON.stringify(a)} → ${JSON.stringify(b)}`);
+  await page.evaluate(() => { window.__blips = 0; const s = window.__da.snd; const o = s.blip; s.blip = k => { window.__blips++; return o.call(s, k); }; });
+  await page.keyboard.press('a'); await sleep(2600);
+  const bl = await page.evaluate(() => ({ blips: window.__blips, found: window.__da.life.items.filter(it => it.inS && window.__da.life.seen().has(it.o.id) && window.__da.life.shown(it) && !it.o.hist && it.b.tone !== 'cold').length }));
+  check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16), JSON.stringify(bl));
   const v = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const its = da.life.items; const shown = its.filter(it => da.life.shown(it)); const out = shown.filter(it => !it.inS);
-    return { shown: shown.length, inside: shown.length - out.length, outside: out.length, hidden: its.filter(it => !it.inS && !da.life.shown(it)).length, allFlagged: out.every(it => it.flag), why: [...new Set(out.map(it => it.alarm ? 'alarm' : it.hero ? 'five' : it.b.dz >= 4 ? 'extreme' : it.o.tx && it.o.tx.th ? 'threatened' : it.o.user ? 'placed' : 'other'))] }; });
-  check('outside the radar only the hurt, dead, lost, extreme, threatened and the five are shown', v.allFlagged && v.inside > 5 && v.hidden > 50 && v.why.includes('five'), JSON.stringify(v));
+    return { shown: shown.length, inside: shown.length - out.length, outside: out.length, hidden: its.filter(it => !it.inS && !da.life.shown(it)).length, allFresh: out.every(it => it.flag && da.isFresh(it.o) && Date.now() - da.stampOf(it.o) < 864e5 + 6e4), freshHidden: its.filter(it => !it.inS && da.isFresh(it.o) && !da.life.shown(it)).length }; });
+  check('outside the radar, one rule: only what is from the last 24 hours', v.allFresh && v.outside > 0 && v.freshHidden === 0 && v.inside > 5 && v.hidden > 50, JSON.stringify(v));
+  const corner = await page.evaluate(() => (document.querySelector('.maplibregl-ctrl-attrib .da-build') || {}).textContent || '');
+  check('the information corner carries the build', /^BUILD \w{7}/.test(corner), corner);
+  const sp = await page.evaluate(() => { const da = window.__da; const its = da.life.items.filter(it => da.life.shown(it) && !it.binned && it.b.tone !== 'hist'); let raw = 0, drawn = 0;
+    for (let i = 0; i < its.length; i++) for (let j = i + 1; j < its.length; j++) { const a = its[i], b = its[j]; const need = (a.b.d + b.b.d) / 2 * 0.7; const pa = da.map.project([a.lng, a.lat]), pb = da.map.project([b.lng, b.lat]); if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < need) raw++; if (Math.hypot(a.x - b.x, a.y - b.y) < need) drawn++; }
+    return { n: its.length, raw, drawn }; });
+  check('marks that would sit on each other move apart', sp.drawn <= sp.raw && (sp.raw === 0 || sp.drawn < sp.raw), JSON.stringify(sp));
   await sleep(300);
   const dk = await page.evaluate(() => { const da = window.__da; const cv = document.querySelector('canvas.life:not(.fx)'); const x = cv.getContext('2d'); const k = cv.width / cv.clientWidth; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const e = da.map.project([da.S.scan.lng + da.S.scan.r / (111320 * Math.cos(da.S.scan.lat * Math.PI / 180)), da.S.scan.lat]); const R = e.x - c.x;
     const out = [], inn = []; for (let a = 0; a < 360; a += 10) for (const [f, arr] of [[1.45, out], [0.6, inn]]) { const px = c.x + Math.cos(a * Math.PI / 180) * R * f, py = c.y + Math.sin(a * Math.PI / 180) * R * f; if (px < 4 || py < 4 || px > cv.clientWidth - 4 || py > cv.clientHeight - 4) continue; if (da.life.items.some(it => da.life.shown(it) && Math.hypot(it.x - px, it.y - py) < 40)) continue; arr.push(x.getImageData(Math.round(px * k), Math.round(py * k), 1, 1).data[3]); }
@@ -134,6 +164,11 @@ if (run('smoke')) try {
   await tab(page, 0); await sleep(600);
   const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: (document.querySelector('#view').innerText.match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
   check('NOW: the outlook, the five, the gigs, in labels and no sentences', now.open && now.five === 5 && now.months === 12 && !!now.count && now.gigs === 2 && now.sentences === 0, JSON.stringify(now));
+  const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const kinds = [...band.querySelectorAll('.kinds span')]; const pics = [...document.querySelectorAll('#sec-five .h-pic')]; const five = document.querySelector('#sec-five').getBoundingClientRect();
+    const deg = ['--deg0', '--deg1', '--deg2', '--deg3', '--deg4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim().toLowerCase());
+    return { bg: getComputedStyle(band).backgroundColor, kinds: kinds.length, us: band.querySelectorAll('.kinds .us use[href="#k-human"]').length, kindWords: kinds.map(k => k.textContent.trim()).join(''), pics: pics.length, picsWithMark: pics.filter(p => (p.querySelector('img') || p.querySelector('canvas')) && p.querySelector('svg use')).length, fiveH: Math.round(five.height), deg }; });
+  check('the outlook runs orange to red to black on paper, over every kind of life, us among them, with no words', nw.bg !== 'rgb(11, 37, 69)' && nw.kinds === 12 && nw.us === 1 && nw.kindWords === '' && nw.deg[0] !== nw.deg[4] && nw.deg[4] === '#141412' && nw.deg[3] === '#d62e1f', JSON.stringify(nw));
+  check('the five: a strip of photographs, each with its mark, in little room', nw.pics === 5 && nw.picsWithMark === 5 && nw.fiveH < 190, JSON.stringify({ pics: nw.pics, marks: nw.picsWithMark, h: nw.fiveH }));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
   check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
   const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });
@@ -142,11 +177,23 @@ if (run('smoke')) try {
   await tab(page, 1); await sleep(600);
   const st = await page.evaluate(() => { const rows = [...document.querySelectorAll('#sec-signals .sig-row')]; return { rows: rows.length, ex: rows.filter(r => r.classList.contains('ex')).length, codes: rows.map(r => r.querySelector('b').textContent), groups: document.querySelectorAll('#sec-groups .row').length, docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
   check('STORIES: the signals board with three examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 3 && st.ex === 3 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
+  check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-stories.png');
   await tap(page, '#rail .tab[data-i="1"]'); await sleep(500);
   check('the same tab closes the page again', await page.evaluate(() => document.body.classList.contains('shut')));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section smoke: ${e.message.split('\n')[0]}`); }
+
+// ───────── a first visit: the radar starts where most kinds of animals were seen lately ─────────
+if (run('first')) try {
+  const ctx = await newCtx(); await wire(ctx, { first: true }); const page = await ctx.newPage(); watch(page, 'first');
+  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
+  const f = await page.evaluate(() => { const da = window.__da; const C = da.CONFIG.SCAN; const kinds = (lat, lng) => new Set(da.S.obs.filter(o => !o.ob && !o.hum && !da.isCold(o) && !['Plantae', 'Fungi'].includes((o.tx || {}).ic) && da.haversine(lat, lng, o.lat, o.lng) <= da.S.scan.r).map(o => o.tx.id || o.tx.n)).size;
+    return { found: JSON.parse(localStorage.getItem('da.prefs') || '{}').found === true, moved: Math.round(da.haversine(C.lat, C.lng, da.S.scan.lat, da.S.scan.lng)), within: da.haversine(C.lat, C.lng, da.S.scan.lat, da.S.scan.lng) <= C.find + 1, at: kinds(da.S.scan.lat, da.S.scan.lng), start: kinds(C.lat, C.lng) }; });
+  check('on a first visit the radar moves, once, to where more kinds of animals were seen lately, close by', f.found && f.within && f.at >= f.start, JSON.stringify(f));
+  await ctx.close();
+} catch (e) { results.push(`FAIL  section first: ${e.message.split('\n')[0]}`); }
 
 // ───────── the radar: moved, resized, kept ─────────
 if (run('radar')) try {
@@ -170,6 +217,8 @@ if (run('radar')) try {
   const rb = await (await page.$('#ring')).boundingBox(); await page.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2); await page.mouse.down(); await page.mouse.move(rb.x + rb.width / 2 + 140, rb.y + rb.height / 2, { steps: 10 }); await page.mouse.up(); await sleep(400);
   const r1 = await page.evaluate(() => window.__da.S.scan.r);
   check('dragging the rim widens its reach', r1 > s1.r + 100 && r1 <= 1500, `${s1.r} → ${r1}`);
+  const wide = await page.evaluate(() => { const da = window.__da; const ins = da.life.items.filter(i => i.inS); return { inside: ins.length, seen: ins.filter(i => da.life.seen().has(i.o.id)).length }; });
+  check('a wider reach shows all it holds at once, without waiting for the hand', wide.inside > 0 && wide.seen === wide.inside, JSON.stringify(wide));
   const rb2 = await (await page.$('#ring')).boundingBox(); const kc = await (await page.$('#knob')).boundingBox(); await page.mouse.move(rb2.x + rb2.width / 2, rb2.y + rb2.height / 2); await page.mouse.down(); await page.mouse.move(kc.x + kc.width / 2 + 6, kc.y + kc.height / 2, { steps: 10 }); await page.mouse.up(); await sleep(300);
   check('the reach stops at its least', await page.evaluate(() => window.__da.S.scan.r) === 250);
   const kb = await (await page.$('#knob')).boundingBox(); await page.mouse.move(kb.x + kb.width / 2, kb.y + kb.height / 2); await page.mouse.down(); await page.mouse.move(kb.x + kb.width / 2 - 160, kb.y + kb.height / 2 + 60, { steps: 10 }); await page.mouse.up(); await sleep(400);
@@ -374,10 +423,10 @@ if (run('wish')) try {
   check('notes sit just above NOTICED, kept on this device', nt.last && nt.shown && Object.values(nt.kept).includes(NOTE), JSON.stringify(nt));
   await tap(page, '#r-act'); await sleep(1400);
   const w0 = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent, values: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), max: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).maxLength), ph: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).placeholder), letters: document.querySelectorAll('#w-slip .sl-wish label, #w-slip .sl-wish b').length, sug: document.querySelectorAll('#w-sug, [data-s], select').length, life: document.querySelector('#w-slip .sl-life b').textContent, site: document.querySelector('#w-slip .sl-meta dd').textContent, code: document.querySelector('#w-slip .sl-code').textContent }));
-  check('it turns over to a blank slip: four empty lines of 48, each saying what it is for; DIRECT ACTION issues it', w0.face === 'wish' && w0.main === 'DIRECT ACTION' && w0.values.every(v => v === '') && w0.max.every(m => m === 48) && /^What we know/.test(w0.ph[0]) && /^It would be great/.test(w0.ph[1]) && /^So let's create/.test(w0.ph[2]) && /^Here is how it works/.test(w0.ph[3]) && !w0.letters && !w0.sug && w0.life.length > 5 && /-37\.\d{4} 144\.\d{4}/.test(w0.site) && w0.code === 'DA-····', JSON.stringify(w0));
+  check('it turns over to a blank slip: four empty lines of 48, each saying what it is for; RESPONSE issues it', w0.face === 'wish' && w0.main === 'RESPONSE' && w0.values.every(v => v === '') && w0.max.every(m => m === 48) && /^What we know/.test(w0.ph[0]) && /^It would be great/.test(w0.ph[1]) && /^So let's create/.test(w0.ph[2]) && /^Here is how it works/.test(w0.ph[3]) && !w0.letters && !w0.sug && w0.life.length > 5 && /-37\.\d{4} 144\.\d{4}/.test(w0.site) && w0.code === 'DA-····', JSON.stringify(w0));
   /* the photograph: black and white, changeable, or none */
   const im0 = await page.evaluate(() => { const c = document.querySelector('#w-img'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; const vals = new Set(); for (let i = 0; i < d.length; i += 4 * 97) vals.add(d[i] === d[i + 1] && d[i + 1] === d[i + 2] ? d[i] : -1); return { w: c.width, h: c.height, vals: [...vals].sort((a, b) => a - b), n: document.querySelector('#w-imgn').textContent, cap: document.querySelector('#w-cap').textContent, ratio: c.getBoundingClientRect().height / c.getBoundingClientRect().width }; });
-  check('the slip opens with the photograph in black and white, credited', im0.w > 100 && im0.vals.length <= 2 && !im0.vals.includes(-1) && /^FIG\. 1 · /.test(im0.cap) && /iNaturalist/i.test(im0.cap) && im0.ratio > 0.7, JSON.stringify(im0));
+  check('the slip opens with the photograph in black and white, credited, with no figure number', im0.w > 100 && im0.vals.length <= 2 && !im0.vals.includes(-1) && !/FIG/.test(im0.cap) && /iNaturalist/i.test(im0.cap) && im0.ratio > 0.7, JSON.stringify(im0));
   const nOf = await page.evaluate(() => window.__da.imgList(window.__da.S.byId.get(window.__da.S.sel)).length);
   if (nOf > 1) { await tap(page, '#w-imgs [data-img="next"]'); await sleep(900); }
   const im1 = await page.evaluate(() => ({ n: document.querySelector('#w-imgn').textContent, kept: JSON.parse(localStorage.getItem('da.img.v1') || '{}')[window.__da.S.sel] }));
@@ -405,16 +454,14 @@ if (run('wish')) try {
   check('the note comes across, ticked to print', nn.note === NOTE && nn.on, JSON.stringify(nn));
   await page.fill('#w-h', ''); await page.type('#w-h', 'x'.repeat(60));
   check('a line stops at 48 characters', (await page.evaluate(() => document.querySelector('#w-h').value.length)) === 48);
-  await page.fill('#w-h', ''); await tap(page, '#r-act'); await sleep(600);
-  check('DIRECT ACTION waits for all four lines', await face(page) === 'wish');
   await page.evaluate(() => { document.querySelector('#r-scroll').scrollTop = 0; });
   await shot(page, '20-wish.png');
   await fillAndIssue(page);
   const s = await page.evaluate(() => { const da = window.__da; const s = da.S.signals[0]; const fig = document.querySelector('#s-slip .sl-fig'); const body = document.querySelector('#s-slip .sl-body'); const img = document.querySelector('#s-slip .sl-img');
     return { face: da.face(), code: s.code, mine: s.mine, lines: s.lines, nodes: s.nodes.map(n => n.n), edges: s.edges.length, note: s.note, threat: s.threat, img: s.img, letters: document.querySelectorAll('#s-slip .sl-wish b, #s-slip .sl-wish label').length, poem: [...document.querySelectorAll('#s-slip .sl-wish li')].map(li => li.textContent), slipNote: (document.querySelector('#s-slip .sl-note') || {}).textContent, hash: location.hash, qr: !!document.querySelector('#s-slip .sl-qr svg'),
-      fig: fig && { h: fig.offsetHeight, w: fig.offsetWidth, body: body.offsetHeight, dithered: /^data:image\/png/.test(img.src), cap: fig.querySelector('.sl-cap').textContent }, rel: [...document.querySelectorAll('#s-slip .sl-rel li')].map(li => li.querySelector('b').textContent + ' ' + li.querySelector('span').textContent), fig2: !!document.querySelector('#s-slip .sl-fig2 svg') }; });
+      fig: fig && { h: fig.offsetHeight, w: fig.offsetWidth, body: body.offsetHeight, dithered: /^data:image\/png/.test(img.src), cap: fig.querySelector('.sl-cap').textContent }, rel: [...document.querySelectorAll('#s-slip .sl-rel li')].map(li => li.querySelector('b').textContent + ' ' + li.querySelector('span').textContent), fig2: !!document.querySelector('#s-slip .sl-fig2 svg'), noFig: !/FIG\.|NORTH UP/.test(document.querySelector('#s-slip').innerText), chartFirst: document.querySelector('#s-slip .sl-rel').firstElementChild.classList.contains('sl-fig2') }; });
   check('issued: the code, the four lines with no letters, the knots chosen and renamed, the statement rewritten, the note', s.face === 'signal' && /^DA-[0-9A-HJKMNP-TV-Z]{4}$/.test(s.code) && s.mine && Object.values(s.lines).every(Boolean) && s.nodes.length === 2 && s.nodes[0] === 'The corner shop' && s.edges === 2 && s.note === NOTE && s.threat === ST && !s.letters && s.poem[0] === 'A line for w' && /^NOTE\s+/.test(s.slipNote) && s.slipNote.endsWith(NOTE) && s.hash === '#' + s.code && s.qr, JSON.stringify(s));
-  check('set as an archive record: FIG. 1 in black and white, as tall as the slip under it; RELATIONS numbered; FIG. 2', s.img && s.img.k === 'inat' && s.fig && s.fig.dithered && s.fig.h >= s.fig.w * 0.8 && s.fig.h >= Math.min(s.fig.body, s.fig.w * 1.2) - 2 && /^FIG\. 1/.test(s.fig.cap) && s.rel[0] === '01 The corner shop' && s.fig2, JSON.stringify({ img: s.img, fig: s.fig, rel: s.rel }));
+  check('set as an archive record: the photograph in black and white, credited, as tall as the slip under it; the figure above the relations it numbers; no FIG. or NORTH UP', s.img && s.img.k === 'inat' && s.fig && s.fig.dithered && s.fig.h >= s.fig.w * 0.8 && s.fig.h >= Math.min(s.fig.body, s.fig.w * 1.2) - 2 && /iNaturalist/.test(s.fig.cap) && s.rel[0] === '01 The corner shop' && s.fig2 && s.noFig && s.chartFirst, JSON.stringify({ img: s.img, fig: s.fig, rel: s.rel, noFig: s.noFig, chartFirst: s.chartFirst }));
   const story = await page.evaluate(() => ({ groups: [...document.querySelectorAll('#s-slip .sl-rel li[data-g]')].map(li => li.dataset.g), harm: [...document.querySelectorAll('#s-slip .sl-rel li.harm small')].map(x => x.textContent), nums: [...document.querySelectorAll('#s-slip .sl-fig2 svg text')].map(t => t.textContent), dashed: !!document.querySelector('#s-slip .sl-fig2 svg path[stroke-dasharray]') }));
   check('the relations tell the story: what harms it first, in plain words; every point numbered in FIG. 2', /^HARM · 1/.test(story.groups[0]) && /^(sells|leaves|lights|washes|sprays) /.test(story.harm[0]) && story.nums.join(',') === '1,2' && story.dashed, JSON.stringify(story));
   const link = await qrOf(page, '#s-slip .sl-qr');
@@ -428,7 +475,7 @@ if (run('wish')) try {
   const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'wish-recv');
   await p2.goto(link); await ready(p2); await sleep(2200);
   const rv = await p2.evaluate(code => { const da = window.__da; const s = da.S.signals.find(x => x.code === code); const img = document.querySelector('#s-slip .sl-img'); return { have: !!s, recv: s && s.recv, mode: da.S.mode, face: da.face(), lines: s && s.lines.h, note: s && s.note, threat: s && s.threat, img: s && s.img && s.img.k, shown: !!img && /^data:image\/png/.test(img.src) }; }, s.code);
-  check('the link opens the signal on another device, received, with its statement, its photograph and its note', rv.have && rv.recv && rv.mode === 'sig' && rv.face === 'signal' && rv.lines === s.lines.h && rv.note === NOTE && rv.threat === ST && rv.img === 'inat' && rv.shown, JSON.stringify(rv));
+  check('the link opens the signal on another device, received, with its statement, its photograph and its note', rv.have && rv.recv && rv.mode === 'ping' && rv.face === 'signal' && rv.lines === s.lines.h && rv.note === NOTE && rv.threat === ST && rv.img === 'inat' && rv.shown, JSON.stringify(rv));
   await ctx2.close();
   await ctx.close();
 } catch (e) { results.push(`FAIL  section wish: ${e.message.split('\n')[0]}`); }
@@ -460,10 +507,10 @@ if (run('outputs')) try {
   const hasQR = bin.includes(Buffer.from([0x1D, 0x28, 0x6B])); check('ESC/POS: initialise, the slip, a QR code, a cut', bin[0] === 0x1B && bin[1] === 0x40 && hasQR && bin.slice(-4).equals(Buffer.from([0x1D, 0x56, 0x42, 0x00])) && bin.includes(Buffer.from(code)), `${bin.length} bytes`);
   check('ESC/POS: the photograph as raster lines, 48 bytes a row', bin.includes(Buffer.from([0x1D, 0x76, 0x30, 0x00, 48, 0])) && bin.length > 48 * 300, `${bin.length} bytes`);
   const refs = await page.evaluate(() => [...document.querySelectorAll('#s-out .out-w')].map(w => ({ k: w.querySelector('[data-out]').dataset.out, icon: !!w.querySelector('.out svg use'), ref: (w.querySelector('a.out-ref') || {}).href || '' })));
-  check('each machine is drawn as itself and links to what it is', refs.length === 6 && refs.every(r => r.icon && /^https:\/\//.test(r.ref)) && refs.some(r => /Game_Boy_Printer/.test(r.ref)) && refs.some(r => /meshtastic/.test(r.ref)) && refs.some(r => /escpos/.test(r.ref)), JSON.stringify(refs));
+  check('each machine is drawn as itself and links to what it is, the browser 58 mm print among them', refs.length === 7 && refs.some(r => r.k === 'print') && refs.every(r => r.icon && /^https:\/\//.test(r.ref)) && refs.some(r => /Game_Boy_Printer/.test(r.ref)) && refs.some(r => /meshtastic/.test(r.ref)) && refs.some(r => /escpos/.test(r.ref)), JSON.stringify(refs));
   await tap(page, '#s-out [data-out="link"]'); await sleep(400);
   check('LINK: the whole signal in a link', /#x=[A-Za-z0-9_-]{40,}/.test(await page.evaluate(() => document.querySelector('#s-text').textContent)));
-  await tap(page, '#r-act'); await page.waitForFunction(() => window.__printed >= 1, null, { timeout: 15000 });
+  await tap(page, '#s-out [data-out="print"]'); await page.waitForFunction(() => window.__printed >= 1, null, { timeout: 15000 });
   const pg = await page.evaluate(() => ({ size: (document.querySelector('#page-size') || {}).textContent, text: (window.__lastSlip || {}).text || '' }));
   check('PRINT: a strip 58 mm wide with the code and the four lines', /size:58mm \d+mm/.test(pg.size) && pg.text.includes(code), JSON.stringify(pg).slice(0, 160));
   await page.emulateMedia({ media: 'print' }); const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true }); await page.emulateMedia({ media: 'screen' }); fs.writeFileSync(`${SHOTS}/slip.pdf`, pdf);
@@ -482,8 +529,11 @@ if (run('board')) try {
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
   await tab(page, 1); await sleep(400);
   await page.click('#sec-signals .sig-row[data-sig="ex:DA-0RNG"]'); await sleep(2200);
-  const ex = await page.evaluate(() => { const da = window.__da; const c = da.map.getCenter(); const s = da.S.signals.find(x => x.code === 'DA-0RNG'); return { mode: da.S.mode, face: da.face(), no: document.querySelector('#r-no').textContent, near: Math.hypot(c.lat - s.pin.lat, c.lng - s.pin.lng) < 0.01, knots: document.querySelectorAll('#s-slip .sl-knots li').length, acts: [...document.querySelectorAll('#s-acts [data-sa]')].map(b => b.dataset.sa).join(' ') }; });
-  check('an example opens as a signal, its figure on the ground, marked EX and not removable', ex.mode === 'sig' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.acts === 'remix pin', JSON.stringify(ex));
+  const ex = await page.evaluate(() => { const da = window.__da; const c = da.map.getCenter(); const s = da.S.signals.find(x => x.code === 'DA-0RNG'); return { mode: da.S.mode, sel: da.S.sel, face: da.face(), no: document.querySelector('#r-no').textContent, near: Math.hypot(c.lat - s.pin.lat, c.lng - s.pin.lng) < 0.01, knots: document.querySelectorAll('#s-slip .sl-knots li').length, live: [...da.strings.nodes.keys()].filter(k => k.startsWith('s:DA-0RNG:')).length, marks: da.life.items.filter(i => i.o.code === 'DA-0RNG').length, acts: [...document.querySelectorAll('#s-acts [data-sa]')].map(b => b.dataset.sa).join(' ') }; });
+  check('an example opens as one cell, open and live, its slip turned up, marked EX and not removable', ex.mode === 'ping' && ex.sel === 'sp:DA-0RNG' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.live === 3 && ex.marks === 1 && ex.acts === 'remix pin', JSON.stringify(ex));
+  await settle(page); await clickNode(page, 's:DA-0RNG:a');
+  const lk = await page.evaluate(() => ({ peeked: window.__da.strings.peeked, card: !document.querySelector('#peek').hidden }));
+  check('its knots can be looked at, like any other', lk.peeked === 's:DA-0RNG:a' && lk.card, JSON.stringify(lk));
   await shot(page, '30-example.png');
   await tap(page, '#s-acts [data-sa="remix"]'); await sleep(1800);
   const rm = await page.evaluate(() => { const da = window.__da; return { sel: da.S.sel, face: da.face(), lines: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), fig: da.strings.fig.e.length }; });
@@ -491,10 +541,16 @@ if (run('board')) try {
   await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(400);
   await tap(page, '#rx-open'); await page.fill('#rx-t', 'DA-TST1 BOGONG MOTH\n-37.7700,144.9600\nW Moths fell 99.5% in three years\nI Dark streets\nS Dark is a habitat.\nH Lights off at close'); await tap(page, '#rx button[type="submit"]'); await sleep(1500);
   const rx = await page.evaluate(() => { const da = window.__da; const s = da.S.signals.find(x => x.code === 'DA-TST1'); return { have: !!s, recv: s && s.recv, mode: da.S.mode, h: s && s.lines.h }; });
-  check('RECEIVE takes a mesh message pasted in', rx.have && rx.recv && rx.mode === 'sig' && rx.h === 'Lights off at close', JSON.stringify(rx));
+  check('RECEIVE takes a mesh message pasted in', rx.have && rx.recv && rx.mode === 'ping' && rx.h === 'Lights off at close', JSON.stringify(rx));
   await page.evaluate(() => window.__da.receive('DA-TST2 GREY-HEADED FLYING-FOX\n-37.7800,144.9500\nCamps cook above 42 degrees\nShade before the heat\nWater is a habitat\nHose the trees at noon')); await sleep(900);
   const rx2 = await page.evaluate(() => { const s = window.__da.S.signals.find(x => x.code === 'DA-TST2'); return s && s.lines; });
   check('and one without letters, line by line', rx2 && rx2.w === 'Camps cook above 42 degrees' && rx2.h === 'Hose the trees at noon', JSON.stringify(rx2));
+  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(400);
+  await tap(page, '#rx-open'); await page.fill('#rx-t', ' da-0rng '); await tap(page, '#rx button[type="submit"]'); await sleep(1200);
+  const rc = await page.evaluate(() => ({ code: window.__da.S.issued && window.__da.S.issued.code, face: window.__da.face(), mode: window.__da.S.mode }));
+  await page.evaluate(() => window.__da.receive('DA-ZZZZ')); await sleep(600);
+  const nf = await page.evaluate(() => document.querySelector('#toast').textContent);
+  check('RECEIVE takes the code printed on a slip, as it is typed, and says when there is none', rc.code === 'DA-0RNG' && rc.face === 'signal' && rc.mode === 'ping' && /DA-ZZZZ · NOT FOUND/.test(nf), JSON.stringify({ rc, nf }));
   const n0 = await page.evaluate(() => window.__da.S.signals.length);
   const packed = await page.evaluate(() => window.__da.linkOf(window.__da.S.signals.find(x => x.code === 'DA-GHFF')) || '#x=' + window.__da.packSignal(window.__da.S.signals.find(x => x.code === 'DA-GHFF')));
   await page.evaluate(t => window.__da.receive(t), packed); await sleep(900);
@@ -506,6 +562,62 @@ if (run('board')) try {
   check('REMOVE takes a received signal off the board', await page.evaluate(() => !window.__da.S.signals.some(x => x.code === 'DA-TST1')));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section board: ${e.message.split('\n')[0]}`); }
+
+// ───────── sharing: NOTICED, RESPONSE with nothing written, DIRECT ACTION to a partner; approval; the board; RECEIVE by code ─────────
+if (run('share')) try {
+  const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'share');
+  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await openNear(page);
+  await tap(page, '#r-act'); await sleep(1200);
+  const w = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent }));
+  await tap(page, '#r-act'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(700);
+  const s0 = await page.evaluate(() => { const da = window.__da; const s = da.S.issued; return { code: s.code, lines: Object.values(s.lines).filter(Boolean).length, poem: !!document.querySelector('#s-slip .sl-wish'), main: document.querySelector('#r-act .hw').textContent, mesh: da.meshText(s), pager: da.pagerText(s) }; });
+  check('three steps, three words: NOTICED, RESPONSE, DIRECT ACTION; RESPONSE issues a slip with nothing written', w.face === 'wish' && w.main === 'RESPONSE' && s0.lines === 0 && !s0.poem && s0.main === 'DIRECT ACTION' && !/\n\n|\n$/.test(s0.mesh) && s0.pager.startsWith(s0.code), JSON.stringify({ w, s0 }));
+  const bin = await page.evaluate(async () => { const da = window.__da; const b58 = await da.escpos(da.S.issued, '58'), b80 = await da.escpos(da.S.issued, '80'); const has = (b, w) => { for (let i = 0; i < b.length - 6; i++) if (b[i] === 0x1D && b[i + 1] === 0x76 && b[i + 2] === 0x30 && b[i + 4] === w) return true; return false; }; const txt = String.fromCharCode(...b80.slice(0, 4000)); return { w58: has(b58, 48), w80: has(b80, 64), fig: /FIG\.|NORTH UP/.test(String.fromCharCode(...b58)) }; });
+  check('ESC/POS for 58 mm and for 80 mm paper, with no FIG. or NORTH UP', bin.w58 && bin.w80 && !bin.fig, JSON.stringify(bin));
+  await tap(page, '#r-act'); await sleep(900);
+  const dl = await page.evaluate(() => [...document.querySelectorAll('#s-send [data-dest]')].map(b => ({ d: b.dataset.dest, t: b.querySelector('b').textContent })));
+  check('DIRECT ACTION lists the partner places that print, and the board', dl.length === 4 && ['pickles', 'kines', 'elsie', ''].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
+  await page.click('#s-send [data-dest="pickles"]'); await page.waitForFunction(() => /WAITING FOR APPROVAL/.test(document.querySelector('#s-status').textContent), null, { timeout: 20000 });
+  const st0 = await page.evaluate(() => document.querySelector('#s-status').textContent);
+  const waiting = await admin('stories?status=waiting'); const mine = waiting.stories.find(x => x.code === s0.code);
+  check('sent to Pickles: it waits for approval, its print with it, and says so', /PICKLES MILK BAR/.test(st0) && mine && mine.dest === 'pickles' && mine.job === 'held', JSON.stringify({ st0, mine: mine && { code: mine.code, dest: mine.dest, job: mine.job } }));
+  await admin(`stories/${mine.id}`, { action: 'show' });
+  await page.evaluate(() => window.__da.checkSent()); await sleep(900);
+  const st1 = await page.evaluate(() => document.querySelector('#s-status').textContent);
+  check('approved: the sender sees it join the printer queue', /IN THE QUEUE/.test(st1) && /PICKLES/.test(st1), st1);
+  /* another device: the board shows it to everyone */
+  const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'share-2');
+  await p2.goto('https://oan.test/index.html'); await ready(p2); await sleep(1500); await tab(p2, 1); await sleep(600);
+  const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-signals .sig-row')].find(x => x.querySelector('b').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || {}).textContent : '' }; }, s0.code);
+  check('on another device it stands on the board, for everyone', b2.row && b2.sh && /SHOWN/.test(b2.st), JSON.stringify(b2));
+  await ctx2.close();
+  /* a third device, from the code printed on the slip */
+  const ctx3 = await newCtx(); await wire(ctx3); const p3 = await ctx3.newPage(); watch(p3, 'share-3');
+  await p3.goto('https://oan.test/index.html'); await ready(p3); await p3.evaluate(() => localStorage.removeItem('da.shared.v1')); await tab(p3, 1); await sleep(400);
+  await tap(p3, '#rx-open'); await p3.fill('#rx-t', s0.code.toLowerCase()); await tap(p3, '#rx button[type="submit"]'); await sleep(1600);
+  const r3 = await p3.evaluate(() => ({ code: window.__da.S.issued && window.__da.S.issued.code, face: window.__da.face(), mode: window.__da.S.mode }));
+  check('RECEIVE: the code printed on the slip brings the story up on any device', r3.code === s0.code && r3.face === 'signal' && r3.mode === 'ping', JSON.stringify(r3));
+  await ctx3.close();
+  /* the printer at Pickles: always on the map, its own card */
+  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.life.moveScan(-37.758, 144.952, false); }); await sleep(500);
+  const pk = await page.evaluate(() => { const da = window.__da; const p = da.PARTNERS.find(x => x.id === 'pickles'); da.map.jumpTo({ center: [p.lng, p.lat], zoom: 15.2 }); return { lat: p.lat, lng: p.lng }; }); await settle(page); await sleep(500);
+  const pxy = await page.evaluate(({ lat, lng }) => { const da = window.__da; const q = da.map.project([lng, lat]); const r = da.map.getContainer().getBoundingClientRect(); return { x: q.x + r.left, y: q.y + r.top, hit: (da.life.hit(q.x, q.y) || {}).kind, inScan: da.life.inScan(lat, lng) }; }, pk);
+  await page.mouse.click(pxy.x, pxy.y); await sleep(1400);
+  const pc = await page.evaluate(() => ({ mode: window.__da.S.mode, name: document.querySelector('#r-name').textContent, no: document.querySelector('#r-no').textContent, main: document.querySelector('#r-act .hw').textContent, chips: document.querySelector('#r-chips').textContent, sent: document.querySelectorAll('#r-strings [data-sig]').length }));
+  check('Pickles Milk Bar: its printer on the map, outside the radar too, opening its card', !pxy.inScan && pxy.hit === 'partner' && pc.mode === 'partner' && pc.name === 'Pickles Milk Bar' && /PRINTER/.test(pc.no) && pc.main === 'VISIT' && /80 MM/.test(pc.chips) && pc.sent >= 1, JSON.stringify({ pxy, pc }));
+  await shot(page, '35-partner.png');
+  /* a record placed here, shared */
+  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.startPlace({ lat: -37.7712, lng: 144.9611 }); }); await sleep(700);
+  await page.fill('#pl-text', 'a magpie nesting low'); await page.fill('#pl-contact', '0400 000 000'); await tap(page, '#r-act'); await sleep(1500);
+  await tap(page, '#r-do [data-do="share"]'); await sleep(1500);
+  const rs = await page.evaluate(() => (document.querySelector('#r-do .share small') || {}).textContent);
+  const recs = (await admin('stories?status=waiting')).stories.filter(x => x.kind === 'record');
+  check('a record placed here is shared for approval, without its contact', /WAITING FOR APPROVAL/.test(rs) && recs.length === 1 && /magpie/.test(recs[0].body) && !/0400/.test(recs[0].body), JSON.stringify({ rs, recs: recs.map(r => r.body) }));
+  /* this group's stories go, so the other checks see the board as it was */
+  for (const st of ['waiting', 'shown', 'refused']) for (const x of (await admin('stories?status=' + st)).stories) await admin(`stories/${x.id}`, { action: 'delete' });
+  await ctx.close();
+} catch (e) { results.push(`FAIL  section share: ${e.message.split('\n')[0]}`); }
 
 // ───────── placing a record by hand ─────────
 if (run('place')) try {
@@ -708,7 +820,7 @@ if (run('guide')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'guide');
   await page.goto('https://oan.test/guide.html'); await sleep(1400);
   const g = await page.evaluate(() => { const n = s => document.querySelectorAll(s).length; return { key: n('#key li'), kc: n('#kind-colours li'), radar: n('#radar-steps li'), strings: n('#string-steps li'), sounds: n('#snd-lives li') + n('#snd-people li'), refs: n('#outs a[href^="https"]'), wish: n('#wish-slip ol li'), five: n('#five-steps li'), outs: n('#outs li'), degs: n('#degs li'), wins: n('#wins li'), heroes: n('#heroes li'), on: n('#roles-on li'), back: n('#roles-back li'), groups: n('#group-list li'), calls: n('#calls li'), words: document.body.innerText.split(/\s+/).length, sentences: (document.body.innerText.match(/[a-z]{3,}\.(\s|$)/g) || []).length, overflow: document.documentElement.scrollWidth - innerWidth }; });
-  check('the guide is a key: the radar, the icons, the strings, the lines, the outputs, the danger, the places, the groups', g.key === 20 && g.kc === 8 && g.radar === 8 && g.strings === 22 && g.sounds === 15 && g.wish === 4 && g.five === 2 && g.outs === 8 && g.refs === 7 && g.degs === 5 && g.wins === 4 && g.heroes === 5 && g.on === 10 && g.back === 14 && g.groups === 6 && g.calls === 9 && g.overflow <= 0, JSON.stringify(g));
+  check('the guide is a key: the radar, the icons, the strings, the lines, the outputs, the danger, the places, the groups', g.key === 21 && g.kc === 8 && g.radar === 8 && g.strings === 22 && g.sounds === 15 && g.wish === 4 && g.five === 2 && g.outs === 8 && g.refs === 7 && g.degs === 5 && g.wins === 4 && g.heroes === 5 && g.on === 10 && g.back === 14 && g.groups === 6 && g.calls === 9 && g.overflow <= 0, JSON.stringify(g));
   check('the guide is labels, not prose', g.words < 620 && g.sentences === 0, `${g.words} words · ${g.sentences} sentences`);
   await shot(page, '60-guide.png', { fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await sleep(500);
@@ -756,7 +868,7 @@ if (ONLY.includes('look')) try {
   await ctx.close();
 } catch (e) { results.push(`FAIL  section look: ${e.message.split('\n')[0]}`); }
 
-await browser.close();
+await browser.close(); await apiServer.close();
 const fails = results.filter(r => r.startsWith('FAIL'));
 console.log(results.join('\n'));
 if (errors.length) console.log('\nERRORS\n' + [...new Set(errors)].slice(0, 30).join('\n'));

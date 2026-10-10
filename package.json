@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "node build.mjs",
-    "test": "npm run build && node test/run.mjs",
+    "test": "npm run build && node test/api.mjs && node test/run.mjs",
+    "test:api": "node build.mjs && node test/api.mjs",
     "test:one": "node test/run.mjs",
     "dev": "node build.mjs && wrangler dev"
   },

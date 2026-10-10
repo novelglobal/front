@@ -2,12 +2,12 @@
 
 Small stages. Each stage is built on the `staging` branch, checked on its preview address, and only then merged to `main`, which is what novel.global shows. One stage at a time; nothing skips the preview. `docs/workflow.md` explains the steps.
 
-| Stage | What it delivers | You will see |
+| Stage | What it delivers | Status |
 |---|---|---|
-| 0 | One repo, one deploy, a preview before live | A PREVIEW tag and a build code on the staging address; the same build code on novel.global after merging |
-| 1 | Fixes and clearer rules on the map | The orangutan poster and the web open; the 24-hour rule outside the radar; a wider radar shows at once; smaller marks; photographs in open cells; issuing without lines |
-| 2 | Save and share, with your approval | A SHARE button on what people make; a private page where you approve each one before anyone else sees it |
-| 3 | Print queue and the pager printer | PRINT TO a printer instead of the A4 print; a Raspberry Pi and thermal printer that print each slip as it arrives |
+| 0 | One repo, one deploy, a preview before live | Live |
+| 1 | Fixes and clearer rules on the map | Built, on staging |
+| 2 | Save and share, with your approval | Built, on staging |
+| 3 | Print queue and the pager printer | Built, on staging; the printer at Pickles to set up |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -27,7 +27,7 @@ The source lives in `front`, Cloudflare builds it, and every push to `staging` m
 
 ## Stage 1 — fixes and clearer rules on the map
 
-Each item is small enough for one preview.
+*Built: items 1 to 6, plus a first radar that starts where life is, the NOW page's photographs and outlook from orange to red to black, and a smaller STORIES page with the board first. Item 7 is still to do.*
 
 1. **The orangutan poster and the constellation web open when selected.** Both are listed but do nothing when clicked.
 2. **A wider radar shows at once.** Dragging the rim outward reveals everything inside the new reach straight away, without waiting for the hand to sweep it.
@@ -41,19 +41,21 @@ Each item is small enough for one preview.
 
 ## Stage 2 — save and share, with your approval
 
-Today everything people make stays on their own device. This stage lets them share it, and nothing shared is shown to anyone else until you approve it.
+*Built. What people make stays on their device until they send it. DIRECT ACTION sends a slip, and SHARE sends a record placed on the map. Either waits on the approval page at `/admin`, behind the `ADMIN_KEY` secret rather than Cloudflare Access, and appears for everyone once shown. RECEIVE takes the code printed on a slip. Photographs live in the D1 database, so no R2 bucket is needed.*
 
 - **Sharing:** a SHARE button on what people make: records placed on the map, constellations, issued slips and their own photographs. There are no accounts. A name is optional.
 - **Your approval page:** a private page at `novel.global/admin` lists everything waiting, with a preview of how it will look. Approve, edit or reject each one. Approved items appear on the map and on STORIES for everyone.
 - **Protecting the approval page:** Cloudflare Access asks for your email and sends a one-time code, so there is no password to choose, store or leak. The Worker checks Access's token on every admin request as well. It is free for up to 50 people, so a second approver can be added later.
 - **Storage:** a Cloudflare D1 database for the records and R2 for photographs. Each preview gets its own empty database, so testing never touches real submissions.
-- **Privacy:** photographs are re-encoded on the device before sending, which removes their GPS and camera details. Locations that look like a home are blurred to about 100 m. Items not approved within 30 days are deleted, and nothing is kept about who sent what beyond the optional name.
+- **Privacy:** photographs are re-encoded on the device before sending, which removes their GPS and camera details. Places a person marked themselves are blurred to about 100 m when they are sent. Items not approved within 30 days are deleted, and nothing is kept about who sent what beyond the optional name.
 - **Spam:** a Turnstile check, a limit per visitor, and size limits on text and photographs.
 - **Done when:** something shared from a phone appears on your approval page, does not appear for anyone else until approved, appears for everyone after approval, and the approval page refuses anyone not signed in through Access.
 
 ## Stage 3 — the print queue and the pager printer
 
-The browser's A4 and 58 mm print button goes. In its place, PRINT TO lists the printers you can reach, and each slip joins that printer's queue. A Raspberry Pi beside the printer pulls jobs and prints each one as it arrives, like a pager.
+*Built, with one change: the queue lives in the D1 database rather than a Durable Object, which keeps previews simple and is plenty for a handful of printers. The receiver asks every few seconds, so a slip prints within about ten seconds of approval. DIRECT ACTION lists Pickles Milk Bar, Kines and Coffee Bar Elsie. The browser's print is one of the outputs. `receiver/` holds the Pi's bridge (`pull.py`, printd and optional Meshtastic) and its setup. Still to do: set up the Pi and printer at Pickles, and run the ten-in-a-row demo.*
+
+The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists the partner places that print, and each slip joins that printer's queue. A Raspberry Pi beside the printer pulls jobs and prints each one as it arrives, like a pager.
 
 - **The queue:** a Durable Object in the `front` Worker, one queue per printer. A job waits up to 24 hours, at most 20 wait at once, and only the status of a printed job is kept, for 7 days.
 - **Previews:** staging builds use Worker Previews (`docs/workflow.md`), which give each preview its own empty queue, so testing never reaches a live printer. Version URLs would not work here, because a Worker with a Durable Object gets none.

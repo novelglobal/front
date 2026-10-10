@@ -1,8 +1,10 @@
 
 /* ════════════════════════════════════════════════════════════════════
    THE CARD — the photograph large, the name, what El Niño does to this life and how long until it lands,
-   something to learn, the strings tied so far and a note. DIRECT RESPONSE turns it over to a blank slip of four lines;
-   what else it carries is chosen before it is issued, and the slip issued becomes a signal.
+   something to learn, the strings tied so far and a note. W.I.S.H. is a praxis poem, in three steps, one button each:
+   NOTICED is the intention to respond, and turns the card over to the W.I.S.H.; RESPONSE is the W.I.S.H. itself, taking on
+   responsibility, theory joined to action and reflection, issued as a slip; DIRECT ACTION makes it a pledge, printed as a
+   receipt at a partner place, sent by mesh, and kept on novel.global.
    ════════════════════════════════════════════════════════════════════ */
 const rec = $('#record'), rScroll = $('#r-scroll'), heroBtn = $('#r-act'), altBtn = $('#r-alt');
 /* the four lines, and what each one asks for */
@@ -16,7 +18,7 @@ function openRecord() {
 }
 /* how: nothing (back to where it came from), 'switch' (another record follows), 'view' (a page replaces it) */
 function closeRecord(how) {
-  S.sel = null; S.mode = null; S.place = null; S.tribeSel = null; S.sig = null; S.issued = null;
+  S.sel = null; S.mode = null; S.place = null; S.tribeSel = null; S.partnerSel = null; S.sig = null; S.issued = null;
   strings.close(); document.body.classList.remove('placing'); $('#radius').hidden = true;
   if (how === 'switch') return;
   const from = S.from; S.from = null;
@@ -56,10 +58,11 @@ function paintFace(f, wipe) {
   const o = S.mode === 'ping' ? S.byId.get(S.sel) : null; const tel = f === 'front' && o && (o.kind === 'injured' || o.kind === 'dead') ? telOf(o) : '';
   const lost = f === 'front' && o && o.kind === 'lost';
   altBtn.hidden = true; heroBtn.hidden = false; rec.classList.toggle('alarm', !!tel || lost); heroBtn.classList.remove('go'); altBtn.classList.add('go');
-  if (f === 'wish') heroWord('receipt', 'DIRECT ACTION');
-  else if (f === 'signal') heroWord('print', 'PRINT');
+  if (f === 'wish') heroWord('receipt', 'RESPONSE');
+  else if (f === 'signal') heroWord('print', 'DIRECT ACTION');
   else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (S.mode === 'tribe') heroWord('out', 'JOIN');
+  else if (S.mode === 'partner') heroWord('out', 'VISIT');
   else if (tel) { heroWord('phone', o.kind === 'dead' ? 'REPORT' : 'CALL'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (lost) { heroWord('lost', 'SEARCH'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else { heroWord('next', 'NOTICED'); heroBtn.classList.add('go'); }
@@ -72,20 +75,25 @@ function paintFace(f, wipe) {
 }
 
 /* ───────── opening ───────── */
-function select(id) {
+/* opt.sig: a story, opened on its slip; its strings stand on the ground until the cell has a figure of its own.
+   opt.cell: a story's cell opened on its card, not its slip */
+function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
-  const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = null; S.issued = null;
-  strings.open(o); openRecord();
+  if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
+  const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
+  strings.open(o, opt.sig); openRecord();
   if (S.mapReady) map.easeTo({ center: [o.lng, o.lat], zoom: Math.max(map.getZoom(), 15.4), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
   life.hover(null); life.select();
-  fillFront(o); showFace('front');
+  fillFront(o);
+  if (opt.sig) { fillSignal(opt.sig); showFace('signal'); } else showFace('front');
   if (was !== id) { snd.tick(1900); buzz(6); }
   if (!o.ob) placesAround(o.lat, o.lng, rangeOf(o) + 80);
-  try { history.replaceState(null, '', '#' + (hashOf(o) || '')); } catch (e) { /* file:// */ }
+  try { history.replaceState(null, '', '#' + (opt.sig ? opt.sig.code : hashOf(o) || '')); } catch (e) { /* file:// */ }
 }
 function refreshRecord() {
   if (S.mode === 'ping') { const o = S.byId.get(S.sel); if (!o) return; if (face === 'front') fillFront(o, true); else if (face === 'wish') fillKnots(); }
   else if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); if (t) fillTribe(t, true); }
+  else if (S.mode === 'partner') { const p = partnerOf(S.partnerSel); if (p) fillPartner(p, true); }
   life.placeHandle();
 }
 /* a group already caring for a patch of ground */
@@ -97,6 +105,36 @@ function selectTribe(id) {
   if (S.mapReady) { const la = t.blobs.map(b => b[0]), lo = t.blobs.map(b => b[1]); map.fitBounds([[Math.min(...lo) - 0.002, Math.min(...la) - 0.002], [Math.max(...lo) + 0.002, Math.max(...la) + 0.002]], { padding: framePad(), duration: reduced() ? 0 : 700, maxZoom: 16 }); }
   life.hover(null); life.select(); fillTribe(t); showFace('front'); snd.tick(1700);
   try { history.replaceState(null, '', '#' + t.tid); } catch (e) { /* file:// */ }
+}
+
+/* ───────── a partner place: its W.I.S.H. printer, whether it is listening, and the stories sent there ───────── */
+function selectPartner(id) {
+  const p = partnerOf(id); if (!p) return;
+  if (S.mode) closeRecord('switch');
+  S.partnerSel = id; S.sel = null; S.tribeSel = null; S.mode = 'partner'; S.place = null; S.sig = null; strings.close();
+  openRecord();
+  if (S.mapReady) map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
+  life.hover(null); life.select(); fillPartner(p); showFace('front'); snd.printer(420);
+  loadPartners().then(() => { if (S.mode === 'partner' && S.partnerSel === id) fillPartner(p, true); });
+  try { history.replaceState(null, '', '#P-' + id); } catch (e) { /* file:// */ }
+}
+function fillPartner(p, quiet) {
+  const st = PSTATE[p.id] || {};
+  $('#r-no').textContent = 'PARTNER · W.I.S.H. PRINTER'; $('#r-name').textContent = p.n; $('#r-latin').textContent = [p.addr, title(p.sub)].filter(Boolean).join(', ');
+  if (!quiet) drawPrinterFigure(p, st);
+  $('#r-chips').innerHTML = chip(st.ready ? 'PRINTER ON' : p.printer ? 'W.I.S.H. PRINTER' : 'QUEUE', st.ready ? 'tb' : '') + (st.queued ? chip(`${st.queued} IN QUEUE`) : '') + (st.printed ? chip(`${st.printed} PRINTED`) : '') + chip(esc(p.paper + ' MM'), 'at') + (p.url ? `<a class="c lk" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(hostOf(p.url))} ${icon('out', 'sm')}</a>` : '');
+  $('#r-chips').style.removeProperty('--c');
+  $('#r-threat').hidden = true; $('#r-season').hidden = true; $('#r-ledger').hidden = true; $('#r-do').innerHTML = '';
+  $('#r-learn').textContent = p.what || ''; $('#r-learn').hidden = !p.what;
+  const sent = S.signals.filter(s => s.dest === p.id || ((SENT[s.code] || {}).dest === p.id));
+  $('#r-strings').innerHTML = sent.length ? `<details class="reach" open><summary class="mono">SENT HERE · ${sent.length}</summary><ol>${sent.slice(0, 40).map(s => `<li><button type="button" class="nrow" data-sig="${esc(s.key)}"><img class="pg sm" src="${badgeImg({ tone: 'story', g: (s.pin || {}).g || 'paw', carried: true }, 30)}" alt=""><span class="n">${esc(s.code)} · ${esc(((s.pin || {}).cn || '').toUpperCase())}</span><small class="mono">${esc(sentWord(s).split(' · ')[0])}</small></button></li>`).join('')}</ol></details>` : '';
+  $('#r-strings').hidden = !sent.length;
+}
+/* the printer, large, with a slip feeding out of it */
+function drawPrinterFigure(p, st) {
+  const cv = $('#r-glyph'), img = $('#r-img'); img.hidden = true; cv.hidden = false; $('#r-fig').classList.add('loaded'); $('#r-fig').classList.remove('alarm'); $('#r-credit').textContent = '';
+  const x = cv.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#E3F7F4'; x.fillRect(0, 0, cv.width, cv.height);
+  M.printer(x, cv.width / 2, cv.height * 0.62, cv.height * 0.62, 0, !!st.ready);
 }
 
 /* ───────── hiding: any cell can leave the map on this device; a record placed here is deleted ───────── */
@@ -151,6 +189,13 @@ function figure(o) {
   }
   drawFigure(o);
   if (sub && sub.ph && typeof sub.id === 'number') cr.innerHTML = `<a href="${CONFIG.INAT_WEB}${sub.id}" target="_blank" rel="noopener">© ${esc(sub.u.n || sub.u.l || '')}</a>`;
+  /* no photograph of this one open to show: the photograph of its kind, when there is one, credited as such */
+  const tid = !o.isTribe && sub && sub.tx && sub.tx.id; if (!tid) return;
+  taxonInfo(tid).then(v => {
+    if (!v || !v.ph || S.sel !== o.id || !img.hidden) return;
+    img.alt = nameOf(o); img.onerror = null; img.onload = () => { if (S.sel !== o.id) return; cv.hidden = true; show(); life.redraw(); };
+    img.src = photoURL(v.ph.u, 'medium'); cr.textContent = `ITS KIND · ${v.ph.a || licLabel(v.ph.l)}`;
+  });
 }
 function drawFigure(o) {
   const cv = $('#r-glyph'); cv.hidden = false; $('#r-fig').classList.add('loaded'); const x = cv.getContext('2d'); const w = cv.width, h = cv.height; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
@@ -212,7 +257,7 @@ function fillFront(o, quiet) {
   }
   /* who in its radius sells or leaves what harms it, and who can help */
   fillLedger();
-  $('#r-do').innerHTML = urgentOf(o);
+  $('#r-do').innerHTML = urgentOf(o) + shareRow(o);
   fillStrings();
 }
 $('#r-chips').addEventListener('click', e => { const b = e.target.closest('.play'); if (b) life.play(b.dataset.u, b); });
@@ -235,9 +280,16 @@ function urgentOf(o) {
   if (o.contact) L.push(rowA(/@/.test(o.contact) ? 'out' : 'phone', esc(o.contact), '', `href="${/@/.test(o.contact) ? 'mailto:' : 'tel:'}${esc(o.contact.replace(/\s/g, ''))}"`));
   return L.join('');
 }
-$('#r-do').addEventListener('click', e => {
+/* a record placed here, shared: for everyone once approved; its contact stays on this device */
+function shareRow(o) {
+  if (!o.user || !o.ev) return ''; const v = SENT['rec:' + o.ev.key];
+  const w = !v ? 'FOR EVERYONE · ONCE APPROVED' : v.status === 'shown' ? 'SHOWN TO EVERYONE' : v.status === 'refused' ? 'NOT SHOWN' : v.status === 'outbox' ? 'SENDS WHEN THERE IS A SIGNAL' : 'WAITING FOR APPROVAL';
+  return `<button type="button" class="do share" data-do="share"${v ? ' disabled' : ''}>${icon('stories')}<b>${v ? 'SHARED' : 'SHARE'}</b><small>${w}</small></button>`;
+}
+$('#r-do').addEventListener('click', async e => {
   const b = e.target.closest('[data-do]'); if (!b) return; tick();
   if (b.dataset.do === 'areas') { prefs.areas = !prefs.areas; savePrefs(); b.setAttribute('aria-pressed', String(prefs.areas)); life.redraw(); }
+  if (b.dataset.do === 'share') { const o = S.byId.get(S.sel); if (!o) return; b.disabled = true; try { const v = await shareRecord(o); toast(v.status === 'outbox' ? 'NO SIGNAL · IT WILL SEND' : 'SENT · WAITING FOR APPROVAL'); } catch (err) { toast(err.status === 429 ? 'TOO MANY · TRY SOON' : 'NOT SENT'); } if (S.sel === o.id) $('#r-do').innerHTML = urgentOf(o) + shareRow(o); }
 });
 
 /* ───────── the strings, on the card: the constellation as it forms, its song, and the print it will make ───────── */
@@ -304,7 +356,7 @@ $('#r-ledger').addEventListener('click', e => {
 $('#r-ledger').addEventListener('contextmenu', e => { const b = e.target.closest('[data-lg]'); if (!b) return; e.preventDefault(); const key = b.dataset.lg; const L = strings.ledgerOf(); const ks = key.startsWith('fam:') ? (L.help.find(([f]) => 'fam:' + f === key) || [0, []])[1] : (L.harm.find(([r]) => r === key) || [0, []])[1]; strings.joinAll(ks); strings.unfocus(); fillLedger(); });
 /* a constellation from NOW: its life opened, the whole web framed, then lit or traced */
 function showConstellation(id, how) {
-  const o = S.byId.get(id); if (!o) return; select(id);
+  const o = S.byId.get(id); if (!o) return; select(id, { cell: true });
   setTimeout(() => { fitWeb(); setTimeout(() => { if (how === 'trace') strings.traceIt(); else strings.glow(); }, reduced() ? 30 : 760); }, 80);
 }
 /* notes on a cell, kept on this device, above NOTICED; the slip can carry them */
@@ -325,7 +377,7 @@ function fillTribe(t, quiet) {
   $('#r-strings').innerHTML = lives.length ? `<details class="reach"><summary class="mono">LIVES · ${lives.length}</summary><ol>${lives.sort((a, b) => degOf(b) - degOf(a)).slice(0, 40).map(o => `<li><button type="button" class="nrow" data-cell="${esc(String(o.id))}"><img class="pg sm" src="${pinOf(o)}" alt=""><span class="n">${esc(nameOf(o))}</span>${degChip(degOf(o))}</button></li>`).join('')}</ol></details>` : '';
   $('#r-strings').hidden = !lives.length;
 }
-$('#r-strings').addEventListener('click', e => { const c = e.target.closest('[data-cell]'); if (c) { const v = c.dataset.cell; select(/^\d+$/.test(v) ? +v : v); } });
+$('#r-strings').addEventListener('click', e => { const c = e.target.closest('[data-cell]'); if (c) { const v = c.dataset.cell; select(/^\d+$/.test(v) ? +v : v); return; } const g = e.target.closest('[data-sig]'); if (g) openSignal(g.dataset.sig); });
 
 /* ───────── the slip: four blank lines; whatever else it carries is chosen before it is issued ───────── */
 const WKEYS = ['w', 'i', 's', 'h'];
@@ -402,7 +454,7 @@ async function fillWishFig(o) {
   const none = c.k === 'none'; fig.classList.toggle('none', none); $('#w-imgs [data-img="none"]').setAttribute('aria-pressed', String(none));
   $$('#w-imgs [data-img="prev"], #w-imgs [data-img="next"]').forEach(b => { b.disabled = list.length < 2 && !none; });
   $('#w-imgn').textContent = !none && list.length > 1 ? `${i + 1}/${list.length}` : '';
-  $('#w-cap').textContent = none ? (list.length ? 'FIG. 1 · NONE' : 'FIG. 1 · NO OPEN PHOTOGRAPH') : `FIG. 1 · ${wishCredit(c, o)}`;
+  $('#w-cap').textContent = none ? (list.length ? 'NO PHOTOGRAPH' : 'NO OPEN PHOTOGRAPH') : wishCredit(c, o);
   if (none) { cv.width = 1; cv.height = 1; cv.dataset.img = ''; return; }
   const want = `${o.id}|${c.k}|${c.u || ''}`; if (cv.dataset.img !== want) { const x0 = cv.getContext('2d'); x0.fillStyle = '#E6E5DE'; x0.fillRect(0, 0, cv.width, cv.height); }
   cv.classList.add('wait');
@@ -449,8 +501,9 @@ $('#r-wish').addEventListener('submit', e => e.preventDefault());
 /* ───────── the main button ───────── */
 heroBtn.addEventListener('click', async () => {
   if (face === 'place') { placeIt(false); return; }
-  if (face === 'signal') { const s = S.issued || S.signals.find(x => x.key === S.sig); if (s) printSlip(s); return; }
+  if (face === 'signal') { const s = S.issued || S.signals.find(x => x.key === S.sig); if (s) openSend(s); return; }
   if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); if (t) window.open(t.link, '_blank', 'noopener'); return; }
+  if (S.mode === 'partner') { const p = partnerOf(S.partnerSel); if (p && p.url) window.open(p.url, '_blank', 'noopener'); return; }
   const o = S.byId.get(S.sel); if (!o) return;
   if (face === 'front') {
     if (o.kind === 'injured' || o.kind === 'dead') { const tel = telOf(o); if (tel) { location.href = tel; return; } }
@@ -461,10 +514,10 @@ heroBtn.addEventListener('click', async () => {
 });
 altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (o) toWish(o); });
 function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; showFace('wish'); buzz(6); snd.tick(1700); }
-/* issued: the slip feeds out of the printer and becomes a signal */
+/* issued: the slip feeds out of the printer and becomes a signal. The four lines are asked for, never required:
+   a record can be issued and printed as it stands */
 async function issue(o) {
   const L = Object.fromEntries(WKEYS.map(k => [k, $('#w-' + k).value.trim()]));
-  const missing = WKEYS.find(k => !L[k]); if (missing) { nudge($('#w-' + missing)); return; }
   const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o);
   const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;
   const sig = makeSignal(o, L, $('#w-sign').value.trim(), { statement: st, note: $('#w-note-on').checked ? $('#w-note-t').value.trim() : '', img });
@@ -597,7 +650,7 @@ $('#pl-photo').addEventListener('change', async e => {
   } catch (err) { toast('PHOTO WILL NOT OPEN'); }
   e.target.value = '';
 });
-/* placed: the record joins the map; DIRECT RESPONSE goes straight on to the slip */
+/* placed: the record joins the map; NOTICED goes straight on to the W.I.S.H. card */
 async function placeIt(respond) {
   const p = S.place; if (!p) return; const k = PLACE_KINDS[p.kind]; const text = $('#pl-text').value.trim(); const sign = $('#pl-sign').value.trim();
   if (k.type === 'event' && !$('#pl-when').value) { nudge($('#pl-when')); return; }

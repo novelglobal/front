@@ -46,7 +46,7 @@ const NAME_UP = s => String((s.pin && (s.pin.cn || s.pin.n)) || '').toUpperCase(
 function meshText(s, max = SIG.mesh) {
   const L = { ...(s.lines || {}) }; const p = s.pin || {};
   const head = `${s.code} ${NAME_UP(s)}`; const where = `${(+p.lat).toFixed(4)},${(+p.lng).toFixed(4)}`;
-  const build = () => [head, where, ...WKEYS.map(k => L[k] || '')].join('\n');
+  const build = () => [head, where, ...WKEYS.map(k => L[k] || '').filter(Boolean)].join('\n');
   let t = build(); let guard = 400;
   while (bytes(t) > max && guard--) {
     const k = ['i', 'w', 's', 'h'].sort((a, b) => (L[b] || '').length - (L[a] || '').length)[0]; const w = (L[k] || '').replace(/…$/, '').split(' ');
@@ -57,7 +57,7 @@ function meshText(s, max = SIG.mesh) {
 }
 /* a pager line, 80 plain characters at most: the code, the life, and how it works */
 function pagerText(s, max = SIG.pager) {
-  let t = ascii(`${s.code} ${NAME_UP(s)}: ${(s.lines || {}).h || ''}`); if (t.length > max) t = t.slice(0, max - 3).replace(/\s+\S*$/, '') + '...'; return t;
+  const last = linesOf(s).pop() || ''; let t = ascii(`${s.code} ${NAME_UP(s)}${last ? `: ${last}` : ''}`); if (t.length > max) t = t.slice(0, max - 3).replace(/\s+\S*$/, '') + '...'; return t;
 }
 const wrap = (t, n, indent = '') => { const out = []; let line = ''; for (const w of String(t || '').split(/\s+/).filter(Boolean)) { if (!line) line = w; else if ((line + ' ' + w).length <= n - (out.length ? indent.length : 0)) line += ' ' + w; else { out.push(line); line = w; } } if (line) out.push(line); return out.map((l, i) => (i ? indent + l : l)); };
 /* the story the relations tell: what harms the life, what cares for it, and what else is part of it */
@@ -79,14 +79,14 @@ function slipText(s, cols = 32) {
   const pad = (a, b) => a + ' '.repeat(Math.max(1, cols - a.length - b.length)) + b;
   const field = (k, v) => wrap(v, cols - 7).map((l, i) => (i ? '       ' : (k + '       ').slice(0, 7)) + l);
   out.push(pad('DIRECT ACTION', s.code), fmtStamp(s.at), rule);
-  if (s.img && s.img.k !== 'none') out.push(...wrap(`FIG. 1  ${figCredit(s)}`, cols, '        '), rule);
+  if (s.img && s.img.k !== 'none') out.push(...wrap(figCredit(s), cols, '  '), rule);
   out.push(...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols));
   out.push(...field('SITE', `${p.place || ''} ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`.trim()));
   if (s.when) out.push(...field('WINDOW', s.when));
   if (s.threat) { out.push(rule); out.push(...wrap(s.threat, cols)); }
-  out.push(rule);
-  for (const k of WKEYS) out.push(...wrap((s.lines || {})[k] || '', cols));
+  const L = linesOf(s); if (L.length) { out.push(rule); for (const l of L) out.push(...wrap(l, cols)); }
   const rels = relOrder(s.nodes || []);
+  /* RELATIONS: the line a printer's figure is set above (ESC/POS draws it there) */
   if (rels.length) { out.push(rule, 'RELATIONS'); let g0 = ''; rels.forEach((n, i) => { const g = relKind(n); if (g !== g0) { out.push(`${REL_G[g]} · ${rels.filter(x => relKind(x) === g).length}`); g0 = g; } out.push(...wrap(`${pad2(i + 1)} ${n.n}`, cols, '   ')); const u = hostOf(urlOf(n)); out.push(...wrap(`${relPhrase(n)}${u ? ` · ${u}` : ''}`, cols - 3).map(l => '   ' + l)); }); }
   if (s.note) { out.push(rule); out.push(...field('NOTE', s.note)); }
   if (s.who) out.push(rule, `- ${s.who}`);
@@ -121,7 +121,8 @@ function imgChoice(o) {
   return all[0] || { k: 'none' };
 }
 const imgSrc = (c, key, o, big) => (c.k === 'inat' ? photoURL(c.u, big ? 'large' : 'medium') : c.k === 'own' ? OWN[key] || '' : c.k === 'rec' && o ? o.photo || '' : '');
-const sigSrc = (s, big) => (s.img ? imgSrc(s.img, s.code, null, big) : '');
+/* a slip's photograph: from iNaturalist, from this device, or, for a story from the board, from the server */
+const sigSrc = (s, big) => (s.img ? imgSrc(s.img, s.code, null, big) || (s.img.k === 'own' && s.photo) || '' : '');
 /* the contrast stretched, so a photograph holds up as dots */
 function autolevel(id) {
   const d = id.data, n = d.length / 4; const hist = new Uint32Array(256);
@@ -181,15 +182,18 @@ function drawChart(x, s, cx, cy, size, lw = 1) {
   x.restore();
 }
 /* ───────── the slip on the page, set like an archive record ───────── */
+/* the lines written, in order: a slip can carry all four, some, or none */
+const linesOf = s => WKEYS.map(k => String((s.lines || {})[k] || '').trim()).filter(Boolean);
 function slipHTML(s, blank) {
-  const p = s.pin || {}; const hasImg = !blank && s.img && s.img.k !== 'none';
+  const p = s.pin || {}; const hasImg = !blank && s.img && s.img.k !== 'none'; const L = linesOf(s);
   const rels = relOrder(s.nodes || []); const nOf = g => rels.filter(x => relKind(x) === g).length;
   return `<div class="sl-perf" aria-hidden="true"></div><header class="sl-head mono"><span><b class="sl-code">${esc(s.code || 'DA-····')}</b>${s.ex ? '<i class="ex">EX</i>' : ''}</span><span class="sl-time">${blank ? '__.__.__ __:__' : fmtStamp(s.at)}</span></header>`
-    + (blank ? `<figure class="sl-fig blank"><span class="mono">FIG. 1</span></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">FIG. 1 · ${esc(figCredit(s))}</figcaption></figure>` : '')
+    + (blank ? `<figure class="sl-fig blank"></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">${esc(figCredit(s))}</figcaption></figure>` : '')
     + `<div class="sl-body"><div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}</dl>`}</div>`
     + (s.threat ? `<p class="sl-threat">${esc(s.threat)}</p>` : '')
-    + `<ol class="sl-wish poem">${WKEYS.map(k => `<li>${blank ? `<small>${esc(WISH[k][0].toLowerCase())}</small>` : `<span>${esc((s.lines || {})[k] || '')}</span>`}</li>`).join('')}</ol>`
-    + (rels.length ? `<div class="sl-rel"><h5 class="sl-h">RELATIONS</h5><ol class="sl-knots">${rels.map((n, i) => { const g = relKind(n); const u = urlOf(n); const first = !i || relKind(rels[i - 1]) !== g; return `<li class="${g}"${first ? ` data-g="${REL_G[g]} · ${nOf(g)}"` : ''}><b class="mono">${pad2(i + 1)}</b><span>${esc(n.n)}${u ? ` <a class="sl-u mono" href="${esc(u)}" target="_blank" rel="noopener">${esc(hostOf(u))}</a>` : ''}</span><small${g === 'harm' ? ' class="red"' : ''}>${esc(relPhrase(n))}</small></li>`; }).join('')}</ol>${rels.length > 1 ? `<figure class="sl-fig2">${chartSVG(s, 72)}<figcaption class="mono">FIG. 2 · ${rels.length} RELATIONS · NORTH UP</figcaption></figure>` : ''}</div>` : '')
+    + (blank ? `<ol class="sl-wish poem">${WKEYS.map(k => `<li><small>${esc(WISH[k][0].toLowerCase())}</small></li>`).join('')}</ol>` : L.length ? `<ol class="sl-wish poem">${L.map(t => `<li><span>${esc(t)}</span></li>`).join('')}</ol>` : '')
+    /* the figure first, as it lies on the ground; then each relation, numbered as the figure numbers it */
+    + (rels.length ? `<div class="sl-rel">${rels.length > 1 ? `<figure class="sl-fig2">${chartSVG(s, 72)}</figure>` : ''}<h5 class="sl-h">RELATIONS</h5><ol class="sl-knots">${rels.map((n, i) => { const g = relKind(n); const u = urlOf(n); const first = !i || relKind(rels[i - 1]) !== g; return `<li class="${g}"${first ? ` data-g="${REL_G[g]} · ${nOf(g)}"` : ''}><b class="mono">${pad2(i + 1)}</b><span>${esc(n.n)}${u ? ` <a class="sl-u mono" href="${esc(u)}" target="_blank" rel="noopener">${esc(hostOf(u))}</a>` : ''}</span><small${g === 'harm' ? ' class="red"' : ''}>${esc(relPhrase(n))}</small></li>`; }).join('')}</ol></div>` : '')
     + (s.note ? `<p class="sl-note"><b class="mono">NOTE</b> ${esc(s.note)}</p>` : '')
     + (s.who ? `<p class="sl-who mono">— ${esc(s.who)}</p>` : '')
     + `<div class="sl-qr"></div><p class="sl-foot mono">${esc(CONFIG.COUNTRY)}</p></div>`;
@@ -199,10 +203,32 @@ function fillSignal(s) {
   host.classList.toggle('ex', !!s.ex);
   $('#r-no').textContent = `${s.code}${s.ex ? ' · EX' : s.recv ? ' · RECEIVED' : ''}`;
   /* each machine as itself, with a link to what it is */
-  $('#s-out').innerHTML = OUTPUTS.filter(m => m.k !== 'print').map(m => `<span class="out-w"><button type="button" class="out" data-out="${m.k}" data-tip="${esc(m.tip)}">${icon(m.ic)}<small>${m.w}</small></button><a class="out-ref" href="${esc(m.ref)}" target="_blank" rel="noopener" aria-label="What a ${esc(m.w)} is" data-tip="What it is">${icon('out', 'sm')}</a></span>`).join('');
+  $('#s-out').innerHTML = OUTPUTS.map(m => `<span class="out-w"><button type="button" class="out" data-out="${m.k}" data-tip="${esc(m.tip)}">${icon(m.ic)}<small>${m.w}</small></button><a class="out-ref" href="${esc(m.ref)}" target="_blank" rel="noopener" aria-label="What a ${esc(m.w)} is" data-tip="What it is">${icon('out', 'sm')}</a></span>`).join('');
   const mine = !s.ex; $('#s-acts').innerHTML = `<button type="button" class="pill" data-sa="remix">${icon('remix', 'sm')}REMIX</button><button type="button" class="pill" data-sa="pin">${icon('where', 'sm')}PIN</button>${mine ? `<button type="button" class="pill quiet" data-sa="remove">${icon('close', 'sm')}REMOVE</button>` : ''}`;
-  $('#s-text').hidden = true;
+  $('#s-text').hidden = true; $('#s-send').hidden = true; fillSentLine(s);
 }
+/* where a slip has got to: sent, waiting, shown, in a queue, printed */
+function fillSentLine(s) { const el = $('#s-status'); const w = sentWord(s); el.textContent = w; el.hidden = !w; el.classList.toggle('done', /^(PRINTED|SHOWN)/.test(w)); }
+/* DIRECT ACTION: the W.I.S.H. becomes a pledge, printed at a partner place, nearest the life first, sent by mesh where that place has a radio, and kept on novel.global */
+function openSend(s) {
+  const el = $('#s-send'); if (!el.hidden) { el.hidden = true; tick(1100); return; }
+  if (s.ex) { toast('AN EXAMPLE'); return; }
+  const draw = () => {
+    const p0 = s.pin || {}; const list = [...PARTNERS].sort((a, b) => haversine(p0.lat, p0.lng, a.lat, a.lng) - haversine(p0.lat, p0.lng, b.lat, b.lng));
+    el.innerHTML = `<h4 class="lab">PRINT AS A PLEDGE</h4><ol>${list.map(p => { const st = PSTATE[p.id] || {}; const d = Number.isFinite(+p0.lat) ? metres(haversine(p0.lat, p0.lng, p.lat, p.lng)) : '';
+        return `<li><button type="button" class="dest${p.printer ? ' on' : ''}" data-dest="${esc(p.id)}"><img class="pm" src="${printerImg(p, st)}" alt=""><span class="nm"><b>${esc(p.n)}</b><small class="mono">${esc(p.sub.toUpperCase())}${d ? ` · ${d}` : ''} · ${st.ready ? 'PRINTER ON' : p.printer ? 'W.I.S.H. PRINTER' : 'QUEUE'}${st.queued ? ` · ${st.queued} IN QUEUE` : ''}</small></span></button></li>`; }).join('')}`
+      + `<li><button type="button" class="dest" data-dest=""><span class="pm board">${icon('stories')}</span><span class="nm"><b>novel.global</b><small class="mono">KEPT ONLINE · FOR EVERYONE</small></span></button></li></ol>`
+      + `<p class="s-wait mono">${icon('check', 'sm')}KEPT ON NOVEL.GLOBAL · PRINTED · BY MESH · ONCE APPROVED</p>`;
+  };
+  draw(); el.hidden = false; tick(1700); el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+  loadPartners().then(() => { if (!el.hidden) draw(); });
+}
+$('#s-send').addEventListener('click', async e => {
+  const b = e.target.closest('[data-dest]'); const s = S.issued || S.signals.find(x => x.key === S.sig); if (!b || !s) return;
+  const el = $('#s-send'); el.hidden = true; snd.printer(900); buzz([12, 40, 18]);
+  try { const v = await directAction(s, b.dataset.dest); fillSentLine(s); toast(v.status === 'outbox' ? 'NO SIGNAL · IT WILL SEND' : 'SENT · WAITING FOR APPROVAL'); refreshPanel(); }
+  catch (err) { toast(err.status === 429 ? 'TOO MANY · TRY SOON' : err.status === 503 ? 'BUSY · TRY SOON' : 'NOT SENT'); fillSentLine(s); }
+});
 $('#s-out').addEventListener('click', e => { const b = e.target.closest('[data-out]'); const s = S.issued || S.signals.find(x => x.key === S.sig); if (b && s) output(b.dataset.out, s, b); });
 $('#s-acts').addEventListener('click', async e => {
   const b = e.target.closest('[data-sa]'); const s = S.issued || S.signals.find(x => x.key === S.sig); if (!b || !s) return; const a = b.dataset.sa; tick(1500);
@@ -213,6 +239,7 @@ $('#s-acts').addEventListener('click', async e => {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
 async function output(k, s, btn) {
   const pre = $('#s-text'); const show = t => { pre.hidden = false; pre.textContent = t; pre.dataset.n = k === 'mesh' ? `${bytes(t)} B` : `${t.length}`; };
+  if (k === 'print') { printSlip(s); return; }
   if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); buzz(6); return; }
   if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); try { if (navigator.share && url) { await navigator.share({ title: s.code, text: (s.lines || {}).h || '', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
   btn.classList.add('busy'); snd.printer(700);
@@ -249,23 +276,24 @@ async function slipCanvas(s, W, levels) {
   const wrapPx = (t, maxW) => { const out = []; let line = ''; for (const w of String(t || '').split(/\s+/).filter(Boolean)) { const next = line ? `${line} ${w}` : w; if (!line || x.measureText(next).width <= maxW) line = next; else { out.push(line); line = w; } } if (line) out.push(line); return out; };
   const text = (t, font, lh, indent = '', at = pad) => { x.font = font; for (const l of wrapPx(t, W - pad - at)) { x.fillText(l, at, y); y += lh; } };
   const rule = () => { y += Math.round(6 * k); x.fillRect(pad, y, W - pad * 2, Math.max(1, Math.round(1.5 * k))); y += Math.round(10 * k); };
-  const field = (kk, v) => { x.font = mono(11, 600); x.fillText(kk, pad, y + Math.round(2 * k)); const y0 = y; text(v, mono(13), Math.round(18 * k), '', pad + Math.round(76 * k)); if (y === y0) y += Math.round(18 * k); };
-  if (s.img && s.img.k !== 'none') { text(`FIG. 1 · ${figCredit(s)}`, mono(10.5), Math.round(15 * k)); rule(); }
-  text(NAME_UP(s), sans(700, 21), Math.round(25 * k)); if (p.n && p.n !== p.cn) text(p.n, sans(400, 14), Math.round(19 * k));
-  y += Math.round(4 * k); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
+  const field = (kk, v) => { x.font = mono(10, 600); x.fillText(kk, pad, y + Math.round(2 * k)); const y0 = y; text(v, mono(12), Math.round(16 * k), '', pad + Math.round(70 * k)); if (y === y0) y += Math.round(16 * k); };
+  if (s.img && s.img.k !== 'none') { text(figCredit(s), mono(10), Math.round(14 * k)); rule(); }
+  text(NAME_UP(s), sans(700, 18), Math.round(22 * k)); if (p.n && p.n !== p.cn) text(p.n, sans(400, 12), Math.round(16 * k));
+  y += Math.round(3 * k); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
   if (s.threat) { rule(); text(s.threat, sans(500, 15), Math.round(20 * k)); }
-  rule();
-  for (const kk of WKEYS) { text((s.lines || {})[kk] || '', mono(16, 600), Math.round(21 * k)); y += Math.round(7 * k); }
+  const lines = linesOf(s); if (lines.length) { rule(); for (const l of lines) { text(l, mono(16, 600), Math.round(21 * k)); y += Math.round(7 * k); } }
   const rels = relOrder(s.nodes || []);
   if (rels.length) {
-    rule(); x.font = mono(11, 600); x.fillText('RELATIONS', pad, y); y += Math.round(17 * k); let g0 = '';
+    rule();
+    /* the figure first, as it lies on the ground, numbered as the relations under it are */
+    if (rels.length > 1) { const cw = Math.min(W - pad * 2, Math.round(116 * k)); drawChart(x, s, W / 2, y + cw / 2, cw, Math.max(1, k * 1.2)); y += cw + Math.round(10 * k); }
+    x.font = mono(11, 600); x.fillText('RELATIONS', pad, y); y += Math.round(17 * k); let g0 = '';
     rels.forEach((n, i) => {
       const g = relKind(n); if (g !== g0) { g0 = g; y += Math.round(3 * k); x.font = mono(10, 600); x.fillText(`${REL_G[g]} · ${rels.filter(r => relKind(r) === g).length}`, pad, y); y += Math.round(15 * k); }
       x.font = mono(12, 600); x.fillText(pad2(i + 1), pad, y); text(n.n, mono(12, 600), Math.round(16 * k), '', pad + Math.round(28 * k));
       const u = hostOf(urlOf(n)); text(`${relPhrase(n)}${u ? ` · ${u}` : ''}`, mono(11), Math.round(15 * k), '', pad + Math.round(28 * k));
       y += Math.round(4 * k);
     });
-    if (rels.length > 1) { const cw = Math.min(W - pad * 2, Math.round(150 * k)); y += Math.round(6 * k); drawChart(x, s, W / 2, y + cw / 2, cw, Math.max(1, k * 1.2)); y += cw + Math.round(4 * k); x.font = mono(9); text(`FIG. 2 · ${rels.length} RELATIONS · NORTH UP`, mono(9), Math.round(13 * k)); }
   }
   if (s.note) { rule(); field('NOTE', s.note); }
   if (s.who) { rule(); text(`— ${s.who}`, mono(13), Math.round(18 * k)); }
@@ -288,24 +316,33 @@ async function slipCanvas(s, W, levels) {
   return out;
 }
 async function slipPNG(s, W, levels) { const cv = await slipCanvas(s, W, levels); return new Promise(res => cv.toBlob(b => res(b), 'image/png')); }
-/* ───────── raw bytes for an ESC/POS receipt printer: the photograph as raster lines, the slip, a QR code, a cut ───────── */
-async function escpos(s) {
-  const b = []; const put = (...a) => { for (const v of a) b.push(v); }; const txt = t => { for (const ch of ascii(t)) put(ch.charCodeAt(0)); };
+/* ───────── raw bytes for an ESC/POS receipt printer: the photograph as raster lines, the slip with its figure above the relations,
+   a QR code and a cut. The paper sets the width: 384 dots and 32 columns on 58 mm, about 512 and 42 on 80 mm (DA_PRINTERS) ───────── */
+const PRINTERS = window.DA_PRINTERS || { 58: { w: '58 MM', dots: 384, cols: 32 } };
+/* a black and white canvas as GS v 0 raster, in bands of up to 255 rows */
+function rasterOf(cv) {
+  const W = cv.width, H = cv.height, bw = W >> 3; const d = cv.getContext('2d').getImageData(0, 0, W, H).data; const out = [];
+  for (let y0 = 0; y0 < H; y0 += 255) {
+    const h = Math.min(255, H - y0); out.push(0x1D, 0x76, 0x30, 0x00, bw & 0xFF, bw >> 8, h & 0xFF, h >> 8);
+    for (let y = y0; y < y0 + h; y++) for (let xb = 0; xb < bw; xb++) { let v = 0; for (let bit = 0; bit < 8; bit++) if (d[(y * W + xb * 8 + bit) * 4] < 128) v |= 0x80 >> bit; out.push(v); }
+  }
+  return out;
+}
+async function escpos(s, paper = '58') {
+  const P = PRINTERS[paper] || PRINTERS[58] || { dots: 384, cols: 32 }; const W = P.dots - (P.dots % 8);
+  const b = []; const put = (...a) => { for (const v of a) b.push(v); }; const txt = t => { for (const ch of ascii(t)) put(ch.charCodeAt(0)); }; const img = cv => { for (const v of rasterOf(cv)) b.push(v); put(0x0A); };
   put(0x1B, 0x40, 0x1B, 0x74, 0x00);                                        /* initialise; code page 437 */
   put(0x1B, 0x61, 0x01, 0x1B, 0x45, 0x01, 0x1D, 0x21, 0x11); txt(s.code + '\n'); put(0x1D, 0x21, 0x00, 0x1B, 0x45, 0x00, 0x1B, 0x61, 0x00);
-  /* the photograph: GS v 0, in bands of 255 rows, 48 bytes a row for 384 dots */
+  /* the photograph, square, the width of the paper */
   const src = sigSrc(s, false);
-  if (src) {
-    try {
-      const W = 384; const Hh = 384; const cv = await bwCanvas(src, W, Hh, 2); const d = cv.getContext('2d').getImageData(0, 0, W, Hh).data;
-      for (let y0 = 0; y0 < Hh; y0 += 255) {
-        const h = Math.min(255, Hh - y0); put(0x1D, 0x76, 0x30, 0x00, 48, 0, h & 0xFF, h >> 8);
-        for (let y = y0; y < y0 + h; y++) for (let xb = 0; xb < 48; xb++) { let v = 0; for (let bit = 0; bit < 8; bit++) if (d[(y * W + xb * 8 + bit) * 4] < 128) v |= 0x80 >> bit; put(v); }
-      }
-      put(0x0A);
-    } catch (e) { /* no pixels to share: the words alone */ }
+  if (src) { try { img(await bwCanvas(src, W, W, 2)); } catch (e) { /* no pixels to share: the words alone */ } }
+  const lines = slipText(s, P.cols).split('\n').slice(1); const ri = lines.indexOf('RELATIONS');
+  txt((ri < 0 ? lines : lines.slice(0, ri)).join('\n') + '\n');
+  if (ri >= 0) {
+    /* the figure as it lies on the ground, above the relations it numbers */
+    if (relOrder(s.nodes || []).length > 1) { const H = Math.round(W * 0.5) & ~7; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); drawChart(x, s, W / 2, H / 2, H - 8, W / 200); img(cv); }
+    txt(lines.slice(ri).join('\n') + '\n');
   }
-  txt(slipText(s).split('\n').slice(1).join('\n') + '\n');
   const q = unescape(encodeURIComponent(qrText(s))); const n = q.length + 3;
   if (q.length < 1200) {   /* up to about version 26 at three dots a module: still inside 384 dots */
     put(0x1B, 0x61, 0x01);
@@ -350,36 +387,42 @@ async function drawMini(cv, o) {
     x.fillRect(6 * k, y, Math.min(W - 12 * k, 8 * k + nameOf(o).length * 3.2 * k), 4.5 * k); y += 9 * k;
     x.globalAlpha = 0.35; for (let i = 0; i < 2; i++) { x.fillRect(6 * k, y, (W - 12 * k) * (i ? 0.62 : 1), 2.4 * k); y += 5 * k; } x.globalAlpha = 1; y += 2 * k;
     for (let i = 0; i < 4; i++) { x.fillRect(6 * k, y, (W - 12 * k) * [0.82, 0.7, 0.9, 0.66][i], 3 * k); y += 6.5 * k; }
-    y += 2 * k; const cw = Math.min(40 * k, H - y - 8 * k); x.globalAlpha = 0.5; for (let i = 0; i < Math.min(5, fig.nodes.length); i++) x.fillRect(6 * k, y + i * 5 * k, (W - 12 * k) * 0.5, 2.2 * k); x.globalAlpha = 1;
-    if (fig.nodes.length > 1 && cw > 16 * k) drawChart(x, fig, W - 6 * k - cw / 2, y + cw / 2, cw, Math.max(0.6, k * 0.55));
+    /* the figure, then the relations under it */
+    y += 2 * k; const cw = Math.min(30 * k, H - y - 18 * k);
+    if (fig.nodes.length > 1 && cw > 14 * k) { drawChart(x, fig, W / 2, y + cw / 2, cw, Math.max(0.6, k * 0.55)); y += cw + 3 * k; }
+    x.globalAlpha = 0.5; for (let i = 0; i < Math.min(4, fig.nodes.length) && y + 3 * k < H; i++) { x.fillRect(6 * k, y, (W - 12 * k) * 0.6, 2.2 * k); y += 4.5 * k; } x.globalAlpha = 1;
   };
   paint(null);
   if (src) try { paint(await bwCanvas(src, W, Math.round(H * 0.42), 2)); } catch (e) { /* the mark stands in */ }
 }
 
-/* ───────── the board: open a signal, its figure on the ground ───────── */
+/* ───────── a story opened: its life, open and live, with the slip turned up. Its knots can be looked at and joined like any other ───────── */
 function openSignal(key) {
   const s = S.signals.find(x => x.key === key || x.code === key); if (!s) return;
-  if (S.mode) closeRecord('switch');
-  S.mode = 'sig'; S.sig = s.key; S.issued = null; openRecord(); fillSignal(s); showFace('signal'); strings.showSig(); life.select(); snd.tick(1800); buzz(5);
-  if (S.mapReady && s.pin) map.easeTo({ center: [s.pin.lng, s.pin.lat], zoom: Math.max(map.getZoom(), 15.6), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
-  try { history.replaceState(null, '', '#' + s.code); } catch (e) { /* file:// */ }
+  select(cellOfSignal(s).id, { sig: s });
 }
-/* a signal's cell: the sighting itself when it is here, else a cell made from what the signal carries */
+/* a story's cell: the sighting itself when it is here, else a cell of its own, made from what the story carries.
+   One cell, one mark: the story stands where its life was, and opens as that life */
 function cellOfSignal(s) {
-  const p = s.pin || {}; if (p.id && S.byId.has(p.id)) return S.byId.get(p.id);
+  const p = s.pin || {}; if (p.id && S.byId.has(p.id) && !S.byId.get(p.id).story) return S.byId.get(p.id);
   const id = 'sp:' + s.code; if (S.byId.has(id)) return S.byId.get(id);
-  const o = { id, sigPin: true, g: p.g || 'paw', lat: +p.lat, lng: +p.lng, d: isoDay(new Date(s.at)), age: 0, rare: 0.5, tx: { id: null, n: p.n || p.cn || '', cn: p.cn || p.n || '', ic: p.ic || IC_OF_GLYPH[p.g] || 'Animalia', th: false, na: true, intro: false } };
+  const im = s.img && s.img.k === 'inat' && s.img.u ? { u: s.img.u, l: s.img.l || 'cc-by-nc', a: s.img.a || '' } : null; const own = s.img && s.img.k === 'own' ? OWN[s.code] || s.photo || null : null;
+  const o = { id, sigPin: true, story: s.key, code: s.code, ex: !!s.ex, shared: !!s.shared, g: p.g || 'paw', lat: +p.lat, lng: +p.lng, at: s.at, d: isoDay(new Date(s.at)), age: 0, rare: 0.5, ...(im ? { ph: im } : {}), ...(own ? { photo: own } : {}),
+    tx: { id: null, n: p.n || p.cn || '', cn: p.cn || p.n || '', ic: p.ic || IC_OF_GLYPH[p.g] || 'Animalia', th: false, na: true, intro: false } };
   S.byId.set(id, o); return o;
 }
+/* every story with a place on the ground, as the cell it stands in */
+function storyCells() { const out = []; for (const s of S.signals) { if (!s.pin || !Number.isFinite(+s.pin.lat) || !Number.isFinite(+s.pin.lng)) continue; const o = cellOfSignal(s); if (o.story && !out.includes(o)) out.push(o); } return out; }
 function remixSignal(s) {
   const o = cellOfSignal(s); strings.seed(o, s); remixLines = { ...(s.lines || {}) };
   if (s.img && s.img.k === 'inat' && !IMGS[o.id]) { IMGS[o.id] = s.img; saveImgs(); }
-  select(o.id); setTimeout(() => { if (S.sel === o.id) toWish(o); }, reduced() ? 0 : 450);
+  select(o.id, { cell: true }); setTimeout(() => { if (S.sel === o.id) toWish(o); }, reduced() ? 0 : 450);
 }
 /* receiving: a link, the packed signal, or a mesh message pasted in */
 async function receive(text) {
   let s = null; const t = String(text).trim();
+  /* the code printed on a slip: its story, from this device or the board */
+  const code = codeIn(t); if (code) return receiveCode(code);
   try {
     const m = t.match(/#x=([A-Za-z0-9_-]+)/) || t.match(/^([A-Za-z0-9_-]{40,})$/);
     if (m) s = unpackSignal(m[1]);

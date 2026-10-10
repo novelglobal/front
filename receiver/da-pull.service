@@ -1,0 +1,21 @@
+# Direct Action · the pull bridge, kept running by systemd on the receiver.
+# Copy to /etc/systemd/system/da-pull.service, then: sudo systemctl enable --now da-pull
+[Unit]
+Description=Direct Action pull bridge: prints the slips sent to this partner place
+Wants=network-online.target printd.service
+After=network-online.target printd.service
+
+[Service]
+User=da
+EnvironmentFile=/etc/da-pull.env
+ExecStart=/usr/bin/python3 /opt/da-pull/pull.py
+Restart=always
+RestartSec=10
+# a small, quiet service: no new privileges, its own /tmp, the rest of the system read-only
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

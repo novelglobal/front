@@ -3,12 +3,13 @@
    #U… a record placed here; #E01 a gathering; any other code an iNaturalist sighting ───────── */
 let pendingHash = location.hash.replace(/^#/, '');
 const viewOfHash = h => { const p = PARTS[String(h).toLowerCase()]; return p ? p[0] : -1; };
-const isLocalHash = h => viewOfHash(h) >= 0 || /^(T\d{2}|E\d{2}|DA-[0-9A-Z]{4}|x=.+)$/i.test(h);
+const isLocalHash = h => viewOfHash(h) >= 0 || /^(T\d{2}|E\d{2}|DA-[0-9A-Z]{4}|P-[a-z0-9-]+|x=.+)$/i.test(h);
 async function handleHash() {
   const h = decodeURIComponent(pendingHash || ''); pendingHash = ''; if (!h) return;
   const v = viewOfHash(h); if (v >= 0) { const part = h.toLowerCase(); setView(v, false, PARTS[part][1] ? part : null); return; }
   if (/^x=/.test(h)) { await receive('#' + h); return; }
-  if (/^DA-[0-9A-Z]{4}$/i.test(h)) { const s = S.signals.find(x => x.code === h.toUpperCase()); if (s) openSignal(s.key); return; }
+  if (/^DA-[0-9A-Z]{4}$/i.test(h)) { const s = S.signals.find(x => x.code === h.toUpperCase()); if (s) openSignal(s.key); else receiveCode(h.toUpperCase()); return; }
+  if (/^P-[a-z0-9-]+$/i.test(h)) { selectPartner(h.slice(2).toLowerCase()); return; }
   if (/^T\d{2}$/i.test(h)) { const id = 'tribe:' + h.toUpperCase(); if (S.byId.has(id)) selectTribe(id); return; }
   if (/^E\d{2}$/i.test(h)) { const id = 'e:' + (+h.slice(1)); if (S.byId.has(id)) select(id); return; }
   if (/^U[0-9a-z]{8,}$/i.test(h)) { const id = 'u:' + h.slice(1); if (S.byId.has(id)) select(id); else toast('NOT ON THIS DEVICE'); return; }
@@ -56,11 +57,18 @@ document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); do
 if (BUILD.branch) { const t = document.createElement('div'); t.className = 'preview mono'; t.setAttribute('aria-hidden', 'true'); t.textContent = `PREVIEW · ${BUILD.branch.toUpperCase()} · ${BUILD.sha.toUpperCase()}`; document.body.appendChild(t); }
 S.mo = nowK();
 derive(); buildTribes(); buildHeroes(); renderView(); flags(); loadEvents();
+/* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
+applyShared(); loadShared(); flushOutbox(); checkSent(); loadPartners();
+/* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */
+if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0); }
+/* sound waits for a first touch; then the radar plays what it has found so far */
+const firstTouch = () => { removeEventListener('pointerdown', firstTouch, true); removeEventListener('keydown', firstTouch, true); setTimeout(() => life.replay(), 60); };
+addEventListener('pointerdown', firstTouch, true); addEventListener('keydown', firstTouch, true);
 if (isLocalHash(pendingHash)) handleHash();
-loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
+loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); else life.findStart(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
 window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
-  webBriefs, makeSignal, meshText, pagerText, slipText, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, face: () => face };
+  webBriefs, makeSignal, meshText, pagerText, slipText, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();

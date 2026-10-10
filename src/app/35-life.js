@@ -1,8 +1,8 @@
 
 /* ════════════════════════════════════════════════════════════════════
    THE RADAR — the map holds nothing until the radar has looked. A slow hand sweeps the pinned circle and each life
-   it passes appears and stays while the radar stays. Outside it only what cannot wait is shown: an animal hurt,
-   dead or lost, a life in extreme danger, a threatened one, and the five in greatest need.
+   it passes appears and stays while the radar stays. Outside it, one rule: only what is from the last 24 hours,
+   whether a pin, a sighting, a story, a gathering, or an animal hurt, dead or lost.
    Open a cell and the sweep stops: its own radius opens, and everything inside it becomes a knot for a string.
    Two canvases over the photograph: the ground (the radar's mask, ticks and patches) and the marks.
    ════════════════════════════════════════════════════════════════════ */
@@ -13,8 +13,8 @@ const nameOf = o => {
   return d.text || o.title || (o.hum ? 'People' : SCALES[bandOf(o)].label.split(' · ')[0]);
 };
 const isAlarm = o => !!o && (o.kind === 'injured' || o.kind === 'lost' || o.kind === 'dead');
-const codeOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? toCode(String(o.ev.key).slice(-6)) : o.hero ? 'H·' + o.hero.toUpperCase() : String(o.id).toUpperCase());
-const hashOf = o => (typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? 'U' + o.ev.key : o.isTribe ? o.tid : '');
+const codeOf = o => (o.code ? o.code : typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? toCode(String(o.ev.key).slice(-6)) : o.hero ? 'H·' + o.hero.toUpperCase() : String(o.id).toUpperCase());
+const hashOf = o => (o.code ? o.code : typeof o.id === 'number' ? toCode(o.id) : o.comm ? o.hid : o.user ? 'U' + o.ev.key : o.isTribe ? o.tid : '');
 /* a point a distance and a bearing away: flat, which holds well inside a few kilometres */
 const KY = 110540;
 const dest = (lat, lng, d, brg) => { const r = brg * Math.PI / 180; return [lat + d * Math.cos(r) / KY, lng + d * Math.sin(r) / (111320 * Math.cos(lat * Math.PI / 180))]; };
@@ -45,12 +45,12 @@ const life = (() => {
 
   /* ───────── what each record is: the thing itself, in the shape of its kind of record ───────── */
   const zoomNow = () => (S.mapReady ? map.getZoom() : 14);
-  /* icons are half size from afar and full size close in: the ground asks to be approached */
-  const kzAt = z => clamp(0.5 + (z - 13.2) * 0.25, 0.5, 1);
-  const sizeAt = (z = zoomNow()) => Math.max(8, Math.round(clamp(16 + (z - 12.5) * 4, 16, 28) * kzAt(z) / 2) * 2);
+  /* icons are small from afar and grow close in: the ground asks to be approached */
+  const kzAt = z => clamp(0.45 + (z - 13.2) * 0.25, 0.45, 1);
+  const sizeAt = (z = zoomNow()) => Math.max(6, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) / 2) * 2);
   const PLACE_TONE = { flora: 'flora', injured: 'injured', dead: 'dead', lost: 'lost', need: 'need', offer: 'offer', event: 'event' };
   const PLACE_ICON = { need: 'plus', offer: 'give', event: 'people', injured: 'injured', dead: 'harm' };
-  const PLANT_Z = 15.4;   /* plants show only close up, and small */
+  const PLANT_Z = 14.8;   /* plants show only close up, and small */
   function badgeOf(o, d0) {
     const d = d0 || sizeAt();
     if (o.id === 'place') {
@@ -58,6 +58,8 @@ const life = (() => {
       return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: Math.max(d, 18) + 6 };
     }
     if (o.hero) { const deg = degOf(o); return { tone: M.toneOf(glyphOf(o)), g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
+    /* a story: a slip issued about a life, standing where its life was */
+    if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
     if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
     if (o.kind === 'injured') return { tone: 'injured', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'injured', d: d + 4 };
     if (o.kind === 'dead') return { tone: 'dead', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'harm', d: d + 2 };
@@ -65,13 +67,13 @@ const life = (() => {
     if (o.hum) {
       const k = o.kind; const gig = isGig(o); const i = gig ? 'hug' : o.i || (k === 'event' ? ((o.tags || []).includes('sound') ? 'sound' : 'people') : k === 'offer' ? 'give' : k === 'pulse' ? 'people' : k === 'refuge' ? 'refuge' : 'plus');
       if (gig) return { tone: 'event', g: null, i, d: d + 2 };
-      return { tone: k === 'event' ? 'event' : k === 'offer' || k === 'pulse' ? 'offer' : 'need', g: o.g || null, i: o.g ? null : i, d, fresh: !!(o.user && Date.now() - o.at < 864e5) };
+      return { tone: k === 'event' ? 'event' : k === 'offer' || k === 'pulse' ? 'offer' : 'need', g: o.g || null, i: o.g ? null : i, d, fresh: isFresh(o) };
     }
     const sub = subjectOf(o); const g = glyphOf(o); const flora = ['Plantae', 'Fungi'].includes(kindOf(sub)) || bandOf(o) === 5 || g === 'plant' || g === 'fungi';
-    if (isCold(o)) return { tone: 'cold', g, d: Math.max(8, Math.round(d * 0.64)) };
+    if (isCold(o)) return { tone: 'cold', g, d: Math.max(6, Math.round(d * 0.64)) };
     const deg = degOf(o);
-    const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || (o.user && Date.now() - o.at < 864e5));
-    if (flora) return { tone: 'flora', g, d: Math.max(8, Math.round(d * 0.55)), sig: !!(sub.tx && sub.tx.th), dz: deg >= 3 ? deg : 0 };
+    const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || isFresh(o));
+    if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)), sig: !!(sub.tx && sub.tx.th), dz: deg >= 3 ? deg : 0, fresh };
     return { tone: M.toneOf(g), g, d: d + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0), sig: !!(sub.tx && sub.tx.th), fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
@@ -81,14 +83,12 @@ const life = (() => {
   const MOVING = new Set(['k-bird', 'k-mammal', 'k-insect', 'k-spider', 'k-reptile', 'k-water', 'k-other']);
   function data() {
     if (!bx) return; items = []; const now = Date.now(); curD = sizeAt();
-    for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.heroes]) {
+    for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.heroes, ...storyCells()]) {
       if (hiddenCell(o.id)) continue;
       const b = badgeOf(o, curD); const r0 = seeded(`${o.id}|${WEEK}`);
-      const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, phase: r0(), pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
-      it.alarm = (o.kind === 'injured' && now - o.at < 12 * 3600e3) || (o.kind === 'dead' && now - o.at < 48 * 3600e3) || (o.kind === 'lost' && now - o.at < 72 * 3600e3);
-      /* what deserves to be seen outside the radar: hurt, dead or lost now; extreme danger; threatened; the five; what this device just placed */
-      const quiet = b.tone === 'hist' || b.tone === 'cold' || b.tone === 'flora';
-      it.flag = it.alarm || it.hero || (!quiet && (b.dz >= 4 || !!(o.tx && o.tx.th && !o.hum))) || !!(o.user && now - o.at < 864e5);
+      const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, ox: 0, oy: 0, phase: r0(), pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
+      /* outside the radar, one rule: only what is from the last 24 hours. An animal hurt, dead or lost is an alarm for as long */
+      it.flag = isFresh(o); it.alarm = isAlarm(o) && it.flag;
       items.push(it);
     }
     for (const it of items) {
@@ -112,7 +112,8 @@ const life = (() => {
   function scanGeo() {
     for (const it of items) { it.sd = haversine(S.scan.lat, S.scan.lng, it.lat, it.lng); it.sb = bearing(S.scan.lat, S.scan.lng, it.lat, it.lng); it.inS = it.sd <= S.scan.r; if (!it.inS) seen.delete(it.o.id); }
   }
-  function revealAll() { const t = performance.now() - 2000; for (const it of items) if (it.inS && !seen.has(it.o.id)) seen.set(it.o.id, t); }
+  /* everything inside found at once: quietly, or arriving as the hand would show it */
+  function revealAll(arrive) { const t = performance.now() - (arrive ? 0 : 2000); for (const it of items) if (it.inS && !seen.has(it.o.id)) seen.set(it.o.id, t); }
   const paused = () => !!S.mode || document.hidden;
   const running = () => !reduced() && !paused();
   /* the hand moves on; whatever lies between where it was and where it is now is found */
@@ -129,9 +130,34 @@ const life = (() => {
   let scanSave = 0;
   function setScan(lat, lng, r, save) {
     if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
-    if (r != null) S.scan.r = Math.round(clamp(r, SC.min, SC.max) / 10) * 10;
+    const r0 = S.scan.r; if (r != null) S.scan.r = Math.round(clamp(r, SC.min, SC.max) / 10) * 10;
     scanGeo(); dirty = true; fxDirty = true; placeKnobs();
+    /* a wider reach shows what it now holds at once, without waiting for the hand */
+    if (S.scan.r > r0) revealAll(true);
     if (save) { clearTimeout(scanSave); scanSave = setTimeout(() => { prefs.scan = { lat: +S.scan.lat.toFixed(5), lng: +S.scan.lng.toFixed(5), r: S.scan.r }; savePrefs(); }, 250); }
+  }
+  /* a first visit: the radar starts where the most kinds of animals have been seen lately, near where it was pinned,
+     so the first sweep has lives to find. Once per device; after that the radar stays where it is left */
+  function findStart() {
+    if (prefs.scan || prefs.found || S.mode || !S.obs.length) return false;
+    prefs.found = true; savePrefs();
+    const c0 = { lat: S.scan.lat, lng: S.scan.lng }, R = S.scan.r, F = SC.find || 1500;
+    const pool = S.obs.filter(o => !o.ob && !o.hum && !isCold(o) && !['Plantae', 'Fungi'].includes(kindOf(o)) && haversine(c0.lat, c0.lng, o.lat, o.lng) <= F + R);
+    const kinds = (lat, lng) => new Set(pool.filter(o => haversine(lat, lng, o.lat, o.lng) <= R).map(o => o.tx.id || o.tx.n)).size;
+    let best = { n: kinds(c0.lat, c0.lng), lat: c0.lat, lng: c0.lng }; const n0 = best.n;
+    for (const o of pool) { if (haversine(c0.lat, c0.lng, o.lat, o.lng) > F) continue; const n = kinds(o.lat, o.lng); if (n > best.n) best = { n, lat: o.lat, lng: o.lng }; }
+    if (best.n < Math.max(4, n0 * 1.5)) return false;
+    setScan(best.lat, best.lng, null, true);
+    if (S.mapReady) map.easeTo({ center: [best.lng, best.lat], zoom: scanZoom(), offset: sheetOffset(), duration: reduced() ? 0 : 1100 });
+    return true;
+  }
+  /* sound waits for a first touch: browsers keep a page quiet until then. At that touch the radar plays what it has
+     found so far, in the order the hand passed it, and goes on playing as it sweeps */
+  function replay() {
+    if (!prefs.sound || S.mode === 'place') return 0;
+    const found = items.filter(it => it.inS && seen.has(it.o.id) && shown(it) && !it.o.hist && it.b.tone !== 'cold').sort((a, b) => ((a.sb - sweepB + 360) % 360) - ((b.sb - sweepB + 360) % 360)).slice(0, 16);
+    found.forEach((it, i) => setTimeout(() => snd.blip(it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45), 80 + i * 130));
+    return found.length;
   }
   /* the radar glides to a new place: the hand keeps sweeping as it goes */
   let glide = 0;
@@ -154,16 +180,37 @@ const life = (() => {
     for (const f of S.fountains) { const p = map.project([f.lng, f.lat]); f.x = p.x; f.y = p.y; }
     ringPts = ringOf(S.scan.lat, S.scan.lng, S.scan.r);
     const o = selected(); cellPts = o ? ringOf(o.lat, o.lng, rangeOf(o)) : [];
-    cluster(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+    cluster(); spread(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+  }
+  /* marks that would sit on each other move apart a little, each staying close to where it was seen */
+  function spread() {
+    const live = items.filter(it => !it.binned && (it.flag || it.inS || it.o.story) && it.b.tone !== 'hist' && !off(it.x, it.y, 80));
+    if (live.length < 2) return; const G = Math.max(...live.map(it => it.b.d)) + 2;
+    for (let pass = 0; pass < 3; pass++) {
+      const grid = new Map(); const cellOf = it => `${Math.floor((it.x + it.ox) / G)},${Math.floor((it.y + it.oy) / G)}`;
+      for (const it of live) { const k = cellOf(it); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(it); }
+      for (const it of live) {
+        const gx = Math.floor((it.x + it.ox) / G), gy = Math.floor((it.y + it.oy) / G);
+        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const ot of grid.get(`${gx + i},${gy + j}`) || []) {
+          if (ot === it) continue; let dx = it.x + it.ox - ot.x - ot.ox, dy = it.y + it.oy - ot.y - ot.oy; const need = (it.b.d + ot.b.d) / 2 + 1.5, L = Math.hypot(dx, dy); if (L >= need) continue;
+          if (L < 0.01) { const a = (it.phase - ot.phase) * TAU; dx = Math.cos(a); dy = Math.sin(a); } else { dx /= L; dy /= L; }
+          /* each pair is met twice in a pass, so each meeting moves both a quarter of the overlap */
+          const k = (need - L) / 4; it.ox += dx * k; it.oy += dy * k; ot.ox -= dx * k; ot.oy -= dy * k;
+        }
+      }
+    }
+    for (const it of live) { const m = Math.hypot(it.ox, it.oy), cap = it.b.d * 1.2; if (m > cap) { it.ox *= cap / m; it.oy *= cap / m; } it.x += it.ox; it.y += it.oy; it.ox = 0; it.oy = 0; }
   }
   const zoomQuiet = () => zoomNow() < 14.2;
   /* what the ground shows, item by item */
   function shown(it) {
     const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
+    /* the stories page shows every story on the ground, wherever it is */
+    if (o.story && S.open && S.view === 1 && !S.mode) return true;
     const found = it.inS && seen.has(o.id); const z = zoomNow();
     if (it.b.tone === 'hist') return found && z >= 14;
-    if (it.b.tone === 'flora') return found && z >= PLANT_Z;
+    if (it.b.tone === 'flora') return it.flag || (found && z >= PLANT_Z);   /* a plant from the last 24 hours shows anywhere, like any other */
     return it.flag || found;
   }
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
@@ -205,11 +252,9 @@ const life = (() => {
     frameLine(ctx);
     const cellOpen = S.mode === 'ping' && cellPts.length;
     /* nothing outside is darkened: an alert anywhere stays as clear as the ground. Inside, a faint light marks where the radar
-       or an open cell looks; a signal's figure is ringed */
-    const sig = S.mode === 'sig' && S.signals.find(x => x.key === S.sig); const sigPts = sig && sig.pin ? ringOf(sig.pin.lat, sig.pin.lng, Math.max(260, ...(sig.nodes || []).map(n => n.d + 90))) : null;
-    const lit = cellOpen ? cellPts : sigPts || (S.mode === 'tribe' ? null : ringPts);
-    if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = cellOpen || sigPts ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.06)'; ctx.fill(); ctx.restore(); }
-    if (sigPts) { ctx.save(); ctx.beginPath(); poly(ctx, sigPts); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.setLineDash([2, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.restore(); }
+       or an open cell looks */
+    const lit = cellOpen ? cellPts : S.mode === 'tribe' || S.mode === 'partner' ? null : ringPts;
+    if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = cellOpen ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.06)'; ctx.fill(); ctx.restore(); }
     /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
@@ -221,7 +266,7 @@ const life = (() => {
     /* the radar's rim: a hairline with a tick every ten degrees, longer every thirty, a notch at north */
     if (ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
-      const quiet = cellOpen || !!sigPts || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
       ctx.beginPath();
       for (let i = 0; i < 72; i += 2) { const [x, y] = ringPts[i]; const dx = cp.x - x, dy = cp.y - y, L = Math.hypot(dx, dy) || 1; const k = i % 6 === 0 ? 9 : 4; ctx.moveTo(x, y); ctx.lineTo(x + dx / L * k, y + dy / L * k); }
       ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -262,6 +307,22 @@ const life = (() => {
     const tip = at(sweepB); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.restore();
   }
+  /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
+  const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
+  function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { if (!p.printer) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; M.printer(ctx, q.x, q.y, d, still ? 0 : t, !!(PSTATE[p.id] || {}).ready); } }
+  /* a life's photograph, for the ground once its cell is open: its own, else one of its kind; loaded once, drawn when it has come */
+  const PH = new Map();
+  function photoOf(o, size) {
+    const sub = subjectOf(o); const tx = sub && sub.tx && sub.tx.id ? TXI[sub.tx.id] : null;
+    const src = o.photo || (sub && sub.ph && licOpen(sub.ph.l) ? photoURL(sub.ph.u, size) : '') || (tx && tx.ph ? photoURL(tx.ph.u, size) : ''); if (!src) return null;
+    let e = PH.get(src); if (!e) { if (PH.size > 240) PH.clear(); e = { im: new Image(), ok: false }; e.im.decoding = 'async'; e.im.onload = () => { e.ok = true; fxDirty = true; }; e.im.src = src; PH.set(src, e); }
+    return e.ok ? e.im : null;
+  }
+  function photoDisc(ctx, im, x, y, d, ring) {
+    const r = d / 2; ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.clip();
+    const s = Math.max(d / im.naturalWidth, d / im.naturalHeight); ctx.drawImage(im, x - im.naturalWidth * s / 2, y - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s); ctx.restore();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.strokeStyle = ring || C.white; ctx.lineWidth = 2; ctx.stroke();
+  }
   /* the cell chosen: a point becomes a line, the line a boundary, and the boundary holds the knots */
   function selection(ctx, now) {
     const o = selected(); if (!o) return;
@@ -274,8 +335,11 @@ const life = (() => {
     }
     if (S.mode === 'ping') strings.draw(ctx, now, e);
     const it = items.find(z => z.o === o); const b = it ? it.b : badgeOf(o);
-    const big = Math.round((b.tone === 'hist' || b.tone === 'cold' ? Math.max(curD, 18) : Math.max(b.d, 20)) * (1 + 0.36 * kA));
-    M.badge(ctx, { ...b, a: 1, d: big, tone: b.tone === 'hist' || b.tone === 'cold' ? M.toneOf(glyphOf(o)) : b.tone, g: b.g || (b.tone === 'hist' ? glyphOf(o) : null) }, x, y);
+    let big = Math.round((b.tone === 'hist' || b.tone === 'cold' ? Math.max(curD, 18) : Math.max(b.d, 20)) * (1 + 0.36 * kA));
+    /* open, a life shows itself: its photograph, where there is one */
+    const im = S.mode === 'ping' && !o.isTribe ? photoOf(o, 'medium') : null;
+    if (im) { big = Math.round(Math.max(40, big * 1.5)); photoDisc(ctx, im, x, y, big, o.story ? C.cobalt : isAlarm(o) ? C.red : C.white); }
+    else M.badge(ctx, { ...b, a: 1, d: big, tone: b.tone === 'hist' || b.tone === 'cold' ? M.toneOf(glyphOf(o)) : b.tone, g: b.g || (b.tone === 'hist' ? glyphOf(o) : null) }, x, y);
     if (S.mode === 'ping') strings.knotAt(ctx, 'pin', x, y, big / 2, now);
   }
   function drawFx(now) {
@@ -288,30 +352,25 @@ const life = (() => {
     for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
     for (const it of items) {
       if (it.binned || !shown(it) || off(it.x, it.y)) continue;
-      const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'sig' ? 0.55 : 1;
+      const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'partner' ? 0.55 : 1;
       if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
       let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
       /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
       const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = age < 420 ? back(age / 420) : 1;
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
+      /* inside an open cell the other lives show themselves too, as photographs */
+      const im = node && !it.o.hum ? photoOf(it.o, 'square') : null;
+      if (im) { photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(18, it.b.d * 1.3)), it.alarm ? C.red : C.white); continue; }
       drawItem(ctx, it, m, a, k);
     }
+    printers(ctx, t, still);
     /* a song from the centre: each note lights where it was tied */
     for (const n of songFx) { const q = (now - n.at) / 700; if (q < 0 || q > 1) continue; const p = map.project([n.lng, n.lat]); ctx.save(); ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(p.x, p.y, 6 + q * 22, 0, TAU); ctx.strokeStyle = C.orange; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
-    if (S.view === 1 || S.mode === 'sig') sigPins(ctx, now);
-    if (S.mode === 'sig') strings.drawSig(ctx, now);
     selection(ctx, now);
     if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) { ctx.save(); ctx.beginPath(); ctx.arc(it.x + it.dx, it.y + it.dy, it.b.d / 2 + 5, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } }
     /* the record being placed breathes: one ring leaving it, until it is placed */
     if (S.mode === 'place' && S.place && !still) { const q = map.project([S.place.lng, S.place.lat]); const k = (now / 1400) % 1; ctx.save(); ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(q.x, q.y, 14 + k * 26, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.8; ctx.stroke(); ctx.restore(); }
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); const k = still ? 1 : back((now - ghost.t) / 300); M.badge(ctx, { tone: 'need', i: 'plus', d: Math.round(28 * k) || 1 }, q.x, q.y); }
-  }
-  /* signals on the ground: each a small receipt where its life was */
-  function sigPins(ctx) {
-    for (const s of S.signals) {
-      const p = s.pin; if (!p || p.lat == null) continue; const q = map.project([p.lng, p.lat]); s._x = q.x; s._y = q.y; if (off(q.x, q.y)) continue;
-      const on = S.mode === 'sig' && S.sig === s.key; M.badge(ctx, { tone: 'story', g: p.g || 'paw', d: Math.max(16, curD) + (on ? 10 : 2), carried: !s.ex, a: S.mode === 'sig' && !on ? 0.5 : 1 }, q.x, q.y);
-    }
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -380,7 +439,7 @@ const life = (() => {
     const consider = (d, h) => { if (d <= slack && (!best || d < best.d)) best = { ...h, d }; };
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
     if (S.mode === 'ping') { const n = strings.hit(x, y, slack); if (n) return n; }
-    if (S.view === 1 || S.mode === 'sig') for (const s of S.signals) if (s._x != null) consider(Math.hypot(s._x - x, s._y - y) - 9, { kind: 'sig', key: s.key });
+    const pd = printerSize() / 2 + 4; for (const p of PARTNERS) if (p.printer && p._x != null && Math.abs(p._x - x) < pd && y - p._y < pd && p._y - y < pd + 6) return { kind: 'partner', id: p.id, d: 0 };
     for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
     for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2; consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
     if (!best && !peek && S.mode !== 'ping') { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => (S.mode === 'tribe' || inScan(ll.lat, ll.lng)) && inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
@@ -390,18 +449,20 @@ const life = (() => {
   /* ───────── the tag: a name under the pointer, nothing more ───────── */
   function tagHTML(h) {
     if (h.kind === 'node') return strings.tagHTML(h.key);
-    if (h.kind === 'sig') { const s = S.signals.find(x => x.key === h.key); return s ? `<span class="tx"><b class="mono">${esc(s.code)}${s.ex ? ' · EX' : ''}</b><small>${esc((s.lines || {}).h || '')}</small></span>` : ''; }
+    if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<img src="${printerImg(p, st)}" alt=""><span class="tx"><b>${esc(p.n)}</b><small>W.I.S.H. PRINTER${st.ready ? ' · ON' : ''}</small></span>` : ''; }
     const o = S.byId.get(h.id); if (!o) return ''; const sub = subjectOf(o);
     const ph = o.photo ? `<img src="${esc(o.photo)}" alt="">` : sub.ph && licOpen(sub.ph.l) ? `<img src="${esc(photoURL(sub.ph.u, 'small'))}" alt="">` : `<img src="${badgeImg(badgeOf(o, 40), 44)}" alt="">`;
     const voice = (sub.so && sub.so.u) || o.sound;
     const when = o.isEvent && o.start ? dayWord(o.start) : o.hist ? String(o.d).slice(0, 4) : o.at && (o.comm || o.user) ? fmtClock(o.at) : o.t ? fmtClock(o.t) : '';
     const w = !o.hum && !isCold(o) && !isAlarm(o) ? whenOf(o) : null; const dg = !o.hum && !isCold(o) ? degOf(o) : 0;
-    return `${ph}<span class="tx"><b>${esc(nameOf(o))}</b>${when ? `<small>${esc(when)}</small>` : ''}${dg >= 2 ? `<small class="dg d${dg}">${DEG[dg]}${w ? ` · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}${o.hero ? '' : `<button type="button" class="hide" data-hide="${esc(String(o.id))}" aria-label="${o.user ? 'Delete' : 'Hide'}" data-tip="${o.user ? 'Delete' : 'Hide from the map'}">${icon('hide', 'sm')}</button>`}`;
+    /* why it shows outside the radar: it is new, and how new */
+    const fresh = isFresh(o) && !o.isEvent ? `NEW · ${ago(stampOf(o))}` : '';
+    return `${ph}<span class="tx"><b>${esc(nameOf(o))}</b>${fresh ? `<small class="new">${fresh}</small>` : when ? `<small>${esc(when)}</small>` : ''}${dg >= 2 ? `<small class="dg d${dg}">${DEG[dg]}${w ? ` · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}${o.hero ? '' : `<button type="button" class="hide" data-hide="${esc(String(o.id))}" aria-label="${o.user ? 'Delete' : 'Hide'}" data-tip="${o.user ? 'Delete' : 'Hide from the map'}">${icon('hide', 'sm')}</button>`}`;
   }
   function placeTag() {
     let x0, y0;
     if (hoverH.kind === 'node') { const n = strings.pos(hoverH.key); if (!n) return; x0 = n.x; y0 = n.y; }
-    else if (hoverH.kind === 'sig') { const s = S.signals.find(z => z.key === hoverH.key); if (!s || s._x == null) return; x0 = s._x; y0 = s._y; }
+    else if (hoverH.kind === 'partner') { const p = partnerOf(hoverH.id); if (!p || p._x == null) return; x0 = p._x; y0 = p._y; }
     else { const o = S.byId.get(hoverH.id); if (!o) return; const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; }
     const w = tagEl.offsetWidth || 220, h = tagEl.offsetHeight || 60;
     let x = x0 + 18, y = y0 - h - 14; if (x + w > W - 8) x = x0 - w - 18; if (y < 8) y = y0 + 18; x = clamp(x, 8, Math.max(8, W - w - 8));
@@ -423,7 +484,7 @@ const life = (() => {
     const b = e.target.closest('.play'); if (b) { e.stopPropagation(); play(b.dataset.u, b); return; }
     const hd = e.target.closest('[data-hide]'); if (hd) { e.stopPropagation(); const v = hd.dataset.hide; tagEl.hidden = true; hoverH = null; hideCell(/^\d+$/.test(v) ? +v : v); return; }
     if (!hoverH) return; const h = hoverH; tagEl.hidden = true; hoverH = null;
-    if (h.kind === 'cell') { if (S.mode === 'ping' && h.id !== S.sel) strings.peekOut(h.id); else select(h.id); } else if (h.kind === 'node') strings.tap(h.key); else if (h.kind === 'sig') openSignal(h.key);
+    if (h.kind === 'cell') { if (S.mode === 'ping' && h.id !== S.sel) strings.peekOut(h.id); else select(h.id); } else if (h.kind === 'node') strings.tap(h.key); else if (h.kind === 'partner') selectPartner(h.id);
   });
   function play(url, btn) {
     if (!prefs.sound) { toast('SOUND OFF'); return; }
@@ -432,7 +493,7 @@ const life = (() => {
     audio.onended = () => { if (btn) btn.innerHTML = icon('play'); };
   }
   return {
-    start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan,
+    start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
     seen: () => seen, reveal: revealAll, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
     get items() { return items; }, get bins() { return bins; }, get movers() { return movers; }, shown,

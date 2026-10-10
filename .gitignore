@@ -4,3 +4,4 @@ test/shots/
 .wrangler/
 .dev.vars
 .env
+src/worker/stamp.js
