@@ -105,18 +105,32 @@ function nextWindow() {
   for (const w of OUT.windows) { const r = windowRun(w, k0); if (r && (!best || r.a < best.a)) best = { ...r, start: monthStart(r.a), now: r.a === k0 }; }
   return best;
 }
-/* the calendar: twelve months, each a bar in its degree of orange to black; the five in greatest need sit on the month their
-   danger begins, and under every month, the kinds of life its heat and dry reach (us among them). No words */
-const monthOfTime = t => { const d = new Date(t); return clamp((d.getFullYear() - OUT.start[0]) * 12 + d.getMonth() - OUT.start[1], 0, OUT_N - 1); };
+/* the kind of life most under threat in each month: how hard heat and dry are on it, whether its young are about, whether
+   a window of the outlook reaches it; a different kind from the month before where one is close; us among them */
+function monthKinds() {
+  const picks = []; let prev = '';
+  for (let k = 0; k < OUT_N; k++) {
+    const m = outMonth(k).m; const best = new Map();
+    for (const e of FIELD) {
+      if (!e.g || e.st === 'I') continue; const a = (e.act || '')[m], b = (e.brd || '')[m];
+      const life = b === 'B' ? 2 : a === 'A' ? 1.5 : a === 'a' ? 1 : 0.15;
+      const win = OUT.windows.some(w => inWin(w, m) && w.g.includes(e.g)) ? 2.5 : 0;
+      const sc = ((e.heat || 0) + (e.water || 0)) * life + win + (e.st === 'T' ? 1 : 0); if (sc > (best.get(e.g) || 0)) best.set(e.g, sc);
+    }
+    const r = [...best].sort((x, y) => y[1] - x[1]); let g = r[0] ? r[0][0] : 'paw'; if (g === prev && r[1] && r[1][1] >= r[0][1] * 0.85) g = r[1][0];
+    picks.push(g); prev = g;
+  }
+  const hn = OUT.windows.find(w => w.g.includes('human'));
+  if (hn && !picks.includes('human')) { const ks = [...Array(OUT_N).keys()].filter(k => inWin(hn, outMonth(k).m)); if (ks.length) picks[ks[Math.floor(ks.length / 2)]] = 'human'; }
+  return picks;
+}
+/* twelve months: each a bar in its degree, orange to black, the chosen three standing taller; under each, the kind of life
+   it puts most at risk. No words */
 function monthStrip() {
-  const ks = [...Array(OUT_N).keys()]; const now = nowK();
-  const span = k => k >= S.mo && k < S.mo + 3;
-  const five = heroesRanked().map(({ o, deg, w }) => ({ o, deg, k: w ? monthOfTime(w.start) : now }));
-  const kindsAt = k => { const m = outMonth(k).m; const gs = []; for (const w of OUT.windows) if (inWin(w, m)) for (const g of w.g) if (!gs.includes(g)) gs.push(g); return gs.slice(0, 3); };
+  const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
   return `<div class="mstrip" style="--n:${OUT_N}">`
     + `<div class="ms-m" role="group" aria-label="Months">${ks.map(k => { const Mo = outMonth(k); return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}" data-mo="${k}" aria-pressed="${k === S.mo}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]} · ${HORIZON[Mo.h]}"><i></i><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; }).join('')}</div>`
-    + `<div class="ms-h">${five.map(({ o, deg, k }) => `<button type="button" class="hero-row d${deg}" style="grid-column:${k + 1}" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.cn)} · ${DEG[deg]}">${heroPic(o)}</button>`).join('')}</div>`
-    + `<div class="ms-k" aria-hidden="true">${ks.map(k => `<span class="d${outMonth(k).lv}${span(k) ? ' on' : ''}" style="grid-column:${k + 1}">${kindsAt(k).map(g => `<i class="${g === 'human' ? 'us' : ''}">${glyphSVG(g)}</i>`).join('')}</span>`).join('')}</div>`
+    + `<div class="ms-k">${ks.map(k => { const Mo = outMonth(k); const g = gs[k]; return `<span class="d${Mo.lv}${span(k) ? ' on' : ''}${g === 'human' ? ' us' : ''}" data-tip="${esc(M.KINDS[g] || '')} · ${MON[Mo.m]}">${glyphSVG(g)}<b></b></span>`; }).join('')}</div>`
     + `</div>`;
 }
 function bindOutlook() {
@@ -168,6 +182,7 @@ function viewNow() {
       <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why || o.heroOf.cn)}">${heroPic(o)}<span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
     + tracksSection()
     + consSection()
@@ -211,7 +226,7 @@ function viewStories() {
       + `<ol class="sigs">${sigs.map(sigRow).join('')}</ol></section>`
     + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
-      + `<a class="tool" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
+      + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
       + `</div><div class="docs">${[['blank', 'print', 'BLANK SLIP', 'A blank W.I.S.H. slip to fill by hand'], ['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div>`
       + packSection()
       + `</section>`

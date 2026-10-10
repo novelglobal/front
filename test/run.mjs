@@ -129,7 +129,7 @@ if (ONLY.includes('dbg')) try {
 if (run('smoke')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'smoke');
   await page.goto('https://oan.test/index.html#stories'); await ready(page, '', true); await settle(page);
-  const land = await page.evaluate(() => { const da = window.__da; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const panel = document.querySelector('#panel').getBoundingClientRect(); return { open: da.S.open, view: da.S.view, five: document.querySelectorAll('#sec-heat .ms-h .hero-row').length, radarLeftOfPage: c.x < panel.left, hash: location.hash }; });
+  const land = await page.evaluate(() => { const da = window.__da; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const panel = document.querySelector('#panel').getBoundingClientRect(); return { open: da.S.open, view: da.S.view, five: document.querySelectorAll('#sec-five .hero-row').length, radarLeftOfPage: c.x < panel.left, hash: location.hash }; });
   check('the site lands on NOW, the radar beside it, even from a link to another page', land.open && land.view === 0 && land.five === 5 && land.radarLeftOfPage && land.hash === '#now', JSON.stringify(land));
   const adm = await page.evaluate(() => { const a = document.querySelector('.maplibregl-ctrl-attrib a.da-admin'); return a ? { href: a.getAttribute('href'), text: a.textContent, nextTo: !!(a.previousElementSibling && a.previousElementSibling.classList.contains('da-build')) } : null; });
   check('a small ADMIN link sits beside the build in the information corner', adm && adm.href === 'admin' && adm.text === 'ADMIN' && adm.nextTo, JSON.stringify(adm));
@@ -162,13 +162,15 @@ if (run('smoke')) try {
   check('icons are half size from afar, full size close in', sz.far <= sz.near * 0.6, JSON.stringify(sz));
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
-  const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-heat .ms-h .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: (document.querySelector('#view').innerText.match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
+  const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: (document.querySelector('#view').innerText.match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
   check('NOW: the outlook, the five, the gigs, in labels and no sentences', now.open && now.five === 5 && now.months === 12 && !!now.count && now.gigs === 2 && now.sentences === 0, JSON.stringify(now));
-  const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const five = [...band.querySelectorAll('.ms-h .hero-row')]; const kinds = [...band.querySelectorAll('.ms-k i')];
+  const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const ks = [...band.querySelectorAll('.ms-k span')]; const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
     const deg = ['--deg0', '--deg1', '--deg2', '--deg3', '--deg4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim().toLowerCase());
-    return { bg: getComputedStyle(band).backgroundColor, five: five.length, pics: five.filter(b => b.querySelector('.h-pic img, .h-pic canvas')).length, cols: five.map(b => b.style.gridColumn), tips: five.map(b => b.dataset.tip), kinds: kinds.length, us: band.querySelectorAll('.ms-k .us use[href="#k-human"]').length, words: band.innerText, deg }; });
-  check('the outlook is a calendar, orange to red to black on paper: the five on the months their danger begins, the kinds each month reaches, us among them', nw.bg !== 'rgb(11, 37, 69)' && nw.five === 5 && nw.pics === 5 && nw.cols.every(c => /^\d+/.test(c)) && nw.tips.every(t => / · (LOW|WATCH|HIGH|SEVERE|EXTREME)$/.test(t)) && nw.kinds >= 6 && nw.us >= 1 && nw.deg[4] === '#141412' && nw.deg[3] === '#d62e1f', JSON.stringify({ ...nw, words: undefined }));
-  check('no El Niño label, no watch chip, no stage names: the calendar says it without words', !/EL NI|WATCH|EARLY HEAT|DRY FLOWERING|HOT NIGHTS|DROUGHT/.test(nw.words), nw.words.replace(/\s+/g, ' '));
+    return { bg: getComputedStyle(band).backgroundColor, ks: ks.length, glyphs: ks.filter(k => k.querySelector('use[href^="#k-"]') && k.querySelector('b')).length, us: band.querySelectorAll('.ms-k .us use[href="#k-human"]').length, tips: ks.map(k => k.dataset.tip),
+      five: rows.length, label: five ? five.querySelector('.lab, h3, h4, [class*="lab"]') && five.innerText.split('\n')[0] : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.every(r => r.querySelectorAll('.chips i').length >= 1), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText, deg }; });
+  check('under each month, the kind of life it puts most at risk, over a bar in its degree; us among them', nw.ks === 12 && nw.glyphs === 12 && nw.us >= 1 && nw.tips.every(t => / · [A-Z]{3}$/.test(t)) && nw.deg[4] === '#141412' && nw.deg[3] === '#d62e1f', JSON.stringify({ ks: nw.ks, glyphs: nw.glyphs, us: nw.us, tips: nw.tips }));
+  check('the five in greatest need, named, with what they face, the focus under the outlook', nw.five === 5 && /five in greatest need/i.test(nw.label) && nw.names.every(Boolean) && nw.chips && nw.pics === 5, JSON.stringify({ five: nw.five, label: nw.label, names: nw.names }));
+  check('no El Niño label, no watch chip, no stage names in the outlook', !/EL NI|WATCH|EARLY HEAT|DRY FLOWERING|HOT NIGHTS|DROUGHT/.test(nw.words), nw.words.replace(/\s+/g, ' '));
   const hd = await page.evaluate(async () => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id).filter(Boolean); const d4 = [...document.querySelectorAll('#sec-heat .mo.d4 i')]; const h = document.querySelector('#sec-heat .b-head'); const cd = document.querySelector('#sec-heat .b-count .cd');
     const c0 = cd ? cd.textContent : ''; await new Promise(r => setTimeout(r, 1300)); const c1 = cd ? document.querySelector('#sec-heat .b-count .cd').textContent : '';
     return { head: h.textContent, font: getComputedStyle(h).fontFamily, oneLine: h.getBoundingClientRect().height < parseFloat(getComputedStyle(h).fontSize) * 1.3, fits: h.scrollWidth <= h.parentElement.clientWidth, sun: !!document.querySelector('#sec-heat .b-count .sun.d4 use[href="#g-heat"]'), c0, c1, tip: (document.querySelector('#sec-heat .b-count') || {}).dataset ? document.querySelector('#sec-heat .b-count').dataset.tip : '',
@@ -176,30 +178,35 @@ if (run('smoke')) try {
   check('NOW leads with DIRECT ACTION RADIO on one line, in the terminal type', hd.head === 'DIRECT ACTION RADIO' && /VT323/.test(hd.font) && hd.oneLine && hd.fits, JSON.stringify(hd));
   check('under it, a countdown to act before extreme heat, ticking', hd.sun && /^\d+D \d\d:\d\d:\d\d$/.test(hd.c0) && hd.c0 !== hd.c1 && /EXTREME/.test(hd.tip), JSON.stringify({ c0: hd.c0, c1: hd.c1, tip: hd.tip }));
   check('extreme months are black, never faded to grey, each with a small cross', hd.d4 >= 1 && hd.d4bg.length === 1 && hd.d4bg[0] === 'rgb(20, 20, 18)' && hd.d4op.join() === '1' && /†/.test(hd.mark), JSON.stringify(hd));
-  check('no copy to explain, no numbers to ring on NOW', !hd.praxis && hd.tel === 0 && hd.ids[0] === 'sec-heat' && !hd.ids.includes('sec-five'), JSON.stringify(hd.ids));
+  check('no copy to explain, no numbers to ring on NOW; the five right under the outlook', !hd.praxis && hd.tel === 0 && hd.ids[0] === 'sec-heat' && hd.ids[1] === 'sec-five', JSON.stringify(hd.ids));
   const tk = await page.evaluate(() => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id); const sec = document.querySelector('#sec-tracks'); const rows = [...sec.querySelectorAll('[data-tk]')];
-    return { at: ids.indexOf('sec-tracks'), cons: ids.indexOf('sec-cons'), gigs: ids.indexOf('sec-gigs'), words: sec.innerText.replace(/\s+/g, ' ').trim(), rows: rows.map(r => r.dataset.tk), seen: rows.map(r => r.querySelector('.tk-see').getAttribute('aria-pressed')), playing: rows.map(r => r.querySelector('.tk-play').getAttribute('aria-pressed')), life: rows[0].querySelectorAll('.v').length, places: rows[1].querySelectorAll('.v').length, traces: sec.querySelectorAll('.beat polyline').length }; });
-  check('Stations sit above the constellations: one word; the lives seen, the places not, none playing', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.playing.every(x => x === 'false') && tk.life >= 2 && tk.places >= 1 && tk.traces >= 2, JSON.stringify(tk));
-  /* seen or not: the lives leave the map, and come back; the places come onto it */
+    return { at: ids.indexOf('sec-tracks'), cons: ids.indexOf('sec-cons'), gigs: ids.indexOf('sec-gigs'), words: sec.innerText.replace(/\s+/g, ' ').trim(), rows: rows.map(r => r.dataset.tk), seen: rows.map(r => r.querySelector('.tk-see').getAttribute('aria-pressed')), locked: rows[0].querySelector('.tk-see').disabled, playing: rows.map(r => r.querySelector('.tk-play').getAttribute('aria-pressed')), life: rows[0].querySelectorAll('.v').length, places: rows[1].querySelectorAll('.v').length, traces: sec.querySelectorAll('.beat polyline').length }; });
+  check('Stations sit above the constellations: one word; nature always on the map and on air from the first touch; the places not', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.locked && tk.playing.slice(0, 2).join() === 'true,false' && tk.life >= 2 && tk.places >= 1 && tk.traces >= 2, JSON.stringify(tk));
+  /* nature can be muted, and stays muted; it cannot be taken off the map until it is unlocked on the approval page */
   const lives = () => page.evaluate(() => { const da = window.__da; da.life.reveal(); return da.life.items.filter(it => da.life.shown(it) && !it.o.story && !it.o.pack && !it.o.partner).length; });
-  const l0 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l1 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l2 = await lives();
+  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.knot; s.knot = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(1600);
+  const ta = await page.evaluate(() => ({ n: window.__knots.length, lives: window.__knots.length > 0 && window.__knots.every(k => k.g) }));
+  await page.click('#sec-tracks [data-tk="life"] .tk-play'); await sleep(300);
+  const mu = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').getAttribute('aria-pressed'), muted: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').classList.contains('muted'), kept: JSON.parse(localStorage.getItem('da.prefs')).mute }));
+  const l0 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see', { force: true }); await sleep(300); const l1 = await lives();
+  await admin('settings', { lifeLock: false }); await page.evaluate(() => window.__da.loadSettings()); await sleep(500);
+  await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l2 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l3 = await lives();
+  await admin('settings', { lifeLock: true }); await page.evaluate(() => window.__da.loadSettings()); await sleep(300);
+  check('nature on air from the first touch, mutable, kept muted; locked on the map until unlocked on the approval page', ta.lives && ta.n >= 3 && mu.on === 'false' && mu.muted && mu.kept === true && l0 > 5 && l1 === l0 && l2 === 0 && l3 === l0, JSON.stringify({ ta, mu, l0, l1, l2, l3 }));
   await page.click('#sec-tracks [data-tk="places"] .tk-see'); await page.evaluate(() => window.__da.setOpen(false)); await sleep(900);
   const pl = await page.evaluate(() => { const da = window.__da; const m = da.map.getContainer().getBoundingClientRect(); let n = 0; for (let x = 0; x < m.width; x += 6) for (let y = 0; y < m.height; y += 6) { const h = da.life.hit(x, y, true); if (h && h.kind === 'place') { n++; if (n > 3) return { n, kept: JSON.parse(localStorage.getItem('da.prefs')).trk }; } } return { n, kept: JSON.parse(localStorage.getItem('da.prefs')).trk }; });
-  check('a track seen or not: the lives leave the map and come back; the places come onto it, kept', l0 > 5 && l1 === 0 && l2 === l0 && pl.n > 3 && pl.kept.places === true && pl.kept.life === true, JSON.stringify({ l0, l1, l2, pl }));
+  check('the places station comes onto the map when seen, kept', pl.n > 3 && pl.kept.places === true, JSON.stringify(pl));
   await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(0); }); await sleep(600);
   await page.click('#sec-tracks [data-tk="places"] .tk-see'); await sleep(200);
-  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.knot; s.knot = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; });
-  await page.click('#sec-tracks [data-tk="life"] .tk-play'); await sleep(1600);
-  const ta = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').getAttribute('aria-pressed'), n: window.__knots.length, lives: window.__knots.every(k => k.g) }));
-  await page.click('#sec-tracks [data-tk="life"] .tk-play'); await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(1600);
+  await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(1600);
   const tb = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="places"] .tk-play').getAttribute('aria-pressed'), n: window.__knots.length, places: window.__knots.every(k => k.fam) }));
   await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(400);
   const t0 = await page.evaluate(() => { const n = window.__knots.length; return new Promise(r => setTimeout(() => r({ still: window.__knots.length === n, on: Object.values(window.__da.TRK.on).some(Boolean) }), 900)); });
-  check('a track plays its beat from the radar: the lives in their calls, the places in their small sounds; pressed again, it stops', ta.on === 'true' && ta.n >= 3 && ta.lives && tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ ta, tb, t0 }));
+  check('the places play their small sounds, and stop', tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ tb, t0 }));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
-  check('a month on the calendar moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
-  const hero = await page.evaluate(() => { const r = document.querySelector('#sec-heat .ms-h .hero-row'); r.click(); return new Promise(res => setTimeout(() => res({ tip: r.dataset.tip, sel: window.__da.S.sel, hero: !!(window.__da.S.byId.get(window.__da.S.sel) || {}).hero }), 900)); });
-  check('each of the five opens from the calendar', hero.hero && hero.tip.length > 6, JSON.stringify(hero));
+  check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
+  const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });
+  check('each of the five carries its danger and the days until its window', hero.chips >= 2 && hero.tip.length > 10, JSON.stringify(hero));
   await page.evaluate(() => { window.__da.closeRecord(); window.__da.setOpen(true); window.__da.setView(0); }); await sleep(500);
   await shot(page, '02-now.png');
   await tab(page, 1); await sleep(600);
@@ -262,9 +269,12 @@ if (run('radar')) try {
   check('the arrow keys move it too', s3.lat > s2.lat + 0.0004, `${s2.lat} → ${s3.lat}`);
   const [ix, iy] = await scrXY(s3.lat + 0.0006, s3.lng + 0.0004);
   await page.evaluate(() => window.__da.life.reveal());
-  await page.mouse.click(ix, iy); await sleep(500);
-  await page.mouse.click(ix, iy); await sleep(900);
-  check('a tap inside offers a new record, and a second tap starts it', await page.evaluate(() => window.__da.S.mode) === 'place');
+  await page.mouse.click(ix, iy); await sleep(1400);
+  const sc4 = await page.evaluate(() => ({ ...window.__da.S.scan, mode: window.__da.S.mode }));
+  check('a short click inside the radar glides it there, and places nothing', !sc4.mode && Math.abs(sc4.lat - (s3.lat + 0.0006)) < 0.0003 && Math.abs(sc4.lng - (s3.lng + 0.0004)) < 0.0003, JSON.stringify(sc4));
+  const [hx, hy] = await scrXY(sc4.lat + 0.0005, sc4.lng - 0.0006);
+  await page.mouse.move(hx, hy); await page.mouse.down(); await sleep(900); await page.mouse.up(); await sleep(600);
+  check('only a long press makes a new record', await page.evaluate(() => window.__da.S.mode) === 'place');
   await tap(page, '#r-back'); await sleep(500);
   check('back from placing returns to the bare radar', await page.evaluate(() => !window.__da.S.mode && document.body.classList.contains('shut')));
   const rid = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const r = da.map.getContainer().getBoundingClientRect(); const it = da.life.items.find(i => i.inS && da.life.shown(i) && !i.binned && typeof i.o.id === 'number' && !i.o.hum && i.x > 60 && i.y > 60 && i.x < r.width - 60 && i.y < r.height - 60 && (() => { const h = da.life.hit(i.x, i.y); return h && h.kind === 'cell' && h.id === i.o.id; })()); return it && it.o.id; });
@@ -273,7 +283,7 @@ if (run('radar')) try {
   await page.keyboard.press('Escape'); await sleep(600);
   await page.reload(); await ready(page); await sleep(500);
   const s4 = await page.evaluate(() => ({ ...window.__da.S.scan }));
-  check('after a reload the radar is where it was left', Math.abs(s4.lat - s3.lat) < 0.0002 && s4.r === 250, JSON.stringify(s4));
+  check('after a reload the radar is where it was left', Math.abs(s4.lat - sc4.lat) < 0.0002 && s4.r === 250, JSON.stringify(s4));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section radar: ${e.message.split('\n')[0]}`); }
 

@@ -81,16 +81,16 @@ map.on('click', e => {
     select(h.id); return;
   }
   if (S.mode) { closeRecord(); return; }
-  /* inside the radar: offer a new record here; outside it: the radar goes there */
-  if (life.inScan(e.lngLat.lat, e.lngLat.lng)) { life.offer(e.lngLat); tick(1300); }
-  else life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
+  /* a click on open ground, inside the radar or out: the radar glides there. A new record is made only by holding the left
+     button down (or pressing and holding on a phone) */
+  life.offer(null); life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
 });
 /* a double tap ties instead of zooming while a cell or a marker is open */
 map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') e.preventDefault(); });
 let hoverT = 0, hoverKey = null, hoverLast = null;
 function hoverAt(e) {
   const h = life.hit(e.point.x, e.point.y, true); const canvas = map.getCanvas();
-  canvas.style.cursor = h ? 'pointer' : S.mode === 'ping' || S.mode === 'place' || life.inScan(map.unproject(e.point).lat, map.unproject(e.point).lng) ? '' : 'crosshair';
+  canvas.style.cursor = h ? 'pointer' : S.mode === 'ping' || S.mode === 'place' ? '' : 'crosshair';
   const key = h ? (h.kind === 'node' ? 'n:' + h.key : h.kind === 'cell' ? 'c:' + h.id : h.kind === 'partner' ? 'p:' + h.id : h.kind === 'place' ? 'pl:' + h.id : null) : null;
   if (key !== hoverKey) { hoverKey = key; life.hover(h && key ? h : null); }
 }

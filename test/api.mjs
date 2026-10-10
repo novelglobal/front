@@ -70,6 +70,12 @@ try {
   const s4 = await call('/api/stories', { method: 'POST', body: story('DA-9N4S', { dest: 'kines', escpos: 'G0A=' }) });
   check('a printer set to print without approval queues at once; the story still waits to be shown', s4.json.job.status === 'queued' && (await call('/api/stories/DA-9N4S')).status === 404, JSON.stringify(s4.json));
 
+  /* the nature station: on the map for every visitor, unless unlocked on the approval page */
+  const st0 = await call('/api/settings'); const stx = await call('/api/admin/settings', { method: 'POST', body: { lifeLock: false } });
+  const st1 = await call('/api/admin/settings', { method: 'POST', key: KEY, body: { lifeLock: false } }); const st2 = await call('/api/settings');
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { lifeLock: true } }); const st3 = await call('/api/settings');
+  check('the nature station is locked on for everyone until unlocked on the approval page; nobody else can', st0.json.lifeLock === true && stx.status === 401 && st1.json.lifeLock === false && st2.json.lifeLock === false && st3.json.lifeLock === true, JSON.stringify({ st0: st0.json, stx: stx.status, st2: st2.json, st3: st3.json }));
+
   /* online on the map: switched on the approval page, with or without a Pi listening */
   const lv0 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
   const lvx = await call('/api/admin/printers/elsie', { method: 'POST', body: { action: 'live', on: true } });

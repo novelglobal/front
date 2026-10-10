@@ -342,7 +342,7 @@ async function fetchHistory() {
   for (const o of S.hist) S.byId.set(o.id, o);
   life.data();
 }
-async function liveTick() { const n = await fetchNew(); await loadWeather(); loadShared(); checkSent(); loadPartners(); refreshPanel(); return n; }
+async function liveTick() { const n = await fetchNew(); await loadWeather(); loadShared(); checkSent(); loadPartners(); loadSettings(); refreshPanel(); return n; }
 
 /* gatherings from a published sheet: title, start, venue, lat, lng, tags (nature free gig rrr ra …), link */
 const parseCSV = t => {

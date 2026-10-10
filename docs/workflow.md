@@ -37,8 +37,9 @@ Then:
 2. **The approval password.** In Cloudflare, go to **Workers & Pages → front → Settings → Variables and Secrets → Add**. Choose **Secret**, name it `ADMIN_KEY`, and give it a long passphrase from your password manager. Without it the approval page answers "set the ADMIN_KEY secret".
 3. **The approval page** is at `/admin` on the site, or on the preview address, and a small **ADMIN** link sits beside the build code in the information corner. Everything people send waits there until you choose **SHOW** or **REFUSE**. Nothing is shown on the board, or printed, before then.
 4. **A printer at a partner place.** On the approval page, open **PRINTERS** and choose **PAIR A PRINTER** for that place, then follow `receiver/README.md` on its Raspberry Pi. **NOT YET ONLINE ON THE MAP** / **ONLINE ON THE MAP** switches that printer's icon on the map yourself; it also shows online by itself while its Pi is listening. Slips sent to a printer wait in its queue until it prints. A printer can be set to print without approval, for testing on your own. **MESH ON** lets that Pi's radio carry slips sent to the local mesh.
-5. **Cell packs** arrive on the approval page as CELLS, with every cell listed. Check the places, then **SHOW** puts them all on the map.
-6. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
+5. **Stations:** on the approval page, **STATIONS** keeps the nature station on the map for every visitor (**LOCKED ON**), or lets visitors take it off (**UNLOCKED**). They can always mute it.
+6. **Cell packs** arrive on the approval page as CELLS, with every cell listed. Check the places, then **SHOW** puts them all on the map.
+7. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
 
 ### GitHub
 

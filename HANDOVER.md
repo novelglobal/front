@@ -220,7 +220,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.notes.v1`, `da.st.v1`, `da.slip.v1`, `da.draft.<id>` | Notes, rewritten statements, slip options and drafts |
 | `da.img.v1`, `da.own.v1` | The chosen photograph for each cell, and the user's own photographs (at most 14, as 800 px JPEGs) |
 | `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
-| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `trk`: each track seen on the map or not; `night`: night chosen, else the device's; `start2`, once a first visit has started at the print location or the visitor's place, and `scan`, the radar since), the user's name and device id, the swapped five, and hidden cells |
+| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `trk`: each track seen on the map or not; `night`: night chosen, else the device's; `mute`: nature muted; `start2`, once a first visit has started at the print location or the visitor's place, and `scan`, the radar since), the user's name and device id, the swapped five, and hidden cells |
 | `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
 
 ### What the server stores (D1)
@@ -230,6 +230,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `stories` | A story (its packed signal), a record (JSON, never its contact) or a pack of cells (`kind` `cells`: JSON, at most 200, in greater Melbourne), its photograph re-encoded on the device, where it is, the partner it was sent to (`mesh` for the local mesh), waiting, shown or refused | Shown: until deleted on the approval page. Waiting or refused: 30 days |
 | `jobs` | A print for a partner's printer: its ESC/POS bytes and mesh line, held, queued, printing, printed, failed or expired. Sent to the local mesh: one job with the mesh line alone for each paired printer whose radio is on | Waiting: a day. Printed: its status only, a week |
 | `printers` | Each partner place's printer: its paper, whether it prints without approval, whether it has a mesh radio, a hash of its token, when it last asked | Until unpaired |
+| `settings` | The site's own settings, for everyone: `lifeLock` (the nature station stays on the map unless unlocked). `GET /api/settings`; changed on the approval page | Until changed |
 | `hits` | A count of requests, under a daily-salted hash of the sender's address, to slow anyone sending too many | An hour |
 
 ### The signal format

@@ -33,6 +33,7 @@ const SCHEMA = [
      lease INTEGER, tries INTEGER DEFAULT 0, error TEXT, created INTEGER NOT NULL, done INTEGER)`,
   `CREATE INDEX IF NOT EXISTS jobs_queue ON jobs(printer, status, created)`,
   `CREATE TABLE IF NOT EXISTS hits (k TEXT NOT NULL, t INTEGER NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE INDEX IF NOT EXISTS hits_k ON hits(k, t)`,
 ];
 const readied = new WeakMap();
@@ -141,6 +142,9 @@ async function receipt(db, id) {
   let ahead = 0; if (j && j.status === 'queued') ({ ahead } = await db.prepare("SELECT count(*) AS ahead FROM jobs WHERE printer = ? AND status IN ('queued', 'printing') AND created < ?").bind(j.printer, j.created).first());
   return json({ id, code: s.code, status: s.status, dest: s.dest || '', job: j ? { status: j.status, ahead, done: j.done || null } : null });
 }
+/* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked) */
+const SETTINGS = { lifeLock: true };
+async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS }; for (const r of results) if (r.k in SETTINGS) out[r.k] = r.v === '1'; return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
   const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.live, p.token IS NOT NULL AS paired, p.seen,
@@ -196,6 +200,8 @@ async function admin(db, env, req, parts) {
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
+  if (what === 'settings' && req.method === 'POST') { const b = await body(req); for (const k of Object.keys(SETTINGS)) if (typeof b[k] === 'boolean') await db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, b[k] ? '1' : '0').run(); return json(await settingsOf(db)); }
+  if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.seen,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
@@ -228,6 +234,7 @@ async function api(req, env, url) {
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
+  if (p[0] === 'settings' && m === 'GET') return json(await settingsOf(db));
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));

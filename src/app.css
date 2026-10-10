@@ -9,6 +9,8 @@
   --white:#FFFFFF; --paper:#F1F2EF; --slip:#FCFBF7; --grey:#C8C8C8; --grey-text:#6B6B6B; --ink:#141412; --black:#0D0D0C;
   --cobalt:#0067B8; --navy:#0B2545; --ground:#1E2622;
   --neon:#E6F84A; --red:#E8453C;
+  /* clay: the complement of Artifact (PPG10-16, #69808B). The guide's colour, the icon's, and the five and the stories on the map */
+  --clay:#8C7469;
   --orange:#FF7A00;
   /* the El Niño months ahead, as danger rises: pale orange to prepare, orange, deep orange, red, black at the extreme */
   --deg0:#FFC27A; --deg1:#FF9A2E; --deg2:#FF6A00; --deg3:#D62E1F; --deg4:#141412;
@@ -56,7 +58,7 @@ button:active:not(:disabled),a:active{transform:scale(.96)}
 
 /* the radar's two handles: the centre moves it, the rim sets its reach */
 .knob{position:fixed;z-index:3;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;display:grid;place-items:center;cursor:move;touch-action:none}
-.knob::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--white);box-shadow:0 0 0 1.25px var(--navy),0 1px 4px rgba(0,0,0,.4);transition:transform .2s var(--spring),background-color .2s}
+.knob::before{content:"";width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 0 0 1.25px rgba(11,37,69,.8),0 0 0 4px rgba(255,255,255,.18),0 1px 6px rgba(0,0,0,.35);transition:transform .2s var(--spring),background-color .2s}
 .knob::after{content:"";position:absolute;inset:9px;border:1px solid rgba(255,255,255,.85);border-radius:50%;opacity:0;transform:scale(.6);transition:opacity .2s,transform .3s var(--spring)}
 .knob:hover::before,.knob.on::before{transform:scale(1.4);background:var(--teal)}
 .knob.sing::before{background:var(--orange);animation:sing .34s ease-in-out infinite alternate}
@@ -250,21 +252,13 @@ details.sec[open]>summary .lab::after{content:" –"}
 .b-off{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;letter-spacing:.08em;color:var(--cobalt);text-decoration:none}
 /* every kind of life the months ahead reach, us among them: each kind's mark over its danger */
 /* the five: a strip of five, each its photograph with its mark, its danger and the days until it lands */
-/* the calendar's lanes: the five on the month their danger begins; under each month, the kinds its heat reaches */
-.ms-h{display:grid;grid-template-columns:repeat(var(--n),1fr);grid-auto-flow:row dense;justify-items:center;gap:3px 2px;margin-top:8px}
-.ms-h .hero-row{width:auto;padding:0;border-radius:50%;transition:transform .18s var(--ease)}
-.ms-h .hero-row:hover{background:none;transform:scale(1.12)}
-.ms-h .h-pic{width:26px;height:26px}
-.ms-h .h-pic img,.ms-h .h-pic .hero-cv{width:26px;height:26px;box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg1)}
-.ms-h .d2 .h-pic img,.ms-h .d2 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg2)}
-.ms-h .d3 .h-pic img,.ms-h .d3 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg3)}
-.ms-h .d4 .h-pic img,.ms-h .d4 .h-pic .hero-cv{box-shadow:0 0 0 2px var(--slip),0 0 0 3.5px var(--deg4)}
-.ms-h .h-pic .i{display:none}
-.ms-k{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;margin-top:8px}
-.ms-k span{display:flex;flex-direction:column;align-items:center;gap:3px;opacity:.38}
-.ms-k span.d3,.ms-k span.d4{opacity:.62}
-.ms-k span.on{opacity:1}
-.ms-k .i{width:13px;height:13px;color:var(--ink)}
+/* under each month, the kind it puts most at risk, over a bar in that month's degree */
+.ms-k{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;margin-top:9px}
+.ms-k span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ms-k .i{width:17px;height:17px;color:var(--ink);opacity:.55;transition:opacity .2s}
+.ms-k span.on .i{opacity:1}
+.ms-k b{display:block;width:100%;height:4px;background:var(--deg0)}
+.ms-k .d1 b{background:var(--deg1)}.ms-k .d2 b{background:var(--deg2)}.ms-k .d3 b{background:var(--deg3)}.ms-k .d4 b{background:var(--deg4)}
 .ms-k .us .i{color:var(--cobalt)}
 .hero-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .hero-row{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:4px 2px 6px;text-align:center}
@@ -331,6 +325,9 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .tool-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tool{position:relative;display:flex;flex-direction:column;gap:2px;padding:10px;background:var(--paper);text-decoration:none;min-height:92px}
 .tool:hover{background:var(--teal-wash)}
+.tool.guide{background:var(--clay);color:#fff}
+.tool.guide:hover{background:#7C665C}
+.tool.guide .go{color:#fff}
 .tool b{font-weight:600;font-size:14px;margin-top:auto}
 .tool small{font-size:10px;color:var(--grey-text)}
 .tool .go{position:absolute;top:8px;right:8px}
@@ -352,6 +349,9 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .tk-play:hover:not(:disabled){background:var(--paper)}
 .tk-play:disabled{opacity:.3}
 .tk.on .tk-play{background:var(--navy);color:var(--white)}
+.tk-play{position:relative}
+.tk-play.muted::after{content:"";position:absolute;width:15px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
+.tk-see:disabled{opacity:1;cursor:default}
 .vox{grid-column:2;display:flex;align-items:center;gap:8px;min-width:0;min-height:15px;overflow:hidden}
 .vox .v{display:grid;place-items:center;flex:none;opacity:.35;transition:opacity .2s,transform .2s}
 .vox .v .i{width:14px;height:14px}

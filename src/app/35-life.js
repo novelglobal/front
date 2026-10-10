@@ -63,7 +63,7 @@ const life = (() => {
       const k = PLACE_KINDS[o.kind] || PLACE_KINDS[0]; const g = placeGlyph(o);
       return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: Math.max(d, 18) + 6 };
     }
-    if (o.hero) { const deg = degOf(o); return { tone: M.toneOf(glyphOf(o)), g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
+    if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
     /* a story: a slip issued about a life, standing where its life was */
     if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
     if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
@@ -267,8 +267,9 @@ const life = (() => {
     const cellOpen = S.mode === 'ping' && cellPts.length;
     /* nothing outside is darkened: an alert anywhere stays as clear as the ground. Inside, a faint light marks where the radar
        or an open cell looks */
-    const lit = cellOpen ? cellPts : S.mode === 'tribe' || S.mode === 'partner' ? null : ringPts;
-    if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = cellOpen ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.06)'; ctx.fill(); ctx.restore(); }
+    const lit = cellOpen ? cellPts : null;
+    if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fill(); ctx.restore(); }
+    if (!cellOpen && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
     /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
@@ -280,7 +281,7 @@ const life = (() => {
     /* the radar's rim: a hairline with a tick every ten degrees, longer every thirty, a notch at north */
     if (ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
-      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
       ctx.beginPath();
       for (let i = 0; i < 72; i += 2) { const [x, y] = ringPts[i]; const dx = cp.x - x, dy = cp.y - y, L = Math.hypot(dx, dy) || 1; const k = i % 6 === 0 ? 9 : 4; ctx.moveTo(x, y); ctx.lineTo(x + dx / L * k, y + dy / L * k); }
       ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 1.2; ctx.stroke();
@@ -296,6 +297,22 @@ const life = (() => {
         ctx.fillStyle = s.t >= HEAT.hot ? C.orange : C.white; ctx.fillRect(s.x - w / 2, s.y - 7, w, 14); ctx.fillStyle = C.navy; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, s.x, s.y + 0.5); ctx.restore();
       }
     }
+  }
+
+  /* the radar as a disc of glass over the ground: light gathered at its upper edge, a brighter rim within, a record's fine
+     grooves, and a small clay label at its centre */
+  function glass(ctx) {
+    const cp = map.project([S.scan.lng, S.scan.lat]); const R = Math.hypot(ringPts[0][0] - cp.x, ringPts[0][1] - cp.y); if (!(R > 8)) return;
+    const ring = f => { ctx.beginPath(); ringPts.forEach(([x, y], i) => { const px = cp.x + (x - cp.x) * f, py = cp.y + (y - cp.y) * f; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); };
+    ctx.save(); ring(1); ctx.clip();
+    const g = ctx.createRadialGradient(cp.x - R * 0.32, cp.y - R * 0.38, R * 0.04, cp.x, cp.y, R * 1.02);
+    g.addColorStop(0, 'rgba(255,255,255,.17)'); g.addColorStop(0.5, 'rgba(255,255,255,.045)'); g.addColorStop(0.9, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.2)');
+    ctx.fillStyle = g; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
+    ctx.lineWidth = 1; for (let i = 0, f = 0.24; f < 0.95; f += 0.048, i++) { ring(f); ctx.strokeStyle = i % 3 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.07)'; ctx.stroke(); }
+    ring(0.975); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke();
+    ctx.restore();
+    const lr = Math.max(9, R * 0.075); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU); ctx.fillStyle = 'rgba(140,116,105,.9)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cp.x, cp.y, lr * 0.62, 0, TAU); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.stroke(); ctx.restore();
   }
 
   /* ───────── the marks layer ───────── */
@@ -319,6 +336,11 @@ const life = (() => {
       ctx.fillStyle = `rgba(190,245,238,${(0.17 * Math.pow(1 - i / 14, 1.7)).toFixed(3)})`; ctx.fill();
     }
     const tip = at(sweepB); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
+    const Rp = Math.hypot(tip.x - c.x, tip.y - c.y);
+    if (Rp > 8 && S.mode !== 'ping') for (const off of [62, 242]) {
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); for (let d = -24; d <= 24; d += 4) { const p = at(sweepB + off + d); ctx.lineTo(p.x, p.y); } ctx.closePath();
+      const sh = ctx.createRadialGradient(c.x, c.y, Rp * 0.1, c.x, c.y, Rp); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(255,255,255,.06)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = sh; ctx.fill();
+    }
     ctx.restore();
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */

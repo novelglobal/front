@@ -10,7 +10,7 @@
 /*FONTS*/
 :root{
   --teal:#0CCBBD;--teal-lift:#7FE0D7;--teal-deep:#007A72;--teal-wash:#E3F7F4;--white:#FFFFFF;--paper:#F1F2EF;--slip:#FCFBF7;--grey:#C8C8C8;--grey-text:#6B6B6B;--ink:#141412;
-  --cobalt:#0067B8;--navy:#0B2545;--neon:#E6F84A;--red:#E8453C;--ground:#1E2622;
+  --cobalt:#0067B8;--navy:#0B2545;--neon:#E6F84A;--red:#E8453C;--ground:#1E2622;--clay:#8C7469;
   --orange:#FF7A00;--deg0:#FFC27A;--deg1:#FF9A2E;--deg2:#FF6A00;--deg3:#D62E1F;--deg4:#141412;
   --sans:'Poppins',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 }
@@ -23,11 +23,11 @@ body{margin:0;background:var(--white);color:var(--navy);font:400 14px/1.5 var(--
 a{color:inherit}
 ul,ol{margin:0;padding:0;list-style:none}
 .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
-.mast{position:sticky;top:0;z-index:5;background:var(--white);border-bottom:1px solid var(--navy)}
+.mast{position:sticky;top:0;z-index:5;background:var(--clay);color:#fff;border-bottom:0}
 .mast .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:52px;font:500 10px/1 var(--mono);letter-spacing:.2em}
 .mast b{font:600 11px/1 var(--sans);letter-spacing:.3em}
 .mast nav{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
-.mast nav a{color:var(--grey-text);text-decoration:none}
+.mast nav a{color:rgba(255,255,255,.78);text-decoration:none}
 .mast nav a:hover{color:var(--navy)}
 .plate{padding:36px 0 40px;border-bottom:1px solid var(--navy)}
 .plate h2{margin:0 0 18px;font:600 10.5px/1 var(--mono);letter-spacing:.2em}
@@ -207,7 +207,7 @@ canvas{flex:none;display:block}
     put({ tone: 'lost', g: 'dog', d: 34 }, W * 0.9, H * 0.18); put({ tone: 'injured', g: 'possum', d: 36 }, W * 0.92, H * 0.78); put({ tone: 'k-mammal', g: 'flyingfox', d: 48, dz: 4 }, W * 0.08, H * 0.82);
     x.beginPath(); x.arc(cx, cy, 5, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = C.navy; x.stroke();
     x.save(); x.translate(cx + R, cy); x.rotate(Math.PI / 4); x.fillStyle = '#fff'; x.fillRect(-8, -8, 16, 16); x.strokeStyle = C.navy; x.strokeRect(-8, -8, 16, 16); x.restore();
-    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', '24 hours · NEW · its age · examples'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
+    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', '24 hours · NEW · its age · examples'], ['where', 'MOVE', 'drag the centre · tap anywhere'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
   })();
 
   /* icons */

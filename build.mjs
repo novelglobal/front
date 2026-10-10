@@ -41,7 +41,7 @@ fs.writeFileSync(path.join(out, 'app.js'), fs.readdirSync(path.join(src, 'app'))
 for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
 /* the guide reads the same marks and words as the app, in the same type */
 fs.writeFileSync(path.join(out, 'guide.html'), read(path.join(src, 'guide.html')).replace('/*FONTS*/', faces.join('\n')));
-fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts — `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday) and VT323 (Peter Hull), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
+fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts â€” `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday) and VT323 (Peter Hull), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
 const sw = read(path.join(out, 'sw.js')).replace("'vendor/qrcode.js', ", "'vendor/qrcode.js', " + files.map(f => `'${f}'`).join(', ') + ', ');
 fs.writeFileSync(path.join(out, 'sw.js'), sw);
 /* a preview is never indexed by search engines */
@@ -58,8 +58,8 @@ fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Direct Action</title>
-<meta name="description" content="A radar over Brunswick to the city: live iNaturalist sightings, the El Niño threat to each life, string figures between them and the places around them, and a four-line W.I.S.H. slip for small printers, mesh radios and pagers.">
-<meta name="theme-color" content="#0CCBBD">
+<meta name="description" content="A radar over Brunswick to the city: live iNaturalist sightings, the El NiÃ±o threat to each life, string figures between them and the places around them, and a four-line W.I.S.H. slip for small printers, mesh radios and pagers.">
+<meta name="theme-color" content="#8C7469">
 <meta name="da-build" content="${sha}${preview ? ` ${branch}` : ''}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -89,4 +89,4 @@ ${body}
 `);
 const listing = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => (d.isDirectory() ? listing(path.join(dir, d.name), base) : [path.relative(base, path.join(dir, d.name))])).sort();
 const all = listing(out);
-console.log(`${all.length} files · ${Math.round(all.reduce((n, f) => n + fs.statSync(path.join(out, f)).size, 0) / 1024)} KB in dist/ · build ${sha}${preview ? ` · PREVIEW ${branch}` : ''}`);
+console.log(`${all.length} files Â· ${Math.round(all.reduce((n, f) => n + fs.statSync(path.join(out, f)).size, 0) / 1024)} KB in dist/ Â· build ${sha}${preview ? ` Â· PREVIEW ${branch}` : ''}`);

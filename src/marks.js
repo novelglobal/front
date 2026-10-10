@@ -11,7 +11,7 @@
   const C = {
     teal: '#0CCBBD', tealLift: '#7FE0D7', tealDeep: '#007A72',
     white: '#FFFFFF', grey: '#C8C8C8', greyText: '#6B6B6B', ink: '#1C1C1A',
-    cobalt: '#0067B8', cobaltDeep: '#004A87', navy: '#0B2545',
+    cobalt: '#0067B8', cobaltDeep: '#004A87', navy: '#0B2545', clay: '#8C7469',
     neon: '#E6F84A', red: '#E8453C', black: '#000000',
     orange: '#FF7A00', deg: ['#FFC27A', '#FF9A2E', '#FF6A00', '#D62E1F', '#141412'],
     /* each kind of animal in its own colour, clear of the orange, red and highlighter that carry danger, now and notice */
@@ -352,7 +352,7 @@
     'k-reptile': [C.kind.reptile, C.white], 'k-water': [C.kind.water, C.white], 'k-other': [C.kind.other, C.white],
     fauna: [C.cobalt, C.white], night: [C.navy, C.white], flora: [C.tealDeep, C.white], danger: [C.orange, C.navy],
     event: [C.navy, C.white], need: [C.white, C.navy], offer: [C.navy, C.white], injured: [C.red, C.white], dead: [C.black, C.red],
-    lost: [C.white, C.navy], story: [C.white, C.navy], cold: ['#9AA39D', C.white], hist: ['rgba(255,255,255,.3)', C.white],
+    lost: [C.white, C.navy], story: [C.clay, C.white], hero: [C.clay, C.white], cold: ['#9AA39D', C.white], hist: ['rgba(255,255,255,.3)', C.white],
   };
   /* a W.I.S.H. receipt printer, as it stands on a counter: a body with a sloped lid and its slot, a slip curling out of it
      (a torn edge, a block of dithered photograph, lines of print), a feed button and a light. on: online, the light lit and the
@@ -415,7 +415,7 @@
     /* a gathering: the rings of a calendar page */
     if (b.tone === 'event') { ctx.fillStyle = C.white; for (const sx of [-0.45, 0.45]) { ctx.beginPath(); ctx.arc(x + sx * r, y - r * 0.86, r * 0.13, 0, TAU); ctx.fill(); } }
     /* a signal: the slip's top band */
-    if (b.tone === 'story') { ctx.fillStyle = b.carried ? C.cobalt : C.grey; ctx.fillRect(x - r * 0.74 + 1, y - r * 1.04 + 1, r * 1.48 - 2, r * 0.42); }
+    if (b.tone === 'story') { ctx.fillStyle = b.carried ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.45)'; ctx.fillRect(x - r * 0.74 + 1, y - r * 1.04 + 1, r * 1.48 - 2, r * 0.42); }
     const gs = d * (b.tone === 'story' ? 0.58 : b.tone === 'event' ? 0.6 : 0.66), gy = b.tone === 'story' ? y + r * 0.18 : b.tone === 'event' ? y + r * 0.08 : y;
     if (b.i) icon(ctx, b.i, x, gy, gs * 0.9, fg, 1.1); else if (b.g) glyph(ctx, b.g, x, gy, gs, fg);
     /* danger in the months ahead: a red ring when severe, a black ring at the extreme */
