@@ -116,7 +116,7 @@ def handle(j):
     try:
         if j.get('escpos'):
             print_bytes(base64.b64decode(j['escpos']))
-        elif j.get('mesh') or code == 'DA-TEST':
+        elif code == 'DA-TEST':   # a test prints a few lines; a slip sent only to the mesh is not printed
             print_bytes(text_slip(['DIRECT ACTION', code, j.get('mesh') or 'test print', datetime.now().strftime('%d.%m.%y %H:%M')]))
         if j.get('mesh'):
             try:

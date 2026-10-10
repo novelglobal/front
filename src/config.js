@@ -25,6 +25,7 @@ window.DA_CONFIG = {
   SCAN: { lat: -37.7690, lng: 144.9630, r: 520, min: 250, max: 1500, turn: 8, find: 1500 },   // the radar: where it starts, its radius in metres, seconds per sweep; on a first visit it moves up to `find` metres to where most kinds of life have been seen lately
   FRESH_H: 24,                                                      // outside the radar, only what is from the last 24 hours: pins, sightings, events, animals hurt, dead or lost
   SIGNAL: { line: 48, mesh: 200, pager: 80 },                       // characters per W.I.S.H. line · bytes per mesh message · characters per pager line
+  SOURCE_URL: 'https://github.com/novelglobal/front',                // the open-source code, MIT: the live branch, clean, as a zip
   PORTAL_URL: 'https://novel.global/',                               // where it is hosted: printed codes link back here
   EVENTS_URL: '',                                                   // a sheet of gatherings published as CSV: title, start, venue, lat, lng, tags, link
   ELNINO: 'EL NIÑO 2026–27',
@@ -364,12 +365,13 @@ window.DA_PRINTERS = {
 };
 
 /* Partner places: DIRECT ACTION sends a slip to one of them to print. Each id is that place's print queue, and its name,
-   address and site are its entry in places.js. printer: a W.I.S.H. receipt printer is there now, and the place is marked
-   on the map, always. paper: its printer's paper, above. */
+   address and site are its entry in places.js. printer: a W.I.S.H. receipt printer is, or will be, there, and the place is
+   marked on the map. It shows NOT YET ONLINE, a ghost, until its Raspberry Pi has asked for work in the last two minutes;
+   slips sent before then wait in its queue. Settings → PRINTERS hides them all. paper: its printer's paper, above. */
 window.DA_PARTNERS = [
   { id: 'pickles', printer: true, paper: 80 },
-  { id: 'kines', printer: false, paper: 80 },
-  { id: 'elsie', printer: false, paper: 80 },
+  { id: 'kines', printer: true, paper: 80 },
+  { id: 'elsie', printer: true, paper: 80 },
 ];
 
 /* Where the gigs are listed. A gathering in the events sheet tagged rrr or ra carries that listing's name; gig marks any gig. */

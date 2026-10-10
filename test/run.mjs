@@ -144,9 +144,9 @@ if (run('smoke')) try {
   await page.keyboard.press('a'); await sleep(2600);
   const bl = await page.evaluate(() => ({ blips: window.__blips, found: window.__da.life.items.filter(it => it.inS && window.__da.life.seen().has(it.o.id) && window.__da.life.shown(it) && !it.o.hist && it.b.tone !== 'cold').length }));
   check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16), JSON.stringify(bl));
-  const v = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const its = da.life.items; const shown = its.filter(it => da.life.shown(it)); const out = shown.filter(it => !it.inS);
-    return { shown: shown.length, inside: shown.length - out.length, outside: out.length, hidden: its.filter(it => !it.inS && !da.life.shown(it)).length, allFresh: out.every(it => it.flag && da.isFresh(it.o) && Date.now() - da.stampOf(it.o) < 864e5 + 6e4), freshHidden: its.filter(it => !it.inS && da.isFresh(it.o) && !da.life.shown(it)).length }; });
-  check('outside the radar, one rule: only what is from the last 24 hours', v.allFresh && v.outside > 0 && v.freshHidden === 0 && v.inside > 5 && v.hidden > 50, JSON.stringify(v));
+  const v = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const its = da.life.items; const shown = its.filter(it => da.life.shown(it)); const ex = shown.filter(it => !it.inS && it.o.story && it.o.ex); const out = shown.filter(it => !it.inS && !(it.o.story && it.o.ex));
+    return { shown: shown.length, inside: shown.length - out.length - ex.length, outside: out.length, examples: ex.length, hidden: its.filter(it => !it.inS && !da.life.shown(it)).length, allFresh: out.every(it => it.flag && da.isFresh(it.o) && Date.now() - da.stampOf(it.o) < 864e5 + 6e4), freshHidden: its.filter(it => !it.inS && da.isFresh(it.o) && !da.life.shown(it)).length }; });
+  check('outside the radar, one rule: only what is from the last 24 hours, and the example stories, always', v.allFresh && v.outside > 0 && v.examples >= 10 && v.freshHidden === 0 && v.inside > 5 && v.hidden > 50, JSON.stringify(v));
   const corner = await page.evaluate(() => (document.querySelector('.maplibregl-ctrl-attrib .da-build') || {}).textContent || '');
   check('the information corner carries the build', /^BUILD \w{7}/.test(corner), corner);
   const sp = await page.evaluate(() => { const da = window.__da; const its = da.life.items.filter(it => da.life.shown(it) && !it.binned && it.b.tone !== 'hist'); let raw = 0, drawn = 0;
@@ -169,6 +169,11 @@ if (run('smoke')) try {
     return { bg: getComputedStyle(band).backgroundColor, kinds: kinds.length, us: band.querySelectorAll('.kinds .us use[href="#k-human"]').length, kindWords: kinds.map(k => k.textContent.trim()).join(''), pics: pics.length, picsWithMark: pics.filter(p => (p.querySelector('img') || p.querySelector('canvas')) && p.querySelector('svg use')).length, fiveH: Math.round(five.height), deg }; });
   check('the outlook runs orange to red to black on paper, over every kind of life, us among them, with no words', nw.bg !== 'rgb(11, 37, 69)' && nw.kinds === 12 && nw.us === 1 && nw.kindWords === '' && nw.deg[0] !== nw.deg[4] && nw.deg[4] === '#141412' && nw.deg[3] === '#d62e1f', JSON.stringify(nw));
   check('the five: a strip of photographs, each with its mark, in little room', nw.pics === 5 && nw.picsWithMark === 5 && nw.fiveH < 190, JSON.stringify({ pics: nw.pics, marks: nw.picsWithMark, h: nw.fiveH }));
+  const hd = await page.evaluate(() => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id).filter(Boolean); const d4 = [...document.querySelectorAll('#sec-heat .mo.d4 i')];
+    return { head: (document.querySelector('#sec-heat .b-head') || {}).textContent, sun: !!document.querySelector('#sec-heat .b-count .sun use[href="#g-heat"]'), el: parseFloat(getComputedStyle(document.querySelector('#sec-heat .b-top .el')).fontSize), ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], d4op: [...new Set(d4.map(i => getComputedStyle(i.parentElement).opacity))], mark: d4.length ? getComputedStyle(d4[0], '::after').content : '', praxis: (document.querySelector('#sec-praxis') || {}).textContent || '' }; });
+  check('NOW leads with DIRECT ACTION, the heat beside it as a sun, the El Niño larger', hd.head === 'DIRECTACTION' && hd.sun && hd.el >= 14, JSON.stringify(hd));
+  check('extreme months are black, never faded to grey, each with a small cross', hd.d4 >= 1 && hd.d4bg.length === 1 && hd.d4bg[0] === 'rgb(20, 20, 18)' && hd.d4op.join() === '1' && /†/.test(hd.mark), JSON.stringify(hd));
+  check('the praxis line sits under the outlook; the five go to the bottom', hd.ids[0] === 'sec-heat' && hd.ids[1] === 'sec-praxis' && hd.ids[hd.ids.length - 1] === 'sec-five' && /poem for praxis/i.test(hd.praxis) && /W\.I\.S\.H\./.test(hd.praxis), JSON.stringify(hd.ids));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
   check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
   const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });
@@ -176,7 +181,7 @@ if (run('smoke')) try {
   await shot(page, '02-now.png');
   await tab(page, 1); await sleep(600);
   const st = await page.evaluate(() => { const rows = [...document.querySelectorAll('#sec-signals .sig-row')]; return { rows: rows.length, ex: rows.filter(r => r.classList.contains('ex')).length, codes: rows.map(r => r.querySelector('b').textContent), groups: document.querySelectorAll('#sec-groups .row').length, docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
-  check('STORIES: the signals board with three examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 3 && st.ex === 3 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  check('STORIES: the signals board with twenty examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 20 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
   check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-stories.png');
@@ -339,7 +344,7 @@ if (run('strings')) try {
   await shot(page, '11-ledger.png');
   await page.evaluate(() => window.__da.map.jumpTo({ zoom: 14.4 })); await settle(page); await sleep(400);
   const outId = await page.evaluate(() => { const da = window.__da; const o = da.S.byId.get(da.S.sel); const R = da.rangeOf(o); const r = da.map.getContainer().getBoundingClientRect();
-    const it = da.life.items.find(i => i.o.id !== o.id && da.life.shown(i) && !i.o.hist && !i.o.ob && !da.isCold(i.o) && !i.binned && da.haversine(o.lat, o.lng, i.lat, i.lng) > R + 40 && da.haversine(o.lat, o.lng, i.lat, i.lng) < 1400 && i.x > 50 && i.y > 50 && i.x < r.width - 480 && i.y < r.height - 50 && (() => { const h = da.life.hit(i.x, i.y); return h && h.kind === 'cell' && h.id === i.o.id; })());
+    const it = da.life.items.find(i => i.o.id !== o.id && da.life.shown(i) && !i.o.hist && !i.o.ob && !i.o.story && !da.isCold(i.o) && !i.binned && da.haversine(o.lat, o.lng, i.lat, i.lng) > R + 40 && da.haversine(o.lat, o.lng, i.lat, i.lng) < 1400 && i.x > 50 && i.y > 50 && i.x < r.width - 480 && i.y < r.height - 50 && (() => { const h = da.life.hit(i.x, i.y); return h && h.kind === 'cell' && h.id === i.o.id; })());
     return it ? it.o.id : null; });
   if (outId != null) {
     const [ox, oy] = await xy(page, outId); await page.mouse.click(ox, oy); await sleep(400);
@@ -513,13 +518,31 @@ if (run('outputs')) try {
   await tap(page, '#s-out [data-out="print"]'); await page.waitForFunction(() => window.__printed >= 1, null, { timeout: 15000 });
   const pg = await page.evaluate(() => ({ size: (document.querySelector('#page-size') || {}).textContent, text: (window.__lastSlip || {}).text || '' }));
   check('PRINT: a strip 58 mm wide with the code and the four lines', /size:58mm \d+mm/.test(pg.size) && pg.text.includes(code), JSON.stringify(pg).slice(0, 160));
+  /* two styles: the paper slip as it was, and the teletype, chosen beside PIN, in its own type, its name scrambled */
+  const t0 = await page.evaluate(async () => { const da = window.__da; const s = da.S.signals[0]; const b = await da.escpos(s, '58'); const acts = [...document.querySelectorAll('#s-acts [data-sa]')].map(x => x.dataset.sa);
+    return { tty: da.isTty(), acts, cls: document.querySelector('#s-slip').classList.contains('tty'), bar: getComputedStyle(document.querySelector('#s-slip .sl-bar')).display, text2: da.slipText(s, 32).split('\n')[1], rev: b.some((v, i) => v === 0x1D && b[i + 1] === 0x42 && b[i + 2] === 1), eot: /EOT/.test(String.fromCharCode(...b)) }; });
+  check('the paper slip stays as it was until the teletype is chosen', !t0.tty && !t0.cls && t0.bar === 'none' && /^\d\d\.\d\d\.\d\d /.test(t0.text2) && !t0.rev && !t0.eot && t0.acts.indexOf('style') === t0.acts.indexOf('pin') + 1, JSON.stringify(t0));
+  await tap(page, '#s-acts [data-sa="style"]'); await sleep(120);
+  const mid = await page.evaluate(() => document.querySelector('#s-acts [data-sa="style"] .scr').textContent); await sleep(900);
+  const t1 = await page.evaluate(async () => { const da = window.__da; const s = da.S.signals[0]; const b58 = await da.escpos(s, '58'); const str = String.fromCharCode(...b58); const btn = document.querySelector('#s-acts [data-sa="style"]');
+    return { tty: da.isTty(), kept: JSON.parse(localStorage.getItem('da.prefs')).slip, pressed: btn.getAttribute('aria-pressed'), word: btn.querySelector('.scr').textContent, btnFont: getComputedStyle(btn.querySelector('.scr')).fontFamily, slipFont: getComputedStyle(document.querySelector('#s-slip .sl-code')).fontFamily, vt: document.fonts.check('16px VT323'),
+      bar: getComputedStyle(document.querySelector('#s-slip .sl-bar')).display, acc: document.querySelector('#s-slip .sl-acc').textContent, code: s.code, chk: da.chkOf(s), text: da.slipText(s, 32).split('\n').slice(0, 3), foot: da.slipFoot(s, 32),
+      rev: b58.some((v, i) => v === 0x1D && b58[i + 1] === 0x42 && b58[i + 2] === 1), eot: /EOT/.test(str), cut: [...b58.slice(-4)].join() === '29,86,66,0', code58: str.includes(s.code), fig: /FIG\.|NORTH UP/.test(str) }; });
+  check('the teletype: chosen beside PIN, its name scrambled then settled, in VT323', t1.tty && t1.kept === 'tty' && t1.pressed === 'true' && mid !== 'PHR34K' && t1.word === 'PHR34K' && /VT323/.test(t1.btnFont) && /VT323/.test(t1.slipFont) && t1.vt, JSON.stringify({ ...t1, mid }));
+  check('the teletype log: a reverse bar, TX, an accession and its check, EOT; the same at the printer', t1.bar !== 'none' && t1.acc.includes(t1.code) && t1.acc.includes(t1.chk) && /^[0-9A-F]{4}$/.test(t1.chk) && t1.text[1].startsWith('TX ') && /^=+$/.test(t1.text[2]) && /CHK [0-9A-F]{4}/.test(t1.foot) && /EOT$/.test(t1.foot) && t1.rev && t1.eot && t1.cut && t1.code58 && !t1.fig, JSON.stringify(t1));
+  const tb = await dl('#s-out [data-out="bits"]'); const tm = await sharp(tb).metadata(); const traw = await sharp(tb).greyscale().raw().toBuffer();
+  let barInk = 0; for (let x = 0; x < 384; x++) if (traw[3 * 384 + x] < 128) barInk++;
+  check('1-BIT as a teletype: 384 dots, two inks, a black bar across its head', tm.width === 384 && new Set(traw).size <= 2 && barInk > 300, `${tm.width}×${tm.height} · bar ${barInk}`);
+  await tap(page, '#s-acts [data-sa="style"]'); await sleep(700);
+  const t2 = await page.evaluate(() => ({ tty: window.__da.isTty(), cls: document.querySelector('#s-slip').classList.contains('tty'), font: getComputedStyle(document.querySelector('#s-slip .sl-code')).fontFamily }));
+  check('and back to the paper slip, in its own type', !t2.tty && !t2.cls && /IBM Plex Mono/.test(t2.font), JSON.stringify(t2));
   await page.emulateMedia({ media: 'print' }); const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true }); await page.emulateMedia({ media: 'screen' }); fs.writeFileSync(`${SHOTS}/slip.pdf`, pdf);
   const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length; const box = (pdf.toString('latin1').match(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/) || []).slice(1).map(Number);
   check('the slip prints as one strip, 58 mm wide', pages === 1 && Math.abs(box[0] - 164.4) < 3, `${pages} page · ${box.join('×')} pt`);
   await page.evaluate(() => window.__da.printBlank()); await page.waitForFunction(() => window.__printed >= 2, null, { timeout: 15000 });
   check('a blank slip prints for filling in by hand', await page.evaluate(() => /DA-____/.test(window.__lastSlip.text)));
   const csv = fs.readFileSync(await (async () => { await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(500); return dl('#sec-tools [data-doc="signals"]'); })(), 'utf8');
-  check('the signals download as a table', csv.split('\n').length === 5 && csv.startsWith('code,issued') && csv.includes(code), `${csv.split('\n').length} rows`);
+  check('the signals download as a table', csv.split('\n').length === 22 && csv.startsWith('code,issued') && csv.includes(code), `${csv.split('\n').length} rows`);
   await ctx.close();
 } catch (e) { results.push(`FAIL  section outputs: ${e.message.split('\n')[0]}`); }
 
@@ -530,7 +553,7 @@ if (run('board')) try {
   await tab(page, 1); await sleep(400);
   await page.click('#sec-signals .sig-row[data-sig="ex:DA-0RNG"]'); await sleep(2200);
   const ex = await page.evaluate(() => { const da = window.__da; const c = da.map.getCenter(); const s = da.S.signals.find(x => x.code === 'DA-0RNG'); return { mode: da.S.mode, sel: da.S.sel, face: da.face(), no: document.querySelector('#r-no').textContent, near: Math.hypot(c.lat - s.pin.lat, c.lng - s.pin.lng) < 0.01, knots: document.querySelectorAll('#s-slip .sl-knots li').length, live: [...da.strings.nodes.keys()].filter(k => k.startsWith('s:DA-0RNG:')).length, marks: da.life.items.filter(i => i.o.code === 'DA-0RNG').length, acts: [...document.querySelectorAll('#s-acts [data-sa]')].map(b => b.dataset.sa).join(' ') }; });
-  check('an example opens as one cell, open and live, its slip turned up, marked EX and not removable', ex.mode === 'ping' && ex.sel === 'sp:DA-0RNG' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.live === 3 && ex.marks === 1 && ex.acts === 'remix pin', JSON.stringify(ex));
+  check('an example opens as one cell, open and live, its slip turned up, marked EX and not removable', ex.mode === 'ping' && ex.sel === 'sp:DA-0RNG' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.live === 3 && ex.marks === 1 && ex.acts === 'remix pin style', JSON.stringify(ex));
   await settle(page); await clickNode(page, 's:DA-0RNG:a');
   const lk = await page.evaluate(() => ({ peeked: window.__da.strings.peeked, card: !document.querySelector('#peek').hidden }));
   check('its knots can be looked at, like any other', lk.peeked === 's:DA-0RNG:a' && lk.card, JSON.stringify(lk));
@@ -577,7 +600,7 @@ if (run('share')) try {
   check('ESC/POS for 58 mm and for 80 mm paper, with no FIG. or NORTH UP', bin.w58 && bin.w80 && !bin.fig, JSON.stringify(bin));
   await tap(page, '#r-act'); await sleep(900);
   const dl = await page.evaluate(() => [...document.querySelectorAll('#s-send [data-dest]')].map(b => ({ d: b.dataset.dest, t: b.querySelector('b').textContent })));
-  check('DIRECT ACTION lists the partner places that print, and the board', dl.length === 4 && ['pickles', 'kines', 'elsie', ''].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
+  check('DIRECT ACTION lists the partner places that print, the local mesh, and the board', dl.length === 5 && ['pickles', 'kines', 'elsie', 'mesh', ''].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
   await page.click('#s-send [data-dest="pickles"]'); await page.waitForFunction(() => /WAITING FOR APPROVAL/.test(document.querySelector('#s-status').textContent), null, { timeout: 20000 });
   const st0 = await page.evaluate(() => document.querySelector('#s-status').textContent);
   const waiting = await admin('stories?status=waiting'); const mine = waiting.stories.find(x => x.code === s0.code);
@@ -614,6 +637,21 @@ if (run('share')) try {
   const rs = await page.evaluate(() => (document.querySelector('#r-do .share small') || {}).textContent);
   const recs = (await admin('stories?status=waiting')).stories.filter(x => x.kind === 'record');
   check('a record placed here is shared for approval, without its contact', /WAITING FOR APPROVAL/.test(rs) && recs.length === 1 && /magpie/.test(recs[0].body) && !/0400/.test(recs[0].body), JSON.stringify({ rs, recs: recs.map(r => r.body) }));
+  /* a pack of cells: read from a Markdown file, seen, sent for approval, then on the map for everyone */
+  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.setOpen(true); da.setView(1); }); await sleep(700);
+  const MD = ['# Fruit and radios', 'by: Merri Street neighbours', '', '- fruit | Lemon tree, laneway | -37.7701, 144.9602 | pick freely', '- node | Rooftop repeater | -37.7664, 144.9731 | LongFast | https://meshtastic.org',
+    '| kind | name | lat | lng |', '|---|---|---|---|', '| water | Bird bath | -37.7688 | 144.9705 |', '- Fig on the corner | -37.7712, 144.9611', '- tree | Somewhere far | -33.86, 151.21', '- no place at all'].join('\n');
+  await page.setInputFiles('#pack-f', { name: 'fruit-and-radios.md', mimeType: 'text/markdown', buffer: Buffer.from(MD) }); await sleep(600);
+  const pv = await page.evaluate(() => ({ n: (document.querySelector('#pack .pk-n') || {}).textContent || '', rows: [...document.querySelectorAll('#pack .pk-l li')].map(li => li.textContent), send: !!document.querySelector('#pack [data-pack="send"]'), cells: (window.__da.S.packPv || {}).cells }));
+  check('a cell pack in Markdown is read and shown before it is sent: four placed, by kind; two left out', /4 CELLS/.test(pv.n) && /2 NOT PLACED/.test(pv.n) && pv.send && pv.cells.map(c => c.k).join() === 'fruit,node,water,fruit' && pv.cells[1].url === 'https://meshtastic.org', JSON.stringify(pv));
+  await tap(page, '#pack [data-pack="send"]'); await sleep(1200);
+  const packs = (await admin('stories?status=waiting')).stories.filter(x => x.kind === 'cells');
+  const sentNote = await page.evaluate(() => (document.querySelector('#pack .pk-sent') || {}).textContent || '');
+  check('sent for approval, as a pack, nothing on the map yet', packs.length === 1 && JSON.parse(packs[0].body).cells.length === 4 && /WAITING FOR APPROVAL/.test(sentNote) && !(await page.evaluate(() => window.__da.S.community.some(o => o.pack))), JSON.stringify({ n: packs.length, sentNote }));
+  await admin(`stories/${packs[0].id}`, { action: 'show' });
+  await page.evaluate(() => window.__da.loadShared()); await sleep(800);
+  const onMap = await page.evaluate(() => { const da = window.__da; const its = da.life.items.filter(it => it.o.pack); return { n: its.length, kinds: its.map(it => it.o.pk).sort().join(), tones: [...new Set(its.map(it => it.b.tone))].sort().join(), icons: its.map(it => it.b.i || it.b.g).sort().join(), who: (its[0] || {}).o && its[0].o.who }; });
+  check('approved, its cells stand on the map for everyone, each as its kind', onMap.n === 4 && onMap.kinds === 'fruit,fruit,node,water' && onMap.tones === 'offer' && /mesh/.test(onMap.icons) && /give/.test(onMap.icons) && onMap.who === 'Merri Street neighbours', JSON.stringify(onMap));
   /* this group's stories go, so the other checks see the board as it was */
   for (const st of ['waiting', 'shown', 'refused']) for (const x of (await admin('stories?status=' + st)).stories) await admin(`stories/${x.id}`, { action: 'delete' });
   await ctx.close();
@@ -786,7 +824,7 @@ if (run('offline')) try {
   await page.waitForFunction(() => window.__da && window.__da.S.mapReady && document.body.classList.contains('nosignal'), null, { timeout: 60000 });
   await sleep(800); await tab(page, 1); await sleep(400);
   const off = await page.evaluate(() => ({ items: window.__da.life.items.length, five: window.__da.S.heroes.length, sigs: document.querySelectorAll('#sec-signals .sig-row').length }));
-  check('without a signal the five and the example signals still stand', off.five === 5 && off.items >= 5 && off.sigs === 3, JSON.stringify(off));
+  check('without a signal the five and the example signals still stand', off.five === 5 && off.items >= 5 && off.sigs === 20, JSON.stringify(off));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section offline: ${e.message.split('\n')[0]}`); }
 
@@ -820,7 +858,7 @@ if (run('guide')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'guide');
   await page.goto('https://oan.test/guide.html'); await sleep(1400);
   const g = await page.evaluate(() => { const n = s => document.querySelectorAll(s).length; return { key: n('#key li'), kc: n('#kind-colours li'), radar: n('#radar-steps li'), strings: n('#string-steps li'), sounds: n('#snd-lives li') + n('#snd-people li'), refs: n('#outs a[href^="https"]'), wish: n('#wish-slip ol li'), five: n('#five-steps li'), outs: n('#outs li'), degs: n('#degs li'), wins: n('#wins li'), heroes: n('#heroes li'), on: n('#roles-on li'), back: n('#roles-back li'), groups: n('#group-list li'), calls: n('#calls li'), words: document.body.innerText.split(/\s+/).length, sentences: (document.body.innerText.match(/[a-z]{3,}\.(\s|$)/g) || []).length, overflow: document.documentElement.scrollWidth - innerWidth }; });
-  check('the guide is a key: the radar, the icons, the strings, the lines, the outputs, the danger, the places, the groups', g.key === 21 && g.kc === 8 && g.radar === 8 && g.strings === 22 && g.sounds === 15 && g.wish === 4 && g.five === 2 && g.outs === 8 && g.refs === 7 && g.degs === 5 && g.wins === 4 && g.heroes === 5 && g.on === 10 && g.back === 14 && g.groups === 6 && g.calls === 9 && g.overflow <= 0, JSON.stringify(g));
+  check('the guide is a key: the radar, the icons, the strings, the lines, the outputs, the danger, the places, the groups', g.key === 22 && g.kc === 8 && g.radar === 8 && g.strings === 22 && g.sounds === 15 && g.wish === 4 && g.five === 2 && g.outs === 8 && g.refs === 7 && g.degs === 5 && g.wins === 4 && g.heroes === 5 && g.on === 10 && g.back === 14 && g.groups === 6 && g.calls === 9 && g.overflow <= 0, JSON.stringify(g));
   check('the guide is labels, not prose', g.words < 620 && g.sentences === 0, `${g.words} words · ${g.sentences} sentences`);
   await shot(page, '60-guide.png', { fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await sleep(500);

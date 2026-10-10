@@ -356,9 +356,10 @@
   };
   /* a W.I.S.H. receipt printer, as it stands on a counter: its body, its slot, a slip feeding out with lines of print and a
      torn edge, and a light. on: the printer is there and listening, the light teal. t: seconds, for the slip feeding a little and back */
+  /* a W.I.S.H. receipt printer. on: online, its slip feeding. Not yet online it is a ghost: faint, dashed, the slip torn short */
   function printer(ctx, x, y, d, t, on) {
-    const k = d / 32; ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-    const feed = t ? 2 + 2.4 * (0.5 + 0.5 * Math.sin(t * 1.4)) : 3.2; const top = -15 - feed;
+    const k = d / 32; ctx.save(); ctx.translate(x, y); ctx.scale(k, k); if (!on) { ctx.globalAlpha = 0.62; ctx.setLineDash([2.2, 1.8]); }
+    const feed = !on ? 0.6 : t ? 2 + 2.4 * (0.5 + 0.5 * Math.sin(t * 1.4)) : 3.2; const top = -15 - feed;
     ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5;
     /* the slip: paper rising from the slot, its torn edge, three lines of print */
     ctx.beginPath(); ctx.moveTo(-7.5, -3); ctx.lineTo(-7.5, top + 2); for (let i = 0; i <= 6; i++) ctx.lineTo(-7.5 + i * 2.5, top + (i % 2 ? 0 : 2)); ctx.lineTo(7.5, -3); ctx.closePath();

@@ -207,7 +207,7 @@ canvas{flex:none;display:block}
     put({ tone: 'lost', g: 'dog', d: 34 }, W * 0.9, H * 0.18); put({ tone: 'injured', g: 'possum', d: 36 }, W * 0.92, H * 0.78); put({ tone: 'k-mammal', g: 'flyingfox', d: 48, dz: 4 }, W * 0.08, H * 0.82);
     x.beginPath(); x.arc(cx, cy, 5, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = C.navy; x.stroke();
     x.save(); x.translate(cx + R, cy); x.rotate(Math.PI / 4); x.fillStyle = '#fff'; x.fillRect(-8, -8, 16, 16); x.strokeStyle = C.navy; x.strokeRect(-8, -8, 16, 16); x.restore();
-    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', 'the last 24 hours only · NEW · its age'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
+    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', '24 hours · NEW · its age · examples'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
   })();
 
   /* icons */
@@ -215,6 +215,7 @@ canvas{flex:none;display:block}
   { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.tealDeep};border-radius:5px"></i><span class="lbl">PLANTS</span>`; $('#kind-colours').appendChild(l); }
   for (const [b, w] of M.KEY) li($('#key'), badge(b), w);
   { const c = document.createElement('canvas'); c.width = c.height = 68; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 17, 19, 26, 0, true); c.style.width = c.style.height = '34px'; li($('#key'), c, 'W.I.S.H. PRINTER'); }
+  { const c = document.createElement('canvas'); c.width = c.height = 68; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 17, 19, 26, 0, false); c.style.width = c.style.height = '34px'; li($('#key'), c, 'NOT YET ONLINE'); }
 
   /* strings: a frog, the places around it, threads to what harms it, and a figure tied */
   (function figure() {

@@ -1,4 +1,4 @@
-/* Direct Action · briefs. Fifty projects that worked somewhere, each a brief for here.
+/* Direct Action · briefs. Fifty-three projects that worked somewhere, each a brief for here.
    g kinds of life · roles businesses that can carry it · m months to start (0 = Jan) · i s h lines, 48 characters at most.
    {biz} a business tied by string, else its role · {place} the suburb. */
 window.DA_BRIEFS = [
@@ -152,4 +152,13 @@ window.DA_BRIEFS = [
   { id: "B50", th: "heat", t: "A shade pavilion of Country", after: "The Living Pavilion", city: "University of Melbourne", yr: 2019, fact: "Indigenous-led, planted with indigenous species", url: "https://nespurban.edu.au/platforms/living-pavilion/",
     g: ["plant","bee","human"], roles: ["space","studio","grower"], m: [2,3,4,8,9], dz: ["heat","flower"], adds: ["pollination","diversity"],
     i: "Indigenous plants shade the strip in summer", s: "Learn from Country first.", h: "Co-design it, led by Wurundjeri knowledge" },
+  { id: "B51", th: "diversity", t: "Every ad with an animal pays it back", after: "The Lion’s Share", city: "Cannes", yr: 2018, fact: "0.5% of media spend for each ad that features an animal, with UNDP", url: "https://www.undp.org/press-releases/gucci-joins-lions-share-fund-support-wildlife-conservation",
+    g: ["bird","parrot","possum","flyingfox","bee","frog"], roles: ["network","studio","label","fashion"], m: [9,10,11,0,1,2], dz: ["heat","flower"], adds: ["diversity"],
+    i: "Every animal in a feed pays it back", s: "Regenerate nature, not only harm it less.", h: "{biz}: 0.5% of each animal-led post to the creek" },
+  { id: "B52", th: "diversity", t: "A pledge signed at the counter", after: "Palau Pledge", city: "Palau", yr: 2017, fact: "a pledge stamped in every visitor’s passport, written by Palau’s children; D&AD Black Pencil 2018", url: "https://www.dandad.org/insights/awards/palau-pledge-case-study-insights",
+    g: ["human","bird","bee","frog","turtle"], roles: ["third","space","market","owner"], m: [9,10,11,0,1,2], dz: ["heat","litter"], adds: [],
+    i: "A promise made in ink, in front of others", s: "A promise in ink outlasts a promise said.", h: "{biz}: sign the pledge at the till, printed" },
+  { id: "B53", th: "heat", t: "A mesh radio on every partner counter", after: "Meshtastic", city: "worldwide", yr: 2020, fact: "open-source LoRa radios that pass short messages node to node, with no phone network", url: "https://meshtastic.org/",
+    g: ["human","flyingfox","possum"], roles: ["third","network","space","repair"], m: [9,10,11,0,1], dz: ["heat","nights"], adds: [],
+    i: "The street can still talk when the network fails", s: "Design to sustain, heal and empower.", h: "{biz}: a solar mesh node by the window" },
 ];

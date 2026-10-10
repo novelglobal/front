@@ -45,9 +45,12 @@ const life = (() => {
 
   /* ───────── what each record is: the thing itself, in the shape of its kind of record ───────── */
   const zoomNow = () => (S.mapReady ? map.getZoom() : 14);
-  /* icons are small from afar and grow close in: the ground asks to be approached */
+  /* icons are small, many and dense; they grow close in, where each shows its photograph: the ground asks to be approached */
   const kzAt = z => clamp(0.45 + (z - 13.2) * 0.25, 0.45, 1);
-  const sizeAt = (z = zoomNow()) => Math.max(6, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) / 2) * 2);
+  const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(7 + (z - 12.5) * 1.8, 7, 12) * kzAt(z) / 2) * 2);
+  const PHOTO_Z = 16.2;   /* closer than this, a life is its photograph */
+  /* a living map: what is new is bright and full; what is old fades and shrinks to a small ghost */
+  const ghostOf = o => { if (!o || o.hero || o.partner) return 1; const t = stampOf(o); if (!t) return 1; const days = (Date.now() - t) / 864e5; return clamp(1 - (days - 1) / 40, 0.28, 1); };
   const PLACE_TONE = { flora: 'flora', injured: 'injured', dead: 'dead', lost: 'lost', need: 'need', offer: 'offer', event: 'event' };
   const PLACE_ICON = { need: 'plus', offer: 'give', event: 'people', injured: 'injured', dead: 'harm' };
   const PLANT_Z = 14.8;   /* plants show only close up, and small */
@@ -61,6 +64,8 @@ const life = (() => {
     /* a story: a slip issued about a life, standing where its life was */
     if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
     if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
+    /* a cell from a pack: its kind's colour and mark, a fruit tree, a mesh node, water, shade */
+    if (o.pack) { const K = PACK_KINDS[o.pk] || PACK_KINDS.place; return { tone: K.tone, g: K.g || null, i: K.g ? null : K.i, d: d + 2 }; }
     if (o.kind === 'injured') return { tone: 'injured', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'injured', d: d + 4 };
     if (o.kind === 'dead') return { tone: 'dead', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'harm', d: d + 2 };
     if (o.kind === 'lost') return { tone: 'lost', g: o.tx || o.g ? glyphOf(o) : 'paw', d: d + 4 };
@@ -88,7 +93,7 @@ const life = (() => {
       const b = badgeOf(o, curD); const r0 = seeded(`${o.id}|${WEEK}`);
       const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, ox: 0, oy: 0, phase: r0(), pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
       /* outside the radar, one rule: only what is from the last 24 hours. An animal hurt, dead or lost is an alarm for as long */
-      it.flag = isFresh(o); it.alarm = isAlarm(o) && it.flag;
+      it.flag = isFresh(o); it.alarm = isAlarm(o) && it.flag; it.fade = it.alarm ? 1 : ghostOf(o);
       items.push(it);
     }
     for (const it of items) {
@@ -182,7 +187,8 @@ const life = (() => {
     const o = selected(); cellPts = o ? ringOf(o.lat, o.lng, rangeOf(o)) : [];
     cluster(); spread(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
   }
-  /* marks that would sit on each other move apart a little, each staying close to where it was seen */
+  /* marks that would sit on each other move apart, with room between, each staying close to where it was seen.
+     On screen only: every print keeps the true coordinates */
   function spread() {
     const live = items.filter(it => !it.binned && (it.flag || it.inS || it.o.story) && it.b.tone !== 'hist' && !off(it.x, it.y, 80));
     if (live.length < 2) return; const G = Math.max(...live.map(it => it.b.d)) + 2;
@@ -192,7 +198,7 @@ const life = (() => {
       for (const it of live) {
         const gx = Math.floor((it.x + it.ox) / G), gy = Math.floor((it.y + it.oy) / G);
         for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const ot of grid.get(`${gx + i},${gy + j}`) || []) {
-          if (ot === it) continue; let dx = it.x + it.ox - ot.x - ot.ox, dy = it.y + it.oy - ot.y - ot.oy; const need = (it.b.d + ot.b.d) / 2 + 1.5, L = Math.hypot(dx, dy); if (L >= need) continue;
+          if (ot === it) continue; let dx = it.x + it.ox - ot.x - ot.ox, dy = it.y + it.oy - ot.y - ot.oy; const need = (it.b.d + ot.b.d) / 2 + 4, L = Math.hypot(dx, dy); if (L >= need) continue;
           if (L < 0.01) { const a = (it.phase - ot.phase) * TAU; dx = Math.cos(a); dy = Math.sin(a); } else { dx /= L; dy /= L; }
           /* each pair is met twice in a pass, so each meeting moves both a quarter of the overlap */
           const k = (need - L) / 4; it.ox += dx * k; it.oy += dy * k; ot.ox -= dx * k; ot.oy -= dy * k;
@@ -206,8 +212,8 @@ const life = (() => {
   function shown(it) {
     const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
-    /* the stories page shows every story on the ground, wherever it is */
-    if (o.story && S.open && S.view === 1 && !S.mode) return true;
+    /* the example stories stand on the map always, as receipts; the stories page shows every story, wherever it is */
+    if (o.story && (o.ex || (S.open && S.view === 1 && !S.mode))) return true;
     const found = it.inS && seen.has(o.id); const z = zoomNow();
     if (it.b.tone === 'hist') return found && z >= 14;
     if (it.b.tone === 'flora') return it.flag || (found && z >= PLANT_Z);   /* a plant from the last 24 hours shows anywhere, like any other */
@@ -309,7 +315,7 @@ const life = (() => {
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
-  function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { if (!p.printer) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; M.printer(ctx, q.x, q.y, d, still ? 0 : t, !!(PSTATE[p.id] || {}).ready); } }
+  function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { p._x = null; if (!p.printer || !prefs.printers) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; const on = !!(PSTATE[p.id] || {}).ready; M.printer(ctx, q.x, q.y, d, still || !on ? 0 : t, on); } }
   /* a life's photograph, for the ground once its cell is open: its own, else one of its kind; loaded once, drawn when it has come */
   const PH = new Map();
   function photoOf(o, size) {
@@ -356,18 +362,23 @@ const life = (() => {
       if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
       let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
       /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
-      const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = age < 420 ? back(age / 420) : 1;
+      const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = (age < 420 ? back(age / 420) : 1) * (0.55 + 0.45 * it.fade);
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
       /* inside an open cell the other lives show themselves too, as photographs */
-      const im = node && !it.o.hum ? photoOf(it.o, 'square') : null;
-      if (im) { photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(18, it.b.d * 1.3)), it.alarm ? C.red : C.white); continue; }
-      drawItem(ctx, it, m, a, k);
+      const close = zoomNow() >= PHOTO_Z && !it.o.hum && !it.o.story && it.b.tone !== 'hist';
+      const im = (node || close) && !it.o.hum ? photoOf(it.o, 'square') : null;
+      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 18 : 16, it.b.d * 1.6) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
+      drawItem(ctx, it, m, a * (0.3 + 0.7 * it.fade), k);
     }
     printers(ctx, t, still);
     /* a song from the centre: each note lights where it was tied */
     for (const n of songFx) { const q = (now - n.at) / 700; if (q < 0 || q > 1) continue; const p = map.project([n.lng, n.lat]); ctx.save(); ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(p.x, p.y, 6 + q * 22, 0, TAU); ctx.strokeStyle = C.orange; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
     selection(ctx, now);
-    if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) { ctx.save(); ctx.beginPath(); ctx.arc(it.x + it.dx, it.y + it.dy, it.b.d / 2 + 5, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } }
+    /* under the pointer a mark grows into its photograph, a larger circle; without one, into its own mark, larger */
+    if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) {
+      const g = still ? 1 : ease((now - hoverAt) / 180); const D = Math.round(it.b.d + (56 - it.b.d) * g); const x = it.x + it.dx, y = it.y + it.dy; const im = !it.o.hum ? photoOf(it.o, 'small') : null;
+      if (im) photoDisc(ctx, im, x, y, D, it.o.story ? C.cobalt : it.alarm ? C.red : C.white); else M.badge(ctx, { ...it.b, a: 1, d: Math.round(it.b.d + (30 - it.b.d) * g) }, x, y);
+      if (g < 1) fxDirty = true; } }
     /* the record being placed breathes: one ring leaving it, until it is placed */
     if (S.mode === 'place' && S.place && !still) { const q = map.project([S.place.lng, S.place.lat]); const k = (now / 1400) % 1; ctx.save(); ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(q.x, q.y, 14 + k * 26, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.8; ctx.stroke(); ctx.restore(); }
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); const k = still ? 1 : back((now - ghost.t) / 300); M.badge(ctx, { tone: 'need', i: 'plus', d: Math.round(28 * k) || 1 }, q.x, q.y); }
@@ -449,7 +460,7 @@ const life = (() => {
   /* ───────── the tag: a name under the pointer, nothing more ───────── */
   function tagHTML(h) {
     if (h.kind === 'node') return strings.tagHTML(h.key);
-    if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<img src="${printerImg(p, st)}" alt=""><span class="tx"><b>${esc(p.n)}</b><small>W.I.S.H. PRINTER${st.ready ? ' · ON' : ''}</small></span>` : ''; }
+    if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<img src="${printerImg(p, st)}" alt=""><span class="tx"><b>${esc(p.n)}</b><small>W.I.S.H. PRINTER · ${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}</small></span>` : ''; }
     const o = S.byId.get(h.id); if (!o) return ''; const sub = subjectOf(o);
     const ph = o.photo ? `<img src="${esc(o.photo)}" alt="">` : sub.ph && licOpen(sub.ph.l) ? `<img src="${esc(photoURL(sub.ph.u, 'small'))}" alt="">` : `<img src="${badgeImg(badgeOf(o, 40), 44)}" alt="">`;
     const voice = (sub.so && sub.so.u) || o.sound;
@@ -469,9 +480,10 @@ const life = (() => {
     tagEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
   let tagHide = 0;
+  let hoverAt = 0;
   function hover(h) {
     if (h && hoverH && h.kind === hoverH.kind && h.id === hoverH.id && h.key === hoverH.key) return;
-    fxDirty = true;
+    fxDirty = true; hoverAt = performance.now();
     if (h) { clearTimeout(tagHide); const html = tagHTML(h); if (!html) return; hoverH = h; tagEl.innerHTML = html; tagEl.classList.toggle('alarm', h.kind === 'cell' && isAlarm(S.byId.get(h.id))); tagEl.classList.toggle('node', h.kind === 'node'); tagEl.hidden = false; placeTag(); return; }
     clearTimeout(tagHide); tagHide = setTimeout(() => { if (!tagEl.matches(':hover')) { tagEl.hidden = true; hoverH = null; fxDirty = true; } }, 260);
   }

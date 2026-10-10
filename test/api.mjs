@@ -50,7 +50,7 @@ try {
 
   await call(`/api/admin/stories/${s1.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
   const pub1 = await call('/api/stories'); const one1 = await call('/api/stories/DA-7K2Q'); const ph1 = await call(`/api/photos/${s1.json.id}`); const r1 = await call(`/api/receipts/${s1.json.id}`);
-  check('approved: it is shown to everyone, with its photograph, and its print joins the queue', pub1.json.stories.length === 1 && pub1.json.stories[0].body === SIG && one1.status === 200 && ph1.status === 200 && ph1.type === 'image/jpeg' && r1.json.job.status === 'queued' && r1.json.job.ahead === 0, JSON.stringify({ n: pub1.json.stories.length, r: r1.json }));
+  check('approved: it is shown to everyone, with its photograph, and its print joins the queue', pub1.json.stories.filter(s => s.kind === 'story').length === 1 && pub1.json.stories[0].body === SIG && one1.status === 200 && ph1.status === 200 && ph1.type === 'image/jpeg' && r1.json.job.status === 'queued' && r1.json.job.ahead === 0, JSON.stringify({ n: pub1.json.stories.length, r: r1.json }));
 
   /* the receiver at Pickles pulls it, prints it, and says so */
   const j1 = await call('/api/printers/pickles/next', { token: T }); const j2 = await call('/api/printers/pickles/next', { token: T });
@@ -69,6 +69,28 @@ try {
   await call('/api/admin/printers/kines', { method: 'POST', key: KEY, body: { action: 'auto', on: true } });
   const s4 = await call('/api/stories', { method: 'POST', body: story('DA-9N4S', { dest: 'kines', escpos: 'G0A=' }) });
   check('a printer set to print without approval queues at once; the story still waits to be shown', s4.json.job.status === 'queued' && (await call('/api/stories/DA-9N4S')).status === 404, JSON.stringify(s4.json));
+
+  /* to the local mesh: nothing printed; the mesh line goes to each paired printer whose radio is on, once approved */
+  await call('/api/admin/printers/pickles', { method: 'POST', key: KEY, body: { action: 'mesh', on: true } });
+  const MESH = 'DA-M5H1 NOISY MINER\n-37.7700,144.9600\nA line';
+  const m0 = await call('/api/stories', { method: 'POST', ip: '10.0.0.6', body: story('DA-M5H1', { dest: 'mesh' }) });
+  const m1 = await call('/api/stories', { method: 'POST', ip: '10.0.0.6', body: story('DA-M5H1', { dest: 'mesh', mesh: MESH }) });
+  const pm = (await call('/api/partners')).json.partners;
+  check('sent to the local mesh: it waits, with a mesh line for each radio that is on', m0.status === 400 && m1.status === 201 && m1.json.job && m1.json.job.status === 'held' && pm.find(p => p.id === 'pickles').mesh === true && pm.find(p => p.id === 'kines').mesh === false, JSON.stringify({ m0: m0.status, m1: m1.json, pm }));
+  await call(`/api/admin/stories/${m1.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  const mj = await call('/api/printers/pickles/next', { token: T });
+  check('the radio gets the mesh line alone, no bytes to print', mj.status === 200 && mj.json.code === 'DA-M5H1' && mj.json.escpos === null && mj.json.mesh === MESH, JSON.stringify(mj.json));
+  await call(`/api/printers/pickles/jobs/${mj.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } });
+
+  /* a pack of cells: waits like any story, then everyone has it */
+  const PACK = JSON.stringify({ title: 'Fruit and radios', by: 'neighbours', cells: [{ k: 'fruit', n: 'Lemon tree', lat: -37.7701, lng: 144.9602 }, { k: 'node', n: 'Rooftop repeater', lat: -37.7664, lng: 144.9731 }] });
+  const c0 = await call('/api/stories', { method: 'POST', ip: '10.0.0.7', body: { kind: 'cells', code: 'DA-C3KS', body: PACK, lat: -37.768, lng: 144.967 } });
+  const cbad = await Promise.all([{ cells: [] }, { cells: [{ n: 'x', lat: 'here', lng: 1 }] }, { cells: Array.from({ length: 201 }, () => ({ n: 'x', lat: -37.7, lng: 144.9 })) }]
+    .map(b => call('/api/stories', { method: 'POST', ip: '10.0.0.7', body: { kind: 'cells', code: 'DA-C3KT', body: JSON.stringify(b), lat: -37.768, lng: 144.967 } })));
+  const cw = (await call('/api/admin/stories?status=waiting', { key: KEY })).json.stories.find(s => s.code === 'DA-C3KS');
+  await call(`/api/admin/stories/${c0.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  const cpub = (await call('/api/stories')).json.stories.find(s => s.code === 'DA-C3KS');
+  check('a pack of cells waits for approval, then is shown to everyone; an empty, unplaced or oversized pack is refused', c0.status === 201 && !c0.json.job && cw && cw.kind === 'cells' && cpub && JSON.parse(cpub.body).cells.length === 2 && cbad.map(b => b.status).join() === '400,400,400', JSON.stringify({ c0: c0.status, bad: cbad.map(b => b.status), cpub: !!cpub }));
 
   /* what is refused at the door */
   const bad = await Promise.all([

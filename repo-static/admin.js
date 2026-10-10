@@ -37,7 +37,7 @@
     card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: action === 'show' ? 'SHOWN · AND SENT TO PRINT' : action === 'refuse' ? 'REFUSED' : 'DELETED' }));
   }
   function storyCard(x) {
-    const card = el('article', { class: 'card' + (x.kind === 'record' ? ' rec' : '') });
+    const card = el('article', { class: 'card' + (x.kind !== 'story' ? ' rec' : '') });
     const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}`;
     let body;
     if (x.kind === 'story') {
@@ -45,6 +45,12 @@
       body = [el('h3', { text: `${p[3] || p[4] || 'A life'}` }), el('div', { class: 'meta', text: `${meta} · ${p[5] || ''} ${(+p[0]).toFixed(4)} ${(+p[1]).toFixed(4)}` }),
         typeof j.s === 'string' ? el('p', { text: j.s }) : null, lines.length ? el('ol', {}, lines.map(l => el('li', { text: l }))) : el('p', { class: 'note', text: 'NO LINES' }),
         (j.k || []).length ? el('p', { class: 'note', text: 'RELATIONS · ' + j.k.map(k => k[2]).join(' · ') }) : null, j.o ? el('p', { text: 'NOTE · ' + j.o }) : null, j.y ? el('p', { class: 'note', text: '— ' + j.y }) : null];
+    } else if (x.kind === 'cells') {
+      /* a pack of cells: its title, who sent it, and every cell, to check before it goes on the map */
+      let j = {}; try { j = JSON.parse(x.body); } catch (e) { /* shown as it is */ } const cells = Array.isArray(j.cells) ? j.cells : [];
+      body = [el('h3', { text: `CELLS · ${j.title || 'A pack'} · ${cells.length}` }), el('div', { class: 'meta', text: `${meta} · AROUND ${x.lat} ${x.lng}` }), j.by ? el('p', { class: 'note', text: '— ' + j.by }) : null,
+        el('ol', {}, cells.slice(0, 60).map(c => el('li', { text: `${String(c.k || 'place').toUpperCase()} · ${c.n || ''} · ${(+c.lat).toFixed(4)} ${(+c.lng).toFixed(4)}${c.note ? ' · ' + c.note : ''}${c.url ? ' · ' + c.url : ''}` }))),
+        cells.length > 60 ? el('p', { class: 'note', text: `+ ${cells.length - 60} more` }) : null];
     } else {
       let j = {}; try { j = JSON.parse(x.body); } catch (e) { /* shown as it is */ }
       body = [el('h3', { text: `${String(j.type || 'record').toUpperCase()} · ${j.text || (j.tx && j.tx.cn) || ''}` }), el('div', { class: 'meta', text: `${meta} · ${j.lat} ${j.lng}` }), j.who ? el('p', { class: 'note', text: '— ' + j.who }) : null];
@@ -54,7 +60,7 @@
       x.status !== 'refused' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => act(x.id, 'delete', card) }));
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img);
-    card.append(...(x.kind === 'record' ? [] : [img || el('div')]), el('div', {}, body, acts));
+    card.append(...(x.kind !== 'story' ? [] : [img || el('div')]), el('div', {}, body, acts));
     return card;
   }
   async function stories(st) {

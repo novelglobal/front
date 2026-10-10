@@ -24,23 +24,24 @@ copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.js'), path.join(out, 'vendor/ma
 copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.css'), path.join(out, 'vendor/maplibre-gl.css'));
 copy(path.join(nm, 'qrcode-generator/qrcode.js'), path.join(out, 'vendor/qrcode.js'));
 
-/* type: Poppins (display, labels, text) and IBM Plex Mono (numbers, coordinates, codes) */
+/* type: Poppins (display, labels, text), IBM Plex Mono (numbers, coordinates, codes), and VT323 for the teletype slip */
 const fonts = [['Poppins', 200, 'normal', 'poppins'], ['Poppins', 400, 'normal', 'poppins'], ['Poppins', 400, 'italic', 'poppins'],
   ['Poppins', 600, 'normal', 'poppins'], ['Poppins', 700, 'normal', 'poppins'],
-  ['IBM Plex Mono', 400, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 500, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 600, 'normal', 'ibm-plex-mono']];
+  ['IBM Plex Mono', 400, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 500, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 600, 'normal', 'ibm-plex-mono'],
+  ['VT323', 400, 'normal', 'vt323']];
 const faces = [], files = [];
 for (const [fam, w, st, pkg] of fonts) {
   const file = `${pkg}-latin-${w}-${st}.woff2`; files.push(`vendor/fonts/${file}`);
   copy(path.join(nm, `@fontsource/${pkg}/files/${file}`), path.join(out, 'vendor/fonts', file));
   faces.push(`@font-face{font-family:'${fam}';font-style:${st};font-weight:${w};font-display:swap;src:url(vendor/fonts/${file}) format('woff2')}`);
 }
-fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins and IBM Plex Mono, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + read(path.join(src, 'app.css')));
+fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins, IBM Plex Mono and VT323, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + read(path.join(src, 'app.css')));
 /* the app: every file in src/app, in name order, as one script */
 fs.writeFileSync(path.join(out, 'app.js'), fs.readdirSync(path.join(src, 'app')).filter(f => f.endsWith('.js')).sort().map(f => read(path.join(src, 'app', f))).join('\n'));
 for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
 /* the guide reads the same marks and words as the app, in the same type */
 fs.writeFileSync(path.join(out, 'guide.html'), read(path.join(src, 'guide.html')).replace('/*FONTS*/', faces.join('\n')));
-fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts — `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn) and IBM Plex Mono (IBM, Mike Abbink, Bold Monday), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
+fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts — `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday) and VT323 (Peter Hull), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
 const sw = read(path.join(out, 'sw.js')).replace("'vendor/qrcode.js', ", "'vendor/qrcode.js', " + files.map(f => `'${f}'`).join(', ') + ', ');
 fs.writeFileSync(path.join(out, 'sw.js'), sw);
 /* a preview is never indexed by search engines */

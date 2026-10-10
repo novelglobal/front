@@ -122,7 +122,7 @@ function fillPartner(p, quiet) {
   const st = PSTATE[p.id] || {};
   $('#r-no').textContent = 'PARTNER · W.I.S.H. PRINTER'; $('#r-name').textContent = p.n; $('#r-latin').textContent = [p.addr, title(p.sub)].filter(Boolean).join(', ');
   if (!quiet) drawPrinterFigure(p, st);
-  $('#r-chips').innerHTML = chip(st.ready ? 'PRINTER ON' : p.printer ? 'W.I.S.H. PRINTER' : 'QUEUE', st.ready ? 'tb' : '') + (st.queued ? chip(`${st.queued} IN QUEUE`) : '') + (st.printed ? chip(`${st.printed} PRINTED`) : '') + chip(esc(p.paper + ' MM'), 'at') + (p.url ? `<a class="c lk" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(hostOf(p.url))} ${icon('out', 'sm')}</a>` : '');
+  $('#r-chips').innerHTML = chip(st.ready ? 'PRINTER ONLINE' : p.printer ? 'PRINTER NOT YET ONLINE' : 'QUEUE', st.ready ? 'tb' : 'off') + (st.queued ? chip(`${st.queued} IN QUEUE`) : '') + (st.printed ? chip(`${st.printed} PRINTED`) : '') + chip(esc(p.paper + ' MM'), 'at') + (p.url ? `<a class="c lk" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(hostOf(p.url))} ${icon('out', 'sm')}</a>` : '');
   $('#r-chips').style.removeProperty('--c');
   $('#r-threat').hidden = true; $('#r-season').hidden = true; $('#r-ledger').hidden = true; $('#r-do').innerHTML = '';
   $('#r-learn').textContent = p.what || ''; $('#r-learn').hidden = !p.what;
