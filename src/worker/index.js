@@ -16,7 +16,10 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const fail = (status, error) => json({ error }, status);
 const now = () => Date.now();
 const H = 3600e3, DAY = 24 * H;
-const LIMIT = { body: 900e3, sig: 9000, record: 6000, photo: 420e3, escpos: 420e3, mesh: 240, waiting: 300, perPrinter: 20 };
+const LIMIT = { body: 900e3, sig: 9000, record: 6000, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 420e3, mesh: 240, waiting: 300, perPrinter: 20 };
+/* a pack of cells: up to 200, each with a place on the ground and a short name */
+const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
+  return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
 const CODE = /^DA-[0-9A-HJKMNP-TV-Z]{4}$/;
 
 /* ───────── the database: made on first use, the same in a preview's database and the live one ───────── */
@@ -95,17 +98,21 @@ async function photo(db, id, any) {
   if (!r || !r.photo || (!any && r.status !== 'shown')) return fail(404, 'not found');
   return new Response(new Uint8Array(r.photo), { headers: { 'content-type': 'image/jpeg', 'cache-control': any ? 'no-store' : 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
 }
-/* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval */
+/* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
+   dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
 async function send(db, env, req) {
   if (await tooMany(db, env, req, 'send', 8, 10 * 60e3)) return fail(429, 'too many');
-  const b = await body(req); const kind = b.kind === 'record' ? 'record' : 'story';
+  const b = await body(req); const kind = b.kind === 'record' || b.kind === 'cells' ? b.kind : 'story';
   if (!CODE.test(b.code || '')) return fail(400, 'code');
   if (kind === 'story' && !(typeof b.body === 'string' && /^[A-Za-z0-9_-]{20,}$/.test(b.body) && b.body.length <= LIMIT.sig)) return fail(400, 'story');
   if (kind === 'record' && !(typeof b.body === 'string' && b.body.length <= LIMIT.record && (() => { try { return typeof JSON.parse(b.body) === 'object'; } catch (e) { return false; } })())) return fail(400, 'record');
+  if (kind === 'cells' && (!cellsOk(b.body) || b.dest || b.photo)) return fail(400, 'cells');
   const lat = +b.lat, lng = +b.lng; if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(400, 'where');
   const pic = b.photo ? dataURL(b.photo) : null; if (b.photo && !pic) return fail(400, 'photo');
-  const dest = typeof b.dest === 'string' && b.dest ? b.dest : ''; const P = dest ? await db.prepare('SELECT * FROM printers WHERE id = ?').bind(dest).first() : null;
-  if (dest && !P) return fail(400, 'dest');
+  const dest = typeof b.dest === 'string' && b.dest ? b.dest : ''; const toMesh = dest === 'mesh';
+  const P = dest && !toMesh ? await db.prepare('SELECT * FROM printers WHERE id = ?').bind(dest).first() : null;
+  if (dest && !toMesh && !P) return fail(400, 'dest');
+  if (toMesh && !(typeof b.mesh === 'string' && b.mesh)) return fail(400, 'mesh');
   if (dest && b.escpos != null && !b64ok(b.escpos, LIMIT.escpos)) return fail(400, 'escpos');
   if (b.mesh != null && (typeof b.mesh !== 'string' || enc.encode(b.mesh).length > LIMIT.mesh)) return fail(400, 'mesh');
   const { n } = await db.prepare("SELECT count(*) AS n FROM stories WHERE status = 'waiting'").first(); if (n >= LIMIT.waiting) return fail(503, 'busy');
@@ -115,6 +122,12 @@ async function send(db, env, req) {
     const { q } = await db.prepare("SELECT count(*) AS q FROM jobs WHERE printer = ? AND status IN ('held', 'queued', 'printing')").bind(dest).first(); if (q >= LIMIT.perPrinter) return fail(503, 'queue full');
     job = { id: rid(), status: P.auto ? 'queued' : 'held' };
     ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(job.id, dest, id, b.code, b.escpos || null, P.mesh ? (b.mesh || null) : null, job.status, t));
+  }
+  if (toMesh) {
+    const { results: radios } = await db.prepare(`SELECT p.id, p.auto, (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('held', 'queued', 'printing')) AS q
+      FROM printers p WHERE p.mesh = 1 AND p.token IS NOT NULL`).all();
+    for (const r of radios) { if (r.q >= LIMIT.perPrinter) continue; const jb = { id: rid(), status: r.auto ? 'queued' : 'held' }; job = job || jb;
+      ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)').bind(jb.id, r.id, id, b.code, b.mesh, jb.status, t)); }
   }
   await db.batch(ops);
   return json({ id, status: 'waiting', job }, 201);
@@ -128,10 +141,10 @@ async function receipt(db, id) {
 }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
-  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.token IS NOT NULL AS paired, p.seen,
+  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.token IS NOT NULL AS paired, p.seen,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'printed') AS printed FROM printers p ORDER BY p.created`).all();
-  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
+  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, mesh: !!p.mesh && !!p.paired, ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
 }
 
 /* ───────── a printer's receiver: it asks for the next job, prints it, and says how it went ───────── */

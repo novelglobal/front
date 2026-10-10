@@ -38,7 +38,7 @@ function sharedRecord(x) {
 }
 function applyShared() {
   S.shared = SHARED.list.filter(x => x.kind === 'story').map(sharedSignal).filter(Boolean);
-  const recs = SHARED.list.filter(x => x.kind === 'record').map(sharedRecord).filter(Boolean);
+  const recs = [...SHARED.list.filter(x => x.kind === 'record').map(sharedRecord).filter(Boolean), ...SHARED.list.filter(x => x.kind === 'cells').flatMap(packRecords)];
   for (const o of S.community.filter(x => x.shared)) S.byId.delete(o.id);
   S.community = [...S.community.filter(x => !x.shared), ...recs]; for (const o of recs) S.byId.set(o.id, o);
   derive(); refresh();
@@ -58,8 +58,8 @@ async function post(payload) { return apiJSON('/stories', { method: 'POST', body
 async function directAction(s0, dest) {
   /* a place someone marked themselves, perhaps a garden, goes out to about 100 m; a sighting from iNaturalist is already public */
   const s = s0.pin && !s0.pin.id ? { ...s0, pin: { ...s0.pin, lat: +(+s0.pin.lat).toFixed(3), lng: +(+s0.pin.lng).toFixed(3) } } : s0;
-  const p = dest ? partnerOf(dest) : null;
-  const payload = { kind: 'story', code: s.code, body: packSignal(s), lat: +s.pin.lat, lng: +s.pin.lng, dest: p ? p.id : '', mesh: meshText(s) };
+  const p = dest && dest !== 'mesh' ? partnerOf(dest) : null;
+  const payload = { kind: 'story', code: s.code, body: packSignal(s), lat: +s.pin.lat, lng: +s.pin.lng, dest: p ? p.id : dest === 'mesh' ? 'mesh' : '', mesh: meshText(s) };
   if (p) { try { payload.escpos = b64bytes(await escpos(s, p.paper)); } catch (e) { /* the words go without the bytes */ } }
   const own = s.img && s.img.k === 'own' ? sigSrc(s, false) : ''; if (own && /^data:/.test(own)) { const ph = await photoToSend(own); if (ph) payload.photo = ph; }
   SENT[s.code] = { dest: payload.dest, status: 'sending', at: Date.now() }; saveSent();
@@ -103,12 +103,12 @@ async function checkSent() {
 }
 /* the printers, as they are now */
 async function loadPartners() {
-  try { const j = await apiJSON('/partners'); for (const p of (j && j.partners) || []) PSTATE[p.id] = { ready: p.ready, paired: p.paired, queued: p.queued, printed: p.printed, t: Date.now() }; store.set('da.partners.v1', PSTATE); } catch (e) { /* as last heard */ }
+  try { const j = await apiJSON('/partners'); for (const p of (j && j.partners) || []) PSTATE[p.id] = { ready: p.ready, paired: p.paired, mesh: p.mesh, queued: p.queued, printed: p.printed, t: Date.now() }; store.set('da.partners.v1', PSTATE); } catch (e) { /* as last heard */ }
   return PSTATE;
 }
 /* a slip's status, in a label */
 function sentWord(s) {
-  const v = SENT[s.code]; const p = v && v.dest ? partnerOf(v.dest) : s.dest ? partnerOf(s.dest) : null; const at = p ? p.n.toUpperCase() : 'THE BOARD';
+  const v = SENT[s.code]; const d = v && v.dest ? v.dest : s.dest || ''; const p = d && d !== 'mesh' ? partnerOf(d) : null; const at = p ? p.n.toUpperCase() : d === 'mesh' ? 'THE MESH' : 'THE BOARD';
   if (!v) return s.shared ? (p ? `SHOWN · SENT TO ${at}` : 'SHOWN ON THE BOARD') : '';
   if (v.status === 'sending') return `SENDING · ${at}`;
   if (v.status === 'outbox') return `NO SIGNAL · SENDS WHEN THERE IS · ${at}`;

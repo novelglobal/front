@@ -213,17 +213,34 @@ details.sec[open]>summary .lab::after{content:" –"}
 /* the outlook: the months ahead on paper, each in its danger, from orange to black; every kind of life under it, us too */
 .band{margin:0 var(--gut);padding:12px 14px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8}
 .b-top{display:flex;align-items:center;justify-content:space-between;font:600 10px var(--mono);letter-spacing:.12em}
-.b-count{display:flex;align-items:flex-end;gap:10px;margin:10px 0 10px}
-.b-count b{font:200 52px/.8 var(--sans);letter-spacing:-.03em}
-.b-count span{font:500 10px/1.3 var(--mono);letter-spacing:.1em;padding-bottom:2px}
+.b-top .el{font:600 15px/1 var(--mono);letter-spacing:.06em}
+.b-head{margin:12px 0 10px;font:200 46px/.86 var(--sans);letter-spacing:-.035em;color:var(--ink)}
+.b-count{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.b-count b{font:600 11px/1 var(--mono);letter-spacing:.1em}
+.b-count span{font:500 11px/1 var(--mono);letter-spacing:.1em}
+.b-count .sun{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--deg1);color:var(--ink)}
+.b-count .sun .i{width:16px;height:16px}
+.b-count .sun.d2{background:var(--deg2)}.b-count .sun.d3{background:var(--deg3);color:#FCFBF7}.b-count .sun.d4{background:var(--deg4);color:#FCFBF7}
+.b-count.now .sun{animation:sun 2.4s ease-in-out infinite}
+@keyframes sun{0%,100%{box-shadow:0 0 0 0 rgba(255,106,0,.45)}50%{box-shadow:0 0 0 7px rgba(255,106,0,0)}}
+.still .b-count.now .sun{animation:none}
+.praxis p{margin:0;display:grid;gap:4px}
+.praxis .mono{font:600 10px var(--mono);letter-spacing:.14em;color:var(--grey-text)}
+.praxis b{font:300 21px/1.15 var(--sans);letter-spacing:-.015em;color:var(--navy)}
+.praxis small{font:400 12.5px/1.4 var(--sans);color:var(--grey-text)}
 .mstrip{display:grid;gap:4px}
 .ms-m{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px}
-.mo{display:flex;flex-direction:column;align-items:stretch;gap:4px;opacity:.5}
-.mo.on{opacity:1}
-.mo i{height:24px;background:var(--deg0)}
+/* every month at full colour, extreme in black; the chosen three stand taller; no outlook yet is hatched, not faded */
+.mo{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+.mo i{position:relative;height:15px;margin-top:9px;background:var(--deg0)}
+.mo.on i{height:24px;margin-top:0}
 .mo.d1 i{background:var(--deg1)}.mo.d2 i{background:var(--deg2)}.mo.d3 i{background:var(--deg3)}.mo.d4 i{background:var(--deg4)}
-.mo.hp i{opacity:.55}
-.mo b{font:500 9px var(--mono);text-align:center;color:var(--ink)}
+.mo.hp i{background-image:repeating-linear-gradient(135deg,transparent 0 3px,rgba(252,251,247,.55) 3px 4.5px)}
+/* extreme: a small cross, for the lives it takes */
+.mo.d4 i::after{content:'\2020';position:absolute;inset:0;display:grid;place-items:center;font:500 10px/1 var(--mono);color:#FCFBF7;opacity:.75}
+.dg.d4::before{content:'\2020\00a0'}
+.mo b{font:500 9px var(--mono);text-align:center;color:var(--grey-text)}
+.mo.on b{color:var(--ink)}
 .mo.now b{font-weight:600}
 .mo.now i{box-shadow:inset 0 -3px var(--ink)}
 .ms-w{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px 2px}
@@ -312,6 +329,25 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .docs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
 .docs button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px;border:1px solid var(--paper);font:500 9px var(--mono);letter-spacing:.06em}
 .docs button:hover{border-color:var(--navy)}
+.src-dl{display:flex;justify-content:space-between;gap:8px;margin:8px 0 0;font-size:9.5px;letter-spacing:.08em}
+.src-dl a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--paper);color:var(--navy);text-decoration:none}
+.src-dl a:first-child{flex:1}
+.src-dl a:hover{border-color:var(--navy)}
+/* a pack of cells: read here, seen, then sent for approval */
+.pack{margin-top:8px}
+.pack-up{display:flex;justify-content:space-between;gap:8px;margin:0;font-size:9.5px;letter-spacing:.08em}
+.pack-up label,.pack-up a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px dashed var(--navy);color:var(--navy);text-decoration:none;cursor:pointer}
+.pack-up label{flex:1}
+.pack-up label:hover,.pack-up a:hover{border-style:solid}
+.pack-pv{margin-top:6px;padding:9px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8;font-size:10px}
+.pack-pv p{margin:0 0 4px}
+.pack-pv .pk-n i{font-style:normal;color:var(--orange)}
+.pk-l{display:grid;gap:2px;margin:6px 0}
+.pk-l li{font-size:9.5px;letter-spacing:.03em}
+.pk-l i{font-style:normal;font-size:8px;letter-spacing:.12em;color:var(--grey-text)}
+.pk-l small{color:var(--grey-text)}
+.pk-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px!important}
+.pk-sent{display:flex;align-items:center;gap:6px;color:var(--teal-deep)}
 .briefs li a{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--paper);text-decoration:none}
 .briefs li a:hover{background:var(--paper)}
 .bn{font-size:10px;color:var(--grey-text);width:18px;flex:none}
@@ -360,6 +396,7 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .c.lk:hover{border-color:var(--navy);color:var(--navy)}
 .c.play{width:30px;height:24px;justify-content:center;padding:0;border-radius:12px;border-color:var(--cobalt);color:var(--cobalt)}
 .c.tb{background:var(--c);border-color:transparent;color:var(--white)}
+.c.off{border-style:dashed;color:var(--grey-text)}
 .c.swap{border-style:dashed;cursor:pointer}
 .c.swap:hover{background:var(--navy);color:var(--white);border-style:solid}
 .r-five{margin:10px var(--gut) 0;padding:8px;background:var(--paper);animation:wipe .22s var(--ease)}
@@ -590,6 +627,34 @@ p.sl-note{font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-
 .sl-qr i{width:88px;height:88px;background:repeating-linear-gradient(45deg,#E6E5DE 0 3px,transparent 3px 7px);border:1px dashed #A9A9A2}
 .sl-foot{font-size:8.5px;letter-spacing:.12em;text-align:center;color:#55554F}
 .sl-head .ex{margin-left:8px;padding:1px 4px;border:1px solid #A9A9A2;font-size:9px;letter-spacing:.14em;color:#77776F}
+/* where an example's lines come from: on screen, in either style; never printed */
+.sl-src{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:8px;padding-top:6px;border-top:1px dashed #A9A9A2;font-size:8px;letter-spacing:.06em}
+.sl-src b{flex-basis:100%;font-weight:500;letter-spacing:.14em;color:#77776F}
+.sl-src a{color:#55554F;text-decoration:none;border-bottom:1px dotted #A9A9A2}
+.sl-src a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+#press .sl-src{display:none}
+/* the second style, the teletype: its parts are drawn on every slip and shown only in it */
+.sl-bar,.sl-acc,.sl-eot{display:none}
+.slip.tty{--mono:'VT323',ui-monospace,Menlo,Consolas,monospace;--sans:'VT323',ui-monospace,Menlo,Consolas,monospace;font-size-adjust:.56;padding:4px 26px 16px;
+  background:radial-gradient(circle,#D6D4CA 3.2px,transparent 3.8px) left 4px top 0/12px 18px repeat-y,radial-gradient(circle,#D6D4CA 3.2px,transparent 3.8px) right 4px top 0/12px 18px repeat-y,
+    linear-gradient(90deg,transparent 19px,#E4E2D9 19px 20px,transparent 20px calc(100% - 20px),#E4E2D9 calc(100% - 20px) calc(100% - 19px),transparent calc(100% - 19px)),
+    repeating-linear-gradient(180deg,transparent 0 36px,rgba(150,196,160,.14) 36px 72px),var(--slip)}
+.slip.tty .sl-bar{display:flex;justify-content:space-between;align-items:center;margin:10px 0 0;padding:4px 6px 3px;background:var(--ink);color:var(--slip);font-size:12px;letter-spacing:.14em}
+.slip.tty .sl-head{border-bottom:3px double var(--ink);padding-top:8px}
+.slip.tty .sl-code{font-size:19px;letter-spacing:.12em}
+.slip.tty .sl-life b{font-size:16px;letter-spacing:.06em}
+.slip.tty .sl-threat{font-weight:400;font-size:14px}
+.slip.tty .sl-wish span{font-weight:400;font-size:16px}
+.slip.tty .sl-wish span::before{content:'> ';color:#8C8C84}
+.slip.tty .sl-acc{display:flex;justify-content:space-between;margin:2px 0 4px;padding-top:6px;border-top:3px double var(--ink);font-size:12px;letter-spacing:.1em}
+.slip.tty .sl-eot{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;letter-spacing:.14em;color:#55554F}
+.slip.tty .sl-eot b{color:var(--ink)}
+.slip.tty .sl-img{filter:contrast(1.08)}
+#press .slip.tty{background:#fff;padding:2mm 3mm}
+#press .slip.tty .sl-bar{margin-top:0}
+/* the button that changes the style is set in the teletype's type, its name scrambled */
+.tty-b .scr{font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.1em;min-width:6ch;text-align:left}
+.s-acts .tty-b[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--slip)}
 /* issuing: the slip feeds out of the printer, a step at a time, then is torn off */
 .record.feeding #w-slip{animation:feed 1.25s steps(16) forwards}
 @keyframes feed{to{transform:translateY(-46px)}}

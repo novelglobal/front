@@ -12,13 +12,13 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 
 | Area | State |
 |---|---|
-| Web app (map, cells, strings, ledger, constellations, slip, outputs, sharing, partners) | Built and working, with 160 browser checks and 18 server checks |
+| Web app (map, cells, strings, ledger, constellations, slip in two styles, outputs, sharing, partners, the local mesh, cell packs) | Built and working, with browser and server checks (`npm test`) |
 | Hosting | The Cloudflare Worker `front` builds this repo on every push. `main` is live at `novel.global`; any other branch, such as `staging`, gets its own preview address. See `docs/workflow.md` |
 | Source and build | This tree is the GitHub repo `front`. `npm run build` writes `dist/`, which is the deployable site |
 | Worker | `src/worker/index.js`: stories sent and approved, a print queue for each partner place, the approval page's requests, all on D1 (`front-db`; previews use `front-db-preview`) |
 | Approval page | `/admin`, behind the `ADMIN_KEY` Worker secret. Stories wait there until shown or refused; printers are paired there |
 | Print queue | Built on D1, not a Durable Object. Jobs wait for approval (unless a printer is set to print without it), a day at most |
-| Pi receiver | `receiver/pull.py` (standard library; printd for the printer, Meshtastic for a radio), `da-pull.service`, and step-by-step setup in `receiver/README.md`. Tested end to end against the Worker; the hardware at Pickles is still to be set up |
+| Pi receiver | `receiver/pull.py` (standard library; printd for the printer, Meshtastic for a radio), `da-pull.service`, and step-by-step setup in `receiver/README.md`. Tested end to end against the Worker; the hardware at Pickles, Kines and Coffee Bar Elsie is still to be set up. A job with no bytes (sent to the local mesh) goes out by radio and is not printed |
 | Live data behind the Worker | Not built. This is stage 4. Each browser still calls iNaturalist, Overpass and Open-Meteo directly |
 | Prototype deadline | One receiver and one printer, with a repeatable end-to-end demo, by 16 October 2026 |
 
@@ -86,6 +86,8 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 | MESH | Plain text of up to 200 bytes for a LoRa mesh radio | `meshText()` |
 | PAGER | Plain text of up to 80 characters | `pagerText()` |
 | LINK | The whole signal in a URL (`#x=…`) | `linkOf()`, `packSignal()` |
+
+Two styles, chosen with **PHR34K** beside PIN and kept in `prefs.slip`. The default is the paper slip, unchanged. The second, `'tty'`, is a teletype log: VT323 on sprocket-fed green-bar paper on screen, a reverse-printed `DIRECT ACTION` bar, `TX` and the time, and a foot with `ACC.` (the code), `CHK` (a CRC-16 of the code and the four lines, `chkOf()`) and `EOT`. `slipText()`, `slipFoot()`, `slipCanvas()` and `escpos()` take the style, so the PNGs and the printer at a partner place match the screen. The ESC/POS bar uses `GS B` (reverse print). An example's sources show on screen only, never in print.
 
 Each output machine is drawn as its hardware and links to a reference page about it. Pasting a link, a packed signal or a mesh message into RECEIVE on the STORIES page brings a signal back into the app.
 
@@ -167,8 +169,8 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 │   ├── places.js          window.DA_PLACES: the 57 listed places, the three partners among them
 │   ├── marks.js           window.DA_MARKS: colours, icons, glyphs, badges, motion; shared by app, guide and paper
 │   ├── field.js           window.DA_FIELD: 204 kinds of life (used by field.html and the app)
-│   ├── briefs.js          window.DA_BRIEFS: 50 design briefs with sources
-│   ├── examples.js        three example signals, marked EX
+│   ├── briefs.js          window.DA_BRIEFS: 53 design briefs with sources
+│   ├── examples.js        twenty example stories, marked EX: mode, scale, sources; always on the map
 │   ├── field.html         the field list page
 │   ├── guide.html         the visual key (fonts are injected at build)
 │   └── app/               concatenated in name order into dist/app.js
@@ -182,6 +184,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 │       ├── 50-card.js     the card, ledger and strings section; the slip (statement, photograph, relations); issue; placing records
 │       ├── 60-paper.js    signals: pack and unpack, text, QR, dithering, slip HTML, PNG, ESC/POS (58 or 80 mm), print, story cells, remix, receive
 │       ├── 65-share.js    the shared board, DIRECT ACTION, the outbox, the sender's receipts, partners, RECEIVE by code
+│       ├── 66-packs.js    cell packs: .md, .csv or .json read on the device, previewed, sent for approval, drawn once shown (docs/cell-packs.md)
 │       └── 70-boot.js     start-up, hash routing, live polling, tooltips, the debug handle window.__da
 └── test/
     ├── run.mjs            Playwright end-to-end checks; every outside host is mocked, and /api/ goes to the real Worker on a fresh local database
@@ -216,15 +219,15 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.notes.v1`, `da.st.v1`, `da.slip.v1`, `da.draft.<id>` | Notes, rewritten statements, slip options and drafts |
 | `da.img.v1`, `da.own.v1` | The chosen photograph for each cell, and the user's own photographs (at most 14, as 800 px JPEGs) |
 | `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
-| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (and `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
+| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the teletype style; `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
 | `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
 
 ### What the server stores (D1)
 
 | Table | Contents | Kept |
 |---|---|---|
-| `stories` | A story (its packed signal) or a record (JSON, never its contact), its photograph re-encoded on the device, where it is, the partner it was sent to, waiting, shown or refused | Shown: until deleted on the approval page. Waiting or refused: 30 days |
-| `jobs` | A print for a partner's printer: its ESC/POS bytes and mesh line, held, queued, printing, printed, failed or expired | Waiting: a day. Printed: its status only, a week |
+| `stories` | A story (its packed signal), a record (JSON, never its contact) or a pack of cells (`kind` `cells`: JSON, at most 200, in greater Melbourne), its photograph re-encoded on the device, where it is, the partner it was sent to (`mesh` for the local mesh), waiting, shown or refused | Shown: until deleted on the approval page. Waiting or refused: 30 days |
+| `jobs` | A print for a partner's printer: its ESC/POS bytes and mesh line, held, queued, printing, printed, failed or expired. Sent to the local mesh: one job with the mesh line alone for each paired printer whose radio is on | Waiting: a day. Printed: its status only, a week |
 | `printers` | Each partner place's printer: its paper, whether it prints without approval, whether it has a mesh radio, a hash of its token, when it last asked | Until unpaired |
 | `hits` | A count of requests, under a daily-salted hash of the sender's address, to slow anyone sending too many | An hour |
 

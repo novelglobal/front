@@ -7,7 +7,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 0 | One repo, one deploy, a preview before live | Live |
 | 1 | Fixes and clearer rules on the map | Built, on staging |
 | 2 | Save and share, with your approval | Built, on staging |
-| 3 | Print queue and the pager printer | Built, on staging; the printer at Pickles to set up |
+| 3 | Print queue and the pager printer | Built, on staging; the printers at Pickles, Kines and Coffee Bar Elsie to set up |
+| 3b | Final polish: DIRECT ACTION on NOW, twenty example stories, two slip styles, the local mesh, cell packs, open source | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -65,6 +66,19 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **Safety:** a Turnstile check and a rate limit on sending, and the printer's token kept as a Cloudflare secret.
 - **Done when:** NOTICED, then DIRECT ACTION, then PRINT TO prints the slip within 10 seconds, ten times in a row, and still prints after the Wi-Fi drops for a minute.
 
+## Stage 3b — final polish
+
+*Built, on staging.*
+
+- **NOW:** DIRECT ACTION is the headline, with the heat beside it as a sun that pulses while it is now. The El Niño label is larger. Extreme months are black with a small cross; months without an outlook are hatched, never faded. The praxis line sits under the outlook, and the five move to the bottom.
+- **The map, alive:** marks at half size. Close in, each becomes its photograph; under the pointer, it grows into a larger photograph. Marks fade and shrink to small ghosts as they age. The twenty example stories stand on the map always. Marks spread apart on screen only; every print keeps the true coordinates.
+- **Printers:** Kines and Coffee Bar Elsie join Pickles. Each shows NOT YET ONLINE, as a ghost, until its Pi is listening. Settings → PRINTERS hides them all.
+- **Slips:** the paper slip as it was, and a second style, PHR34K, beside PIN. It renders as a teletype log on sprocket-fed paper, in VT323, with a reverse-printed bar, an accession number, a CRC check and EOT. The same style reaches the PNG and the ESC/POS printer.
+- **The local mesh:** DIRECT ACTION can send to the mesh alone. Once approved, the mesh line goes to every paired printer whose radio is on, and nothing is printed.
+- **Cell packs:** a .md, .csv or .json file of fruit trees, mesh nodes, water, shade, gardens or refuges. It is read on the device, previewed, sent for approval, and shown on the map once approved. `docs/cell-packs.md` has the format and a prompt for another LLM.
+- **Examples:** twenty stories across modes and scales (creative, activist, caring, sensory, joy, skill sharing, partnerships and more). Each is tied to real places, with its sources shown on screen.
+- **Open source:** STORIES → Tools downloads the live version as a zip (MIT).
+
 ## Stage 4 — live data through Cloudflare
 
 Every visitor shares one copy of the data, instead of each browser asking iNaturalist and OpenStreetMap.
@@ -101,7 +115,7 @@ Every visitor shares one copy of the data, instead of each browser asking iNatur
 ## Every stage, every time
 
 - Build on `staging`, check the preview, then merge to `main`.
-- Bump the service worker cache (`da-v11`, `da-v12`, …) whenever the app changes, so returning visitors get the new version.
+- Bump the service worker cache (`da-v12`, `da-v13`, …) whenever the app changes, so returning visitors get the new version.
 - No names or authorship in the code, the text or the commits.
 - Secrets stay in Cloudflare, never in the repo.
 - Nothing anyone shares is shown until it is approved.

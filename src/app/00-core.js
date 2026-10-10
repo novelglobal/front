@@ -72,7 +72,7 @@ const title = s => String(s || '').toLowerCase().replace(/\b\w/g, c => c.toUpper
 const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLowerCase() : ''; if (s) for (const n of SUBURBS) if (s.includes(n.toLowerCase()) && CENTRES.some(c => c[0] === n.toUpperCase())) return n.toUpperCase(); return suburbAt(o.lat, o.lng); };
 
 /* ───────── state ───────── */
-const prefs = Object.assign({ sound: true, motion: true, areas: false, scan: null }, store.get('da.prefs', {}));
+const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
 const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));
 if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; store.set('da.me', me); }

@@ -36,8 +36,9 @@ Then:
 1. **The databases** are in `wrangler.jsonc`: `front-db` for the live site and `front-db-preview` for previews, so testing never touches real stories. Their tables are made on first use.
 2. **The approval password.** In Cloudflare, go to **Workers & Pages → front → Settings → Variables and Secrets → Add**. Choose **Secret**, name it `ADMIN_KEY`, and give it a long passphrase from your password manager. Without it the approval page answers "set the ADMIN_KEY secret".
 3. **The approval page** is at `/admin` on the site, or on the preview address, and a small **ADMIN** link sits beside the build code in the information corner. Everything people send waits there until you choose **SHOW** or **REFUSE**. Nothing is shown on the board, or printed, before then.
-4. **A printer at a partner place.** On the approval page, open **PRINTERS** and choose **PAIR A PRINTER** for that place, then follow `receiver/README.md` on its Raspberry Pi. A printer can be set to print without approval, for testing on your own.
-5. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
+4. **A printer at a partner place.** On the approval page, open **PRINTERS** and choose **PAIR A PRINTER** for that place, then follow `receiver/README.md` on its Raspberry Pi. Until a Pi is listening, the map shows that printer as NOT YET ONLINE, and slips sent to it wait in its queue. A printer can be set to print without approval, for testing on your own. **MESH ON** lets that Pi's radio carry slips sent to the local mesh.
+5. **Cell packs** arrive on the approval page as CELLS, with every cell listed. Check the places, then **SHOW** puts them all on the map.
+6. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
 
 ### GitHub
 
@@ -70,7 +71,7 @@ GitHub Desktop commits as `novelglobal` with GitHub's private `noreply` address,
 
 - **The preview build fails:** the live site is untouched. Open the failed build's log in Cloudflare. The error is near the end.
 - **The live site has a problem:** go to **Workers & Pages → front → Deployments** and roll back to the previous version. It takes seconds. Then fix it on `staging`.
-- **Returning visitors see an old version:** the service worker cache name in `repo-static/sw.js` was not bumped. Bump it (`da-v11` → `da-v12`) and push again.
+- **Returning visitors see an old version:** the service worker cache name in `repo-static/sw.js` was not bumped. Bump it (`da-v13` → `da-v14`) and push again.
 
 ## Hygiene, every time
 
