@@ -21,13 +21,11 @@ Everything stays on the device, and it works offline once loaded.
 
 `places.js` lists real places in Brunswick and the inner north by name, with their address, their site and what they do. Places from OpenStreetMap fill in the rest. A place is counted by its kind of trade, not judged on its own. Positions marked `a: 1` are approximate, to the street address. Listing a place does not mean it endorses this project.
 
-## Publish
+## Build and publish
 
-1. Upload this folder to a GitHub repository.
-2. Go to Settings → Pages → Deploy from a branch → `main`, `/ (root)`.
-3. Put the site's address in `PORTAL_URL` in `config.js`.
+Run `npm ci` and then `npm run build`, which writes the site to `dist/`. The site deploys as a Cloudflare Worker that serves `dist/` as static assets, and it also works on any static host. Put the site's address in `PORTAL_URL` in `src/config.js` so that printed codes link back to it. `HANDOVER.md` explains the source, the tests and the plan.
 
-Settings live in `config.js`: `SCAN` for the radar, `SIGNAL` for the limits, `ROLES` and `PRESSURES` for what harms each kind of life, and `EVENTS_URL` for a published CSV of gatherings. `examples.js` holds three example signals, marked EX.
+Settings live in `src/config.js`: `SCAN` for the radar, `SIGNAL` for the limits, `ROLES` and `PRESSURES` for what harms each kind of life, and `EVENTS_URL` for a published CSV of gatherings. `examples.js` holds three example signals, marked EX.
 
 ## Sources
 
