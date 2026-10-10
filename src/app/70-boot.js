@@ -58,13 +58,14 @@ if (BUILD.branch) { const t = document.createElement('div'); t.className = 'prev
 S.mo = nowK();
 derive(); buildTribes(); buildHeroes(); renderView(); flags(); loadEvents();
 /* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
-applyShared(); loadShared(); flushOutbox(); checkSent(); loadPartners();
+applyShared(); loadShared(); flushOutbox(); checkSent(); loadPartners(); loadSettings();
 /* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */
 if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0); }
 /* sound waits for a first touch, anywhere: browsers keep a page quiet until then, and phones let sound wake only inside the
    touch itself. Then the radar plays what it has found so far, and goes on as it sweeps */
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown'];
-const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); setTimeout(() => life.replay(), 60); };
+/* and the nature station goes on air, unless it was muted */
+const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); setTimeout(() => { life.replay(); if (!prefs.mute) setTrack('life', true); }, 60); };
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
 if (!pendingHash) life.findStart();
@@ -73,5 +74,5 @@ placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
 window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
-  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, heroSrc, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
+  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, heroSrc, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();

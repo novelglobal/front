@@ -9,7 +9,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 2 | Save and share, with your approval | Built, on staging |
 | 3 | Print queue and the pager printer | Built, on staging; the printers at Pickles, Kines and Coffee Bar Elsie to set up |
 | 3b | Final polish: DIRECT ACTION on NOW, twenty example stories, two slip styles, the local mesh, cell packs | Live |
-| 3c | Tracks seen or played, the calendar, first visits, night | Built, on staging |
+| 3c | Stations seen or played, first visits, night | Built, on staging |
+| 3d | The radar as glass and vinyl, clay, the outlook restored, nature locked on | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -91,6 +92,16 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **Constellations** are named for what they hold once they are more than the life alone: the place tied first, the life, and their shape.
 - **Prints:** an example slip carries a photograph of its kind; the life is the heading and the code is among the details.
 - **Night:** as the device is set, or NIGHT in Settings. The page darkens and the ground dims; slips stay paper.
+
+## Stage 3d — the radar as glass and vinyl, clay
+
+*Built, on staging.*
+
+- **NOW:** the outlook as it was, with the words trimmed: the months in their degree, the kind of life each month puts most at risk under it (us among them), and the five in greatest need, named, under it.
+- **Stations:** nature stays on the map for everyone (STATIONS on the approval page unlocks it), goes on air from the first touch, and can be muted; muted stays muted.
+- **The map:** a click on open ground glides the radar there, inside it or out; only a long press makes a new record.
+- **Clay** (#8C7469), the complement of Artifact (PPG10-16, #69808B): the guide's colour, the new icon, and the five and the stories on the map.
+- **The radar:** a disc of glass over the ground, light gathered at its upper edge, a record's fine grooves, a clay label at its centre, and a sheen that turns with the sweep.
 
 ## Stage 4 — live data through Cloudflare
 

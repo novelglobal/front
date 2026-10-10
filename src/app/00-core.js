@@ -74,7 +74,9 @@ const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLower
 /* ───────── state ───────── */
 /* tracks: collections of the map, each seen on it or not. The lives are seen, the places are not, a pack of cells is */
 const TRK_SEE = { life: true, places: false };
-const seeTrack = id => { const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v; };
+/* the site's own settings, as last heard: the nature station stays on the map for everyone unless unlocked on the approval page */
+const CFG = Object.assign({ lifeLock: true }, store.get('da.cfg.v1', {}));
+const seeTrack = id => { if (id === 'life' && CFG.lifeLock) return true; const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v; };
 /* the print location: the first partner place with a W.I.S.H. printer */
 const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));

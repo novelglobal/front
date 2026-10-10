@@ -101,6 +101,10 @@ async function checkSent() {
   }
   if (changed) { saveSent(); refreshSent(); }
 }
+/* the site's own settings, as they are now */
+async function loadSettings() {
+  try { const j = await apiJSON('/settings'); if (j && typeof j.lifeLock === 'boolean' && j.lifeLock !== CFG.lifeLock) { CFG.lifeLock = j.lifeLock; store.set('da.cfg.v1', CFG); if (S.view === 0) refreshPanel(); if (S.mapReady) { life.redraw(); life.moved(); } } } catch (e) { /* as last heard */ }
+}
 /* the printers, as they are now */
 async function loadPartners() {
   try { const j = await apiJSON('/partners'); for (const p of (j && j.partners) || []) PSTATE[p.id] = { ready: !!(p.ready || p.live), heard: !!p.ready, paired: p.paired, mesh: p.mesh, queued: p.queued, printed: p.printed, t: Date.now() }; store.set('da.partners.v1', PSTATE); if (S.mapReady) life.redraw(); } catch (e) { /* as last heard */ }

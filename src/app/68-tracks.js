@@ -2,8 +2,9 @@
    TRACKS — collections of the map, each a track: seen on the map or not, played or not. The lives (animals, insects,
    plants, and us), each kind in its own call; the human ecology (brands, businesses, third spaces, groups), each part in
    its own small sound; and each pack of cells people add (fruit trees, mesh nodes, water, shade). A track's beat is built
-   from what is there now, so a radar moved somewhere else plays something else. Seen at first: the lives and the packs.
-   Played at first: none. Shown with restraint: a light for seen, the voices, a fine trace of the beat, play.
+   from what is there now, so a radar moved somewhere else plays something else. The lives are always seen (unless unlocked
+   on the approval page) and on air from the first touch, and can be muted; the others start off. Shown with restraint: a
+   light for seen, the voices, a fine trace of the beat, play (for the lives, sound and mute).
    ════════════════════════════════════════════════════════════════════ */
 const TRK_STEP = 0.3, TRK_N = 8;                                       /* eight steps a bar, 2.4 s */
 const TRK_PAT = { life: [1, 0, 1, 1, 0, 1, 1, 0], places: [0, 1, 0, 0, 1, 0, 0, 1], pack: [1, 0, 0, 1, 0, 0, 1, 0] };   /* the lives on the beat, the places between it */
@@ -56,14 +57,16 @@ function trkTick() {
     TRK.step++; TRK.next += TRK_STEP;
   }
 }
+const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
   TRK.on[id] = on; const el = document.querySelector(tkSel(id));
-  if (el) { el.classList.toggle('on', on); const b = el.querySelector('.tk-play'); b.setAttribute('aria-pressed', String(on)); b.innerHTML = icon(on ? 'pause' : 'play', 'sm'); }
+  if (el) { el.classList.toggle('on', on); const b = el.querySelector('.tk-play'); b.setAttribute('aria-pressed', String(on)); b.classList.toggle('muted', id === 'life' && !on); b.innerHTML = playIcon(id, on); }
   if (on && !TRK.timer) { TRK.step = 0; TRK.next = 0; freshVoices(); TRK.timer = setInterval(trkTick, 60); trkTick(); }
 }
 function stopTracks() { for (const id of Object.keys(TRK.on)) if (TRK.on[id]) setTrack(id, false); }
 /* seen on the map, or not: kept on this device */
 function seeIt(id, on) {
+  if (id === 'life' && CFG.lifeLock) return;
   prefs.trk = { ...(prefs.trk || {}), [id]: on }; savePrefs();
   const el = document.querySelector(tkSel(id)); if (el) { el.classList.toggle('seen', on); el.querySelector('.tk-see').setAttribute('aria-pressed', String(on)); }
   life.redraw(); life.moved();
@@ -84,9 +87,9 @@ function tracksSection() {
   const list = trackList(); for (const t of list) TRK.voices[t.id] = trackVoices(t.id);
   const row = t => { const on = !!TRK.on[t.id], see = seeTrack(t.id);
     return `<li class="tk${on ? ' on' : ''}${see ? ' seen' : ''}" data-tk="${esc(t.id)}"${t.tip ? ` data-tip="${esc(t.tip)}"` : ''}>`
-      + `<button type="button" class="tk-see" aria-pressed="${see}" aria-label="On the map"><i></i></button>`
+      + `<button type="button" class="tk-see" aria-pressed="${see}" aria-label="On the map"${t.id === 'life' && CFG.lifeLock ? ' disabled' : ''}><i></i></button>`
       + `<span class="vox">${voxHTML(t.id)}</span>`
-      + `<button type="button" class="tk-play" aria-pressed="${on}" aria-label="Play"${(TRK.voices[t.id] || []).length ? '' : ' disabled'}>${icon(on ? 'pause' : 'play', 'sm')}</button>`
+      + `<button type="button" class="tk-play${t.id === 'life' && !on ? ' muted' : ''}" aria-pressed="${on}" aria-label="${t.id === 'life' ? 'Sound' : 'Play'}"${(TRK.voices[t.id] || []).length ? '' : ' disabled'}>${playIcon(t.id, on)}</button>`
       + `<span class="beat">${beatTrace(t.id)}</span></li>`; };
   return `<section class="sec tracks" id="sec-tracks">${lab('Stations')}<ol class="deck">${list.map(row).join('')}</ol></section>`;
 }
@@ -95,7 +98,7 @@ $('#view').addEventListener('click', e => {
   if (e.target.closest('.tk-see')) { seeIt(id, !seeTrack(id)); snd.tick(seeTrack(id) ? 1900 : 1200); buzz(4); return; }
   const p = e.target.closest('.tk-play'); if (!p || p.disabled) return;
   if (!prefs.sound) { toast('SOUND OFF'); return; }
-  setTrack(id, !TRK.on[id]); buzz(4);
+  const on = !TRK.on[id]; setTrack(id, on); if (id === 'life') { prefs.mute = !on; savePrefs(); } buzz(4);
 });
 /* an earlier build kept a track of one's own here; its store goes */
 try { indexedDB.deleteDatabase('da.tracks'); } catch (e) { /* none */ }
