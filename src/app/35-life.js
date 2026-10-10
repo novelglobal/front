@@ -47,7 +47,9 @@ const life = (() => {
   const zoomNow = () => (S.mapReady ? map.getZoom() : 14);
   /* icons are small, many and dense; they grow close in, where each shows its photograph: the ground asks to be approached */
   const kzAt = z => clamp(0.45 + (z - 13.2) * 0.25, 0.45, 1);
-  const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(7 + (z - 12.5) * 1.8, 7, 12) * kzAt(z) / 2) * 2);
+  /* half their full size from afar, growing back to full size close in (by zoom 16) */
+  const halfAt = z => 0.5 + 0.5 * clamp((z - 13.5) / 2.5, 0, 1);
+  const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) * halfAt(z) / 2) * 2);
   const PHOTO_Z = 16.2;   /* closer than this, a life is its photograph */
   /* a living map: what is new is bright and full; what is old fades and shrinks to a small ghost */
   const ghostOf = o => { if (!o || o.hero || o.partner) return 1; const t = stampOf(o); if (!t) return 1; const days = (Date.now() - t) / 864e5; return clamp(1 - (days - 1) / 40, 0.28, 1); };
@@ -367,7 +369,7 @@ const life = (() => {
       /* inside an open cell the other lives show themselves too, as photographs */
       const close = zoomNow() >= PHOTO_Z && !it.o.hum && !it.o.story && it.b.tone !== 'hist';
       const im = (node || close) && !it.o.hum ? photoOf(it.o, 'square') : null;
-      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 18 : 16, it.b.d * 1.6) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
+      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 18 : 16, it.b.d * 1.25) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
       drawItem(ctx, it, m, a * (0.3 + 0.7 * it.fade), k);
     }
     printers(ctx, t, still);

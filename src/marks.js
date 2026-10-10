@@ -354,23 +354,44 @@
     event: [C.navy, C.white], need: [C.white, C.navy], offer: [C.navy, C.white], injured: [C.red, C.white], dead: [C.black, C.red],
     lost: [C.white, C.navy], story: [C.white, C.navy], cold: ['#9AA39D', C.white], hist: ['rgba(255,255,255,.3)', C.white],
   };
-  /* a W.I.S.H. receipt printer, as it stands on a counter: its body, its slot, a slip feeding out with lines of print and a
-     torn edge, and a light. on: the printer is there and listening, the light teal. t: seconds, for the slip feeding a little and back */
-  /* a W.I.S.H. receipt printer. on: online, its slip feeding. Not yet online it is a ghost: faint, dashed, the slip torn short */
+  /* a W.I.S.H. receipt printer, as it stands on a counter: a body with a sloped lid and its slot, a slip curling out of it
+     (a torn edge, a block of dithered photograph, lines of print), a feed button and a light. on: online, the light lit and the
+     slip feeding a little and back (t: seconds). Not yet online, it is quiet: greys, the slot empty, the light out */
   function printer(ctx, x, y, d, t, on) {
-    const k = d / 32; ctx.save(); ctx.translate(x, y); ctx.scale(k, k); if (!on) { ctx.globalAlpha = 0.62; ctx.setLineDash([2.2, 1.8]); }
-    const feed = !on ? 0.6 : t ? 2 + 2.4 * (0.5 + 0.5 * Math.sin(t * 1.4)) : 3.2; const top = -15 - feed;
-    ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5;
-    /* the slip: paper rising from the slot, its torn edge, three lines of print */
-    ctx.beginPath(); ctx.moveTo(-7.5, -3); ctx.lineTo(-7.5, top + 2); for (let i = 0; i <= 6; i++) ctx.lineTo(-7.5 + i * 2.5, top + (i % 2 ? 0 : 2)); ctx.lineTo(7.5, -3); ctx.closePath();
-    ctx.fillStyle = '#FCFBF7'; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.1; ctx.strokeStyle = C.ink; ctx.stroke();
-    ctx.fillStyle = C.ink; [9, 6, 8].forEach((w, i) => { const yy = top + 5 + i * 3.2; if (yy < -4) ctx.fillRect(-4.6, yy, w, 1.3); });
-    /* the body, the slot, the light */
-    ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.beginPath(); rrect(ctx, -12.5, -4, 25, 16, 3.2); ctx.fillStyle = C.white; ctx.fill(); ctx.shadowColor = 'transparent';
-    ctx.lineWidth = 1.6; ctx.strokeStyle = C.ink; ctx.stroke();
-    ctx.fillStyle = C.ink; ctx.fillRect(-8.5, -4.8, 17, 2.2);
-    ctx.beginPath(); ctx.arc(8, 7.2, 2, 0, TAU); ctx.fillStyle = on ? C.teal : '#9AA39D'; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-8, 7.2); ctx.lineTo(3, 7.2); ctx.lineWidth = 1.2; ctx.strokeStyle = '#C8C8C8'; ctx.stroke();
+    const k = d / 32; ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    const ink = on ? C.ink : '#6F756F', body = on ? '#FFFFFF' : '#E3E2DB', lid = on ? '#2A2B28' : '#9A9F99';
+    const sh = (b, oy) => { ctx.shadowColor = on ? 'rgba(0,0,0,.38)' : 'rgba(0,0,0,.18)'; ctx.shadowBlur = b; ctx.shadowOffsetY = oy; };
+    if (on) {
+      /* the slip: it leans back a little as it rises, its top torn */
+      const feed = t ? 1.6 + 2.2 * (0.5 + 0.5 * Math.sin(t * 1.4)) : 2.6; const top = -17 - feed, L = -7, R = 7, lean = 1.2;
+      sh(4, 1); ctx.beginPath(); ctx.moveTo(L, -4); ctx.bezierCurveTo(L, -9, L + lean, top + 6, L + lean, top + 1.6);
+      for (let i = 0; i <= 7; i++) ctx.lineTo(L + lean + i * ((R - L) / 7), top + (i % 2 ? 0 : 1.6));
+      ctx.bezierCurveTo(R + lean, top + 6, R, -9, R, -4); ctx.closePath(); ctx.fillStyle = '#FCFBF7'; ctx.fill(); ctx.shadowColor = 'transparent';
+      ctx.lineWidth = 1.1; ctx.lineJoin = 'round'; ctx.strokeStyle = ink; ctx.stroke();
+      /* what is printed on it: a block of photograph, dithered, then three lines */
+      ctx.save(); ctx.beginPath(); ctx.rect(L, top + 2, R - L + lean, -4 - top - 2); ctx.clip();
+      const px = L + lean + 2.4, py = top + 4.2; ctx.fillStyle = ink;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0 || (r === 1 && c === 2)) ctx.fillRect(px + c * 1.15, py + r * 1.15, 1.15, 1.15);
+      ctx.fillRect(px + 5.6, py + 0.3, 4.4, 1.1); ctx.fillRect(px + 5.6, py + 2.6, 3, 1.1);
+      [9.2, 6.2, 8].forEach((w, i) => ctx.fillRect(px - 0.2, py + 6.4 + i * 2.6, w, 1.1));
+      ctx.restore();
+    } else {
+      /* not yet online: a short stub of blank paper, torn */
+      const top = -11.5, L = -6, R = 6; ctx.beginPath(); ctx.moveTo(L, -4); ctx.lineTo(L, top + 1.4); for (let i = 0; i <= 6; i++) ctx.lineTo(L + i * ((R - L) / 6), top + (i % 2 ? 0 : 1.4)); ctx.lineTo(R, -4); ctx.closePath();
+      ctx.fillStyle = '#EFEEE8'; ctx.fill(); ctx.lineWidth = 1.1; ctx.lineJoin = 'round'; ctx.strokeStyle = ink; ctx.stroke();
+    }
+    /* the body: a sloped lid over the front, the slot across it */
+    sh(on ? 5 : 3, on ? 1.6 : 1); ctx.beginPath();
+    ctx.moveTo(-13, 12); ctx.lineTo(-13, -1); ctx.quadraticCurveTo(-13, -6, -8.5, -6); ctx.lineTo(8.5, -6); ctx.quadraticCurveTo(13, -6, 13, -1); ctx.lineTo(13, 12); ctx.closePath();
+    ctx.fillStyle = body; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.lineWidth = 1.6; ctx.strokeStyle = ink; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-13, 1.6); ctx.lineTo(13, 1.6); ctx.lineWidth = 1.1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-12.2, 1.2); ctx.lineTo(-12.2, -1); ctx.quadraticCurveTo(-12.2, -5.2, -8.5, -5.2); ctx.lineTo(8.5, -5.2); ctx.quadraticCurveTo(12.2, -5.2, 12.2, -1); ctx.lineTo(12.2, 1.2); ctx.closePath(); ctx.fillStyle = lid; ctx.fill();
+    ctx.fillStyle = on ? '#000' : '#7E837D'; ctx.fillRect(-8.2, -4.6, 16.4, 1.5);
+    /* the foot, the feed button, the light */
+    ctx.fillStyle = ink; ctx.beginPath(); rrect(ctx, -12, 11.2, 24, 1.8, 0.9); ctx.fill();
+    ctx.beginPath(); rrect(ctx, -10, 5.4, 5.4, 2.4, 1.2); ctx.fillStyle = on ? '#C9CBC6' : '#C4C4BC'; ctx.fill();
+    if (on) { ctx.beginPath(); ctx.arc(8.6, 6.6, 3.4, 0, TAU); ctx.fillStyle = 'rgba(12,203,189,.28)'; ctx.fill(); ctx.beginPath(); ctx.arc(8.6, 6.6, 1.9, 0, TAU); ctx.fillStyle = C.teal; ctx.fill(); }
+    else { ctx.beginPath(); ctx.arc(8.6, 6.6, 1.7, 0, TAU); ctx.lineWidth = 1; ctx.strokeStyle = '#8A8F89'; ctx.stroke(); }
     ctx.restore();
   }
   function rrect(ctx, x, y, w, h, r) { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }

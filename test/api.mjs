@@ -70,6 +70,15 @@ try {
   const s4 = await call('/api/stories', { method: 'POST', body: story('DA-9N4S', { dest: 'kines', escpos: 'G0A=' }) });
   check('a printer set to print without approval queues at once; the story still waits to be shown', s4.json.job.status === 'queued' && (await call('/api/stories/DA-9N4S')).status === 404, JSON.stringify(s4.json));
 
+  /* online on the map: switched on the approval page, with or without a Pi listening */
+  const lv0 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  const lvx = await call('/api/admin/printers/elsie', { method: 'POST', body: { action: 'live', on: true } });
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'live', on: true } });
+  const lv1 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'live', on: false } });
+  const lv2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  check('a printer is switched online on the map from the approval page, and off again; nobody else can', lv0.live === false && lvx.status === 401 && lv1.live === true && lv2.live === false, JSON.stringify({ lv0, lvx: lvx.status, lv1, lv2 }));
+
   /* to the local mesh: nothing printed; the mesh line goes to each paired printer whose radio is on, once approved */
   await call('/api/admin/printers/pickles', { method: 'POST', key: KEY, body: { action: 'mesh', on: true } });
   const MESH = 'DA-M5H1 NOISY MINER\n-37.7700,144.9600\nA line';

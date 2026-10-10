@@ -103,7 +103,7 @@ async function checkSent() {
 }
 /* the printers, as they are now */
 async function loadPartners() {
-  try { const j = await apiJSON('/partners'); for (const p of (j && j.partners) || []) PSTATE[p.id] = { ready: p.ready, paired: p.paired, mesh: p.mesh, queued: p.queued, printed: p.printed, t: Date.now() }; store.set('da.partners.v1', PSTATE); } catch (e) { /* as last heard */ }
+  try { const j = await apiJSON('/partners'); for (const p of (j && j.partners) || []) PSTATE[p.id] = { ready: !!(p.ready || p.live), heard: !!p.ready, paired: p.paired, mesh: p.mesh, queued: p.queued, printed: p.printed, t: Date.now() }; store.set('da.partners.v1', PSTATE); if (S.mapReady) life.redraw(); } catch (e) { /* as last heard */ }
   return PSTATE;
 }
 /* a slip's status, in a label */

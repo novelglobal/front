@@ -78,11 +78,10 @@ function packRecords(x) {
 /* ───────── on STORIES, under the tools: read a pack, see it, send it for approval ───────── */
 function packSection() {
   const pv = S.packPv; const tally = pv ? Object.entries(pv.cells.reduce((a, c) => ((a[c.k] = (a[c.k] || 0) + 1), a), {})).map(([k, n]) => `${n} ${PACK_KINDS[k].w}`).join(' · ') : '';
-  return `<div class="pack" id="pack"><p class="pack-up mono"><label>${icon('plus', 'sm')}ADD YOUR CELLS · .MD .CSV .JSON<input type="file" id="pack-f" accept=".md,.markdown,.txt,.csv,.json,text/markdown,text/plain,text/csv,application/json" hidden></label>`
-    + (CONFIG.SOURCE_URL ? `<a href="${esc(CONFIG.SOURCE_URL)}/blob/main/docs/cell-packs.md" target="_blank" rel="noopener" data-tip="How to write a pack, by hand or with an LLM">HOW ${icon('out', 'sm')}</a>` : '') + `</p>`
+  return `<div class="pack" id="pack"><p class="pack-up mono"><label>${icon('plus', 'sm')}CELLS<small>.MD · .CSV · .JSON</small><input type="file" id="pack-f" accept=".md,.markdown,.txt,.csv,.json,text/markdown,text/plain,text/csv,application/json" hidden></label></p>`
     + (pv ? `<div class="pack-pv"><p class="mono"><b>${esc(pv.title || pv.file || 'A PACK')}</b>${pv.by ? ` · ${esc(pv.by)}` : ''}</p><p class="mono pk-n"><b>${pv.cells.length} CELLS</b>${tally ? ` · ${esc(tally)}` : ''}${pv.skipped ? ` · <i>${pv.skipped} NOT PLACED</i>` : ''}</p>`
       + `<ol class="pk-l">${pv.cells.slice(0, 6).map(c => `<li class="mono"><i>${PACK_KINDS[c.k].w}</i> ${esc(c.n)} <small>${c.lat.toFixed(4)} ${c.lng.toFixed(4)}</small></li>`).join('')}${pv.cells.length > 6 ? `<li class="mono"><small>+ ${pv.cells.length - 6} MORE</small></li>` : ''}</ol>`
-      + (pv.sent ? `<p class="mono pk-sent">${icon('check', 'sm')}SENT · ${esc(pv.sent)} · WAITING FOR APPROVAL</p>` : `<p class="pk-acts">${pv.cells.length ? `<button type="button" class="pill" data-pack="send">${icon('share', 'sm')}SEND FOR APPROVAL</button>` : ''}<button type="button" class="pill quiet" data-pack="cancel">${icon('close', 'sm')}CANCEL</button></p>`)
+      + (pv.sent ? `<p class="mono pk-sent">${icon('check', 'sm')}SENT · ${esc(pv.sent)}</p>` : `<p class="pk-acts">${pv.cells.length ? `<button type="button" class="pill" data-pack="send">${icon('share', 'sm')}SEND</button>` : ''}<button type="button" class="pill quiet" data-pack="cancel">${icon('close', 'sm')}CANCEL</button></p>`)
       + `</div>` : '')
     + `</div>`;
 }

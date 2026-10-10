@@ -214,20 +214,15 @@ details.sec[open]>summary .lab::after{content:" –"}
 .band{margin:0 var(--gut);padding:12px 14px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8}
 .b-top{display:flex;align-items:center;justify-content:space-between;font:600 10px var(--mono);letter-spacing:.12em}
 .b-top .el{font:600 15px/1 var(--mono);letter-spacing:.06em}
-.b-head{margin:12px 0 10px;font:200 46px/.86 var(--sans);letter-spacing:-.035em;color:var(--ink)}
-.b-count{display:flex;align-items:center;gap:8px;margin:0 0 10px}
-.b-count b{font:600 11px/1 var(--mono);letter-spacing:.1em}
-.b-count span{font:500 11px/1 var(--mono);letter-spacing:.1em}
+.b-head{margin:14px 0 8px;font:400 clamp(38px,11.5vw,52px)/.9 'VT323',ui-monospace,monospace;letter-spacing:.01em;white-space:nowrap;color:var(--ink)}
+.b-count{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.b-count .cd{font:400 26px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
 .b-count .sun{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--deg1);color:var(--ink)}
 .b-count .sun .i{width:16px;height:16px}
 .b-count .sun.d2{background:var(--deg2)}.b-count .sun.d3{background:var(--deg3);color:#FCFBF7}.b-count .sun.d4{background:var(--deg4);color:#FCFBF7}
 .b-count.now .sun{animation:sun 2.4s ease-in-out infinite}
 @keyframes sun{0%,100%{box-shadow:0 0 0 0 rgba(255,106,0,.45)}50%{box-shadow:0 0 0 7px rgba(255,106,0,0)}}
 .still .b-count.now .sun{animation:none}
-.praxis p{margin:0;display:grid;gap:4px}
-.praxis .mono{font:600 10px var(--mono);letter-spacing:.14em;color:var(--grey-text)}
-.praxis b{font:300 21px/1.15 var(--sans);letter-spacing:-.015em;color:var(--navy)}
-.praxis small{font:400 12.5px/1.4 var(--sans);color:var(--grey-text)}
 .mstrip{display:grid;gap:4px}
 .ms-m{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px}
 /* every month at full colour, extreme in black; the chosen three stand taller; no outlook yet is hatched, not faded */
@@ -329,15 +324,12 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .docs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
 .docs button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 2px;border:1px solid var(--paper);font:500 9px var(--mono);letter-spacing:.06em}
 .docs button:hover{border-color:var(--navy)}
-.src-dl{display:flex;justify-content:space-between;gap:8px;margin:8px 0 0;font-size:9.5px;letter-spacing:.08em}
-.src-dl a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--paper);color:var(--navy);text-decoration:none}
-.src-dl a:first-child{flex:1}
-.src-dl a:hover{border-color:var(--navy)}
 /* a pack of cells: read here, seen, then sent for approval */
 .pack{margin-top:8px}
 .pack-up{display:flex;justify-content:space-between;gap:8px;margin:0;font-size:9.5px;letter-spacing:.08em}
 .pack-up label,.pack-up a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px dashed var(--navy);color:var(--navy);text-decoration:none;cursor:pointer}
 .pack-up label{flex:1}
+.pack-up small{margin-left:auto;font-size:8.5px;letter-spacing:.1em;color:var(--grey-text)}
 .pack-up label:hover,.pack-up a:hover{border-style:solid}
 .pack-pv{margin-top:6px;padding:9px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8;font-size:10px}
 .pack-pv p{margin:0 0 4px}
@@ -633,28 +625,37 @@ p.sl-note{font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-
 .sl-src a{color:#55554F;text-decoration:none;border-bottom:1px dotted #A9A9A2}
 .sl-src a:hover{color:var(--ink);border-bottom-color:var(--ink)}
 #press .sl-src{display:none}
-/* the second style, the teletype: its parts are drawn on every slip and shown only in it */
-.sl-bar,.sl-acc,.sl-eot{display:none}
-.slip.tty{--mono:'VT323',ui-monospace,Menlo,Consolas,monospace;--sans:'VT323',ui-monospace,Menlo,Consolas,monospace;font-size-adjust:.56;padding:4px 26px 16px;
-  background:radial-gradient(circle,#D6D4CA 3.2px,transparent 3.8px) left 4px top 0/12px 18px repeat-y,radial-gradient(circle,#D6D4CA 3.2px,transparent 3.8px) right 4px top 0/12px 18px repeat-y,
-    linear-gradient(90deg,transparent 19px,#E4E2D9 19px 20px,transparent 20px calc(100% - 20px),#E4E2D9 calc(100% - 20px) calc(100% - 19px),transparent calc(100% - 19px)),
-    repeating-linear-gradient(180deg,transparent 0 36px,rgba(150,196,160,.14) 36px 72px),var(--slip)}
-.slip.tty .sl-bar{display:flex;justify-content:space-between;align-items:center;margin:10px 0 0;padding:4px 6px 3px;background:var(--ink);color:var(--slip);font-size:12px;letter-spacing:.14em}
-.slip.tty .sl-head{border-bottom:3px double var(--ink);padding-top:8px}
-.slip.tty .sl-code{font-size:19px;letter-spacing:.12em}
-.slip.tty .sl-life b{font-size:16px;letter-spacing:.06em}
-.slip.tty .sl-threat{font-weight:400;font-size:14px}
-.slip.tty .sl-wish span{font-weight:400;font-size:16px}
-.slip.tty .sl-wish span::before{content:'> ';color:#8C8C84}
-.slip.tty .sl-acc{display:flex;justify-content:space-between;margin:2px 0 4px;padding-top:6px;border-top:3px double var(--ink);font-size:12px;letter-spacing:.1em}
-.slip.tty .sl-eot{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;letter-spacing:.14em;color:#55554F}
-.slip.tty .sl-eot b{color:var(--ink)}
-.slip.tty .sl-img{filter:contrast(1.08)}
-#press .slip.tty{background:#fff;padding:2mm 3mm}
-#press .slip.tty .sl-bar{margin-top:0}
-/* the button that changes the style is set in the teletype's type, its name scrambled */
-.tty-b .scr{font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.1em;min-width:6ch;text-align:left}
+/* the second style, the terminal: the hero, the code, the name, the lines; nothing else */
+.sl-hero{display:none}
+.slip.tty{--mono:'VT323',ui-monospace,Menlo,Consolas,monospace;--sans:'VT323',ui-monospace,Menlo,Consolas,monospace;font-size-adjust:.56;padding:0 0 18px}
+.slip.tty .sl-hero{position:relative;display:grid;place-items:center;margin:0;aspect-ratio:1;background:#E6E5DE;overflow:hidden}
+.slip.tty .sl-hi{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.slip.tty .sl-hi.grey{filter:grayscale(1) contrast(1.15);image-rendering:auto}
+.slip.tty .sl-ha{display:none}
+.slip.tty .sl-hero.art{background:var(--slip)}
+.slip.tty .sl-hero.art .sl-hi{display:none}
+.slip.tty .sl-hero.art .sl-ha{display:block;width:58%;height:58%;color:var(--ink)}
+.slip.tty .sl-fig,.slip.tty .sl-meta,.slip.tty .sl-threat,.slip.tty .sl-rel,.slip.tty .sl-note,.slip.tty .sl-who,.slip.tty .sl-src{display:none}
+.slip.tty .sl-head{padding:14px 20px 0;border:0;font-size:15px}
+.slip.tty .sl-code{font-size:21px;letter-spacing:.1em}
+.slip.tty .sl-body{padding:0 20px}
+.slip.tty .sl-life{padding:14px 0 2px;gap:2px}
+.slip.tty .sl-life b{font-size:28px;font-weight:400;line-height:.95;letter-spacing:.02em}
+.slip.tty .sl-life i{font-style:normal;font-size:16px;color:#55554F}
+.slip.tty .sl-wish{margin-top:12px;border:0}
+.slip.tty .sl-wish>li{padding:3px 0;border:0}
+.slip.tty .sl-wish span{font-weight:400;font-size:19px;line-height:1.15;padding-left:1.2ch;text-indent:-1.2ch}
+.slip.tty .sl-wish span::before{content:'> '}
+.slip.tty .sl-qr{padding:18px 0 6px}
+.slip.tty .sl-foot{font-size:11px}
+#press .slip.tty{padding:0 0 3mm;background:#fff}
+#press .slip.tty .sl-head,#press .slip.tty .sl-body{padding-left:3mm;padding-right:3mm}
+/* the button that changes the style: a prompt; on, its cursor blinks */
+.s-acts .tty-b{justify-content:center;min-width:34px;padding:0 10px;font:400 21px/1 'VT323',ui-monospace,monospace;letter-spacing:0}
 .s-acts .tty-b[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--slip)}
+.s-acts .tty-b[aria-pressed="true"]::after{content:'_';animation:blink 1.06s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.still .s-acts .tty-b::after{animation:none}
 /* issuing: the slip feeds out of the printer, a step at a time, then is torn off */
 .record.feeding #w-slip{animation:feed 1.25s steps(16) forwards}
 @keyframes feed{to{transform:translateY(-46px)}}

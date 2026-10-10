@@ -87,7 +87,7 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 | PAGER | Plain text of up to 80 characters | `pagerText()` |
 | LINK | The whole signal in a URL (`#x=…`) | `linkOf()`, `packSignal()` |
 
-Two styles, chosen with **PHR34K** beside PIN and kept in `prefs.slip`. The default is the paper slip, unchanged. The second, `'tty'`, is a teletype log: VT323 on sprocket-fed green-bar paper on screen, a reverse-printed `DIRECT ACTION` bar, `TX` and the time, and a foot with `ACC.` (the code), `CHK` (a CRC-16 of the code and the four lines, `chkOf()`) and `EOT`. `slipText()`, `slipFoot()`, `slipCanvas()` and `escpos()` take the style, so the PNGs and the printer at a partner place match the screen. The ESC/POS bar uses `GS B` (reverse print). An example's sources show on screen only, never in print.
+Two styles, chosen with **>** beside PIN and kept in `prefs.slip`. The default is the paper slip, unchanged. The second, `'tty'`, is the terminal, the most minimal: the life's photograph as a square hero the width of the slip (its own photograph, else an open-licence one of the same species from the sightings, else its mark as art: `heroSrc()`), then its code and time, its name, and the four lines after `>`, in VT323 on plain paper. Nothing else is shown. `slipText()`, `slipCanvas()` (`ttyCanvas()`) and `escpos()` take the style, so the PNGs and the printer at a partner place match the screen; the QR code still carries the whole signal.
 
 Each output machine is drawn as its hardware and links to a reference page about it. Pasting a link, a packed signal or a mesh message into RECEIVE on the STORIES page brings a signal back into the app.
 
@@ -219,7 +219,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.notes.v1`, `da.st.v1`, `da.slip.v1`, `da.draft.<id>` | Notes, rewritten statements, slip options and drafts |
 | `da.img.v1`, `da.own.v1` | The chosen photograph for each cell, and the user's own photographs (at most 14, as 800 px JPEGs) |
 | `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
-| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the teletype style; `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
+| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
 | `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
 
 ### What the server stores (D1)
