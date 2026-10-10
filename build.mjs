@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,11 @@ const sw = read(path.join(out, 'sw.js')).replace("'vendor/qrcode.js', ", "'vendo
 fs.writeFileSync(path.join(out, 'sw.js'), sw);
 /* a preview is never indexed by search engines */
 if (preview) fs.appendFileSync(path.join(out, '_headers'), '\n/*\n  X-Robots-Tag: noindex, nofollow\n');
+/* the Worker learns which build it is, so a preview keeps to its own database, and the partner places that print,
+   from the same settings the app reads. Written here, never by hand, never committed */
+const win = {}; vm.runInNewContext(read(path.join(src, 'config.js')) + '\n' + read(path.join(src, 'places.js')), { window: win });
+const partners = (win.DA_PARTNERS || []).map(p => { const pl = (win.DA_PLACES || []).find(x => x.partner === p.id) || {}; return { id: p.id, n: pl.n || p.id, sub: pl.sub || '', paper: String(p.paper || 58), printer: !!p.printer }; });
+fs.writeFileSync(path.join(src, 'worker', 'stamp.js'), `/* written by build.mjs: never edited by hand, never committed */\nexport const BUILD = ${JSON.stringify(sha)};\nexport const PREVIEW = ${preview};\nexport const PARTNERS = ${JSON.stringify(partners)};\n`);
 const body = read(path.join(src, 'body.html'));
 fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
 <html lang="en-AU">

@@ -9,7 +9,9 @@
   --white:#FFFFFF; --paper:#F1F2EF; --slip:#FCFBF7; --grey:#C8C8C8; --grey-text:#6B6B6B; --ink:#141412; --black:#0D0D0C;
   --cobalt:#0067B8; --navy:#0B2545; --ground:#1E2622;
   --neon:#E6F84A; --red:#E8453C;
-  --orange:#FF7A00; --deg1:#FFE3C2; --deg2:#FFB15C; --deg3:#FF7A00; --deg4:#D95000;
+  --orange:#FF7A00;
+  /* the El Niño months ahead, as danger rises: pale orange to prepare, orange, deep orange, red, black at the extreme */
+  --deg0:#FFC27A; --deg1:#FF9A2E; --deg2:#FF6A00; --deg3:#D62E1F; --deg4:#141412;
   --sans:'Poppins',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
   --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
   --page:400px; --gut:20px;
@@ -79,6 +81,7 @@ button:active:not(:disabled),a:active{transform:scale(.96)}
 .tag b{font-weight:600;font-size:13px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .tag small{font:500 9.5px var(--mono);letter-spacing:.06em;color:var(--grey-text);display:flex;gap:6px;align-items:center}
 .tag small.dg{color:var(--navy)}
+.tag small.new{color:var(--navy)}
 .tag small.st{color:var(--teal-deep)}
 .tag .play{width:30px;height:30px;flex:none;display:grid;place-items:center;color:var(--cobalt);border:1px solid var(--cobalt);border-radius:50%}
 .tag.alarm{box-shadow:inset 3px 0 var(--red),0 6px 20px rgba(0,0,0,.25)}
@@ -172,6 +175,7 @@ details.sec[open]>summary .lab::after{content:" –"}
 .ib:hover:not(:disabled){background:var(--paper)}
 .dg{display:inline-block;font:600 9.5px/1 var(--mono);letter-spacing:.08em;padding:4px 6px;color:var(--navy);background:var(--deg1)}
 .dg.d2{background:var(--deg2)}.dg.d3{background:var(--deg3);color:var(--white)}.dg.d4{background:var(--deg4);color:var(--white)}
+.dg.d1{background:var(--deg1)}
 .wn{display:inline-block;font:500 9.5px/1 var(--mono);letter-spacing:.06em;padding:3px 5px;border:1px solid var(--navy);font-style:normal}
 .wn.now{background:var(--red);border-color:var(--red);color:var(--white)}
 .role{font:500 9px/1 var(--mono);letter-spacing:.08em;padding:3px 5px;border:1px solid var(--cobalt);color:var(--cobalt);font-style:normal;white-space:nowrap}
@@ -206,32 +210,45 @@ details.sec[open]>summary .lab::after{content:" –"}
 .src:hover{color:var(--navy)}
 
 /* NOW */
-.band{margin:0 var(--gut);padding:14px 14px 12px;background:var(--navy);color:var(--white)}
+/* the outlook: the months ahead on paper, each in its danger, from orange to black; every kind of life under it, us too */
+.band{margin:0 var(--gut);padding:12px 14px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8}
 .b-top{display:flex;align-items:center;justify-content:space-between;font:600 10px var(--mono);letter-spacing:.12em}
-.b-count{display:flex;align-items:flex-end;gap:10px;margin:14px 0 12px}
-.b-count b{font:200 64px/.8 var(--sans);letter-spacing:-.03em}
+.b-count{display:flex;align-items:flex-end;gap:10px;margin:10px 0 10px}
+.b-count b{font:200 52px/.8 var(--sans);letter-spacing:-.03em}
 .b-count span{font:500 10px/1.3 var(--mono);letter-spacing:.1em;padding-bottom:2px}
 .mstrip{display:grid;gap:4px}
 .ms-m{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px}
-.mo{display:flex;flex-direction:column;align-items:stretch;gap:4px;opacity:.55}
+.mo{display:flex;flex-direction:column;align-items:stretch;gap:4px;opacity:.5}
 .mo.on{opacity:1}
-.mo i{height:26px;background:var(--white);opacity:.18}
-.mo.d1 i{background:var(--deg1);opacity:1}.mo.d2 i{background:var(--deg2);opacity:1}.mo.d3 i{background:var(--deg3);opacity:1}.mo.d4 i{background:var(--deg4);opacity:1}
-.mo.hp i{opacity:.45}
-.mo b{font:500 9px var(--mono);text-align:center;color:var(--white)}
-.mo.now b{color:var(--teal)}
-.mo.now i{box-shadow:inset 0 -3px var(--teal)}
+.mo i{height:24px;background:var(--deg0)}
+.mo.d1 i{background:var(--deg1)}.mo.d2 i{background:var(--deg2)}.mo.d3 i{background:var(--deg3)}.mo.d4 i{background:var(--deg4)}
+.mo.hp i{opacity:.55}
+.mo b{font:500 9px var(--mono);text-align:center;color:var(--ink)}
+.mo.now b{font-weight:600}
+.mo.now i{box-shadow:inset 0 -3px var(--ink)}
 .ms-w{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px 2px}
-.ms-w span{font:500 8.5px/1.6 var(--mono);letter-spacing:.06em;border-top:1px solid rgba(255,255,255,.45);color:rgba(255,255,255,.85);white-space:nowrap;overflow:visible}
-.b-span{margin-top:10px;font-size:10px;letter-spacing:.06em;color:rgba(255,255,255,.75)}
-.b-span b{color:var(--white);font-weight:600}
-.b-off{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:10px;letter-spacing:.08em;color:var(--teal-lift);text-decoration:none}
-.hero-list li{border-top:1px solid var(--paper)}
-.hero-row{display:flex;align-items:center;gap:12px;width:100%;padding:6px 0;text-align:left}
+.ms-w span{font:500 8.5px/1.6 var(--mono);letter-spacing:.06em;border-top:1px solid rgba(20,20,18,.45);color:var(--ink);white-space:nowrap;overflow:visible}
+.b-span{margin-top:8px;font-size:10px;letter-spacing:.06em;color:var(--grey-text)}
+.b-span b{color:var(--ink);font-weight:600}
+.b-off{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;letter-spacing:.08em;color:var(--cobalt);text-decoration:none}
+/* every kind of life the months ahead reach, us among them: each kind's mark over its danger */
+.kinds{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:3px;margin:10px 0 2px}
+.kinds span{display:flex;flex-direction:column;align-items:center;gap:3px}
+.kinds .i{width:18px;height:18px;color:var(--ink)}
+.kinds i{display:block;width:100%;height:4px;background:var(--deg0)}
+.kinds .d1 i{background:var(--deg1)}.kinds .d2 i{background:var(--deg2)}.kinds .d3 i{background:var(--deg3)}.kinds .d4 i{background:var(--deg4)}
+.kinds .us .i{color:var(--cobalt)}
+/* the five: a strip of five, each its photograph with its mark, its danger and the days until it lands */
+.hero-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.hero-row{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:4px 2px 6px;text-align:center}
 .hero-row:hover{background:var(--paper)}
-.hero-cv{width:56px;height:56px;flex:none}
-.hero-row .nm{display:flex;flex-direction:column;gap:5px;min-width:0}
-.hero-row b{font-weight:600;font-size:14px;line-height:1.15}
+.h-pic{position:relative;display:block;width:52px;height:52px;flex:none}
+.h-pic img,.h-pic .hero-cv{display:block;width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--paper)}
+.h-pic .i{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;padding:2px;border-radius:50%;background:var(--white);color:var(--ink);box-shadow:0 0 0 1px #E2E0D8}
+.hero-row .nm{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;width:100%}
+.hero-row b{font-weight:600;font-size:10.5px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hero-row .chips{justify-content:center;gap:2px}
+.hero-row .chips i{font-size:8px;padding:2px 3px}
 .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
 .alarms .row{flex:1}
 .callb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:56px;height:50px;background:var(--red);color:var(--white);text-decoration:none;flex:none}
@@ -273,14 +290,16 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .sigs li{border-top:1px solid var(--paper)}
 .sig-row{display:flex;gap:10px;width:100%;padding:9px 0;text-align:left;align-items:flex-start}
 .sig-row:hover{background:var(--paper)}
-.sig-row .rk{width:18px;flex:none;font-size:11px;color:var(--grey-text);text-align:right;padding-top:2px}
+.sig-row .pg{width:34px;height:34px;flex:none}
+.sg small.st{color:var(--navy);font-weight:600}
+.sig-row.sh .sg-t b{color:var(--cobalt)}
 .sg{display:flex;flex-direction:column;gap:4px;min-width:0}
 .sg-t{font-weight:600;font-size:13.5px;line-height:1.25}
 .sg-t b{font-size:11px;font-weight:600;color:var(--teal-deep);margin-right:7px;letter-spacing:.04em}
 .sg small{font-size:9.5px;letter-spacing:.06em;color:var(--grey-text);display:flex;align-items:center;gap:3px;flex-wrap:wrap}
 .sig-row.ex .sg-t{color:var(--grey-text);font-weight:500}
 .rx{display:flex;gap:6px;margin:0 0 10px;animation:wipe .25s var(--ease)}
-.rx textarea{flex:1;min-height:58px;resize:vertical;padding:8px;border:1px solid var(--navy);font:12px/1.4 var(--mono);background:var(--slip)}
+.rx textarea{flex:1;min-height:44px;text-transform:uppercase;resize:vertical;padding:8px;border:1px solid var(--navy);font:12px/1.4 var(--mono);background:var(--slip)}
 .rx .ib{background:var(--navy);color:var(--white);height:auto}
 .tool-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tool{position:relative;display:flex;flex-direction:column;gap:2px;padding:10px;background:var(--paper);text-decoration:none;min-height:92px}
@@ -358,7 +377,7 @@ q.said{display:block;width:100%;margin-bottom:4px;font-size:14px;font-style:ital
 .ss span{display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;gap:3px}
 .ss i{display:block;background:var(--navy);opacity:.22;transform-origin:bottom;animation:grow .6s var(--ease) both}
 .ss i{animation-delay:calc(var(--i,0) * 35ms)}
-.ss .d3 i,.ss .d4 i{background:var(--orange);opacity:.85}
+.ss .d3 i{background:var(--deg3);opacity:.85}.ss .d4 i{background:var(--deg4);opacity:.85}
 .ss .now i{opacity:1}
 .ss b{font-size:8.5px;font-weight:500;text-align:center;color:var(--grey-text)}
 .ss .now b{color:var(--navy);font-weight:600}
@@ -373,6 +392,8 @@ q.said{display:block;width:100%;margin-bottom:4px;font-size:14px;font-style:ital
 .r-do:empty{display:none}
 .do{display:flex;align-items:center;gap:10px;padding:12px;background:var(--paper);text-decoration:none;text-align:left}
 .do b{font:600 15px var(--mono);letter-spacing:.02em}
+.do.share{width:100%;border:0;margin-top:6px}
+.do.share:disabled{opacity:.75;cursor:default}
 .do small{margin-left:auto;font:500 9px var(--mono);letter-spacing:.08em;color:var(--grey-text)}
 a.do:hover,button.do:hover{background:var(--navy);color:var(--white)}
 a.do:hover small{color:var(--teal-lift)}
@@ -447,7 +468,7 @@ a.do:hover small{color:var(--teal-lift)}
 .alt:hover{background:var(--teal-wash)}
 .alt.go{background:var(--orange);border-color:var(--orange);color:var(--navy);font-weight:600}
 .alt.go:hover{background:#FF8F26}
-/* notes, just above DIRECT RESPONSE */
+/* notes, just above NOTICED */
 .r-note{display:block;width:calc(100% - 2 * var(--gut));margin:16px var(--gut) 0;padding:9px 10px;min-height:58px;border:1px dashed var(--grey);background:var(--white);resize:vertical;font:13px/1.45 var(--sans);color:var(--navy)}
 .r-note:focus{border-style:solid;border-color:var(--navy)}
 .r-note::placeholder{font:500 10px var(--mono);letter-spacing:.12em;color:var(--grey-text);text-transform:uppercase}
@@ -482,12 +503,12 @@ a.do:hover small{color:var(--teal-lift)}
 .sl-fig.w.none #w-img{display:none}
 .sl-fig.w.none .sl-cap{grid-row:1}
 .sl-fig.w.none .img-acts{grid-row:1}
-.sl-life{display:flex;flex-direction:column;gap:2px;padding:12px 0 8px}
-.sl-life b{font:700 15px/1.15 var(--sans);letter-spacing:.01em}
-.sl-life i{font-family:var(--sans);font-size:11.5px}
+.sl-life{display:flex;flex-direction:column;gap:1px;padding:10px 0 7px}
+.sl-life b{font:700 13px/1.15 var(--sans);letter-spacing:.01em}
+.sl-life i{font-family:var(--sans);font-size:10.5px}
 .sl-life .ln{display:block;height:14px;border-bottom:1px solid #A9A9A2}
-.sl-meta{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:7px;font-size:9.5px;line-height:1.35}
-.sl-meta dt{font-size:8px;letter-spacing:.14em;color:#77776F;padding-top:1px}
+.sl-meta{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;margin-top:5px;font-size:8.5px;line-height:1.3}
+.sl-meta dt{font-size:7.5px;letter-spacing:.14em;color:#77776F;padding-top:1px}
 .sl-meta dd{margin:0;letter-spacing:.03em}
 .sl-meta .off{opacity:.3;text-decoration:line-through}
 .sl-threat{font:600 12px/1.38 var(--sans);padding:6px 0 4px;border-top:1px solid var(--ink)}
@@ -548,9 +569,9 @@ a.do:hover small{color:var(--teal-lift)}
 .sl-rel .sl-knots small.red{color:var(--ink)}
 .sl-u{font-size:8px;color:#55554F;text-decoration:none;border-bottom:1px dotted #A9A9A2;white-space:nowrap}
 .sl-u:hover{color:var(--ink);border-bottom-color:var(--ink)}
-.sl-fig2{display:flex;align-items:flex-end;gap:10px;margin-top:10px;padding-top:8px;border-top:1px dashed #D2D2CA;color:var(--ink)}
-.sl-chart{display:block;width:132px;height:132px;flex:none;overflow:visible}
-.sl-fig2 figcaption{font-size:7.5px;line-height:1.4;letter-spacing:.12em;color:#77776F}
+/* the figure sits over the relations it numbers, small, centred */
+.sl-fig2{display:flex;justify-content:center;margin:2px 0 8px;color:var(--ink)}
+.sl-chart{display:block;width:96px;height:96px;flex:none;overflow:visible}
 .sl-knots .k,.sl-knots .i{width:13px;height:13px}
 .sl-knots .patch{width:11px;height:11px}
 .sl-knots .kn{flex:1;min-width:0;padding:2px 0;border:0;border-bottom:1px dashed transparent;background:none;font:10.5px/1.4 var(--mono);color:var(--ink)}
@@ -591,6 +612,22 @@ p.sl-note{font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-
 @keyframes busy{50%{opacity:.4}}
 .s-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:min(calc(100% - 2 * var(--gut)),320px);margin:18px auto 0}
 .s-acts .pill{background:var(--white)}
+/* where a slip has got to, under it */
+.s-status{width:min(calc(100% - 2 * var(--gut)),320px);margin:14px auto 0;padding:7px 10px;font-size:9.5px;letter-spacing:.08em;text-align:center;background:var(--paper);color:var(--navy)}
+.s-status.done{background:var(--teal-wash);color:var(--teal-deep)}
+/* DIRECT ACTION: the partner places that print, and the board */
+.s-send{width:min(calc(100% - 2 * var(--gut)),320px);margin:14px auto 0;animation:wipe .25s var(--ease)}
+.s-send .lab{margin:0 0 6px}
+.s-send li+li{border-top:1px solid var(--paper)}
+.dest{display:flex;align-items:center;gap:10px;width:100%;padding:8px 6px;text-align:left;background:var(--white)}
+.dest:hover{background:var(--teal-wash)}
+.dest .pm{width:44px;height:44px;flex:none;display:grid;place-items:center}
+.dest .pm.board{background:var(--paper)}
+.dest .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dest b{font-size:13px;font-weight:600}
+.dest small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+.dest.on small{color:var(--navy)}
+.s-wait{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:9px;letter-spacing:.08em;color:var(--grey-text)}
 
 /* ═════════ PLACING ═════════ */
 .pl-sky{display:flex;align-items:center;gap:10px;padding:16px var(--gut) 12px;background:var(--teal-wash)}
@@ -638,8 +675,10 @@ p.sl-note{font-size:11px;line-height:1.45;white-space:pre-wrap;word-break:break-
 .toast{position:fixed;z-index:21;left:50%;bottom:calc(var(--bot) + 24px);display:flex;align-items:center;padding:9px 14px;background:var(--navy);color:var(--white);font:600 10.5px var(--mono);letter-spacing:.1em;transform:translateX(-50%);pointer-events:none;white-space:nowrap}
 .toast button{pointer-events:auto;margin:-9px -14px -9px 14px;padding:9px 14px;border-left:1px solid rgba(255,255,255,.25);color:var(--orange);font:inherit;letter-spacing:inherit}
 .toast button:hover{background:rgba(255,255,255,.08)}
-/* the build: its code under Settings, and on a preview a tag that cannot be mistaken for the live site */
-.build{display:block;margin-top:8px;font-size:9.5px;letter-spacing:.08em;opacity:.6}
+/* the build: its code in the information corner, and on a preview a tag that cannot be mistaken for the live site */
+.da-build{white-space:nowrap;opacity:.7}
+.maplibregl-ctrl-attrib a.da-admin{font-size:8.5px;letter-spacing:.08em;opacity:.55;text-decoration:none}
+.maplibregl-ctrl-attrib a.da-admin:hover{opacity:1;text-decoration:underline}
 .preview{position:fixed;z-index:22;left:12px;top:calc(var(--top) + 12px);padding:4px 8px;background:var(--navy);color:var(--white);font:600 9.5px/1.4 var(--mono);letter-spacing:.1em;pointer-events:none;box-shadow:0 0 0 1.5px var(--white)}
 .toast.in{animation:toast .3s var(--spring)}
 @keyframes toast{from{opacity:0;transform:translate(-50%,10px)}}
@@ -647,15 +686,15 @@ body.nosignal .rail::after{content:"";position:absolute;left:50%;bottom:-14px;wi
 #press{position:fixed;left:-9999px;top:0;width:58mm}
 #press .slip{width:58mm;box-shadow:none;padding:2mm 3mm;font-size:8.5pt;background:#fff}
 #press .slip::after,#press .sl-perf{display:none}
-#press .sl-life b{font-size:11pt}
+#press .sl-life b{font-size:9.5pt}
 #press .sl-img{image-rendering:pixelated}
 #press .sl-cap{font-size:5.5pt}
-#press .sl-meta{font-size:7pt}
-#press .sl-meta dt{font-size:5.5pt}
+#press .sl-meta{font-size:6.5pt}
+#press .sl-meta dt{font-size:5pt}
 #press .sl-threat{font-size:8pt}
 #press .sl-rel .sl-knots li{font-size:7.5pt}
-#press .sl-fig2{margin-top:2mm}
-#press .sl-chart{width:30mm;height:30mm}
+#press .sl-fig2{margin:0 0 2mm}
+#press .sl-chart{width:22mm;height:22mm}
 #press .sl-u{font-size:5.5pt;border:0}
 #press .slip.blank .sl-fig.blank{height:44mm}
 #press .sl-wish span{font-size:9pt}
@@ -698,3 +737,12 @@ body.nosignal .rail::after{content:"";position:absolute;left:50%;bottom:-14px;wi
   #press .sl-head,#press .sl-wish{border-color:#000}
   #press .sl-fig.blank{border-color:#000}
 }
+
+/* the groups, small, low on the stories page */
+.tribes-s{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px}
+.tribes-s li{min-width:0}
+.tribes-s .row{display:flex;align-items:center;gap:7px;width:100%;min-width:0;padding:5px 0;text-align:left;font-size:11px;line-height:1.2}
+.tribes-s .row b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tribes-s .patch{width:9px;height:9px;flex:none}
+/* the board is the page's first thing: its heading carries more weight */
+.board .lab-row .lab{font-size:11.5px;color:var(--navy)}

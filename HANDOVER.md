@@ -1,8 +1,10 @@
 # Direct Action — developer handover
 
-Direct Action is a web app for the El Niño summer of 2026–27, covering Brunswick to the Melbourne CBD. It shows live iNaturalist sightings on a radar over satellite imagery, with the El Niño threat to each life. When someone opens a life, its radius shows the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. People join string figures between the life and those places, listen to them, and issue a four-line W.I.S.H. slip that prints as an archival record.
+Direct Action is a web app for the El Niño summer of 2026–27, covering Brunswick to the Melbourne CBD. It shows live iNaturalist sightings on a radar over satellite imagery, with the El Niño threat to each life. When someone opens a life, its radius shows the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. People join string figures between the life and those places, listen to them, and write a W.I.S.H.
 
-The MVP is finished and works offline in the browser. The next stage sends slips to a print queue in the cloud, which a Raspberry Pi pulls from and prints on a thermal receipt printer. After that, the map and its data move behind the Worker so that they are live and shared.
+W.I.S.H. is the concept: a praxis poem. **NOTICED** is the intention to respond. **RESPONSE** is the W.I.S.H. itself: taking on responsibility, joining theory to action, and reflecting. **DIRECT ACTION** makes it a pledge, printed as a receipt at a partner place, sent by mesh where that place has a radio, and kept on novel.global. The name W.I.S.H. and its four lines stay as they are.
+
+The app works offline in the browser. Stages 1 to 3 of `docs/roadmap.md` are built: the map fixes, stories shared with approval, and print queues pulled by a Raspberry Pi at each partner place. Next comes live data behind the Worker (stage 4).
 
 Read this file first. Then read `README.md`, which is what users see, and `docs/brief.md`, which explains the product decisions and their sources.
 
@@ -10,13 +12,14 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 
 | Area | State |
 |---|---|
-| Web app (map, cells, strings, ledger, constellations, slip, outputs) | Built and working, with 143 automated checks |
+| Web app (map, cells, strings, ledger, constellations, slip, outputs, sharing, partners) | Built and working, with 160 browser checks and 18 server checks |
 | Hosting | The Cloudflare Worker `front` builds this repo on every push. `main` is live at `novel.global`; any other branch, such as `staging`, gets its own preview address. See `docs/workflow.md` |
 | Source and build | This tree is the GitHub repo `front`. `npm run build` writes `dist/`, which is the deployable site |
-| Worker | `src/worker/index.js` answers `/api/health` with `ok`. The print queue and shared records go here next (`docs/roadmap.md`) |
-| Print queue (Durable Objects) | Not built. This is task 2 |
-| Pi receiver (printd plus a pull bridge) | Not built. This is task 4. The hardware has been ordered |
-| Live, shared data behind the Worker | Not built. This is task 5. Today each browser calls the data sources directly |
+| Worker | `src/worker/index.js`: stories sent and approved, a print queue for each partner place, the approval page's requests, all on D1 (`front-db`; previews use `front-db-preview`) |
+| Approval page | `/admin`, behind the `ADMIN_KEY` Worker secret. Stories wait there until shown or refused; printers are paired there |
+| Print queue | Built on D1, not a Durable Object. Jobs wait for approval (unless a printer is set to print without it), a day at most |
+| Pi receiver | `receiver/pull.py` (standard library; printd for the printer, Meshtastic for a radio), `da-pull.service`, and step-by-step setup in `receiver/README.md`. Tested end to end against the Worker; the hardware at Pickles is still to be set up |
+| Live data behind the Worker | Not built. This is stage 4. Each browser still calls iNaturalist, Overpass and Open-Meteo directly |
 | Prototype deadline | One receiver and one printer, with a repeatable end-to-end demo, by 16 October 2026 |
 
 ## What is built and working
@@ -59,18 +62,18 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 - Every figure is saved on the device, can be named, and is listed on the NOW page as it forms. Each entry shows a star chart, counts of places and lives, and links to other figures that share knots with it.
 - A figure can be played as a song or traced string by string, in the order it was made, with a caption. The card also shows a small preview of the print the figure will make.
 
-### The slip
+### The W.I.S.H. and the slip
 
-- **NOTICED** turns the card over to the slip. The photograph appears in black and white with Atkinson dithering. It can be changed to another photograph of the same life, the user's own photograph, or none. Only photographs whose licence allows a black and white version are offered (`licAdaptable`), and each is credited.
+- **NOTICED** turns the card over to the W.I.S.H. The photograph appears in black and white with Atkinson dithering. It can be changed to another photograph of the same life, the user's own photograph, or none. Only photographs whose licence allows a black and white version are offered (`licAdaptable`), and each is credited.
 - The statement opens as two full sentences for that kind of life, from `DA_STATEMENT` or the hero's own statement. It can be rewritten, the edit is kept for that sighting, and it can be reset to the original.
 - Below that are four blank W.I.S.H. lines of up to 48 characters each, with the relations to tick and rename, and an optional note. The letters W, I, S and H are never printed.
-- **DIRECT ACTION** issues the slip as a signal with a code such as `DA-7K2Q`. The signal is laid out like an archive record:
-  - FIG. 1, the photograph, as tall as everything under it.
-  - The life, its site and its window of danger.
-  - The statement and the four lines.
-  - RELATIONS, numbered and grouped as HARM (in plain words), CARE and ALSO, with each listed place's site.
-  - FIG. 2, the figure as it lies on the ground, north up, with numbered points and dashed strings to harmful places.
+- **RESPONSE** issues the W.I.S.H. as a signal with a code such as `DA-7K2Q`, with all, some or none of its lines written. The signal is laid out like an archive record:
+  - The photograph, as tall as everything under it, with its credit.
+  - The life, its site and its window of danger, set small.
+  - The statement and the lines written.
+  - The figure as it lies on the ground, small, with numbered points and dashed strings to harmful places; then RELATIONS, numbered to match and grouped as HARM (in plain words), CARE and ALSO, with each listed place's site.
   - A QR code that carries the whole signal.
+- **DIRECT ACTION** makes it a pledge: the slip is sent to a partner place's print queue (with ESC/POS bytes for that printer's paper and its 200-byte mesh line), or to novel.global alone. It waits for approval, then is printed, sent by mesh where the place has a radio, and kept on the board for everyone. The slip's status line follows it: waiting, in the queue, printed.
 
 ### Outputs
 
@@ -151,15 +154,17 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 ├── docs/roadmap.md        the stages from here to live, shared data
 ├── docs/workflow.md       how a change goes from this folder to a preview, then to novel.global
 ├── build.mjs              npm run build → dist/, stamped with its commit (and its branch on a preview)
-├── wrangler.jsonc         the Worker `front`: dist/ as static assets, src/worker for everything else
+├── wrangler.jsonc         the Worker `front`: dist/ as static assets, src/worker for everything else, two D1 databases
+├── receiver/              the partner place's Raspberry Pi: pull.py, da-pull.service, da-pull.env.example, README.md
 ├── package.json           dependencies: maplibre-gl, qrcode-generator, @fontsource/*; dev: playwright, sharp, jsqr, wrangler
-├── repo-static/           copied into dist/ as is: sw.js, manifest.webmanifest, icons, LICENSE, _headers, vendor/LICENSES.md
+├── repo-static/           copied into dist/ as is: sw.js, manifest.webmanifest, icons, LICENSE, _headers, admin.html and admin.js (the approval page), vendor/LICENSES.md
 ├── src/
-│   ├── worker/index.js    the Worker: /api/health today
+│   ├── worker/index.js    the Worker: /api/stories, receipts, photos, partners, printers (the receivers' pull) and admin
+│   ├── worker/stamp.js    written by build.mjs: the build, whether it is a preview, the partner places. Never committed
 │   ├── body.html          the app's markup (index.html is generated around it)
 │   ├── app.css            every style (style.css = font faces + this)
 │   ├── config.js          window.DA_*: settings and data (see below)
-│   ├── places.js          window.DA_PLACES: the 54 listed places
+│   ├── places.js          window.DA_PLACES: the 57 listed places, the three partners among them
 │   ├── marks.js           window.DA_MARKS: colours, icons, glyphs, badges, motion; shared by app, guide and paper
 │   ├── field.js           window.DA_FIELD: 204 kinds of life (used by field.html and the app)
 │   ├── briefs.js          window.DA_BRIEFS: 50 design briefs with sources
@@ -175,10 +180,12 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 │       ├── 40-panel.js    rail; NOW (outlook, five, alarms, constellations, gigs); STORIES; CSV downloads
 │       ├── 45-strings.js  string figures: knots, peek card, joins, ledgerOf, snapshot, constellations, trace
 │       ├── 50-card.js     the card, ledger and strings section; the slip (statement, photograph, relations); issue; placing records
-│       ├── 60-paper.js    signals: pack and unpack, text, QR, dithering, slip HTML, PNG, ESC/POS, print, board, remix, receive
+│       ├── 60-paper.js    signals: pack and unpack, text, QR, dithering, slip HTML, PNG, ESC/POS (58 or 80 mm), print, story cells, remix, receive
+│       ├── 65-share.js    the shared board, DIRECT ACTION, the outbox, the sender's receipts, partners, RECEIVE by code
 │       └── 70-boot.js     start-up, hash routing, live polling, tooltips, the debug handle window.__da
 └── test/
-    ├── run.mjs            Playwright end-to-end checks; every outside host is mocked
+    ├── run.mjs            Playwright end-to-end checks; every outside host is mocked, and /api/ goes to the real Worker on a fresh local database
+    ├── api.mjs            the Worker's own checks, and pull.py run against it
     └── fixtures.mjs       fake sightings, places, map tiles, photographs and weather
 ```
 
@@ -196,6 +203,9 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `DA_OUTLOOK` | The El Niño outlook by month, the danger windows and their sources |
 | `DA_HEROES`, `DA_TRIBES`, `DA_WATERS`, `DA_CANOPY`, `DA_NEEDS` | The five in greatest need, the six caring groups, waterways, canopy cover and needs |
 | `DA_OUTPUTS` | The output machines, their icons and reference links |
+| `DA_PRINTERS` | Receipt paper: dots and columns for 58 mm and 80 mm |
+| `DA_PARTNERS` | The partner places that print: id (its print queue), whether a printer is there now (marked on the map, always), its paper |
+| `FRESH_H`, `SCAN.find` | Outside the radar, only the last 24 hours; on a first visit the radar may move up to 1.5 km to where most kinds of animals were seen |
 
 ### What the device stores (`localStorage`)
 
@@ -205,8 +215,18 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.figs.v1` | String figures for each cell, with timestamps, birth time and name (at most 80) |
 | `da.notes.v1`, `da.st.v1`, `da.slip.v1`, `da.draft.<id>` | Notes, rewritten statements, slip options and drafts |
 | `da.img.v1`, `da.own.v1` | The chosen photograph for each cell, and the user's own photographs (at most 14, as 800 px JPEGs) |
-| `da.obs.v3`, `da.hist.v1`, `da.tx.v1`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa, histograms, weather and place tiles |
-| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings, the user's name and device id, the swapped five, and hidden cells |
+| `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
+| `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (and `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
+| `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
+
+### What the server stores (D1)
+
+| Table | Contents | Kept |
+|---|---|---|
+| `stories` | A story (its packed signal) or a record (JSON, never its contact), its photograph re-encoded on the device, where it is, the partner it was sent to, waiting, shown or refused | Shown: until deleted on the approval page. Waiting or refused: 30 days |
+| `jobs` | A print for a partner's printer: its ESC/POS bytes and mesh line, held, queued, printing, printed, failed or expired | Waiting: a day. Printed: its status only, a week |
+| `printers` | Each partner place's printer: its paper, whether it prints without approval, whether it has a mesh radio, a hash of its token, when it last asked | Until unpaired |
+| `hits` | A count of requests, under a daily-salted hash of the sender's address, to slow anyone sending too many | An hour |
 
 ### The signal format
 
@@ -232,25 +252,26 @@ npm test                          # builds, then runs every check (about 12 minu
 ONLY=strings npm run test:one     # one group
 ```
 
-On a new machine, install Playwright's Chromium once with `npx playwright install chromium`. The test groups are `smoke`, `radar`, `strings`, `places`, `wish`, `outputs`, `board`, `place`, `lost`, `hide`, `phone`, `hot`, `offline`, `field`, `events`, `guide` and `static`. Two more groups only run when named: `dbg` runs a script file inside the page, and `look` takes screenshots. Screenshots are written to `test/shots/`. In the browser console, `window.__da` exposes the app's state and functions for debugging.
+On a new machine, install Playwright's Chromium once with `npx playwright install chromium`. `npm run test:api` runs the Worker's checks alone (Python runs `pull.py` against it where it is installed). The browser test groups are `smoke`, `first`, `radar`, `strings`, `places`, `wish`, `outputs`, `board`, `share`, `place`, `lost`, `hide`, `phone`, `hot`, `offline`, `field`, `events`, `guide` and `static`. Two more groups only run when named: `dbg` runs a script file inside the page, and `look` takes screenshots. Screenshots are written to `test/shots/`. In the browser console, `window.__da` exposes the app's state and functions for debugging.
 
 ## Design rules
 
-- **The ground stays quiet.** The map opens bare and the panel stays closed until asked for. The radar is the only thing on the ground. Nothing outside the radar is darkened, and only urgent lives appear there.
+- **The ground stays quiet.** The site lands on NOW, with the radar framed beside it; a link to another page lands on NOW too. Sound waits for a first touch (browsers keep pages quiet until then), when the radar plays what it has found so far. The radar is the only thing on the ground, with the partner places' printers. Nothing outside the radar is darkened, and only what is from the last 24 hours appears there.
 - **Labels, not sentences.** The interface uses short labels. Full, plain sentences are kept for statements and documentation. Copy counts things instead of judging them, as in "15 sell takeaway containers". A place is counted by its kind of trade and never judged on its own. Nothing may claim that a place, council or group endorses the project.
 - **Fixed colour meanings.**
-  - Orange means danger ahead, in the coming months.
-  - Red means now: hurt, dead or lost.
+  - Danger ahead, in the coming months, runs from pale orange (prepare) through orange and red to black (extreme): `--deg0` to `--deg4`.
+  - Red, with its pulse or its call, means now: hurt, dead or lost.
   - The neon highlighter means on notice.
   - Teal is the page and the circular economy, cobalt is for lines and links, and navy is the ink.
   - The animal groups have their own colours in `marks.js`.
   - Never reuse orange, red or neon for anything else.
 - **Two typefaces.** Use Poppins and IBM Plex Mono only. Numbers, codes, coordinates and labels are set in mono.
 - **One mark family.** Every icon and glyph lives in `marks.js` on a 16-unit grid and feeds the app, the guide and the paper. Add new icons there.
-- **Paper is an archive record.** It uses black and white only, with FIG. 1 as half the slip. Labels are in mono, the relations are numbered and grouped as HARM, CARE and ALSO, and FIG. 2 is north up. The letters W, I, S and H never print, and each line holds up to 48 characters.
+- **Paper is an archive record.** It uses black and white only, with the photograph as half the slip and its credit under it. Labels are in mono. The constellation sits above the relations, small, its points numbered as the relations are, grouped as HARM, CARE and ALSO. No figure numbers, no compass words. The letters W, I, S and H never print, each line holds up to 48 characters, and a slip with no lines prints as it stands.
+- **Three steps, three words.** NOTICED, RESPONSE, DIRECT ACTION. W.I.S.H. keeps its name.
 - **Sound stays soft, slow and sparse.** A life is an instrument and a few notes. A person or place is a small real sound. There are no loops.
 - **Interaction.** A click looks. A second click, a right-click or a long press joins. A right-click on a joined knot lets it go. A right-click on open ground backs out. Holding down adds a record. There are no buttons on the map cards.
-- **Offline first.** Every feature must work offline before it works online. There are no accounts and no trackers.
+- **Offline first.** Every feature must work offline before it works online. There are no accounts and no trackers. Nothing anyone sends is shown, or printed, until it is approved.
 - **No names or authorship traces.** No personal names or authorship credits go in the code, the text or the commits. The `static` test group enforces this for the built site and for every file a commit would carry. Its private word list lives in `test/.private-words`, which git never sees.
 - **The guide stays a key.** It must stay under about 620 words with no sentences, and the `guide` test group enforces this.
 
@@ -270,27 +291,31 @@ On a new machine, install Playwright's Chromium once with `npx playwright instal
 | Printing uses pull, not push: the receivers poll the cloud | No inbound ports and no software installed by staff in cafés and shops |
 | printd drives the printer, behind a thin pull bridge | The bridge reuses a maintained ESC/POS driver, so no driver code needs writing |
 | The prototype has one receiver and one printer | The deadline is 16 October 2026 |
+| The print queue and shared stories live in D1, not a Durable Object | A handful of printers polling every few seconds is light work; D1 keeps a preview's data apart with a second database, and needs no migration on deploy |
+| The approval page is a password (the `ADMIN_KEY` secret), not Cloudflare Access | Nothing to set up beyond one secret; Access can be added in front of `/admin` later |
+| A preview build uses its own database | Testing never reaches real stories or a real printer |
 
 The following are out of scope for the prototype:
 
 - Bluetooth printing.
-- Multiple printers or venue management.
+- Venue management beyond pairing a printer.
 - A custom PCB or enclosure.
 - Accounts or billing.
-- An admin dashboard.
 - Rewriting ESC/POS drivers.
 
 ## Known bugs and risks
 
-1. **Everything is device-only.** Signals, figures, notes, statements, the user's own photographs and hidden cells live in `localStorage`. Clearing site data loses them. The STORIES board shows only the device's own signals and the examples, and a placed record's link (`#U…`) only opens on the device that placed it.
-2. **ESC/POS is tuned for 58 mm.** It uses 32 columns and a 384-dot photograph. On a TM-T88V with 80 mm paper it will print narrow and left-aligned. A printer profile is needed (task 3).
+1. **Most of what people make is device-only until sent.** Figures, notes, statements, own photographs and hidden cells live in `localStorage`. Stories sent with DIRECT ACTION and records shared are kept on the server once approved; the rest is lost if site data is cleared.
+2. **80 mm is set to 512 dots.** Confirm with the TM-T88V's self-test; if it shows 576, change `dots` for `80` in `DA_PRINTERS`.
 3. **Long links lose their QR code in ESC/POS.** When the link reaches 1,200 bytes (a long rewritten statement and many relations), the ESC/POS output skips the QR code. The on-screen QR code and the PNG still carry it, but it becomes dense.
 4. **printd sends an image as a single raster.** Epson's reference limits one `GS v 0` image to about 2,303 rows on this printer family, and a full slip rendered as an image can be taller than that. Send ESC/POS bytes through `/print/raw` instead, because the app already bands the photograph into 255-row strips.
 5. **Dithering depends on CORS.** If an image host does not send CORS headers, the screen falls back to a CSS grey photograph, and the PNG and ESC/POS outputs drop the photograph. This has not been checked against live iNaturalist hosts. An image proxy fixes it (task 5).
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v11` now.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v12` now. The service worker never keeps `/api/` or `/admin`.
+16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
+17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
 11. **Accessibility is limited.** Knots exist only on the canvas. Keyboard users reach them through the IN REACH list on the card, and only Esc and Delete have keyboard equivalents for the mouse grammar.
 12. **Touch and sound are untested on real devices.** Long-press and hold-to-place have only been tested with headless touch emulation, and iOS Safari's long-press callout may interfere. Web Audio has not been tested with iOS's silent switch.
@@ -300,7 +325,7 @@ The following are out of scope for the prototype:
 
 ## Next five tasks, in order
 
-Tasks 1 to 4 make up the 16 October demo. Task 5 starts the live, shared data.
+*Tasks 1 to 4 are built, in the form described in the status table: the queue on D1 rather than a Durable Object, polled every few seconds rather than long-polled, and DIRECT ACTION listing the partner places rather than pairing by a QR sticker. What is left of the 16 October demo is the hardware: set up the Pi and the TM-T88V at Pickles (`receiver/README.md`) and run the ten-in-a-row test. Task 5 is stage 4 in `docs/roadmap.md`.*
 
 ### 1. One repo, one deploy
 

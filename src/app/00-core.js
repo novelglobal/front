@@ -82,7 +82,7 @@ const S = {
   wx: store.get('da.wx.v3', { t: 0, tmax: null, tmin: null, rain: null, days: [] }),
   lastVisit: store.get('da.lastVisit', 0), lastSignal: 0, stale: false, me,
   biz: null, bizLoading: null, radius: new Map(), orbit: { cell: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
-  heroes: [], tribes: [], signals: [],
+  heroes: [], tribes: [], signals: [], shared: [], partnerSel: null,
   /* the radar: where it is pinned and how far it reaches, kept between visits */
   scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 520, min: 250, max: 1500 }; const p = prefs.scan || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: clamp(+p.r || c.r, c.min || 250, c.max || 1500) }; })(),
 };

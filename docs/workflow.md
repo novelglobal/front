@@ -31,6 +31,14 @@ Then:
 1. **novel.global → SSL/TLS → Edge Certificates:** turn on **Always Use HTTPS**, so `http://novel.global` always moves to `https://`.
 2. *Optional:* **Zero Trust → Access → Applications:** protect `staging-front.<your-subdomain>.workers.dev` so that only your email can open the preview.
 
+### Sharing and printing (once)
+
+1. **The databases** are in `wrangler.jsonc`: `front-db` for the live site and `front-db-preview` for previews, so testing never touches real stories. Their tables are made on first use.
+2. **The approval password.** In Cloudflare, go to **Workers & Pages → front → Settings → Variables and Secrets → Add**. Choose **Secret**, name it `ADMIN_KEY`, and give it a long passphrase from your password manager. Without it the approval page answers "set the ADMIN_KEY secret".
+3. **The approval page** is at `/admin` on the site, or on the preview address, and a small **ADMIN** link sits beside the build code in the information corner. Everything people send waits there until you choose **SHOW** or **REFUSE**. Nothing is shown on the board, or printed, before then.
+4. **A printer at a partner place.** On the approval page, open **PRINTERS** and choose **PAIR A PRINTER** for that place, then follow `receiver/README.md` on its Raspberry Pi. A printer can be set to print without approval, for testing on your own.
+5. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
+
 ### GitHub
 
 **github.com/novelglobal/front → Settings → Pages:** set the source to **None**, so GitHub stops publishing its own copy. Do this before the first merge into `main`.
@@ -56,7 +64,7 @@ GitHub Desktop commits as `novelglobal` with GitHub's private `noreply` address,
    - In GitHub Desktop, switch **Current branch** to `main`.
    - Choose **Branch → Merge into current branch… → `staging`**, then click **Push origin**.
    - Switch back to `staging` for the next change.
-6. **Check novel.global.** After a minute or two, **STORIES → Settings** shows `BUILD <code>`, the same code as the preview, with no PREVIEW tag.
+6. **Check novel.global.** After a minute or two, the information corner at the bottom left (the ⓘ) shows `BUILD <code>`, the same code as the preview, with no PREVIEW tag. `/api/health` answers `ok <code>`.
 
 ## If something goes wrong
 

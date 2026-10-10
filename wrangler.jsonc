@@ -7,5 +7,10 @@
   "assets": { "directory": "./dist", "binding": "ASSETS" },
   // the workers.dev address and version URLs stay on, so a push to staging gets its own preview address
   "workers_dev": true,
-  "preview_urls": true
+  "preview_urls": true,
+  // stories, print queues and printers. The live site uses DB; a preview build uses DB_PREVIEW, so testing never touches real stories
+  "d1_databases": [
+    { "binding": "DB", "database_name": "front-db", "database_id": "228fc077-ec35-4425-868e-4f9b142f0949" },
+    { "binding": "DB_PREVIEW", "database_name": "front-db-preview", "database_id": "172d5df4-1185-457d-b015-e3a3ffc733d9" }
+  ]
 }

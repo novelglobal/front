@@ -17,13 +17,19 @@ const strings = (() => {
   const eKey = ([a, b]) => `${a}|${b}`;
   const inFig = k => k === 'pin' || fig.e.some(([a, b]) => a === k || b === k);
   const idOf = k => (/^\d+$/.test(k) ? +k : k);
-  function open(o) { cell = o; load(o); nodes = compute(o); shownAt = performance.now(); plucks.clear(); peekKey = null; ghost = null; focus = null; trace = null; pk.hidden = true; if (capEl) capEl.hidden = true; }
-  /* a signal remixed: its figure becomes this cell's, where the cell has none of its own yet */
+  /* a story opened: where the cell has no figure of its own, the story's figure stands on the ground, live, and is kept once it is changed */
+  function open(o, s) { cell = o; load(o); if (s && !FIGS[o.id] && (s.edges || []).length) fig = figOf(o, s); nodes = compute(o); shownAt = performance.now(); plucks.clear(); peekKey = null; ghost = null; focus = null; trace = null; pk.hidden = true; if (capEl) capEl.hidden = true; }
+  /* a story's figure laid on the ground around a cell: each knot at its bearing and distance */
+  function figOf(o, s) {
+    const key = k => (k === 'pin' ? 'pin' : `s:${s.code}:${k}`); const n = {};
+    for (const x of s.nodes || []) { const [la, ln] = dest(o.lat, o.lng, x.d, x.b); n[key(x.k)] = { t: x.t === 'custom' ? 'custom' : x.t, n: x.n, role: x.role, on: onNotice(x.role), fam: x.fam || (ROLES[x.role] || {}).cat, ...(x.h && x.h.length ? { h: x.h } : {}), ...(x.u ? { url: x.u } : {}), g: x.g, kind: x.kind, lat: +la.toFixed(5), lng: +ln.toFixed(5) }; }
+    const e = (s.edges || []).map(([a, b]) => [key(a), key(b)]); const t = Date.now();
+    return { e, end: e.length ? e[e.length - 1][1] : 'pin', prev: null, n, c: {}, lb: {}, x: [], ts: Object.fromEntries(e.map(x => [eKey(x), t])), born: t, name: '' };
+  }
+  /* a story remixed: its figure becomes this cell's, where the cell has none of its own yet */
   function seed(o, s) {
-    if (FIGS[o.id] || !(s.edges || []).length) return; const key = k => (k === 'pin' ? 'pin' : `s:${s.code}:${k}`); const n = {};
-    for (const x of s.nodes || []) { const [la, ln] = dest(o.lat, o.lng, x.d, x.b); n[key(x.k)] = { t: x.t === 'custom' ? 'custom' : x.t, n: x.n, role: x.role, on: onNotice(x.role), fam: x.fam || (ROLES[x.role] || {}).cat, g: x.g, kind: x.kind, lat: +la.toFixed(5), lng: +ln.toFixed(5) }; }
-    const e = s.edges.map(([a, b]) => [key(a), key(b)]); const t = Date.now();
-    FIGS[o.id] = { e, end: e.length ? e[e.length - 1][1] : 'pin', prev: null, n, c: {}, lb: {}, x: [], ts: Object.fromEntries(e.map(x => [eKey(x), t])), born: t, t }; store.set('da.figs.v1', FIGS);
+    if (FIGS[o.id] || !(s.edges || []).length) return; const f = figOf(o, s);
+    FIGS[o.id] = { e: f.e, end: f.end, prev: null, n: f.n, c: {}, lb: {}, x: [], ts: f.ts, born: f.born, t: f.born }; store.set('da.figs.v1', FIGS);
   }
   function close() { cell = null; nodes = new Map(); plucks.clear(); peekKey = null; ghost = null; focus = null; trace = null; pk.hidden = true; if (capEl) capEl.hidden = true; }
   function refresh() { if (cell) { const o = S.byId.get(cell.id) || cell; cell = o; nodes = compute(o); if (peekKey && !nodes.has(peekKey) && !String(peekKey).startsWith('x:')) unpeek(); else if (peekKey) card(); life.redraw(); } }
@@ -264,7 +270,7 @@ const strings = (() => {
     snd.strum(fig.e.map(lenOf), 1); save(); changed();
   }
   function strum(dir) { const now = performance.now(); fig.e.forEach((e, i) => plucks.set(eKey(e), now + i * 45)); snd.strum(fig.e.map(lenOf), dir); life.redraw(); }
-  const busy = now => (S.mode === 'sig' && now - sigT < 2200) || !!ghost || !!peekKey || !!focus || glowUntil > now || !!trace || songUntil > now || (!!cell && (now - shownAt < 1800 || [...plucks.values()].some(t => now - t < 1800)));
+  const busy = now => !!ghost || !!peekKey || !!focus || glowUntil > now || !!trace || songUntil > now || (!!cell && (now - shownAt < 1800 || [...plucks.values()].some(t => now - t < 1800)));
   /* one kind of place lit up together; looked at a second time, joined together */
   function focusOn(f) { focus = f; focusAt = performance.now(); unpeek(); life.redraw(); }
   const unfocus = () => { if (focus) { focus = null; life.redraw(); } };
@@ -416,23 +422,11 @@ const strings = (() => {
     const out = keys.map((k, i) => { const n = nodes.get(k) || fig.n[k] || fig.c[k] || {}; return { k: String.fromCharCode(97 + i), t: n.t, n: labelOf(k) || n.n, ...(n.role ? { role: n.role } : {}), ...(n.fam && n.t === 'biz' ? { fam: n.fam } : {}), ...(n.t === 'biz' ? { h: n.harm || (n.h || []).filter(r => (PRESSURES[lifeOf(cell)] || []).includes(r)) } : {}), ...(n.url ? { u: n.url } : {}), ...(n.g && n.t === 'life' ? { g: n.g } : {}), ...(n.kind && (n.t === 'group' || n.t === 'custom') ? { kind: n.kind } : {}), b: Math.round(bearing(cell.lat, cell.lng, n.lat, n.lng)), d: Math.round(haversine(cell.lat, cell.lng, n.lat, n.lng)) }; });
     return { nodes: out, edges };
   }
-  /* a signal's figure, read only: its strings plucked once as it opens */
-  let sigT = 0;
-  const showSig = () => { sigT = performance.now(); life.redraw(); };
-  function drawSig(ctx, now) {
-    const s = S.signals.find(x => x.key === S.sig); if (!s || !s.pin) return; const P = map.project([s.pin.lng, s.pin.lat]);
-    const at = k => { if (k === 'pin') return { x: P.x, y: P.y }; const n = (s.nodes || []).find(x => x.k === k); if (!n) return null; const [la, ln] = dest(s.pin.lat, s.pin.lng, n.d, n.b); const p = map.project([ln, la]); return { ...n, x: p.x, y: p.y }; };
-    const t0 = sigT || now;
-    const sn = k => { const n = (s.nodes || []).find(x => x.k === k); return n && { t: n.t, harm: harmsOfNode(n) }; };
-    lines(ctx, s.edges || [], at, now, (e, i) => t0 + 300 + i * 60, 1, null, 1, hotIn(sn));
-    for (const n of s.nodes || []) { const p = at(n.k); if (!p) continue; const k = reduced() ? 1 : back((now - t0 - 200) / 300); if (n.t === 'life') M.badge(ctx, { tone: M.toneOf(n.g || 'paw'), g: n.g || 'paw', d: 18 * k }, p.x, p.y); else mark(ctx, { ...n, on: onNotice(n.role), fam: n.fam || (ROLES[n.role] || {}).cat }, p.x, p.y, k, true); }
-  }
   /* ───────── every figure the radar holds, faint; and played as a song from the radar's centre ───────── */
   let songUntil = 0; const songT = new Map();
   const figCells = () => Object.entries(FIGS).map(([id, f]) => ({ id: idOf(id), f, o: S.byId.get(idOf(id)) })).filter(c => c.o && (c.f.e || []).length && (!cell || c.o.id !== cell.id) && life.inScan(c.o.lat, c.o.lng) && !hiddenCell(c.o.id));
   const figAt = c => k => { const m = k === 'pin' ? c.o : c.f.n[k] || (c.f.c || {})[k]; if (!m) return null; const p = map.project([m.lng, m.lat]); return { x: p.x, y: p.y }; };
   function drawSaved(ctx, now) {
-    if (S.mode === 'sig') return;
     for (const c of figCells()) { const press = new Set(PRESSURES[lifeOf(c.o)] || []); const mn = k => { const m = c.f.n[k]; return m && { t: m.t, harm: (m.h || []).filter(r => press.has(r)) }; };
       lines(ctx, c.f.e, figAt(c), now, (e, i) => songT.get(`${c.id}|${i}`), (e, i, t0) => (t0 != null && now - t0 > -50 && now - t0 < 1400 ? 1 : 0.34), null, 1, hotIn(mn)); }
   }
@@ -517,7 +511,7 @@ const strings = (() => {
     const f = FIGS[id] || (cell && String(cell.id) === String(id) ? fig : null); const o = S.byId.get(idOf(id)); if (!f || !o) return 0;
     const seq = []; const now = performance.now(); const t = figSeq({ id: idOf(id), o, f, open: !!cell && cell.id === o.id }, 0, 1, seq, now, !!cell && cell.id === o.id); songUntil = now + t * 1000 + 1000; snd.song(seq); life.redraw(); return t;
   }
-  return { open, seed, close, refresh, draw, drawSig, drawSaved, showSig, knotAt, hit, tap, join, act, joinAll, untie, undo, reset, restore, strum, busy, pos, lifeNode, tied, reach, ledgerOf, tagHTML, snapshot,
+  return { open, seed, close, refresh, draw, drawSaved, knotAt, hit, tap, join, act, joinAll, untie, undo, reset, restore, strum, busy, pos, lifeNode, tied, reach, ledgerOf, tagHTML, snapshot,
     peek, unpeek, peekOut, bringIn, ground, place, song, playOpen, labelOf, included, setInclude, setLabel, removeKnot, focusOn, unfocus, soundOf, scoreSVG,
     list, rename, chartOf, glow, extent, traceIt, playFig, nameFor,
     get cell() { return cell; }, get fig() { return fig; }, get nodes() { return nodes; }, get peeked() { return peekKey; }, get ghost() { return ghost; }, get focus() { return focus; }, get tracing() { return !!trace; }, inFig };

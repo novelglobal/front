@@ -11,7 +11,7 @@
 :root{
   --teal:#0CCBBD;--teal-lift:#7FE0D7;--teal-deep:#007A72;--teal-wash:#E3F7F4;--white:#FFFFFF;--paper:#F1F2EF;--slip:#FCFBF7;--grey:#C8C8C8;--grey-text:#6B6B6B;--ink:#141412;
   --cobalt:#0067B8;--navy:#0B2545;--neon:#E6F84A;--red:#E8453C;--ground:#1E2622;
-  --orange:#FF7A00;--deg1:#FFE3C2;--deg2:#FFB15C;--deg3:#FF7A00;--deg4:#D95000;
+  --orange:#FF7A00;--deg0:#FFC27A;--deg1:#FF9A2E;--deg2:#FF6A00;--deg3:#D62E1F;--deg4:#141412;
   --sans:'Poppins',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--white:#0F1613;--paper:#1A2420;--grey:#34413C;--grey-text:#9AA8A2;--navy:#E6ECEA;--cobalt:#5AA9F0}}
@@ -92,7 +92,8 @@ canvas{flex:none;display:block}
 .outs small{font:400 10px/1.3 var(--mono);color:var(--grey-text)}
 /* danger */
 .degs{grid-template-columns:repeat(5,minmax(0,1fr))}
-.dg{display:inline-block;padding:3px 7px;font:600 10px/1.4 var(--mono);letter-spacing:.06em;background:var(--deg1);color:#0B2545}
+.dg{display:inline-block;padding:3px 7px;font:600 10px/1.4 var(--mono);letter-spacing:.06em;background:var(--deg0);color:#0B2545}
+.dg.d1{background:var(--deg1)}
 .dg.d2{background:var(--deg2)}.dg.d3{background:var(--deg3);color:#fff}.dg.d4{background:var(--deg4);color:#fff}
 .wins{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:16px}
 .wins li{flex-direction:column;align-items:flex-start;gap:4px}
@@ -206,13 +207,14 @@ canvas{flex:none;display:block}
     put({ tone: 'lost', g: 'dog', d: 34 }, W * 0.9, H * 0.18); put({ tone: 'injured', g: 'possum', d: 36 }, W * 0.92, H * 0.78); put({ tone: 'k-mammal', g: 'flyingfox', d: 48, dz: 4 }, W * 0.08, H * 0.82);
     x.beginPath(); x.arc(cx, cy, 5, 0, Math.PI * 2); x.fillStyle = '#fff'; x.fill(); x.lineWidth = 2; x.strokeStyle = C.navy; x.stroke();
     x.save(); x.translate(cx + R, cy); x.rotate(Math.PI / 4); x.fillStyle = '#fff'; x.fillRect(-8, -8, 16, 16); x.strokeStyle = C.navy; x.strokeRect(-8, -8, 16, 16); x.restore();
-    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', 'hurt · dead · lost · extreme · threatened · the five'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
+    steps($('#radar-steps'), [['radar', 'SWEEP', 'what it passes stays'], ['', 'OUTSIDE', 'the last 24 hours only · NEW · its age'], ['where', 'MOVE', 'drag the centre · tap outside'], ['', 'REACH', `drag the rim · ${CONFIG.SCAN.min}–${CONFIG.SCAN.max} m`], ['plus', 'NEW', 'tap inside · hold the left button'], ['next', 'OPEN', 'click or right-click a life · right-click open ground to back out'], ['', 'PLAY', 'tap the centre · a song'], ['hide', 'HIDE', 'any cell · undone in settings']]);
   })();
 
   /* icons */
   for (const [k, w] of Object.entries(M.GROUP_WORDS)) { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.kind[k]}"></i><span class="lbl">${w}</span>`; $('#kind-colours').appendChild(l); }
   { const l = document.createElement('li'); l.innerHTML = `<i style="background:${C.tealDeep};border-radius:5px"></i><span class="lbl">PLANTS</span>`; $('#kind-colours').appendChild(l); }
   for (const [b, w] of M.KEY) li($('#key'), badge(b), w);
+  { const c = document.createElement('canvas'); c.width = c.height = 68; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 17, 19, 26, 0, true); c.style.width = c.style.height = '34px'; li($('#key'), c, 'W.I.S.H. PRINTER'); }
 
   /* strings: a frog, the places around it, threads to what harms it, and a figure tied */
   (function figure() {
@@ -249,13 +251,13 @@ canvas{flex:none;display:block}
 
   /* W.I.S.H. */
   $('#wish-slip').innerHTML = `<div class="hd"><b>DA-····</b><span>DD.MM.YY HH:MM</span></div><div class="fig"></div><p class="cap">FIG. 1 · © OBSERVER · INATURALIST</p><p class="st">STATEMENT · what El Niño does to it here</p><ol>${['What we know: the theory', 'It would be great: the belief', "So let's create: the principle", 'Here is how it works: the tactic'].map(w => `<li>${w}</li>`).join('')}</ol><div class="rel"><p><span>01</span>Corner store<em class="on">TAKEAWAY</em></p><p><span>02</span>Op shop<em>REUSE</em></p><p><span>03</span>Side gate tap<em>PLACE</em></p></div><p class="cap">FIG. 2 · 3 RELATIONS · NORTH UP</p>`;
-  steps($('#wish-steps'), [['next', 'NOTICED', 'the card turns over'], ['', 'FIG. 1', '← → another · your own · none'], ['', 'STATEMENT', 'rewrite · ↺ as it was'], ['', 'W.I.S.H.', `four lines · ${(CONFIG.SIGNAL || {}).line || 48} characters · letters never print`], ['check', 'RELATIONS', 'tick · rename'], ['receipt', 'DIRECT ACTION', 'issued · DA-XXXX']]);
+  steps($('#wish-steps'), [['next', 'NOTICED', 'the card turns over'], ['', 'PHOTOGRAPH', '← → another · your own · none'], ['', 'STATEMENT', 'rewrite · ↺ as it was'], ['', 'W.I.S.H.', `four lines · ${(CONFIG.SIGNAL || {}).line || 48} characters · letters never print`], ['check', 'RELATIONS', 'tick · rename'], ['receipt', 'RESPONSE', 'issued · DA-XXXX'], ['print', 'DIRECT ACTION', 'pledge · printed · mesh · stored']]);
 
   /* outputs */
   const SG = CONFIG.SIGNAL || { mesh: 200, pager: 80 };
   const OTIP = { print: '58 mm slip', escpos: 'raw bytes · receipt printer', bits: `384 px · pocket thermal printer`, gb: '160 px · four greys', mesh: `${SG.mesh} bytes · LoRa`, pager: `${SG.pager} characters`, link: 'the whole signal' };
   for (const m of window.DA_OUTPUTS || []) { const l = document.createElement('li'); l.innerHTML = `${icon(m.ic)}<b>${m.w}</b><small>${OTIP[m.k] || ''}</small><a href="${esc(m.ref)}" target="_blank" rel="noopener">${esc(new URL(m.ref).hostname.replace(/^www\./, ''))} ↗</a>`; $('#outs').appendChild(l); }
-  { const l = document.createElement('li'); l.innerHTML = `${icon('receive')}<b>RECEIVE</b><small>paste a link or a mesh message</small>`; $('#outs').appendChild(l); }
+  { const l = document.createElement('li'); l.innerHTML = `${icon('receive')}<b>RECEIVE</b><small>the code on a slip · a link · a mesh message</small>`; $('#outs').appendChild(l); }
 
   /* danger */
   ['LOW', 'WATCH', 'HIGH', 'SEVERE', 'EXTREME'].forEach((w, i) => { const l = document.createElement('li'); l.innerHTML = `<span class="dg d${i}">${w}</span>`; $('#degs').appendChild(l); });

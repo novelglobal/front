@@ -27,6 +27,8 @@ function badgeImg(b, size = 36) {
   const url = c.toDataURL(); imgCache.set(key, url); return url;
 }
 const pinOf = o => badgeImg(life.badgeOf(o, 22));
+/* a partner's W.I.S.H. printer, small, for the page: its light on when the printer is listening */
+function printerImg(p, st = {}) { const key = `printer|${!!st.ready}`; if (imgCache.has(key)) return imgCache.get(key); const c = document.createElement('canvas'); c.width = c.height = 88; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 22, 25, 32, 0, !!st.ready); const u = c.toDataURL(); imgCache.set(key, u); return u; }
 const lab = (t, cls = '') => `<h3 class="lab ${cls}">${t}</h3>`;
 /* a degree of danger, in orange; and how long until it lands */
 const degChip = (deg, word = '') => (deg ? `<i class="dg d${deg}">${DEG[deg]}${word ? ` · ${word}` : ''}</i>` : '');
@@ -34,8 +36,8 @@ const whenChip = w => (w ? `<i class="wn${w.now ? ' now' : ''}" data-tip="${esc(
 const row = (o, sub = '', right = '') => `<li><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b>${sub ? `<small>${sub}</small>` : ''}</span><span class="rt">${right}</span></button></li>`;
 const elapsed = t => { const s = Math.max(0, Math.floor((Date.now() - t) / 1000)); const h = Math.floor(s / 3600); return h >= 48 ? `${Math.floor(h / 24)} D` : h >= 1 ? `${h} H ${pad2(Math.floor(s % 3600 / 60))}` : `${Math.floor(s / 60)} MIN`; };
 const since = t => `<span class="cdn up mono" data-up="${t}">${elapsed(t)}</span>`;
-/* right now: an animal hurt in the last twelve hours, found dead in the last two days, or lost in the last three */
-const alarmsNow = () => { const now = Date.now(); const ord = { injured: 0, dead: 1, lost: 2 }; return [...S.community, ...S.user].filter(o => (o.kind === 'injured' && now - o.at < 12 * 3600e3) || (o.kind === 'dead' && now - o.at < 48 * 3600e3) || (o.kind === 'lost' && now - o.at < 72 * 3600e3)).sort((a, b) => ord[a.kind] - ord[b.kind] || b.at - a.at); };
+/* right now: an animal hurt, dead or lost in the last 24 hours */
+const alarmsNow = () => { const ord = { injured: 0, dead: 1, lost: 2 }; return [...S.community, ...S.user].filter(o => isAlarm(o) && isFresh(o)).sort((a, b) => ord[a.kind] - ord[b.kind] || b.at - a.at); };
 const BIRDS = new Set(['bird', 'parrot', 'waterbird', 'owl', 'raptor']);
 const telOf = o => (o.tel ? o.tel : o.kind === 'injured' ? ((o.tags || []).includes('h5') ? 'tel:1800675888' : glyphOf(o) === 'flyingfox' ? 'tel:136186' : 'tel:0384007300') : o.kind === 'dead' && ((o.tags || []).includes('h5') || BIRDS.has(glyphOf(o))) ? 'tel:1800675888' : o.kind === 'dead' && glyphOf(o) === 'flyingfox' ? 'tel:136186' : '');
 const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<button type="button" class="callb lostb" data-search="${esc(String(o.id))}">${icon('lost')}<small>SEARCH</small></button>` : tel ? `<a class="callb${o.kind === 'dead' ? ' deadb' : ''}" href="${tel}">${icon('phone')}<small>${o.kind === 'dead' ? 'REPORT' : 'CALL'}</small></a>` : '';
@@ -62,7 +64,7 @@ function renderView() {
   const k = VIEWS[S.view].k;
   viewEl.innerHTML = k === 'now' ? viewNow() : viewStories();
   viewEl.scrollTop = 0;
-  if (k === 'now') { bindOutlook(); if (S.open) startHeroes(); } else { stopHeroes(); bindStories(); }
+  if (k === 'now') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else { stopHeroes(); bindStories(); }
   if (k === 'now' && (S.wx.tmax || 0) >= HEAT.hot) loadOverlays();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
@@ -134,6 +136,21 @@ function startHeroes() {
   };
   heroRaf = requestAnimationFrame(draw);
 }
+/* every kind of life the months ahead reach, us among them: each kind's mark over its danger in the months chosen */
+const KIND_LINE = ['flyingfox', 'bird', 'possum', 'bat', 'frog', 'turtle', 'lizard', 'bee', 'butterfly', 'aquatic', 'plant', 'human'];
+const KIND_IC = { aquatic: 'Actinopterygii', possum: 'Mammalia', bat: 'Mammalia', flyingfox: 'Mammalia' };
+function kindDeg(g) {
+  if (g === 'human') return degOf({ id: 'kind:human', hum: true, kind: 'need', lat: S.scan.lat, lng: S.scan.lng });
+  const fe = FIELD.find(f => f.g === g && f.st !== 'I') || FIELD.find(f => f.g === g);
+  return degOf({ id: 'kind:' + g, g, lat: S.scan.lat, lng: S.scan.lng, tx: { id: null, n: fe ? fe.n : '', cn: fe ? fe.cn : '', ic: KIND_IC[g] || IC_OF_GLYPH[g] || 'Mammalia', na: true } });
+}
+const kindsRow = () => `<div class="kinds" style="--n:${KIND_LINE.length}" aria-hidden="true">${KIND_LINE.map(g => { const d = kindDeg(g); return `<span class="d${d}${g === 'human' ? ' us' : ''}" data-tip="${esc(M.KINDS[g] || '')} · ${DEG[d]}">${glyphSVG(g)}<i></i></span>`; }).join('')}</div>`;
+/* one of the five: its photograph, or its mark moving where there is none, with its kind's mark */
+const heroPhoto = o => (o.ph && licOpen(o.ph.l) && o.ph.u) || (o.tx && o.tx.id && TXI[o.tx.id] && TXI[o.tx.id].ph && TXI[o.tx.id].ph.u) || '';
+const heroPic = o => { const ph = heroPhoto(o); return `<span class="h-pic">${ph ? `<img src="${esc(photoURL(ph, 'small'))}" alt="" loading="lazy">` : `<canvas class="hero-cv" width="104" height="104" data-hero="${esc(o.id)}" aria-hidden="true"></canvas>`}${glyphSVG(glyphOf(o))}</span>`; };
+/* a hero with no photograph of its own yet: its kind's, once iNaturalist has answered */
+let heroAsked = false;
+function askHeroPhotos() { if (heroAsked) return; heroAsked = true; const want = S.heroes.filter(o => !heroPhoto(o) && o.tx && o.tx.id); if (want.length) Promise.all(want.map(o => taxonInfo(o.tx.id))).then(() => { if (S.view === 0) refreshPanel(); }); }
 const eventRow = o => { const gig = isGig(o); const src = gigOf(o); return row(o, [dayWord(o.start), o.start ? fmtClock(o.start) : '', ...(gig ? [`<span class="gig">${icon('hug', 'sm')}${src ? src.w : 'GIG'}</span>`] : [])].filter(Boolean).join(' · ')); };
 function viewNow() {
   const nw = nextWindow(); const alarms = alarmsNow(); const k0 = S.mo, k1 = Math.min(OUT_N - 1, S.mo + 2);
@@ -143,10 +160,11 @@ function viewNow() {
       <div class="b-top"><span class="mono">${esc(CONFIG.ELNINO)}</span>${degChip(lvNow)}</div>
       ${nw ? `<div class="b-count" data-tip="${esc(nw.w.why)}"><b>${nw.now ? 'NOW' : daysTo(nw.start)}</b><span class="mono">${nw.now ? '' : 'DAYS TO<br>'}${esc(nw.w.w)}</span></div>` : ''}
       ${monthStrip()}
+      ${kindsRow()}
       <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why)}"><canvas class="hero-cv" width="128" height="128" data-hero="${esc(o.id)}" aria-hidden="true"></canvas><span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${whenChip(w)}</span></span></button></li>`).join('')}</ol></section>` : '')
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why || o.heroOf.cn)}">${heroPic(o)}<span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
     + consSection()
     + `<section class="sec" id="sec-gigs">${lab('Gigs')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener" data-tip="${esc(g.n)}">${icon('hug', 'sm')}<span>${esc(g.w)}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`
@@ -177,23 +195,25 @@ viewEl.addEventListener('click', e => {
 
 /* ───────── STORIES: the signals board, newest first ───────── */
 const THEMES = { heat: 'HEAT', water: 'WATER', pollinate: 'POLLINATORS', diversity: 'DIVERSITY', night: 'NIGHT', food: 'FOOD', circular: 'CIRCULAR', cats: 'CATS' };
-const sigRow = (s, i) => {
-  const p = s.pin || {}; const kn = (s.edges || []).length;
-  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}" data-sig="${esc(s.key)}"><span class="rk mono">${i + 1}</span><span class="sg"><span class="sg-t"><b class="mono">${esc(s.code)}</b>${esc((s.lines || {}).h || '')}</span><small class="mono">${esc((p.cn || p.n || '').toUpperCase())} · ${esc(p.place || '')} · ${ago(s.at)}${kn ? ` · ${kn} ${icon('string', 'sm')}` : ''}${s.recv ? ' · RECEIVED' : ''}${s.ex ? ' · EX' : ''}</small></span></button></li>`;
+/* the board: every slip, this device's and the ones shown to everyone, each with where it has got to */
+const sigRow = s => {
+  const p = s.pin || {}; const kn = (s.edges || []).length; const st = sentWord(s); const last = linesOf(s).pop() || s.threat || '';
+  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}" data-sig="${esc(s.key)}"><img class="pg" src="${badgeImg({ tone: 'story', g: p.g || 'paw', carried: !s.ex }, 34)}" alt=""><span class="sg"><span class="sg-t"><b class="mono">${esc(s.code)}</b>${esc(last)}</span><small class="mono">${esc((p.cn || p.n || '').toUpperCase())} · ${esc(p.place || '')} · ${ago(s.at)}${kn ? ` · ${kn} ${icon('string', 'sm')}` : ''}${s.recv ? ' · RECEIVED' : ''}${s.ex ? ' · EX' : ''}</small>${st ? `<small class="mono st">${esc(st)}</small>` : ''}</span></button></li>`;
 };
 function viewStories() {
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false">${icon('receive', 'sm')}RECEIVE</button></div>`
-      + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="3" aria-label="Signal" placeholder="DA-…" spellcheck="false"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
+  return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
+      + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       + `<ol class="sigs">${sigs.map(sigRow).join('')}</ol></section>`
-    + `<section class="sec" id="sec-groups">${lab('Groups')}<ol class="rows tribes">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><span class="nm"><b>${esc(t.n)}</b><small>${esc(t.w)}</small></span></button><a class="src" href="${esc(t.link)}" target="_blank" rel="noopener" aria-label="Their site">${icon('out', 'sm')}</a></li>`).join('')}</ol></section>`
     + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
       + `</div><div class="docs">${[['blank', 'print', 'BLANK SLIP', 'A blank W.I.S.H. slip to fill by hand'], ['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div></section>`
     + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
-    + `<section class="sec" id="sec-set">${lab('Settings')}<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><button type="button" class="tog lb" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}<small>AREAS</small></button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div>${BUILD.sha ? `<small class="build mono" data-tip="The version of the site you are looking at">BUILD ${esc(BUILD.sha.toUpperCase())}${BUILD.branch ? ` · ${esc(BUILD.branch.toUpperCase())}` : ''}</small>` : ''}</section>`
+    /* the groups already caring for ground here: small, each opens its patch and its site */
+    + `<section class="sec groups" id="sec-groups">${lab('Groups')}<ol class="tribes-s">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}" data-tip="${esc(t.w)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><b>${esc(t.n)}</b></button></li>`).join('')}</ol></section>`
+    + `<section class="sec" id="sec-set">${lab('Settings')}<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><button type="button" class="tog lb" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}<small>AREAS</small></button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
     + `<details class="sec" id="sec-src"><summary>${lab('Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
 function openReceive(on) { const f = $('#rx'), b = $('#rx-open'); if (!f) return; f.hidden = !on; b.setAttribute('aria-expanded', String(on)); if (on) setTimeout(() => $('#rx-t').focus(), 30); }

@@ -27,6 +27,10 @@ const glyphOf = o => { if (o && o.user && o.g) return o.g; if (o && o.sigPin && 
 const lifeOf = o => { if ((o.user || o.sigPin) && o.g) return o.g; const sub = subjectOf(o); return o.hum && !(sub && sub.tx && sub.tx.n) ? 'human' : glyphOf(o); };
 const COLD_DAYS = 21;
 const isCold = o => !!o.hist || (typeof o.id === 'number' && !o.hum && o.age != null && o.age > COLD_DAYS);
+/* fresh: from the last 24 hours. A record or a story when it was made, a sighting when it was posted, a gathering when it starts */
+const FRESH_MS = (CONFIG.FRESH_H || 24) * 3600e3;
+const stampOf = o => (!o ? 0 : o.isEvent && o.start ? o.start : o.at || (o.c ? Date.parse(o.c) : 0) || (o.t ? Date.parse(o.t) : 0) || 0);
+const isFresh = o => { if (!o || o.hist || o.hero) return false; const t = stampOf(o); if (!t) return false; const now = Date.now(); return o.isEvent && o.start ? t > now - FRESH_MS && t < now + FRESH_MS : t <= now + 60e3 && now - t < FRESH_MS; };
 const hourOf = o => (o.t ? new Date(o.t).getHours() : null);
 const isNight = o => { const h = hourOf(o); return h != null && (h >= 20 || h < 5); };
 function traitsOf(o) {
@@ -87,7 +91,7 @@ function youngOf(o) { const fe = fieldOf(o); if (!fe || !fe.brd) return null; co
 /* something to learn: the field list's line, else iNaturalist's (fetched on opening the card) */
 const learnOf = o => { const fe = fieldOf(o); return fe ? fe.aware || fe.note || '' : ''; };
 /* ───────── iNaturalist, further in: a taxon's summary and status, and the months it is seen here ───────── */
-const TXI = store.get('da.tx.v1', {}), HGI = store.get('da.hg.v1', {});
+const TXI = store.get('da.tx.v2', {}), HGI = store.get('da.hg.v1', {});
 const MONTH30 = 30 * 864e5;
 async function taxonInfo(id) {
   if (!id) return null; if (TXI[id] && Date.now() - TXI[id].t < MONTH30) return TXI[id];
@@ -97,8 +101,10 @@ async function taxonInfo(id) {
     const first = (sum.match(/^.{20,}?[.!?](?=\s|$)/) || [sum])[0].trim();
     const cs = (t.conservation_statuses || []).find(c => c.place && /victoria/i.test(c.place.name || '')) || (t.conservation_statuses || []).find(c => c.place && /australia/i.test(c.place.name || '')) || t.conservation_status || null;
     const em = (t.establishment_means && t.establishment_means.establishment_means) || '';
-    const v = { t: Date.now(), sum: first.length > 180 ? first.slice(0, 177) + '…' : first, obs: t.observations_count || 0, cs: cs ? String(cs.status_name || cs.status || '').toUpperCase() : '', em: em.toUpperCase(), wiki: t.wikipedia_url || '' };
-    TXI[id] = v; store.set('da.tx.v1', TXI); return v;
+    /* the photograph iNaturalist shows for the kind: used where a sighting has none open to show */
+    const dp = t.default_photo || {}; const ph = dp.medium_url && licOpen(dp.license_code) ? { u: dp.medium_url, l: dp.license_code, a: dp.attribution || '' } : null;
+    const v = { t: Date.now(), sum: first.length > 180 ? first.slice(0, 177) + '…' : first, obs: t.observations_count || 0, cs: cs ? String(cs.status_name || cs.status || '').toUpperCase() : '', em: em.toUpperCase(), wiki: t.wikipedia_url || '', ph };
+    TXI[id] = v; store.set('da.tx.v2', TXI); return v;
   } catch (e) { return null; }
 }
 async function seasonOf(id) {
@@ -336,7 +342,7 @@ async function fetchHistory() {
   for (const o of S.hist) S.byId.set(o.id, o);
   life.data();
 }
-async function liveTick() { const n = await fetchNew(); await loadWeather(); refreshPanel(); return n; }
+async function liveTick() { const n = await fetchNew(); await loadWeather(); loadShared(); checkSent(); loadPartners(); refreshPanel(); return n; }
 
 /* gatherings from a published sheet: title, start, venue, lat, lng, tags (nature free gig rrr ra …), link */
 const parseCSV = t => {
@@ -390,7 +396,10 @@ function derive() {
   }
   for (const u of S.user) S.byId.delete(u.id);
   S.user = user; for (const u of user) S.byId.set(u.id, u);
-  S.signals = [...sigs.sort((a, b) => b.at - a.at), ...EXAMPLES.map(x => ({ key: 'ex:' + x.code, ex: true, ...x, at: Date.parse(x.at) }))];
+  /* the board: this device's slips and the stories shown to everyone, newest first; then the examples */
+  const codes = new Set(sigs.map(s => s.code)); const shown = new Set((S.shared || []).map(s => s.code));
+  for (const s of sigs) if (shown.has(s.code)) s.shown = true;
+  S.signals = [...sigs, ...(S.shared || []).filter(s => !codes.has(s.code))].sort((a, b) => b.at - a.at).concat(EXAMPLES.map(x => ({ key: 'ex:' + x.code, ex: true, ...x, at: Date.parse(x.at) })));
 }
 function userPing(e) {
   const d = e.data || {}; const hum = ['need', 'offer', 'event', 'injured', 'lost', 'dead'].includes(e.type);

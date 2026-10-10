@@ -1,7 +1,7 @@
 /* Direct Action — offline cache.
    The app itself: network first, so an edit to config.js or examples.js shows on the next load; the cached copy when there is no signal.
    Imagery, land and photos: kept once seen. Live data: network first, the last answer when offline. */
-const V = 'da-v11';
+const V = 'da-v12';
 const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 const KEEP = /arcgisonline\.com|elevation-tiles-prod|inaturalist-open-data|static\.inaturalist\.org/;
 const LIVE = /api\.inaturalist\.org|open-meteo\.com|overpass|data\.melbourne\.vic\.gov\.au/;
@@ -21,6 +21,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  /* the app's own server and the approval page are never kept: stories waiting for approval stay off every device */
+  if (url.origin === location.origin && (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin'))) return;
   if (url.origin === location.origin) {
     e.respondWith((async () => {
       const c = await caches.open(`${V}-shell`);
