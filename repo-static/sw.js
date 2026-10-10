@@ -1,7 +1,7 @@
 /* Direct Action — offline cache.
    The app itself: network first, so an edit to config.js or examples.js shows on the next load; the cached copy when there is no signal.
    Imagery, land and photos: kept once seen. Live data: network first, the last answer when offline. */
-const V = 'da-v14';
+const V = 'da-v15';
 const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 const KEEP = /arcgisonline\.com|elevation-tiles-prod|inaturalist-open-data|static\.inaturalist\.org/;
 const LIVE = /api\.inaturalist\.org|open-meteo\.com|overpass|data\.melbourne\.vic\.gov\.au/;

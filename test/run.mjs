@@ -177,6 +177,17 @@ if (run('smoke')) try {
   check('under it, a countdown to act before extreme heat, ticking', hd.sun && /^\d+D \d\d:\d\d:\d\d$/.test(hd.c0) && hd.c0 !== hd.c1 && /EXTREME/.test(hd.tip), JSON.stringify({ c0: hd.c0, c1: hd.c1, tip: hd.tip }));
   check('extreme months are black, never faded to grey, each with a small cross', hd.d4 >= 1 && hd.d4bg.length === 1 && hd.d4bg[0] === 'rgb(20, 20, 18)' && hd.d4op.join() === '1' && /†/.test(hd.mark), JSON.stringify(hd));
   check('no copy to explain, no numbers to ring on NOW; the five at the bottom', !hd.praxis && hd.tel === 0 && hd.ids[0] === 'sec-heat' && hd.ids[hd.ids.length - 1] === 'sec-five', JSON.stringify(hd.ids));
+  const tk = await page.evaluate(() => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id); const sec = document.querySelector('#sec-tracks'); const rows = [...sec.querySelectorAll('[data-trk]')];
+    return { at: ids.indexOf('sec-tracks'), cons: ids.indexOf('sec-cons'), gigs: ids.indexOf('sec-gigs'), words: sec.innerText.replace(/\s+/g, ' ').trim(), rows: rows.map(r => r.dataset.trk), a: rows[0].querySelectorAll('.v').length, b: rows[1].querySelectorAll('.v').length, traces: sec.querySelectorAll('.beat polyline').length, discs: sec.querySelectorAll('.disc, .side, .groove').length }; });
+  check('Tracks sit above the constellations: one word, two quiet rows of voices, each with a fine trace of its beat', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^tracks$/i.test(tk.words) && tk.rows.join() === 'a,b' && tk.a >= 2 && tk.b >= 1 && tk.traces === 2 && tk.discs === 0, JSON.stringify(tk));
+  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.knot; s.knot = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; });
+  await page.click('#sec-tracks [data-trk="a"]'); await sleep(1600);
+  const ta = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-trk="a"]').getAttribute('aria-pressed'), n: window.__knots.length, lives: window.__knots.every(k => k.g), hit: !!document.querySelector('#sec-tracks [data-trk="a"] .v.hit') || window.__knots.length > 0 }));
+  await page.click('#sec-tracks [data-trk="a"]'); await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-trk="b"]'); await sleep(1600);
+  const tb = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-trk="b"]').getAttribute('aria-pressed'), n: window.__knots.length, places: window.__knots.every(k => k.fam) }));
+  await page.click('#sec-tracks [data-trk="b"]'); await sleep(400);
+  const t0 = await page.evaluate(() => { const n = window.__knots.length; return new Promise(r => setTimeout(() => r({ still: window.__knots.length === n, on: Object.values(window.__da.TRK.on).some(Boolean) }), 900)); });
+  check('a track plays its beat from the radar: the lives in their calls, the places in their small sounds; pressed again, it stops', ta.on === 'true' && ta.n >= 3 && ta.lives && tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ ta, tb, t0 }));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
   check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
   const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });
@@ -185,6 +196,15 @@ if (run('smoke')) try {
   await tab(page, 1); await sleep(600);
   const st = await page.evaluate(() => { const rows = [...document.querySelectorAll('#sec-signals .sig-row')]; return { rows: rows.length, ex: rows.filter(r => r.classList.contains('ex')).length, codes: rows.map(r => r.querySelector('b').textContent), groups: document.querySelectorAll('#sec-groups .row').length, docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
   check('STORIES: the signals board with twenty examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 20 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  const WAV = (() => { const sr = 8000, n = sr / 2, b = Buffer.alloc(44 + n * 2); b.write('RIFF', 0); b.writeUInt32LE(36 + n * 2, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(sr, 24); b.writeUInt32LE(sr * 2, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(n * 2, 40);
+    for (let i = 0; i < n; i++) b.writeInt16LE(Math.round(Math.sin(i / sr * 2 * Math.PI * 220) * 12000 * (i / n)), 44 + i * 2); return b; })();
+  await page.setInputFiles('#trk-f', { name: 'my-beat.wav', mimeType: 'audio/wav', buffer: WAV }); await sleep(900);
+  await tab(page, 0); await sleep(600);
+  const own = await page.evaluate(() => { const r = document.querySelector('#sec-tracks [data-trk="c"]'); return r ? { tip: r.dataset.tip, trace: r.querySelectorAll('.beat polyline').length, x: !!document.querySelector('#sec-tracks [data-trk-x]') } : null; });
+  check('a track of one\'s own, added under CELLS on STORIES, joins the tracks on NOW, its trace drawn from its sound', own && own.tip === 'my-beat.wav' && own.trace === 1 && own.x, JSON.stringify(own));
+  await page.click('#sec-tracks [data-trk-x]'); await sleep(400);
+  check('and it can be taken away again', await page.evaluate(() => !document.querySelector('#sec-tracks [data-trk="c"]')));
+  await tab(page, 1); await sleep(600);
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
   check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-stories.png');
@@ -724,9 +744,11 @@ if (run('hide')) try {
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
   const it = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const r = da.map.getContainer().getBoundingClientRect(); const it = da.life.items.find(i => i.inS && da.life.shown(i) && !i.binned && !i.o.hero && !i.o.user && typeof i.o.id === 'number' && i.x > 80 && i.y > 120 && i.x < r.width - 320 && i.y < r.height - 120 && (() => { const h = da.life.hit(i.x, i.y); return h && h.id === i.o.id; })()); return it && it.o.id; });
   const [x, y] = await xy(page, it); await page.mouse.move(x, y, { steps: 4 }); await sleep(600);
-  const tagOf = () => page.evaluate(() => ({ tag: !document.querySelector('#tag').hidden, hide: !!document.querySelector('#tag .hide') }));
+  const tagOf = () => page.evaluate(id => { const t = document.querySelector('#tag'); const r = t.getBoundingClientRect(); const it = window.__da.life.items.find(i => i.o.id === id); const m = window.__da.map.getContainer().getBoundingClientRect();
+    return { tag: !t.hidden, hide: !!t.querySelector('.hide'), img: t.querySelectorAll('img').length, beside: it ? Math.min(Math.abs(r.left - (m.left + it.x + it.dx)), Math.abs(r.right - (m.left + it.x + it.dx))) : -1, level: it ? Math.abs((r.top + r.bottom) / 2 - (m.top + it.y + it.dy)) : -1 }; }, it);
   let tg = await tagOf(); if (!tg.tag) { await page.mouse.move(x + 40, y + 40); await settle(page); await sleep(300); const [x2, y2] = await xy(page, it); await page.mouse.move(x2, y2, { steps: 4 }); await sleep(800); tg = await tagOf(); }
   check('every cell under the pointer has a small hide button', tg.tag && tg.hide, JSON.stringify(tg));
+  check('the tag under the pointer is words only, level with the mark and beside the photograph it grows into', tg.img === 0 && tg.beside >= 34 && tg.beside <= 50 && tg.level <= 12, JSON.stringify(tg));
   await page.click('#tag .hide'); await sleep(500);
   const h1 = await page.evaluate(id => ({ gone: !window.__da.life.items.some(i => i.o.id === id), kept: JSON.parse(localStorage.getItem('da.hide.v1') || '[]').includes(String(id)), toast: document.querySelector('#toast').textContent }), it);
   check('HIDE takes it off the map, on this device, with UNDO', h1.gone && h1.kept && /HIDDEN/.test(h1.toast), JSON.stringify(h1));
