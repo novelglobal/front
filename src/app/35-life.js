@@ -146,17 +146,20 @@ const life = (() => {
   }
   /* a first visit: the radar starts where the most kinds of animals have been seen lately, near where it was pinned,
      so the first sweep has lives to find. Once per device; after that the radar stays where it is left */
+  /* a first visit: the radar starts at the print location, at 500 m, close in (00-core); then moves, once, to where the
+     visitor is, if their browser says and it is near. Their place stays on this device, to about 100 m */
   function findStart() {
-    if (prefs.scan || prefs.found || S.mode || !S.obs.length) return false;
-    prefs.found = true; savePrefs();
-    const c0 = { lat: S.scan.lat, lng: S.scan.lng }, R = S.scan.r, F = SC.find || 1500;
-    const pool = S.obs.filter(o => !o.ob && !o.hum && !isCold(o) && !['Plantae', 'Fungi'].includes(kindOf(o)) && haversine(c0.lat, c0.lng, o.lat, o.lng) <= F + R);
-    const kinds = (lat, lng) => new Set(pool.filter(o => haversine(lat, lng, o.lat, o.lng) <= R).map(o => o.tx.id || o.tx.n)).size;
-    let best = { n: kinds(c0.lat, c0.lng), lat: c0.lat, lng: c0.lng }; const n0 = best.n;
-    for (const o of pool) { if (haversine(c0.lat, c0.lng, o.lat, o.lng) > F) continue; const n = kinds(o.lat, o.lng); if (n > best.n) best = { n, lat: o.lat, lng: o.lng }; }
-    if (best.n < Math.max(4, n0 * 1.5)) return false;
-    setScan(best.lat, best.lng, null, true);
-    if (S.mapReady) map.easeTo({ center: [best.lng, best.lat], zoom: scanZoom(), offset: sheetOffset(), duration: reduced() ? 0 : 1100 });
+    if (prefs.start2 || S.mode) return false;
+    prefs.start2 = true; prefs.found = true; setScan(null, null, SC.r || 500, true); savePrefs();
+    if (!navigator.geolocation) return false;
+    try {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = +pos.coords.latitude.toFixed(3), lng = +pos.coords.longitude.toFixed(3);
+        if (S.mode || haversine(SC.lat, SC.lng, lat, lng) > (SC.near || 15000)) return;
+        setScan(lat, lng, null, true); revealAll(true);
+        if (S.mapReady) map.easeTo({ center: [lng, lat], zoom: scanZoom(), offset: sheetOffset(), duration: reduced() ? 0 : 1100 });
+      }, () => { /* no place given: the print location stands */ }, { timeout: 9000, maximumAge: 6e5 });
+    } catch (e) { return false; }
     return true;
   }
   /* sound waits for a first touch: browsers keep a page quiet until then. At that touch the radar plays what it has
@@ -215,6 +218,8 @@ const life = (() => {
   function shown(it) {
     const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
+    /* each track seen or not: a pack of cells is its own; every life is the lives' track */
+    if (o.pack ? !seeTrack('p:' + o.pack) : !o.story && !o.partner && !seeTrack('life')) return false;
     /* the example stories stand on the map always, as receipts; the stories page shows every story, wherever it is */
     if (o.story && (o.ex || (S.open && S.view === 1 && !S.mode))) return true;
     const found = it.inS && seen.has(o.id); const z = zoomNow();
@@ -318,6 +323,19 @@ const life = (() => {
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
+  /* the places' track, when seen: the human ecology inside the radar, each place in its family's mark, as in an open cell */
+  let placesK = '', placesL = [];
+  function placesIn() {
+    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length}`; if (k === placesK) return placesL;
+    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz' }));
+    return placesL;
+  }
+  function places(ctx) {
+    for (const p of placesL) p._x = null;
+    if (!seeTrack('places') || S.mode === 'ping') return;
+    const k = clamp(0.75 + (zoomNow() - 14) * 0.22, 0.75, 1.25);
+    for (const p of placesIn()) { const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) continue; p._x = q.x; p._y = q.y; strings.placeMark(ctx, p, q.x, q.y, k, false); }
+  }
   function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { p._x = null; if (!p.printer || !prefs.printers) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; const on = !!(PSTATE[p.id] || {}).ready; M.printer(ctx, q.x, q.y, d, still || !on ? 0 : t, on); } }
   /* a life's photograph, for the ground once its cell is open: its own, else one of its kind; loaded once, drawn when it has come */
   const PH = new Map();
@@ -358,6 +376,7 @@ const life = (() => {
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
     if (!cellOpen && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
+    places(ctx);
     for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
     for (const it of items) {
       if (it.binned || !shown(it) || off(it.x, it.y)) continue;
@@ -454,6 +473,7 @@ const life = (() => {
     const consider = (d, h) => { if (d <= slack && (!best || d < best.d)) best = { ...h, d }; };
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
     if (S.mode === 'ping') { const n = strings.hit(x, y, slack); if (n) return n; }
+    if (seeTrack('places') && S.mode !== 'ping') placesL.forEach((p, i) => { if (p._x != null) consider(Math.hypot(p._x - x, p._y - y) - 5, { kind: 'place', id: i }); });
     const pd = printerSize() / 2 + 4; for (const p of PARTNERS) if (p.printer && p._x != null && Math.abs(p._x - x) < pd && y - p._y < pd && p._y - y < pd + 6) return { kind: 'partner', id: p.id, d: 0 };
     for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
     for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2; consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
@@ -464,6 +484,7 @@ const life = (() => {
   /* ───────── the tag: a name under the pointer, nothing more ───────── */
   function tagHTML(h) {
     if (h.kind === 'node') return strings.tagHTML(h.key);
+    if (h.kind === 'place') { const p = placesL[h.id]; return p ? `<i class="fm fm-${esc(p.fam)}"></i><span class="tx"><b>${esc(p.n)}</b></span>` : ''; }
     /* the words only: the photograph, or the printer, is already there on the map beside it */
     if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<span class="tx"><b>${esc(p.n)}</b><small>${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}</small></span>` : ''; }
     const o = S.byId.get(h.id); if (!o) return ''; const sub = subjectOf(o);
@@ -479,6 +500,7 @@ const life = (() => {
     let x0, y0, r = 12;
     if (hoverH.kind === 'node') { const n = strings.pos(hoverH.key); if (!n) return; x0 = n.x; y0 = n.y; }
     else if (hoverH.kind === 'partner') { const p = partnerOf(hoverH.id); if (!p || p._x == null) return; x0 = p._x; y0 = p._y; r = printerSize() / 2 + 2; }
+    else if (hoverH.kind === 'place') { const p = placesL[hoverH.id]; if (!p || p._x == null) return; x0 = p._x; y0 = p._y; r = 8; }
     else { const it = items.find(z => z.o.id === hoverH.id); const o = S.byId.get(hoverH.id); if (!o) return; if (it) { x0 = it.x + it.dx; y0 = it.y + it.dy; } else { const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; } r = HOVER_D / 2; }
     const w = tagEl.offsetWidth || 180, h = tagEl.offsetHeight || 40;
     let x = x0 + r + 8, y = y0 - h / 2; if (x + w > W - 8) x = x0 - r - 8 - w; y = clamp(y, 8, Math.max(8, H - h - 8)); x = clamp(x, 8, Math.max(8, W - w - 8));

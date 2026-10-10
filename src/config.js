@@ -22,7 +22,7 @@ window.DA_CONFIG = {
   ],
   OVERLAY_API: 'https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets/',
   RADIUS: { min: 50, max: 1500 },                                   // a cell's own radius, in metres
-  SCAN: { lat: -37.7690, lng: 144.9630, r: 520, min: 250, max: 1500, turn: 8, find: 1500 },   // the radar: where it starts, its radius in metres, seconds per sweep; on a first visit it moves up to `find` metres to where most kinds of life have been seen lately
+  SCAN: { lat: -37.7690, lng: 144.9630, r: 500, min: 250, max: 1500, turn: 8, near: 15000 },   // the radar: its centre and radius in metres, seconds per sweep. A first visit starts at 500 m, close in, where the visitor is when within `near` metres, else at the print location (the first partner with a printer)
   FRESH_H: 24,                                                      // outside the radar, only what is from the last 24 hours: pins, sightings, events, animals hurt, dead or lost
   SIGNAL: { line: 48, mesh: 200, pager: 80 },                       // characters per W.I.S.H. line · bytes per mesh message · characters per pager line
   PORTAL_URL: 'https://novel.global/',                               // where it is hosted: printed codes link back here

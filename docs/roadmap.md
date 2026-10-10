@@ -8,7 +8,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 1 | Fixes and clearer rules on the map | Built, on staging |
 | 2 | Save and share, with your approval | Built, on staging |
 | 3 | Print queue and the pager printer | Built, on staging; the printers at Pickles, Kines and Coffee Bar Elsie to set up |
-| 3b | Final polish: DIRECT ACTION on NOW, twenty example stories, two slip styles, the local mesh, cell packs | Built, on staging |
+| 3b | Final polish: DIRECT ACTION on NOW, twenty example stories, two slip styles, the local mesh, cell packs | Live |
+| 3c | Tracks seen or played, the calendar, first visits, night | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -79,6 +80,17 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **Hover:** a mark grows quickly into a larger photograph, and the words sit in a small tag beside it, the photograph shown once.
 - **Cell packs:** a .md, .csv or .json file of fruit trees, mesh nodes, water, shade, gardens or refuges. It is read on the device, previewed, sent for approval, and shown on the map once approved. `docs/cell-packs.md` has the format and a prompt for another LLM.
 - **Examples:** twenty stories across modes and scales (creative, activist, caring, sensory, joy, skill sharing, partnerships and more). Each is tied to real places, with its sources shown on screen.
+
+## Stage 3c — tracks, the calendar, night
+
+*Built, on staging.*
+
+- **A first visit** starts at 500 m, close in, where the visitor is when their browser says and they are near, else at the print location. The first touch anywhere wakes the sound, inside the touch itself, as phones require.
+- **NOW:** no El Niño label, watch chip or stage names. The calendar shows each month's danger; the five in greatest need sit on the months their danger begins; under each month, the kinds of life it reaches.
+- **Stations** (tracks in the code): collections of the map, under the heading STATIONS, beneath DIRECT ACTION RADIO. Each can be seen on the map or not, and played or not. The lives are seen at first. The human ecology (brands, businesses, third spaces, groups) is not, and when seen, its places stand in the radar in their families' marks. Each approved pack of cells is a track of its own. Events, gig guides and workshops are the next set of tracks.
+- **Constellations** are named for what they hold once they are more than the life alone: the place tied first, the life, and their shape.
+- **Prints:** an example slip carries a photograph of its kind; the life is the heading and the code is among the details.
+- **Night:** as the device is set, or NIGHT in Settings. The page darkens and the ground dims; slips stay paper.
 
 ## Stage 4 — live data through Cloudflare
 

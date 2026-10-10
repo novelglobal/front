@@ -61,11 +61,14 @@ derive(); buildTribes(); buildHeroes(); renderView(); flags(); loadEvents();
 applyShared(); loadShared(); flushOutbox(); checkSent(); loadPartners();
 /* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */
 if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0); }
-/* sound waits for a first touch; then the radar plays what it has found so far */
-const firstTouch = () => { removeEventListener('pointerdown', firstTouch, true); removeEventListener('keydown', firstTouch, true); setTimeout(() => life.replay(), 60); };
-addEventListener('pointerdown', firstTouch, true); addEventListener('keydown', firstTouch, true);
+/* sound waits for a first touch, anywhere: browsers keep a page quiet until then, and phones let sound wake only inside the
+   touch itself. Then the radar plays what it has found so far, and goes on as it sweeps */
+const WAKE = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown'];
+const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); setTimeout(() => life.replay(), 60); };
+WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
-loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); else life.findStart(); }).then(() => fetchHistory());
+if (!pendingHash) life.findStart();
+loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
 window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,

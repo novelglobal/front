@@ -462,7 +462,19 @@ const strings = (() => {
   /* the open figure alone, as a song */
   function playOpen() { if (!cell || !fig.e.length) { strum(1); return []; } const seq = []; const now = performance.now(); const t = figSeq({ id: cell.id, o: cell, f: fig }, 0, 1, seq, now, true); songUntil = now + t * 1000 + 1200; snd.song(seq); life.redraw(); return seq; }
   /* ───────── constellations: every figure, named, kept, listed on NOW ───────── */
-  const nameFor = (o, f) => (f && f.name) || (o ? `${nameOf(o)} · ${title(placeOf(o))}` : 'A constellation');
+  /* a constellation's name: its own, once given; else, once it is more than the life alone, a name from what it holds,
+     as stars are named: the place it is tied to first, the life, and its shape by how many knots it has */
+  const SHAPES = ['', 'Tie', 'Line', 'Kite', 'Crown', 'Net', 'Net', 'Web'];
+  const PLAIN = /^(the|of|and|a|an|friends|community|coffee|milk|bar|cafe|café|library|garden|gardens|hall|park|centre|center|shop|store|studio|house|corner|place|street|st|road|rd)$/i;
+  const wordOf = n => String(n || '').replace(/[()]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !PLAIN.test(w))[0] || '';
+  const lastOf = n => String(n || '').split(/\s+/).filter(Boolean).pop() || '';
+  const nameFor = (o, f) => {
+    if (f && f.name) return f.name; if (!o) return 'A constellation';
+    const keys = f && f.e ? [...new Set(f.e.flat())].filter(k => k !== 'pin') : [];
+    if (!keys.length) return `${nameOf(o)} · ${title(placeOf(o))}`;
+    const ms = keys.map(k => (f.n || {})[k] || (f.c || {})[k] || {}); const p = ms.find(m => m.t === 'biz' || m.t === 'group') || ms.find(m => m.n);
+    return `The ${wordOf(p && p.n) || title(placeOf(o))} ${lastOf(nameOf(o))} ${SHAPES[Math.min(keys.length, SHAPES.length - 1)]}`;
+  };
   function list() {
     const all = Object.entries(FIGS).filter(([, f]) => (f.e || []).length).map(([id, f]) => {
       const o = S.byId.get(idOf(id)); const keys = [...new Set(f.e.flat())].filter(k => k !== 'pin'); const m = k => f.n[k] || (f.c || {})[k] || {};
@@ -513,6 +525,6 @@ const strings = (() => {
   }
   return { open, seed, close, refresh, draw, drawSaved, knotAt, hit, tap, join, act, joinAll, untie, undo, reset, restore, strum, busy, pos, lifeNode, tied, reach, ledgerOf, tagHTML, snapshot,
     peek, unpeek, peekOut, bringIn, ground, place, song, playOpen, labelOf, included, setInclude, setLabel, removeKnot, focusOn, unfocus, soundOf, scoreSVG,
-    list, rename, chartOf, glow, extent, traceIt, playFig, nameFor,
+    list, rename, chartOf, glow, extent, traceIt, playFig, nameFor, placeMark,
     get cell() { return cell; }, get fig() { return fig; }, get nodes() { return nodes; }, get peeked() { return peekKey; }, get ghost() { return ghost; }, get focus() { return focus; }, get tracing() { return !!trace; }, inFig };
 })();
