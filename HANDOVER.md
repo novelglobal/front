@@ -185,6 +185,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 │       ├── 60-paper.js    signals: pack and unpack, text, QR, dithering, slip HTML, PNG, ESC/POS (58 or 80 mm), print, story cells, remix, receive
 │       ├── 65-share.js    the shared board, DIRECT ACTION, the outbox, the sender's receipts, partners, RECEIVE by code
 │       ├── 66-packs.js    cell packs: .md, .csv or .json read on the device, previewed, sent for approval, drawn once shown (docs/cell-packs.md)
+│       ├── 68-tracks.js   TRACKS on NOW: two beats from the radar (lives; places), scheduled on snd.knot; one's own track in IndexedDB
 │       └── 70-boot.js     start-up, hash routing, live polling, tooltips, the debug handle window.__da
 └── test/
     ├── run.mjs            Playwright end-to-end checks; every outside host is mocked, and /api/ goes to the real Worker on a fresh local database
@@ -221,6 +222,7 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 | `da.obs.v3`, `da.hist.v1`, `da.tx.v2`, `da.hg.v1`, `da.wx.v3`, `da.tiles.v5` | Caches for sightings, history, taxa (with their kind's photograph), histograms, weather and place tiles |
 | `da.prefs`, `da.me`, `da.five.v1`, `da.hide.v1` | Settings (`printers`: show the partners' printers; `slip`: `'tty'` for the terminal style; `found`, once the first radar has looked for life), the user's name and device id, the swapped five, and hidden cells |
 | `da.shared.v1`, `da.sent.v1`, `da.outbox.v1`, `da.partners.v1` | The board as last fetched; what this device sent and how far it got; what waits for a signal; the printers as last heard |
+| IndexedDB `da.tracks` | One's own track (the audio file, its name and the shape of its sound), added on STORIES; never sent |
 
 ### What the server stores (D1)
 

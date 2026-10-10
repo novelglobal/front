@@ -71,7 +71,7 @@ GitHub Desktop commits as `novelglobal` with GitHub's private `noreply` address,
 
 - **The preview build fails:** the live site is untouched. Open the failed build's log in Cloudflare. The error is near the end.
 - **The live site has a problem:** go to **Workers & Pages → front → Deployments** and roll back to the previous version. It takes seconds. Then fix it on `staging`.
-- **Returning visitors see an old version:** the service worker cache name in `repo-static/sw.js` was not bumped. Bump it (`da-v13` → `da-v14`) and push again.
+- **Returning visitors see an old version:** the service worker cache name in `repo-static/sw.js` was not bumped. Bump it (`da-v15` → `da-v16`) and push again.
 
 ## Hygiene, every time
 

@@ -51,6 +51,7 @@ const life = (() => {
   const halfAt = z => 0.5 + 0.5 * clamp((z - 13.5) / 2.5, 0, 1);
   const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) * halfAt(z) / 2) * 2);
   const PHOTO_Z = 16.2;   /* closer than this, a life is its photograph */
+  const HOVER_D = 68;     /* the photograph a mark grows into under the pointer */
   /* a living map: what is new is bright and full; what is old fades and shrinks to a small ghost */
   const ghostOf = o => { if (!o || o.hero || o.partner) return 1; const t = stampOf(o); if (!t) return 1; const days = (Date.now() - t) / 864e5; return clamp(1 - (days - 1) / 40, 0.28, 1); };
   const PLACE_TONE = { flora: 'flora', injured: 'injured', dead: 'dead', lost: 'lost', need: 'need', offer: 'offer', event: 'event' };
@@ -376,9 +377,10 @@ const life = (() => {
     /* a song from the centre: each note lights where it was tied */
     for (const n of songFx) { const q = (now - n.at) / 700; if (q < 0 || q > 1) continue; const p = map.project([n.lng, n.lat]); ctx.save(); ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(p.x, p.y, 6 + q * 22, 0, TAU); ctx.strokeStyle = C.orange; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); }
     selection(ctx, now);
-    /* under the pointer a mark grows into its photograph, a larger circle; without one, into its own mark, larger */
+    /* under the pointer a mark grows, quickly, into its photograph, a larger circle; without one, into its own mark, larger.
+       The tag beside it carries the words only */
     if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) {
-      const g = still ? 1 : ease((now - hoverAt) / 180); const D = Math.round(it.b.d + (56 - it.b.d) * g); const x = it.x + it.dx, y = it.y + it.dy; const im = !it.o.hum ? photoOf(it.o, 'small') : null;
+      const g = still ? 1 : ease((now - hoverAt) / 90); const D = Math.round(it.b.d + (HOVER_D - it.b.d) * g); const x = it.x + it.dx, y = it.y + it.dy; const im = !it.o.hum ? photoOf(it.o, 'small') : null;
       if (im) photoDisc(ctx, im, x, y, D, it.o.story ? C.cobalt : it.alarm ? C.red : C.white); else M.badge(ctx, { ...it.b, a: 1, d: Math.round(it.b.d + (30 - it.b.d) * g) }, x, y);
       if (g < 1) fxDirty = true; } }
     /* the record being placed breathes: one ring leaving it, until it is placed */
@@ -462,23 +464,24 @@ const life = (() => {
   /* ───────── the tag: a name under the pointer, nothing more ───────── */
   function tagHTML(h) {
     if (h.kind === 'node') return strings.tagHTML(h.key);
-    if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<img src="${printerImg(p, st)}" alt=""><span class="tx"><b>${esc(p.n)}</b><small>W.I.S.H. PRINTER · ${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}</small></span>` : ''; }
+    /* the words only: the photograph, or the printer, is already there on the map beside it */
+    if (h.kind === 'partner') { const p = partnerOf(h.id); const st = PSTATE[h.id] || {}; return p ? `<span class="tx"><b>${esc(p.n)}</b><small>${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}</small></span>` : ''; }
     const o = S.byId.get(h.id); if (!o) return ''; const sub = subjectOf(o);
-    const ph = o.photo ? `<img src="${esc(o.photo)}" alt="">` : sub.ph && licOpen(sub.ph.l) ? `<img src="${esc(photoURL(sub.ph.u, 'small'))}" alt="">` : `<img src="${badgeImg(badgeOf(o, 40), 44)}" alt="">`;
     const voice = (sub.so && sub.so.u) || o.sound;
     const when = o.isEvent && o.start ? dayWord(o.start) : o.hist ? String(o.d).slice(0, 4) : o.at && (o.comm || o.user) ? fmtClock(o.at) : o.t ? fmtClock(o.t) : '';
     const w = !o.hum && !isCold(o) && !isAlarm(o) ? whenOf(o) : null; const dg = !o.hum && !isCold(o) ? degOf(o) : 0;
     /* why it shows outside the radar: it is new, and how new */
     const fresh = isFresh(o) && !o.isEvent ? `NEW · ${ago(stampOf(o))}` : '';
-    return `${ph}<span class="tx"><b>${esc(nameOf(o))}</b>${fresh ? `<small class="new">${fresh}</small>` : when ? `<small>${esc(when)}</small>` : ''}${dg >= 2 ? `<small class="dg d${dg}">${DEG[dg]}${w ? ` · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}${o.hero ? '' : `<button type="button" class="hide" data-hide="${esc(String(o.id))}" aria-label="${o.user ? 'Delete' : 'Hide'}" data-tip="${o.user ? 'Delete' : 'Hide from the map'}">${icon('hide', 'sm')}</button>`}`;
+    return `<span class="tx"><b>${esc(nameOf(o))}</b>${fresh ? `<small class="new">${fresh}</small>` : when ? `<small>${esc(when)}</small>` : ''}${dg >= 2 ? `<small class="dg d${dg}">${DEG[dg]}${w ? ` · ${w.now ? 'NOW' : `${daysTo(w.start)} D`}` : ''}</small>` : ''}</span>${voice ? `<button type="button" class="play" data-u="${esc(voice)}" aria-label="Play the call">${icon(playing === voice && !audio.paused ? 'pause' : 'play')}</button>` : ''}${o.hero ? '' : `<button type="button" class="hide" data-hide="${esc(String(o.id))}" aria-label="${o.user ? 'Delete' : 'Hide'}" data-tip="${o.user ? 'Delete' : 'Hide from the map'}">${icon('hide', 'sm')}</button>`}`;
   }
+  /* the tag sits beside what it names, level with it: beside the photograph a cell grows into, the printer, or the knot */
   function placeTag() {
-    let x0, y0;
+    let x0, y0, r = 12;
     if (hoverH.kind === 'node') { const n = strings.pos(hoverH.key); if (!n) return; x0 = n.x; y0 = n.y; }
-    else if (hoverH.kind === 'partner') { const p = partnerOf(hoverH.id); if (!p || p._x == null) return; x0 = p._x; y0 = p._y; }
-    else { const o = S.byId.get(hoverH.id); if (!o) return; const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; }
-    const w = tagEl.offsetWidth || 220, h = tagEl.offsetHeight || 60;
-    let x = x0 + 18, y = y0 - h - 14; if (x + w > W - 8) x = x0 - w - 18; if (y < 8) y = y0 + 18; x = clamp(x, 8, Math.max(8, W - w - 8));
+    else if (hoverH.kind === 'partner') { const p = partnerOf(hoverH.id); if (!p || p._x == null) return; x0 = p._x; y0 = p._y; r = printerSize() / 2 + 2; }
+    else { const it = items.find(z => z.o.id === hoverH.id); const o = S.byId.get(hoverH.id); if (!o) return; if (it) { x0 = it.x + it.dx; y0 = it.y + it.dy; } else { const p = map.project([o.lng, o.lat]); x0 = p.x; y0 = p.y; } r = HOVER_D / 2; }
+    const w = tagEl.offsetWidth || 180, h = tagEl.offsetHeight || 40;
+    let x = x0 + r + 8, y = y0 - h / 2; if (x + w > W - 8) x = x0 - r - 8 - w; y = clamp(y, 8, Math.max(8, H - h - 8)); x = clamp(x, 8, Math.max(8, W - w - 8));
     tagEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
   let tagHide = 0;
