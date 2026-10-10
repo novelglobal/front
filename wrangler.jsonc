@@ -1,5 +1,11 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "front",
+  "main": "src/worker/index.js",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./" }
+  // dist/ is built by `npm run build`; a request for a file there is served without running the Worker
+  "assets": { "directory": "./dist", "binding": "ASSETS" },
+  // the workers.dev address and version URLs stay on, so a push to staging gets its own preview address
+  "workers_dev": true,
+  "preview_urls": true
 }

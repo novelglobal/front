@@ -124,7 +124,3 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Copyright (c) 2009 Kazuhiko Arase. Licensed under the MIT licence: http://www.opensource.org/licenses/mit-license.php
 The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
-
-## Fonts — `fonts/`
-
-Poppins (Indian Type Foundry, Jonny Pinhorn) and IBM Plex Mono (IBM, Mike Abbink, Bold Monday), each under the SIL Open Font License 1.1: https://openfontlicense.org
