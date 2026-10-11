@@ -116,12 +116,18 @@ function tracksSection() {
       + `<button type="button" class="tk-play${t.id === 'life' && !on ? ' muted' : ''}" aria-pressed="${on}" aria-label="${t.id === 'life' ? 'Sound' : 'Play'}"${(TRK.voices[t.id] || []).length ? '' : ' disabled'}>${playIcon(t.id, on)}</button>`
       + `<span class="beat">${beatTrace(t.id)}</span></li>`; };
   const moods = Object.entries(MOODS).map(([k, m]) => `<button type="button" class="mood" data-mood="${k}" aria-pressed="${moodOf() === k}" aria-label="${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button>`).join('');
-  return `<section class="sec tracks" id="sec-tracks"><div class="lab-row">${lab('Stations')}<span class="moods" role="group" aria-label="Mood">${moods}</span></div><ol class="deck">${list.map(row).join('')}</ol></section>`;
+  const mute = `<button type="button" class="mood mute${prefs.sound ? '' : ' muted'}" data-mute-all aria-pressed="${!prefs.sound}" aria-label="Sound off" data-tip="${prefs.sound ? 'Sound off' : 'Sound on'}">${icon('sound', 'sm')}</button>`;
+  return `<section class="sec tracks" id="sec-tracks"><div class="lab-row">${lab('Stations')}<span class="moods" role="group" aria-label="Mood">${moods}${mute}</span></div><ol class="deck">${list.map(row).join('')}</ol></section>`;
 }
 $('#view').addEventListener('input', e => {
   const f = e.target.closest('.tk-lvl'); if (!f) return; const r = f.closest('[data-tk]'); prefs.lvl = { ...(prefs.lvl || {}), [r.dataset.tk]: +f.value / 100 }; f.style.setProperty('--v', `${f.value}%`); savePrefs();
 });
 $('#view').addEventListener('click', e => {
+  /* everything quiet, or back: the radar, its drone and every station; nature comes back on air unless muted */
+  if (e.target.closest('[data-mute-all]')) {
+    prefs.sound = !prefs.sound; savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } else { snd.wake(); if (!prefs.mute) setTrack('life', true); }
+    const b = e.target.closest('[data-mute-all]'); b.classList.toggle('muted', !prefs.sound); b.setAttribute('aria-pressed', String(!prefs.sound)); const ix = document.querySelector('#ix-sound'); if (ix) ix.setAttribute('aria-pressed', String(prefs.sound)); if (prefs.sound) snd.tick(1700); return;
+  }
   const md = e.target.closest('[data-mood]');
   if (md) { prefs.mood = md.dataset.mood; savePrefs(); TRK.step = 0; TRK.next = 0; document.querySelectorAll('#sec-tracks [data-mood]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mood === prefs.mood))); for (const t of trackList()) { const el = document.querySelector(tkSel(t.id)); if (el) el.querySelector('.beat').innerHTML = beatTrace(t.id); } snd.tick(1400); buzz(4); return; }
   const r = e.target.closest('[data-tk]'); if (!r) return; const id = r.dataset.tk;

@@ -123,6 +123,7 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **The five** are the five in greatest need inside the radar, each with why, and follow the radar.
 - **STORIES:** eight signals as cards (the photograph or the mark, the code, the life); the rest fold away. First, the four printed most or starred on the approval page (★ STAR on SHOWN); then the newest.
 - **Night** keeps the equaliser's colours.
+- **Story cards:** every signal one shape: the photograph (its own, its kind's from the sightings, else asked of iNaturalist once), what to do in bold, the story plain, the life, the code in the corner. Eight large, two across; the rest small, four across. A mute for everything sits beside the moods.
 
 ## Stage 4 — live data through Cloudflare
 

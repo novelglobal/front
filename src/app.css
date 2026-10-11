@@ -888,22 +888,35 @@ body.nosignal .rail::after{content:"";position:absolute;left:50%;bottom:-14px;wi
 /* the board is the page's first thing: its heading carries more weight */
 .board .lab-row .lab{font-size:11.5px;color:var(--navy)}
 
-/* signals as cards: the photograph or the mark large, the code and the life small; printed most: a gold line; held up: gold, doubled */
-.sigs.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.sigs.cards .sig-row{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;padding:4px 4px 6px;background:var(--white);border:1px solid var(--paper);border-radius:6px;text-align:left;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+/* signals as story cards, all one shape: the photograph above; what to do, bold; the story, plain; the life; the code in
+   the corner. Eight large, two across; the rest small, four across */
+.sigs.cards{display:grid;gap:8px;align-items:stretch}
+.sigs.cards.big{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sigs.cards.small{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sigs.cards li{display:flex}
+.sigs.cards .sig-row{position:relative;display:flex;flex-direction:column;align-items:stretch;width:100%;padding:0;overflow:hidden;background:var(--white);border:1px solid var(--paper);border-radius:8px;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .sigs.cards .sig-row:hover{border-color:var(--navy)}
-.sigs.cards .art{display:grid;place-items:center;width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:4px;background:var(--paper)}
-.sigs.cards .art.mark .i{width:46%;height:46%;color:var(--clay)}
-.sigs.cards b{font-size:8.5px;letter-spacing:.06em;color:var(--grey-text)}
-.sigs.cards .nm{font-size:10px;font-weight:600;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.sigs.cards .st{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 2px var(--white)}
+.sigs.cards .art{flex:none;display:grid;place-items:center;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--paper)}
+.sigs.cards .art.mark .i{width:38%;height:38%;color:var(--clay)}
+.sigs.cards .code{position:absolute;z-index:1;top:6px;left:6px;padding:2px 5px;border-radius:3px;background:rgba(17,25,22,.62);color:#fff;font-size:8px;font-weight:500;letter-spacing:.06em}
+.sigs.cards .cap{display:flex;flex-direction:column;gap:4px;padding:8px 9px 9px;flex:1}
+.sigs.cards .act{font:700 13px/1.2 var(--sans);color:var(--navy);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:3.6em}
+.sigs.cards .story{font:400 10.5px/1.3 var(--sans);color:var(--grey-text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
+.sigs.cards .nm{margin-top:auto;font:500 9px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--grey-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sigs.cards.small .art{aspect-ratio:1}
+.sigs.cards.small .cap{padding:5px 5px 6px;gap:2px}
+.sigs.cards.small .act{font-size:9.5px;line-height:1.2;-webkit-line-clamp:3;min-height:3.6em}
+.sigs.cards.small .story{display:none}
+.sigs.cards.small .nm{font-size:7.5px}
+.sigs.cards.small .code{font-size:7px;top:4px;left:4px;padding:1px 3px}
+.sigs.cards .st{position:absolute;z-index:1;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 2px var(--white)}
 .sigs.cards .t1{border-color:#F2C14E}
 .sigs.cards .t2{border-color:#F2C14E;box-shadow:0 0 0 2px #F2C14E,0 0 14px rgba(242,193,78,.45)}
-.sigs.cards .ex .art{filter:saturate(.85)}
+.mood.mute{position:relative;margin-left:6px}
+.mood.mute.muted::after{content:"";position:absolute;width:14px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
 .more-sigs{margin-top:8px}
 .more-sigs summary{display:inline-flex;align-items:center;gap:6px;list-style:none;cursor:pointer;padding:6px 10px;border:1px solid var(--paper);font-size:10px;color:var(--grey-text)}
 .more-sigs summary::-webkit-details-marker{display:none}
 .more-sigs[open] summary .i{transform:rotate(90deg)}
 .more-sigs .sigs{margin-top:8px}
-.sigs.cards{align-items:start}
 html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 1px var(--grey)}
