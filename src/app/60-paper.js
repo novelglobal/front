@@ -75,7 +75,7 @@ const relWord = n => n.t === 'biz' ? (ROLES[(n.h || [])[0]] || ROLES[n.role] || 
 const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a ? im.a.replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, '') : '', im.oid ? `iNaturalist ${im.oid}` : 'iNaturalist'].filter(Boolean).join(' · ') : im.k === 'own' ? im.a || 'Photograph by the issuer' : ''; };
 /* two styles for every slip, on screen, on paper and at the printer: the paper slip, and the terminal (prefs.slip 'tty'):
    the life's photograph as its hero, then its code, its name and the four lines, in VT323, and nothing more */
-const isTty = () => prefs.slip === 'tty';
+const isTty = () => (prefs.slip ? prefs.slip === 'tty' : darkNow());   /* by night the terminal, unless a style was chosen */
 /* the terminal's hero: the slip's own photograph, else an open one of the same kind of life seen here */
 /* an open photograph of the same kind of life seen here, with its credit: for a slip with none of its own, such as the examples */
 const KPH = store.get('da.kph.v1', {});   /* a kind's photograph, asked of iNaturalist by name when no sighting here has one */

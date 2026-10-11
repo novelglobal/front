@@ -63,10 +63,17 @@ function seeIt(id, on) {
   const el = document.querySelector(tkSel(id)); if (el) { el.classList.toggle('seen', on); el.querySelector('.tk-see').setAttribute('aria-pressed', String(on)); }
   life.redraw(); life.moved();
 }
+/* how fresh a station's data is, for its hover: how many are in the radar, the newest, when the list was last checked */
+function freshOf(id) {
+  if (id === 'life') { const its = life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist); const newest = Math.max(0, ...its.map(it => stampOf(it.o) || 0)); return [`${its.length}`, newest ? `NEWEST ${ago(newest)}` : '', S.lastSignal ? `CHECKED ${ago(S.lastSignal)}` : ''].filter(Boolean).join(' · '); }
+  if (id === 'places') return `${bizNear(S.scan.lat, S.scan.lng, S.scan.r).length}`;
+  const x = (SHARED.list || []).find(y => 'p:' + y.code === id); return x ? `${(JSON.parse(x.body || '{}').cells || []).length} · ${ago(x.at)}` : '';
+}
 function tracksSection() {
   const list = trackList(); for (const t of list) TRK.voices[t.id] = trackVoices(t.id);
   const row = t => { const on = !!TRK.on[t.id], see = seeTrack(t.id);
-    return `<li class="tk${on ? ' on' : ''}${see ? ' seen' : ''}" data-tk="${esc(t.id)}"${t.tip ? ` data-tip="${esc(t.tip)}"` : ''}>`
+    const tip = [t.tip, freshOf(t.id)].filter(Boolean).join(' · ');
+    return `<li class="tk${on ? ' on' : ''}${see ? ' seen' : ''}" data-tk="${esc(t.id)}"${tip ? ` data-tip="${esc(tip)}"` : ''}>`
       + `<button type="button" class="tk-see" aria-pressed="${see}" aria-label="On the map"${t.id === 'life' && CFG.lifeLock ? ' disabled' : ''}><i></i></button>`
       + `<span class="vox">${voxHTML(t.id)}</span>`
       + `<input type="range" class="tk-lvl" min="0" max="100" step="1" value="${Math.round(lvlOf(t.id) * 100)}" aria-label="Level" style="--v:${Math.round(lvlOf(t.id) * 100)}%">`
