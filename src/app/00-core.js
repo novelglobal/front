@@ -103,7 +103,7 @@ const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: redu
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
 const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, droneG = null;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   function ready() {
     if (!prefs.sound || !active()) return null;
@@ -207,37 +207,46 @@ const snd = (() => {
   };
   const GAIN = { whistle: 0.06, box: 0.05, kalimba: 0.09, harp: 0.05, boop: 0.08, hoot: 0.07, chime: 0.035, bonk: 0.09, people: 0.3 };
   const SOUND_W = { swish: 'A SLEEVE', taps: 'TWO TAPS', cup: 'A CUP', pencil: 'A PENCIL', hum: 'A HUM', hums: 'TWO HUMS', breath: 'A BREATH' };
-  /* ───────── the stations: no music, no grid; resonances from the ground, at chance moments, on one harmonic series ───────── */
+  /* ───────── noise, for grit and drops ───────── */
   /* a short burst of filtered noise: drops, breath, grit */
   function burst(t, dur, type, f, q, v, pan, room) { const s0 = ctx.createBufferSource(); s0.buffer = noise(dur + 0.02); const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s0.connect(fl); fl.connect(g); out(g, pan, room); s0.start(t); s0.stop(t + dur + 0.03); }
-  /* FOG: a bowed resonance. A partial and its octave a hair apart, so they beat slowly; breath through a narrow band at the pitch */
-  function bow(f, t, dur, v, pan) {
-    const end = t + dur + 2.4; const e = ctx.createGain();
-    for (const [m, g, dt] of [[1, 1, 0], [2.003, 0.32, 3], [3.01, 0.12, -4]]) { const o = osc('sine', f * m, t, end); o.detune.value = dt; vib(o, t, end, 0.2 + Math.random() * 0.3, f * 0.002, 0.8); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
-    const nb = ctx.createBufferSource(); nb.buffer = noise(Math.min(6, dur + 2.4)); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 18; const ng = ctx.createGain(); ng.gain.value = 0.35; nb.connect(bp); bp.connect(ng); ng.connect(e); nb.start(t); nb.stop(end);
-    const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + Math.min(2.2, dur * 0.45)); a.gain.setValueAtTime(Math.max(0.0002, v), t + dur); a.gain.exponentialRampToValueAtTime(0.0001, end);
-    out(a, pan, 1.7);
+  /* ───────── the radar is the instrument: a cell sounds when the sweep reaches it, in the mood's texture. Not chimes ─────────
+     FOG: a breath of a voice, a vowel that bends down into the hall. RAIN: a crushed glitch that stutters. WEIGHT: a thud that
+     sinks. New is brighter; danger bends further, or stutters longer, or doubles a semitone off */
+  const VOW = [[730, 1090], [570, 840], [300, 870], [440, 1020], [270, 2290], [660, 1700]];
+  function breath(f, t, v, pan, bright, danger, vi) {
+    const L = 0.45 + Math.random() * 0.6; const o = osc('sawtooth', f, t, t + L + 0.1); o.frequency.exponentialRampToValueAtTime(f * (danger ? 0.84 : 0.96), t + L);
+    const [f1, f2] = VOW[vi % VOW.length]; const e = ctx.createGain();
+    for (const [ff, g] of [[f1, 1], [f2, 0.45]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = 7; const gg = ctx.createGain(); gg.gain.value = g; o.connect(bp); bp.connect(gg); gg.connect(e); }
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 3400 : 1300; e.connect(lp);
+    const a = ctx.createGain(); lp.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.2), t + 0.05); a.gain.exponentialRampToValueAtTime(0.0001, t + L); out(a, pan, 2.4);
   }
-  /* RAIN: a glint. A short ping whose overtone is not quite in tune with it, and a drop of noise under it */
-  function glint(f, t, v, pan) {
-    const L = 0.08 + Math.random() * 0.4; const o = osc('sine', f, t, t + L + 0.05); const m = osc('sine', f * 1.414, t, t + L + 0.05); const mg = ctx.createGain(); mg.gain.setValueAtTime(f * 0.9, t); mg.gain.exponentialRampToValueAtTime(1, t + L); m.connect(mg); mg.connect(o.frequency);
-    const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + 0.003); e.gain.exponentialRampToValueAtTime(0.0001, t + L); out(e, pan, 1.3);
-    if (Math.random() < 0.5) burst(t + Math.random() * 0.05, 0.02 + Math.random() * 0.04, 'highpass', 3000 + Math.random() * 4000, 0.8, v * 0.5, -pan, 0.6);
+  let crushCurve = null;
+  const crusher = () => { if (!crushCurve) { crushCurve = new Float32Array(1024); for (let i = 0; i < 1024; i++) crushCurve[i] = Math.round((i / 512 - 1) * 4) / 4; } const w = ctx.createWaveShaper(); w.curve = crushCurve; return w; };
+  function glitch(f, t, v, pan, bright, danger) {
+    const n = 2 + Math.floor(Math.random() * 3) + (danger ? 3 : 0); let tt = t;
+    for (let i = 0; i < n; i++) {
+      const L = 0.02 + Math.random() * 0.05; const o = osc(i % 2 ? 'square' : 'sawtooth', f * (i % 3 === 2 ? 2 : 1) * (1 + (Math.random() - 0.5) * 0.03), tt, tt + L + 0.02);
+      const w = crusher(); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = (bright ? 2800 : 1500) * (0.6 + Math.random() * 0.8); bp.Q.value = 3;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * Math.pow(0.72, i)), tt + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, tt + L);
+      o.connect(w); w.connect(bp); bp.connect(g); out(g, clamp(pan + (Math.random() - 0.5) * 0.5, -1, 1), 1.1); tt += L + Math.random() * 0.07;
+    }
+    burst(t, 0.012, 'highpass', 5200, 0.8, v * 0.5, -pan, 0.4);
   }
-  /* WEIGHT: a low swell, a sine under the series with a rumble of noise closed in a low filter */
-  function swell(f, t, dur, v, pan) {
-    const end = t + dur + 3; const o = osc('sine', f, t, end); vib(o, t, end, 0.08, f * 0.01, 0); const e = ctx.createGain(); o.connect(e);
-    const nb = ctx.createBufferSource(); nb.buffer = noise(Math.min(7, dur + 3)); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 4; const ng = ctx.createGain(); ng.gain.value = 0.6; nb.connect(lp); lp.connect(ng); ng.connect(e); nb.start(t); nb.stop(end);
-    const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + dur * 0.6); a.gain.exponentialRampToValueAtTime(0.0001, end); out(a, pan, 0.9);
+  function thud(f, t, v, pan, bright, danger) {
+    for (const m of danger ? [1, 1.06] : [1]) { const o = osc('sine', f * 2 * m, t, t + 1.3); o.frequency.exponentialRampToValueAtTime(f / 2 * m, t + 0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 900 : 380; const e = ctx.createGain(); o.connect(lp); lp.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.4), t + 0.012); e.gain.exponentialRampToValueAtTime(0.0001, t + 1.2); out(e, pan, 1.7); }
+    burst(t, 0.2, 'lowpass', 260, 1, v * 0.9, pan, 1.3);
   }
-  function bell(f, t, v, pan) { const e = ctx.createGain(); for (const [m, gg, dec] of [[1, 1, 3.2], [2.76, 0.2, 1.4], [5.4, 0.06, 0.6]]) { const o = osc('sine', f * m * wob(), t, t + dec); const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * gg), t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); o.connect(g); g.connect(e); } out(e, pan, 1.6); }
-  /* the drone under the radar: two low reeds and a sine, closed in a slow filter, swelling as the sweep's trail crosses life */
+  /* the drone: only where the trail crosses life, and only while nature is on. Three layers the mood sets: low reeds closed in a
+     filter, a hiss like rain far off, a sub. Over empty ground, nothing */
+  let dr = null;
   function droneOn() {
-    if (droneG) return; droneG = ctx.createGain(); droneG.gain.value = 0;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240; lp.Q.value = 2;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.045; const lg = ctx.createGain(); lg.gain.value = 120; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
-    for (const [f, ty, g] of [[73.42, 'sawtooth', 0.35], [110.0, 'sawtooth', 0.22], [55.0, 'sine', 0.6]]) { const o = ctx.createOscillator(); o.type = ty; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 9; const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(lp); o.start(); }
-    lp.connect(droneG); out(droneG, 0, 1.2);
+    if (dr) return; dr = { m: ctx.createGain(), lp: ctx.createBiquadFilter(), hiss: ctx.createGain(), sub: ctx.createGain() }; dr.m.gain.value = 0;
+    dr.lp.type = 'lowpass'; dr.lp.frequency.value = 260; dr.lp.Q.value = 3;
+    for (const [f, ty, g] of [[55, 'sawtooth', 0.35], [82.5, 'sawtooth', 0.22]]) { const o = ctx.createOscillator(); o.type = ty; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 12; const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(dr.lp); o.start(); }
+    const so = ctx.createOscillator(); so.frequency.value = 27.5; so.connect(dr.sub); dr.sub.gain.value = 0.4; so.start(); dr.sub.connect(dr.m);
+    const nb = ctx.createBufferSource(); nb.buffer = noise(2); nb.loop = true; const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.7; nb.connect(bp); bp.connect(dr.hiss); dr.hiss.gain.value = 0.05; nb.start(); dr.hiss.connect(dr.m);
+    dr.lp.connect(dr.m); out(dr.m, 0, 1.4);
   }
   /* what a knot sounds like, as a word and notes: for its sound, and for the little score on its card */
   function describe(spec = {}) {
@@ -274,27 +283,21 @@ const snd = (() => {
     song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = ctx.currentTime + 0.06; for (const n of seq.slice(0, 180)) { if (n.spec) knotAt(n.spec, n.f, t0 + n.t, n.v || 0.8, n.pan || 0); else play(string(n.f, n.dur || 2, n.dc || 0.997), n.g || 0.09, t0 - ctx.currentTime + n.t, n.pan || 0, n.cut || 3600); } },
     /* a constellation born: four glass notes, rising */
     born() { buzz([6, 30, 6]); if (!ready()) return; const t = ctx.currentTime; [0, 7, 12, 19].forEach((s2, i) => INST.chime(semi(523, s2), t + i * 0.14, 0.2, 0.025, (i - 1.5) * 0.3)); },
-    /* a cell found by the sweep: a soft bell, low near the centre and higher towards the rim, in a dark mode; a plant rings
-       an octave up, glass; an animal in danger rings with its neighbour a semitone off, strange, so it is heard */
-    blip(k = 0.5, d = 0.5, soft = false) {
-      if (!ready()) return; const now = performance.now(); if (now - lastBlip < 110) return; lastBlip = now;
-      const H = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16]; const i = Math.min(H.length - 1, Math.floor(clamp(d, 0, 0.999) * H.length));
-      const f = 55 * H[i] * (k <= 0.15 ? 2 : 1); const t = ctx.currentTime + 0.01; const pan = (Math.random() - 0.5) * 0.8;
-      const v = soft ? 0.009 : 0.022; bell(f, t, v, pan); if (k >= 0.85) bell(f * Math.pow(2, 1 / 12), t + 0.04, v * 0.55, -pan);
+    /* a cell reached by the sweep. spec: { g } a life, { fam } a place (its own small real sound). opt: v, pan, mood, bright
+       (new), danger, vi (which voice) */
+    ping(spec, f, opt = {}) {
+      if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
+      const t = ctx.currentTime + 0.01; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
+      if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'rain') glitch(f, t, v, pan, opt.bright, opt.danger); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
+      return true;
     },
-    /* the drone: 0 to 1, how much life the sweep's trail is crossing now */
-    drone(level) { if (!ready()) return; droneOn(); droneG.gain.setTargetAtTime(0.004 + clamp(level, 0, 1) * 0.03, ctx.currentTime, 0.9); },
-    droneOff() { if (droneG && ctx) droneG.gain.setTargetAtTime(0, ctx.currentTime, 0.4); },
-    /* a cell on a station sounds, once: a life as the mood's texture (FOG bowed, RAIN a glint, WEIGHT a low swell) at its
-       place in the series; a place in its own small real sound; a cell people added as a bell. opt: dur, v, pan, mood */
-    cell(spec, f, at = 0, opt = {}) {
-      if (!ready()) return; const t = ctx.currentTime + Math.max(0, at); const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
-      if (opt.bell) { bell(f, t, v * 0.5, pan); return; }
-      if (spec.fam) { knotAt(spec, f, t, v * 4, pan); return; }
-      if (md === 'rain') glint(f * 2, t, v * 0.7, pan); else if (md === 'weight') swell(f / 2, t, opt.dur || 4, v * 1.4, pan); else bow(f, t, opt.dur || 4, v * 0.8, pan);
+    /* the drone: 0 to 1, how much life the trail is crossing now; and the mood it is in */
+    drone(level, md = 'fog') {
+      if (!ready()) return; droneOn(); const now = ctx.currentTime; const L = clamp(level, 0, 1);
+      dr.m.gain.setTargetAtTime(L * 0.045, now, L ? 0.7 : 0.4); dr.lp.frequency.setTargetAtTime(md === 'weight' ? 120 : md === 'rain' ? 520 : 280, now, 1.2);
+      dr.hiss.gain.setTargetAtTime(md === 'rain' ? 0.55 : 0.04, now, 1.2); dr.sub.gain.setTargetAtTime(md === 'weight' ? 0.9 : 0.25, now, 1.2);
     },
-    /* a connection sounding: the knots of a string figure, together, rolled slowly, each at its place in the series */
-    tie(fs, at = 0, v = 0.03) { if (!ready()) return; const t = ctx.currentTime + at; fs.forEach((f, i) => bell(f, t + i * (0.18 + Math.random() * 0.2), v, (i / Math.max(1, fs.length - 1) - 0.5) * 1.2)); },
+    droneOff() { if (dr && ctx) dr.m.gain.setTargetAtTime(0, ctx.currentTime, 0.3); },
     /* a thermal head stepping: filtered noise in short strokes */
     printer(ms = 1200) {
       buzz([18, 36, 18, 36, 18, 36, 40]); if (!ready()) return;

@@ -153,12 +153,15 @@ const life = (() => {
       if (!it.inS) continue;
       let a = it.sb; if (a < b0) a += 360; if (!(a > b0 && a <= b1)) continue;
       const first = !seen.has(it.o.id); seen.set(it.o.id, now);
-      if (!it.o.hist && it.b.tone !== 'cold' && (first || shown(it))) snd.blip(it.alarm || it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45, it.sd / S.scan.r, !first);
+      if (!it.o.hist && it.b.tone !== 'cold' && shown(it) && pingCell(it, first)) pings.push({ lat: it.lat, lng: it.lng, t: now, c: it.o.pack ? '12,203,189' : it.alarm ? '232,69,60' : '255,255,255' });
     }
+    /* the places' station: each place the sweep crosses sounds in its own small sound */
+    if (TRK.on.places) for (const p of placesIn()) { if (p.sb == null) { p.sb = bearing(S.scan.lat, S.scan.lng, p.lat, p.lng); } let a = p.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingPlace(p)) pings.push({ lat: p.lat, lng: p.lng, t: now, c: '140,116,105' }); }
+    if (pings.length > 80) pings = pings.slice(-80);
     /* the trail: as it crosses more life, the drone under it swells */
-    if (now - droneT > 300) { droneT = now; let n = 0; for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n / 10); }
+    if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }
   }
-  let droneT = 0;
+  let droneT = 0, pings = [];
   let scanSave = 0, fiveT = 0;
   function setScan(lat, lng, r, save) {
     if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
@@ -193,7 +196,7 @@ const life = (() => {
   function replay() {
     if (!prefs.sound || S.mode === 'place') return 0;
     const found = items.filter(it => it.inS && seen.has(it.o.id) && shown(it) && !it.o.hist && it.b.tone !== 'cold').sort((a, b) => ((a.sb - sweepB + 360) % 360) - ((b.sb - sweepB + 360) % 360)).slice(0, 16);
-    found.forEach((it, i) => setTimeout(() => snd.blip(it.alarm || it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45, it.sd / S.scan.r), 80 + i * 130));
+    found.forEach((it, i) => setTimeout(() => { if (pingCell(it, true)) pings.push({ lat: it.lat, lng: it.lng, t: performance.now(), c: '255,255,255' }); }, 80 + i * 130));
     return found.length;
   }
   /* the radar glides to a new place: the hand keeps sweeping as it goes */
@@ -402,7 +405,7 @@ const life = (() => {
   let placesK = '', placesL = [];
   function placesIn() {
     const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length}`; if (k === placesK) return placesL;
-    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz' }));
+    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
     return placesL;
   }
   function places(ctx) {
@@ -452,6 +455,8 @@ const life = (() => {
     if (!cellOpen && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
     places(ctx); signals(ctx, now, still);
+    /* where something sounded: a ring opening from it */
+    for (const p of pings) { const q = (now - p.t) / 750; if (q < 0 || q > 1) continue; const pt = map.project([p.lng, p.lat]); ctx.save(); ctx.beginPath(); ctx.arc(pt.x, pt.y, 5 + q * 20, 0, TAU); ctx.strokeStyle = `rgba(${p.c},${(0.75 * (1 - q)).toFixed(3)})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); fxDirty = true; }
     for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
     for (const it of items) {
       if (it.binned || !shown(it) || off(it.x, it.y)) continue;

@@ -70,7 +70,7 @@ if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0)
    touch itself. Then the radar plays what it has found so far, and goes on as it sweeps */
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown'];
 /* and the nature station goes on air, unless it was muted */
-const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); setTimeout(() => { life.replay(); if (!prefs.mute) setTrack('life', true); }, 60); };
+const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); setTimeout(() => { if (!prefs.mute) setTrack('life', true); life.replay(); }, 60); };
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
 if (!pendingHash) life.findStart();
