@@ -162,7 +162,7 @@ if (run('smoke')) try {
   check('icons are half size from afar, full size close in', sz.far <= sz.near * 0.6, JSON.stringify(sz));
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
-  const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: (document.querySelector('#view').innerText.match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
+  const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: ([...document.querySelectorAll('#view > section:not(#sec-five)')].map(x => x.innerText).join(' ').match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
   check('NOW: the outlook, the five, the gigs, in labels and no sentences', now.open && now.five === 5 && now.months === 12 && !!now.count && now.gigs === 2 && now.sentences === 0, JSON.stringify(now));
   const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const ks = [...band.querySelectorAll('.ms-k span')]; const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
     const deg = ['--deg0', '--deg1', '--deg2', '--deg3', '--deg4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim().toLowerCase());
@@ -176,7 +176,7 @@ if (run('smoke')) try {
   check('the five in greatest need, named, with what they face, the focus under the outlook', nw.five === 5 && /five in greatest need/i.test(nw.label) && nw.names.every(Boolean) && nw.chips && nw.pics === 5, JSON.stringify({ five: nw.five, label: nw.label, names: nw.names }));
   check('no El Niño label, no watch chip, no stage names in the outlook', !/EL NI|WATCH|EARLY HEAT|DRY FLOWERING|HOT NIGHTS|DROUGHT/.test(nw.words), nw.words.replace(/\s+/g, ' '));
   const hd = await page.evaluate(async () => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id).filter(Boolean); const d4 = [...document.querySelectorAll('#sec-heat .mo.d4 .eq-c i.l')]; const h = document.querySelector('#sec-heat .b-head'); const cd = document.querySelector('#sec-heat .b-count .cd');
-    const c0 = cd ? cd.textContent : ''; await new Promise(r => setTimeout(r, 1300)); const c1 = cd ? document.querySelector('#sec-heat .b-count .cd').textContent : '';
+    const c0 = cd ? cd.textContent : ''; await new Promise(r => setTimeout(r, 2300)); const c1 = cd ? document.querySelector('#sec-heat .b-count .cd').textContent : '';
     return { head: h.textContent, font: getComputedStyle(h).fontFamily, oneLine: h.getBoundingClientRect().height < parseFloat(getComputedStyle(h).fontSize) * 1.3, fits: h.scrollWidth <= h.parentElement.clientWidth, sun: !!document.querySelector('#sec-heat .b-count .sun.d4 use[href="#g-heat"]'), c0, c1, tip: (document.querySelector('#sec-heat .b-count') || {}).dataset ? document.querySelector('#sec-heat .b-count').dataset.tip : '',
       ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], d4op: [...new Set(d4.map(i => getComputedStyle(i.parentElement).opacity))], mark: (() => { const pk = document.querySelector('#sec-heat .mo.d4 .eq-c i.pk'); return pk ? getComputedStyle(pk, '::after').content : ''; })(), tel: document.querySelectorAll('#view a[href^="tel:"]').length, praxis: !!document.querySelector('#sec-praxis') }; });
   check('NOW leads with DIRECT ACTION RADIO on one line, in the terminal type', hd.head === 'DIRECT ACTION RADIO' && /VT323/.test(hd.font) && hd.oneLine && hd.fits, JSON.stringify(hd));
@@ -188,7 +188,7 @@ if (run('smoke')) try {
   check('Stations sit above the constellations: one word; nature always on the map and on air from the first touch; the places not', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.locked && tk.playing.slice(0, 2).join() === 'true,false' && tk.life >= 2 && tk.places >= 1 && tk.traces >= 2, JSON.stringify(tk));
   /* nature can be muted, and stays muted; it cannot be taken off the map until it is unlocked on the approval page */
   const lives = () => page.evaluate(() => { const da = window.__da; da.life.reveal(); return da.life.items.filter(it => da.life.shown(it) && !it.o.story && !it.o.pack && !it.o.partner).length; });
-  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.cell; s.cell = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(4200);
+  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.cell; s.cell = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(6000);
   const ta = await page.evaluate(() => ({ n: window.__knots.length, lives: window.__knots.length > 0 && window.__knots.every(k => k.g) }));
   await page.click('#sec-tracks [data-tk="life"] .tk-play'); await sleep(300);
   const mu = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').getAttribute('aria-pressed'), muted: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').classList.contains('muted'), kept: JSON.parse(localStorage.getItem('da.prefs')).mute }));
@@ -217,6 +217,8 @@ if (run('smoke')) try {
   await tab(page, 1); await sleep(600);
   const st = await page.evaluate(() => { const rows = [...document.querySelectorAll('#sec-signals .sig-row')]; return { rows: rows.length, ex: rows.filter(r => r.classList.contains('ex')).length, codes: rows.map(r => r.querySelector('b').textContent), groups: document.querySelectorAll('#sec-groups .row').length, docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
   check('STORIES: the signals board with twenty examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 20 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  const bd = await page.evaluate(() => ({ top: document.querySelectorAll('#sec-signals > .sigs.cards > li').length, more: document.querySelectorAll('#sec-signals .more-sigs .sig-row').length, art: [...document.querySelectorAll('#sec-signals .sig-row')].every(r => r.querySelector('.art')), shut: !document.querySelector('#sec-signals .more-sigs').open }));
+  check('the board shows eight signals as cards, each with its photograph or mark; the rest fold away', bd.top === 8 && bd.more === 12 && bd.art && bd.shut, JSON.stringify(bd));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
   check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-stories.png');
@@ -664,7 +666,7 @@ if (run('share')) try {
   /* another device: the board shows it to everyone */
   const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'share-2');
   await p2.goto('https://oan.test/index.html'); await ready(p2); await sleep(1500); await tab(p2, 1); await sleep(600);
-  const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-signals .sig-row')].find(x => x.querySelector('b').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || {}).textContent : '' }; }, s0.code);
+  const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-signals .sig-row')].find(x => x.querySelector('b').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || { getAttribute: () => '' }).getAttribute('aria-label') || '' : '' }; }, s0.code);
   check('on another device it stands on the board, for everyone', b2.row && b2.sh && /SHOWN/.test(b2.st), JSON.stringify(b2));
   await ctx2.close();
   /* a third device, from the code printed on the slip */

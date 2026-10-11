@@ -59,6 +59,11 @@ try {
   const r2 = await call(`/api/receipts/${s1.json.id}`);
   check('and once printed, the sender sees it printed', r2.json.job.status === 'printed' && !!r2.json.job.done, JSON.stringify(r2.json));
 
+  /* held up on the approval page: starred for everyone, with how often it has printed */
+  await call(`/api/admin/stories/${s1.json.id}`, { method: 'POST', key: KEY, body: { action: 'star' } });
+  const sp = (await call('/api/stories')).json.stories.find(x => x.code === 'DA-7K2Q');
+  check('a story starred on the approval page comes to everyone starred, with its prints counted', sp && sp.star === true && sp.printed === 1, JSON.stringify(sp && { star: sp.star, printed: sp.printed }));
+
   /* refused: never shown, never printed */
   const s2 = await call('/api/stories', { method: 'POST', body: story('DA-8M3R', { dest: 'pickles', escpos: 'G0A=' }) });
   await call(`/api/admin/stories/${s2.json.id}`, { method: 'POST', key: KEY, body: { action: 'refuse' } });

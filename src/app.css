@@ -25,7 +25,7 @@ html.night{color-scheme:dark;--white:#111916;--paper:#1B2521;--grey:#34413C;--gr
 html.night .maplibregl-canvas{filter:brightness(.52) saturate(.72) contrast(1.06)}
 html.night .band{--slip:#1B2521;--ink:#E3E9E7;box-shadow:inset 0 0 0 1px var(--grey)}
 html.night .eq-c i.t4,html.night .b-count .sun.d4{box-shadow:inset 0 0 0 1px rgba(227,233,231,.32)}
-html.night .eq-c i{background:rgba(227,233,231,.07)}
+html.night .eq-c i:not(.l){background:rgba(227,233,231,.07)}
 html.night .mo.d4 .eq-c i.pk::after{color:#E3E9E7}
 html.night .s-acts .tty-b[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--white)}
 /* a slip, the W.I.S.H. form among them, stays paper at night, its fields as they are by day */
@@ -283,6 +283,7 @@ details.sec[open]>summary .lab::after{content:" –"}
 .h-pic img,.h-pic .hero-cv{display:block;width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--paper)}
 .h-pic .i{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;padding:2px;border-radius:50%;background:var(--white);color:var(--ink);box-shadow:0 0 0 1px #E2E0D8}
 .hero-row .nm{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;width:100%}
+.hero-row .why{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:9px;line-height:1.25;color:var(--grey-text);text-align:center}
 .hero-row b{font-weight:600;font-size:10.5px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .hero-row .chips{justify-content:center;gap:2px}
 .hero-row .chips i{font-size:8px;padding:2px 3px}
@@ -886,3 +887,23 @@ body.nosignal .rail::after{content:"";position:absolute;left:50%;bottom:-14px;wi
 .tribes-s .patch{width:9px;height:9px;flex:none}
 /* the board is the page's first thing: its heading carries more weight */
 .board .lab-row .lab{font-size:11.5px;color:var(--navy)}
+
+/* signals as cards: the photograph or the mark large, the code and the life small; printed most: a gold line; held up: gold, doubled */
+.sigs.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sigs.cards .sig-row{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:3px;width:100%;padding:4px 4px 6px;background:var(--white);border:1px solid var(--paper);border-radius:6px;text-align:left;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.sigs.cards .sig-row:hover{border-color:var(--navy)}
+.sigs.cards .art{display:grid;place-items:center;width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:4px;background:var(--paper)}
+.sigs.cards .art.mark .i{width:46%;height:46%;color:var(--clay)}
+.sigs.cards b{font-size:8.5px;letter-spacing:.06em;color:var(--grey-text)}
+.sigs.cards .nm{font-size:10px;font-weight:600;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sigs.cards .st{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 2px var(--white)}
+.sigs.cards .t1{border-color:#F2C14E}
+.sigs.cards .t2{border-color:#F2C14E;box-shadow:0 0 0 2px #F2C14E,0 0 14px rgba(242,193,78,.45)}
+.sigs.cards .ex .art{filter:saturate(.85)}
+.more-sigs{margin-top:8px}
+.more-sigs summary{display:inline-flex;align-items:center;gap:6px;list-style:none;cursor:pointer;padding:6px 10px;border:1px solid var(--paper);font-size:10px;color:var(--grey-text)}
+.more-sigs summary::-webkit-details-marker{display:none}
+.more-sigs[open] summary .i{transform:rotate(90deg)}
+.more-sigs .sigs{margin-top:8px}
+.sigs.cards{align-items:start}
+html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 1px var(--grey)}
