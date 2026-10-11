@@ -115,6 +115,15 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **Hierarchy:** each kind its own shade of its group's colour; rare (new here, or seen once) with a gold ring; legendary (threatened, or one of the five) with two and a spark. A need for help is larger and rings orange. Circular, community, creative and third places carry a halo; brands and services are quieter.
 - **Fixes:** night keeps the W.I.S.H. form paper; a slip keeps its photograph in either style; the radar's centre is clear glass; on a phone the action is a small pill at the bottom right and the page folds to its grip at any stage; bounded caches so a long session on a phone does not run out of memory.
 
+## Stage 3f — sound without music, the five here, the board as cards
+
+*Built, on staging.*
+
+- **Stations:** no music, no grid, no beat, no chords. Every kind and every place takes a partial of one harmonic series over a low A, so whatever meets agrees; when it sounds is chance, denser with more in the radar. FOG: long bowed resonances; RAIN: glints and drops; WEIGHT: low swells. Places sound in their own small real sounds. String figures near the radar sound their knots together, rolled.
+- **The five** are the five in greatest need inside the radar, each with why, and follow the radar.
+- **STORIES:** eight signals as cards (the photograph or the mark, the code, the life); the rest fold away. First, the four printed most or starred on the approval page (★ STAR on SHOWN); then the newest.
+- **Night** keeps the equaliser's colours.
+
 ## Stage 4 — live data through Cloudflare
 
 Every visitor shares one copy of the data, instead of each browser asking iNaturalist and OpenStreetMap.

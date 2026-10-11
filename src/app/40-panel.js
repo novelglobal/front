@@ -149,6 +149,21 @@ function bindOutlook() {
   st.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); pickMonth(S.mo + d); const b = $(`#sec-heat [data-mo="${S.mo}"]`); if (b) b.focus(); });
 }
 const heroesRanked = () => [...S.heroes].map(o => ({ o, deg: degOf(o), w: whenOf(o) })).sort((a, b) => b.deg - a.deg || (b.o.n - a.o.n));
+/* the five in greatest need where the radar is: the lives inside it ranked by danger in the months ahead, whether they are
+   threatened, in trouble now, and how hard heat and dry are on their kind; one of each kind; the five chosen fill any gap */
+function fiveHere() {
+  const best = new Map();
+  for (const it of life.items) {
+    const o = it.o; if (!it.inS || o.hist || o.ob || o.hum || o.story || o.pack || isCold(o) || it.b.tone === 'hist') continue;
+    const fe = fieldOf(o) || {}; const deg = degOf(o);
+    const sc = deg * 10 + (o.tx && o.tx.th ? 9 : 0) + (it.alarm ? 25 : 0) + (fe.heat || 0) * 1.5 + (fe.water || 0) * 1.2 + (o.hero ? 4 : 0);
+    const k = (o.tx && (o.tx.id || o.tx.n)) || o.id; const was = best.get(k); if (!was || sc > was.sc) best.set(k, { o, deg, sc, w: whenOf(o) });
+  }
+  const here = [...best.values()].sort((a, b) => b.sc - a.sc).slice(0, 5);
+  for (const h of heroesRanked()) { if (here.length >= 5) break; if (!here.some(x => (x.o.tx || {}).n === (h.o.tx || {}).n)) here.push(h); }
+  return here;
+}
+const whyOf = (o, w) => (w && w.why) || threatOf(o) || (o.heroOf && o.heroOf.why) || '';
 let heroRaf = 0;
 function stopHeroes() { cancelAnimationFrame(heroRaf); heroRaf = 0; }
 function startHeroes() {
@@ -193,7 +208,7 @@ function viewNow() {
       <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${heroesRanked().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(o.heroOf.why || o.heroOf.cn)}">${heroPic(o)}<span class="nm"><b>${esc(o.heroOf.cn)}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><small class="why">${esc(whyOf(o, w))}</small><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
     + tracksSection()
     + consSection()
@@ -225,16 +240,27 @@ viewEl.addEventListener('click', e => {
 /* ───────── STORIES: the signals board, newest first ───────── */
 const THEMES = { heat: 'HEAT', water: 'WATER', pollinate: 'POLLINATORS', diversity: 'DIVERSITY', night: 'NIGHT', food: 'FOOD', circular: 'CIRCULAR', cats: 'CATS' };
 /* the board: every slip, this device's and the ones shown to everyone, each with where it has got to */
+/* a signal as a card: its photograph (its own, else its kind's) or its mark, large; its code, its life. Held up: gold */
+const sigArt = s => { const own = sigSrc(s, false); const ph = own || (kindPhoto(s) ? photoURL(kindPhoto(s).u, 'small') : ''); const p = s.pin || {};
+  return ph ? `<img class="art" src="${esc(ph)}" alt="" loading="lazy">` : `<span class="art mark">${glyphSVG(p.g || 'paw')}</span>`; };
+const printedOf = s => s.printed || (SENT[s.code] && SENT[s.code].job === 'printed' ? 1 : 0);
 const sigRow = s => {
-  const p = s.pin || {}; const kn = (s.edges || []).length; const st = sentWord(s); const last = linesOf(s).pop() || s.threat || '';
-  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}" data-sig="${esc(s.key)}"><img class="pg" src="${badgeImg({ tone: 'story', g: p.g || 'paw', carried: !s.ex }, 34)}" alt=""><span class="sg"><span class="sg-t"><b class="mono">${esc(s.code)}</b>${esc(last)}</span><small class="mono">${esc((p.cn || p.n || '').toUpperCase())} · ${esc(p.place || '')} · ${ago(s.at)}${kn ? ` · ${kn} ${icon('string', 'sm')}` : ''}${s.recv ? ' · RECEIVED' : ''}${s.ex ? ' · EX' : ''}</small>${st ? `<small class="mono st">${esc(st)}</small>` : ''}</span></button></li>`;
+  const p = s.pin || {}; const st = sentWord(s); const tier = s.star ? 2 : printedOf(s) ? 1 : 0;
+  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}" data-tip="${esc(linesOf(s).pop() || s.threat || '')}">${sigArt(s)}<b class="mono">${esc(s.code)}</b><span class="nm">${esc(p.cn || p.n || '')}</span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
 };
+/* the board's order, behind the scenes: the four printed most, or held up on the approval page; then the newest */
+function boardOrder(sigs) {
+  const score = s => (s.star ? 1000 : 0) + printedOf(s);
+  const top = [...sigs].filter(s => score(s) > 0).sort((a, b) => score(b) - score(a) || b.at - a.at).slice(0, 4);
+  return [...top, ...sigs.filter(s => !top.includes(s)).sort((a, b) => b.at - a.at)];
+}
 function viewStories() {
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
   return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
-      + `<ol class="sigs">${sigs.map(sigRow).join('')}</ol></section>`
+      + (() => { const all = boardOrder(sigs); const more = all.slice(8); return `<ol class="sigs cards">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<details class="more-sigs"><summary aria-label="More">${icon('next', 'sm')}<span class="mono">${more.length}</span></summary><ol class="sigs cards">${more.map(sigRow).join('')}</ol></details>` : ''); })()
+      + `</section>`
     + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`

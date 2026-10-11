@@ -159,7 +159,7 @@ const life = (() => {
     if (now - droneT > 300) { droneT = now; let n = 0; for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n / 10); }
   }
   let droneT = 0;
-  let scanSave = 0;
+  let scanSave = 0, fiveT = 0;
   function setScan(lat, lng, r, save) {
     if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
     const r0 = S.scan.r; if (r != null) S.scan.r = Math.round(clamp(r, SC.min, SC.max) / 10) * 10;
@@ -167,6 +167,8 @@ const life = (() => {
     /* a wider reach shows what it now holds at once, without waiting for the hand */
     if (S.scan.r > r0) revealAll(true);
     if (save) { clearTimeout(scanSave); scanSave = setTimeout(() => { prefs.scan = { lat: +S.scan.lat.toFixed(5), lng: +S.scan.lng.toFixed(5), r: S.scan.r }; savePrefs(); }, 250); }
+    /* NOW follows the radar: the five in greatest need are the ones inside it */
+    clearTimeout(fiveT); fiveT = setTimeout(() => { if (S.open && S.view === 0 && !S.mode) refreshPanel(); }, 900);
   }
   /* a first visit: the radar starts where the most kinds of animals have been seen lately, near where it was pinned,
      so the first sweep has lives to find. Once per device; after that the radar stays where it is left */

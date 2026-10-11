@@ -56,6 +56,7 @@
       body = [el('h3', { text: `${String(j.type || 'record').toUpperCase()} · ${j.text || (j.tx && j.tx.cn) || ''}` }), el('div', { class: 'meta', text: `${meta} · ${j.lat} ${j.lng}` }), j.who ? el('p', { class: 'note', text: '— ' + j.who }) : null];
     }
     const acts = el('div', { class: 'acts' },
+      x.status === 'shown' && x.kind === 'story' ? el('button', { type: 'button', class: x.star ? 'on' : '', text: x.star ? '★ STARRED' : '☆ STAR', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.star ? 'unstar' : 'star' }) }); show('shown'); } }) : null,
       x.status !== 'shown' ? el('button', { type: 'button', class: 'on', text: 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => act(x.id, 'delete', card) }));

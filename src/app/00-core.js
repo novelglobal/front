@@ -207,31 +207,30 @@ const snd = (() => {
   };
   const GAIN = { whistle: 0.06, box: 0.05, kalimba: 0.09, harp: 0.05, boop: 0.08, hoot: 0.07, chime: 0.035, bonk: 0.09, people: 0.3 };
   const SOUND_W = { swish: 'A SLEEVE', taps: 'TWO TAPS', cup: 'A CUP', pencil: 'A PENCIL', hum: 'A HUM', hums: 'TWO HUMS', breath: 'A BREATH' };
-  /* ───────── the stations: a choir of the lives, a kit of the places, bells for the cells people add ───────── */
-  /* a voice: two detuned reeds through a vowel's formants, slow to swell and slower to leave, mostly in the hall */
-  const VOWELS = { a: [[800, 1], [1150, 0.5], [2900, 0.18]], o: [[450, 1], [800, 0.45], [2830, 0.1]], u: [[325, 1], [700, 0.3], [2530, 0.07]], e: [[420, 1], [1650, 0.38], [2700, 0.16]], i: [[300, 0.9], [2250, 0.32], [3000, 0.22]] };
-  function voice(f, t, dur, vowel, v, pan) {
-    const end = t + dur + 1.6; const src = ctx.createGain(); src.gain.value = 0.5;
-    for (const dt of [-7, 6]) { const o = osc('sawtooth', f * wob(), t, end); o.detune.value = dt; vib(o, t, end, 4.4 + Math.random() * 0.8, f * 0.005, 0.3); o.connect(src); }
-    const e = ctx.createGain(); for (const [ff, gg] of VOWELS[vowel] || VOWELS.a) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = 8; const g = ctx.createGain(); g.gain.value = gg; src.connect(bp); bp.connect(g); g.connect(e); }
-    const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + Math.min(0.5, 0.12 + dur * 0.3)); a.gain.setValueAtTime(Math.max(0.0002, v), t + dur); a.gain.exponentialRampToValueAtTime(0.0001, end);
-    out(a, pan, 1.6);
-  }
-  /* a short burst of filtered noise: the body of every drum here */
+  /* ───────── the stations: no music, no grid; resonances from the ground, at chance moments, on one harmonic series ───────── */
+  /* a short burst of filtered noise: drops, breath, grit */
   function burst(t, dur, type, f, q, v, pan, room) { const s0 = ctx.createBufferSource(); s0.buffer = noise(dur + 0.02); const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s0.connect(fl); fl.connect(g); out(g, pan, room); s0.start(t); s0.stop(t + dur + 0.03); }
-  const KIT = {
-    kick(t, v, heavy) { const L = heavy ? 1.3 : 0.45; const o = osc('sine', 120, t, t + L + 0.1); o.frequency.exponentialRampToValueAtTime(heavy ? 36 : 44, t + 0.15); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; const e = ctx.createGain(); o.connect(lp); lp.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.005); e.gain.exponentialRampToValueAtTime(0.0001, t + L); out(e, 0, heavy ? 0.35 : 0.06); },
-    hat(t, v, pan) { burst(t, 0.045, 'highpass', 7200, 0.7, v * 0.35, pan, 0.2); },
-    rim(t, v) { burst(t, 0.11, 'bandpass', 1850, 2.2, v * 0.6, 0.1, 1.8); const o = osc('triangle', 370, t, t + 0.08); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v * 0.25, t + 0.002); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.06); out(e, 0.1, 1.4); },
-    shaker(t, v, pan) { burst(t, 0.08, 'bandpass', 5200, 1.2, v * 0.3, pan, 0.4); },
-    clap(t, v) { for (const dt of [0, 0.011, 0.024]) burst(t + dt, 0.09, 'bandpass', 1450, 1.5, v * 0.35, -0.15, 1.5); },
-    tick(t, v, pan) { const o = osc('sine', 2350 * wob(), t, t + 0.05); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v * 0.18, t + 0.002); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.04); out(e, pan, 0.8); },
-  };
-  const FAM_KIT = { brand: 'kick', service: 'hat', third: 'rim', network: 'shaker', circular: 'clap', artists: 'tick', people: 'shaker' };
-  const KIND_VOWEL = g => (['bird', 'parrot', 'raptor', 'waterbird'].includes(g) ? 'i' : ['bee', 'wasp', 'fly', 'butterfly', 'moth', 'bug', 'grasshopper', 'dragonfly', 'mantis'].includes(g) ? 'e' : ['frog', 'turtle', 'lizard', 'snake', 'aquatic'].includes(g) ? 'u' : ['plant', 'fungi'].includes(g) ? 'a' : 'o');
-  function bell(f, t, v, pan) { const e = ctx.createGain(); for (const [m, gg, dec] of [[1, 1, 2.4], [2.76, 0.22, 1.1], [5.4, 0.07, 0.5]]) { const o = osc('sine', f * m * wob(), t, t + dec); const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * gg), t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); o.connect(g); g.connect(e); } out(e, pan, 1.5); }
-  function crackle(t, span, v) { const r = Math.random; for (let i = 0; i < 7; i++) burst(t + r() * span, 0.004 + r() * 0.006, 'bandpass', 2500 + r() * 3000, 1.5, v * (0.4 + r()), r() * 1.4 - 0.7, 0.1); }
-  function sub(f, t, dur, v) { const o = osc('sine', f, t, t + dur + 0.4); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.08); e.gain.setValueAtTime(v, t + dur * 0.7); e.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.3); out(e, 0, 0.05); }
+  /* FOG: a bowed resonance. A partial and its octave a hair apart, so they beat slowly; breath through a narrow band at the pitch */
+  function bow(f, t, dur, v, pan) {
+    const end = t + dur + 2.4; const e = ctx.createGain();
+    for (const [m, g, dt] of [[1, 1, 0], [2.003, 0.32, 3], [3.01, 0.12, -4]]) { const o = osc('sine', f * m, t, end); o.detune.value = dt; vib(o, t, end, 0.2 + Math.random() * 0.3, f * 0.002, 0.8); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
+    const nb = ctx.createBufferSource(); nb.buffer = noise(Math.min(6, dur + 2.4)); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 18; const ng = ctx.createGain(); ng.gain.value = 0.35; nb.connect(bp); bp.connect(ng); ng.connect(e); nb.start(t); nb.stop(end);
+    const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + Math.min(2.2, dur * 0.45)); a.gain.setValueAtTime(Math.max(0.0002, v), t + dur); a.gain.exponentialRampToValueAtTime(0.0001, end);
+    out(a, pan, 1.7);
+  }
+  /* RAIN: a glint. A short ping whose overtone is not quite in tune with it, and a drop of noise under it */
+  function glint(f, t, v, pan) {
+    const L = 0.08 + Math.random() * 0.4; const o = osc('sine', f, t, t + L + 0.05); const m = osc('sine', f * 1.414, t, t + L + 0.05); const mg = ctx.createGain(); mg.gain.setValueAtTime(f * 0.9, t); mg.gain.exponentialRampToValueAtTime(1, t + L); m.connect(mg); mg.connect(o.frequency);
+    const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + 0.003); e.gain.exponentialRampToValueAtTime(0.0001, t + L); out(e, pan, 1.3);
+    if (Math.random() < 0.5) burst(t + Math.random() * 0.05, 0.02 + Math.random() * 0.04, 'highpass', 3000 + Math.random() * 4000, 0.8, v * 0.5, -pan, 0.6);
+  }
+  /* WEIGHT: a low swell, a sine under the series with a rumble of noise closed in a low filter */
+  function swell(f, t, dur, v, pan) {
+    const end = t + dur + 3; const o = osc('sine', f, t, end); vib(o, t, end, 0.08, f * 0.01, 0); const e = ctx.createGain(); o.connect(e);
+    const nb = ctx.createBufferSource(); nb.buffer = noise(Math.min(7, dur + 3)); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 4; const ng = ctx.createGain(); ng.gain.value = 0.6; nb.connect(lp); lp.connect(ng); ng.connect(e); nb.start(t); nb.stop(end);
+    const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + dur * 0.6); a.gain.exponentialRampToValueAtTime(0.0001, end); out(a, pan, 0.9);
+  }
+  function bell(f, t, v, pan) { const e = ctx.createGain(); for (const [m, gg, dec] of [[1, 1, 3.2], [2.76, 0.2, 1.4], [5.4, 0.06, 0.6]]) { const o = osc('sine', f * m * wob(), t, t + dec); const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * gg), t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); o.connect(g); g.connect(e); } out(e, pan, 1.6); }
   /* the drone under the radar: two low reeds and a sine, closed in a slow filter, swelling as the sweep's trail crosses life */
   function droneOn() {
     if (droneG) return; droneG = ctx.createGain(); droneG.gain.value = 0;
@@ -279,24 +278,23 @@ const snd = (() => {
        an octave up, glass; an animal in danger rings with its neighbour a semitone off, strange, so it is heard */
     blip(k = 0.5, d = 0.5, soft = false) {
       if (!ready()) return; const now = performance.now(); if (now - lastBlip < 110) return; lastBlip = now;
-      const SC = [0, 3, 5, 7, 10, 12, 14, 15, 17, 19]; const i = Math.min(SC.length - 1, Math.floor(clamp(d, 0, 0.999) * SC.length));
-      const f = 146.83 * Math.pow(2, (SC[i] + (k <= 0.15 ? 12 : 0)) / 12); const t = ctx.currentTime + 0.01; const pan = (Math.random() - 0.5) * 0.8;
+      const H = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16]; const i = Math.min(H.length - 1, Math.floor(clamp(d, 0, 0.999) * H.length));
+      const f = 55 * H[i] * (k <= 0.15 ? 2 : 1); const t = ctx.currentTime + 0.01; const pan = (Math.random() - 0.5) * 0.8;
       const v = soft ? 0.009 : 0.022; bell(f, t, v, pan); if (k >= 0.85) bell(f * Math.pow(2, 1 / 12), t + 0.04, v * 0.55, -pan);
     },
     /* the drone: 0 to 1, how much life the sweep's trail is crossing now */
     drone(level) { if (!ready()) return; droneOn(); droneG.gain.setTargetAtTime(0.004 + clamp(level, 0, 1) * 0.03, ctx.currentTime, 0.9); },
     droneOff() { if (droneG && ctx) droneG.gain.setTargetAtTime(0, ctx.currentTime, 0.4); },
-    /* a cell on a station: a life sings in the choir, a place plays its part of the kit, a cell people added rings a bell.
-       opt: dur, v, pan, mood ('fog' soft, 'rain' shuffled, 'weight' heavy), bell (a place as a bell, in fog) */
+    /* a cell on a station sounds, once: a life as the mood's texture (FOG bowed, RAIN a glint, WEIGHT a low swell) at its
+       place in the series; a place in its own small real sound; a cell people added as a bell. opt: dur, v, pan, mood */
     cell(spec, f, at = 0, opt = {}) {
-      if (!ready()) return; const t = ctx.currentTime + Math.max(0, at); const v = opt.v == null ? 0.08 : opt.v; const pan = opt.pan || 0;
+      if (!ready()) return; const t = ctx.currentTime + Math.max(0, at); const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
       if (opt.bell) { bell(f, t, v * 0.5, pan); return; }
-      if (spec.g) { voice(f, t, opt.dur || 0.6, opt.vowel || KIND_VOWEL(spec.g), v, pan); return; }
-      if (spec.fam) { const k = FAM_KIT[spec.fam] || 'tick'; KIT[k](t, v * 3, k === 'kick' ? opt.mood === 'weight' : pan); return; }
-      bell(f, t, v * 0.5, pan);
+      if (spec.fam) { knotAt(spec, f, t, v * 4, pan); return; }
+      if (md === 'rain') glint(f * 2, t, v * 0.7, pan); else if (md === 'weight') swell(f / 2, t, opt.dur || 4, v * 1.4, pan); else bow(f, t, opt.dur || 4, v * 0.8, pan);
     },
-    bass(f, at, dur, v = 0.12) { if (!ready()) return; sub(f, ctx.currentTime + at, dur, v); },
-    crackle(at, span, v = 0.012) { if (!ready()) return; crackle(ctx.currentTime + at, span, v); },
+    /* a connection sounding: the knots of a string figure, together, rolled slowly, each at its place in the series */
+    tie(fs, at = 0, v = 0.03) { if (!ready()) return; const t = ctx.currentTime + at; fs.forEach((f, i) => bell(f, t + i * (0.18 + Math.random() * 0.2), v, (i / Math.max(1, fs.length - 1) - 0.5) * 1.2)); },
     /* a thermal head stepping: filtered noise in short strokes */
     printer(ms = 1200) {
       buzz([18, 36, 18, 36, 18, 36, 40]); if (!ready()) return;

@@ -24,7 +24,7 @@ const b64bytes = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000)
 function sharedSignal(x) {
   try {
     const s = unpackSignal(x.body);
-    return { ...s, key: 'sh:' + x.id, shared: true, sid: x.id, dest: x.dest || '', at: x.at || s.at, ...(x.photo ? { photo: `${API}/photos/${x.id}`, img: { k: 'own', a: (s.img && s.img.a) || '' } } : {}) };
+    return { ...s, key: 'sh:' + x.id, shared: true, sid: x.id, dest: x.dest || '', at: x.at || s.at, star: !!x.star, printed: +x.printed || 0, ...(x.photo ? { photo: `${API}/photos/${x.id}`, img: { k: 'own', a: (s.img && s.img.a) || '' } } : {}) };
   } catch (e) { return null; }
 }
 function sharedRecord(x) {

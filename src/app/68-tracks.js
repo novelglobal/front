@@ -1,28 +1,26 @@
 /* ════════════════════════════════════════════════════════════════════
-   STATIONS — collections of the map, each seen on it or not, played or not, and as loud as its fader. The lives (animals,
-   insects, plants, and us) are a choir: each kind a voice, holding the chord and, one at a time, singing a short line. The
-   human ecology (brands, businesses, third spaces, groups) is the kit: each part its own sound in the beat. A pack of cells
-   people add rings as bells. All built from what is in the radar now, in D minor, in one of three moods: FOG (pads, no
-   drums), RAIN (crackle, a shuffled two-step), WEIGHT (slow, heavy, dub). Nature is always seen (unless unlocked on the
-   approval page) and on air from the first touch, and can be muted; the others start off.
+   STATIONS — collections of the map, each seen on it or not, sounding or not, as loud as its fader. No music: no chords, no
+   grid, no beat. Every cell has a place on one harmonic series over a low A, set by its kind, so whatever sounds together
+   agrees; when it sounds is chance, more often the more there is in the radar. The lives sound as the mood's texture
+   (FOG long bowed resonances, RAIN glints and drops, WEIGHT low swells), the places in their own small real sounds, the cells
+   people add as bells; and the string figures near the radar sound their knots together, slowly rolled. Nature is always seen
+   (unless unlocked on the approval page) and on from the first touch, and can be muted; the others start off.
    ════════════════════════════════════════════════════════════════════ */
-const MOODS = { fog: { bpm: 64, swing: 0, w: 'FOG', ic: 'dusk' }, rain: { bpm: 134, swing: 0.17, w: 'RAIN', ic: 'rain' }, weight: { bpm: 70, swing: 0, w: 'WEIGHT', ic: 'night' } };
+/* a mood is a texture and a density: how often, on average, a station sounds each second, and for how long */
+const MOODS = { fog: { rate: 0.6, dur: [3, 7], w: 'FOG', ic: 'dusk' }, rain: { rate: 1.8, dur: [0.1, 0.4], w: 'RAIN', ic: 'rain' }, weight: { rate: 0.25, dur: [4, 9], w: 'WEIGHT', ic: 'night' } };
 const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
-/* D minor: i, VI, III, v, two bars each. A low root for the bass, and the chord the choir holds */
-const CHORDS = [[38, [62, 65, 69, 72]], [34, [58, 62, 65, 69]], [41, [57, 60, 65, 69]], [33, [57, 60, 64, 67]]];
-const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
-/* where in sixteen steps each part of the kit falls, by mood; and where a voice sings its line */
-const BEAT = { rain: { kick: [0, 10], rim: [4, 12], hat: [2, 6, 10, 14], shaker: [7, 15], clap: [12], tick: [3, 11] }, weight: { kick: [0, 8], rim: [8], hat: [4, 12], shaker: [14], clap: [], tick: [6] }, fog: {} };
-const CHOP = { fog: [3, 10], rain: [2, 7, 11, 14], weight: [8] };
-const KIT_OF = { brand: 'kick', service: 'hat', third: 'rim', network: 'shaker', circular: 'clap', artists: 'tick', people: 'shaker' };
+/* one harmonic series over a low A: every kind and every place takes a partial of it, the same each time */
+const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
+const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
+const fOf = v => F0 * partialOf(v.g || v.fam || v.pk || 'x');
 const lvlOf = id => { const v = (prefs.lvl || {})[id]; return v == null ? (id === 'life' ? 0.8 : 0.7) : clamp(v, 0, 1); };
 const TRK_FAMS = ['brand', 'service', 'third', 'network', 'circular', 'artists'];
 const FAM_IC = { brand: 'sign', service: 'give', third: 'host', network: 'people', circular: 'remix', artists: 'note', people: 'hug' };
 /* a pack's cells, sounded as the lives and places nearest them */
 const PACK_SPEC = { fruit: { g: 'plant' }, tree: { g: 'plant' }, garden: { g: 'bee' }, node: { fam: 'network' }, water: { g: 'aquatic' }, shade: { fam: 'third' }, refuge: { fam: 'people' }, place: { fam: 'service' } };
 const TRK = { on: {}, step: 0, next: 0, timer: 0, hits: {}, voices: {} };
-/* a station's sixteen steps in the mood it is in: where it sounds */
-const patOf = id => { const md = moodOf(); const on = id === 'life' ? [0, ...CHOP[md]] : id === 'places' ? (md === 'fog' ? [0, 8] : [...new Set(Object.values(BEAT[md]).flat())]) : [5, 13]; return [...Array(16).keys()].map(i => (on.includes(i) ? 1 : 0)); };
+/* a station's trace: where, by chance, it sounded; seeded by the station and its mood, so it is the same each time */
+const patOf = id => { const r = seeded(`${id}|${moodOf()}`); const p = MOODS[moodOf()].rate; return [...Array(16).keys()].map(() => (r() < Math.min(0.8, p * 0.6) ? 1 : 0)); };
 /* the tracks there are: the lives, the places, and every pack of cells shown to everyone */
 function trackList() {
   const packs = (SHARED.list || []).filter(x => x.kind === 'cells').map(x => { let d = {}; try { d = JSON.parse(x.body); } catch (e) { /* none */ }
@@ -48,44 +46,45 @@ function freshVoices() {
     const el = document.querySelector(tkSel(t.id)); if (el && vs.map(key).join() !== was) { el.querySelector('.vox').innerHTML = voxHTML(t.id); el.querySelector('.beat').innerHTML = beatTrace(t.id); }
   }
 }
-/* the score: sixteenth steps scheduled a little ahead. Nature holds the chord at each change and, one voice at a time, sings a
-   line; the places play their parts of the kit (in FOG, low bells instead); the cells people add ring high; RAIN crackles */
+/* chance: every tick, each station on may sound, more often the more cells it holds, and as the mood allows. Nothing
+   lines up, but everything is on one series, so whatever meets agrees. Now and then a string figure near the radar sounds */
 function sound(id, n, spec, f, at, opt) {
   snd.cell(spec, f, at, opt);
-  setTimeout(() => { const v = document.querySelector(`${tkSel(id)} .v[data-v="${n}"]`); if (v) { v.classList.add('hit'); setTimeout(() => v.classList.remove('hit'), 260); } }, Math.max(0, at * 1000));
+  setTimeout(() => { const v = document.querySelector(`${tkSel(id)} .v[data-v="${n}"]`); if (v) { v.classList.add('hit'); setTimeout(() => v.classList.remove('hit'), 420); } }, Math.max(0, at * 1000));
+}
+function strike(id, md) {
+  const vs = TRK.voices[id] || []; if (!vs.length) return; const L = lvlOf(id); const Mo = MOODS[md]; const n = Math.floor(Math.random() * vs.length); const v = vs[n];
+  const dur = Mo.dur[0] + Math.random() * (Mo.dur[1] - Mo.dur[0]); const pan = (Math.random() - 0.5) * 1.4; const at = Math.random() * 0.2;
+  if (id === 'life') sound(id, n, v.spec, fOf(v), at, { mood: md, dur, v: 0.05 * L, pan });
+  else if (id === 'places') sound(id, n, v.spec, fOf(v), at, { mood: md, v: 0.05 * L, pan });
+  else sound(id, n, v.spec, fOf(v) * 2, at, { bell: true, v: 0.06 * L, pan });
+  /* in RAIN, a glint often brings a few more, close behind, like drops from a branch */
+  if (md === 'rain' && id === 'life' && Math.random() < 0.4) for (let k = 1; k < 2 + Math.floor(Math.random() * 4); k++) { const m = Math.floor(Math.random() * vs.length); sound(id, m, vs[m].spec, fOf(vs[m]), at + k * (0.05 + Math.random() * 0.15), { mood: md, v: 0.035 * L, pan: pan + (Math.random() - 0.5) * 0.4 }); }
+}
+/* the string figures whose lives are in the radar: their knots, each at its place in the series, sounded together */
+function connection() {
+  try {
+    const cs = strings.list().filter(c => c.o && life.inScan(c.o.lat, c.o.lng)); if (!cs.length) return;
+    const c = cs[Math.floor(Math.random() * cs.length)]; const m = k => (c.f.n || {})[k] || (c.f.c || {})[k] || {};
+    const fs = [F0 * partialOf(glyphOf(c.o)), ...c.keys.map(k => { const x = m(k); return F0 * partialOf(x.g || x.fam || x.t || k); })].slice(0, 6);
+    snd.tie(fs, 0.1, 0.028 * lvlOf('life'));
+  } catch (e) { /* no figures yet */ }
 }
 function trkTick() {
   const ids = Object.keys(TRK.on).filter(k => TRK.on[k]); if (!ids.length) { clearInterval(TRK.timer); TRK.timer = 0; return; }
   if (!prefs.sound) { stopTracks(); return; }
-  const md = moodOf(), Mo = MOODS[md], step = 60 / Mo.bpm / 4;
-  const now = performance.now() / 1000; if (TRK.next < now) TRK.next = now + 0.05;
-  while (TRK.next < now + 0.3) {
-    const i = TRK.step % 16, bar = Math.floor(TRK.step / 16), at = TRK.next - now + (i % 2 ? Mo.swing * step : 0);
-    if (i === 0) freshVoices();
-    const [root, tones] = CHORDS[Math.floor(bar / 2) % CHORDS.length]; const change = i === 0 && bar % 2 === 0;
-    for (const id of ids) {
-      const vs = TRK.voices[id] || []; const L = lvlOf(id); if (!vs.length || L < 0.02) continue;
-      const next = () => (TRK.hits[id] = (TRK.hits[id] || 0) + 1) % vs.length;
-      if (id === 'life') {
-        if (change) vs.slice(0, 4).forEach((v, n) => sound(id, n, v.spec, mtof(tones[n % tones.length] - (md === 'weight' ? 12 : 0)), at, { dur: step * 30, v: 0.045 * L, pan: (n - 1.5) * 0.45, vowel: md === 'weight' ? 'o' : n % 2 ? 'o' : 'a' }));
-        if (CHOP[md].includes(i) && Math.random() < 0.8) { const n = next(); const m = tones[(n + bar) % tones.length] + (md === 'rain' ? 12 : 0) + (Math.random() < 0.2 ? 2 : 0); sound(id, n, vs[n].spec, mtof(m), at, { dur: md === 'rain' ? step * 1.6 : step * 6, v: 0.075 * L, pan: -0.35 + n * 0.1 }); }
-      } else if (id === 'places') {
-        if (md === 'fog') { if (i === 0 || i === 8) { const n = next(); sound(id, n, vs[n].spec, mtof(tones[n % tones.length] - 12), at, { v: 0.05 * L, bell: true, pan: 0.3 }); } }
-        else {
-          vs.forEach((v, n) => { const k = KIT_OF[v.fam]; if ((BEAT[md][k] || []).includes(i)) sound(id, n, v.spec, 0, at, { v: (k === 'kick' ? 0.1 : 0.055) * L, mood: md, pan: (n - 2) * 0.15 }); });
-          if (change || (md === 'rain' && i === 10)) snd.bass(mtof(root), at, step * (md === 'weight' ? 14 : 6), 0.09 * L);
-        }
-      } else if ((i === 5 || i === 13) && Math.random() < 0.6) { const n = next(); sound(id, n, vs[n].spec, mtof(tones[n % tones.length] + 24), at, { v: 0.05 * L, bell: true, pan: 0.5 }); }
-    }
-    if (md === 'rain' && i === 0) snd.crackle(at, step * 16, 0.01);
-    TRK.step++; TRK.next += step;
-  }
+  const md = moodOf(), Mo = MOODS[md]; const now = performance.now() / 1000; const dt = TRK.next ? Math.min(0.25, now - TRK.next) : 0.06; TRK.next = now;
+  if (Math.floor(now / 4) !== TRK.step) { TRK.step = Math.floor(now / 4); freshVoices(); }
+  for (const id of ids) { const vs = TRK.voices[id] || []; if (!vs.length || lvlOf(id) < 0.02) continue; const rate = Mo.rate * (0.5 + 0.12 * vs.length) * (id === 'life' ? 1 : id === 'places' ? 0.8 : 0.4); if (Math.random() < rate * dt) strike(id, md); }
+  if (TRK.on.life && Math.random() < dt / 14) connection();
 }
 const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
   TRK.on[id] = on; const el = document.querySelector(tkSel(id));
   if (el) { el.classList.toggle('on', on); const b = el.querySelector('.tk-play'); b.setAttribute('aria-pressed', String(on)); b.classList.toggle('muted', id === 'life' && !on); b.innerHTML = playIcon(id, on); }
-  if (on && !TRK.timer) { TRK.step = 0; TRK.next = 0; freshVoices(); TRK.timer = setInterval(trkTick, 60); trkTick(); }
+  if (on && !TRK.timer) { TRK.step = 0; TRK.next = 0; freshVoices(); TRK.timer = setInterval(trkTick, 60); }
+  /* a station switched on is heard at once */
+  if (on && prefs.sound) { freshVoices(); strike(id, moodOf()); }
 }
 function stopTracks() { for (const id of Object.keys(TRK.on)) if (TRK.on[id]) setTrack(id, false); }
 /* seen on the map, or not: kept on this device */
