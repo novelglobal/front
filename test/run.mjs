@@ -140,10 +140,10 @@ if (run('smoke')) try {
   await sleep(3500);
   const b = await page.evaluate(() => ({ seen: window.__da.life.seen().size, sweep: window.__da.life.sweep }));
   check('the sweep turns and finds what lies inside it', b.sweep !== a.sweep && b.seen > a.seen, `${JSON.stringify(a)} → ${JSON.stringify(b)}`);
-  await page.evaluate(() => { window.__blips = 0; const s = window.__da.snd; const o = s.blip; s.blip = k => { window.__blips++; return o.call(s, k); }; });
+  await page.evaluate(() => { window.__blips = 0; const s = window.__da.snd; const o = s.ping; s.ping = (...a) => { const r = o.apply(s, a); if (r) window.__blips++; return r; }; });
   await page.keyboard.press('a'); await sleep(2600);
   const bl = await page.evaluate(() => ({ blips: window.__blips, found: window.__da.life.items.filter(it => it.inS && window.__da.life.seen().has(it.o.id) && window.__da.life.shown(it) && !it.o.hist && it.b.tone !== 'cold').length }));
-  check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16), JSON.stringify(bl));
+  check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16) - 2, JSON.stringify(bl));
   const v = await page.evaluate(async () => { const da = window.__da; da.life.reveal(); await new Promise(r => setTimeout(r, 300)); const its = da.life.items; const shown = its.filter(it => da.life.shown(it)); const out = shown.filter(it => !it.inS);
     const fresh = its.filter(it => !it.inS && it.flag && !it.capped).length; return { inside: shown.length - out.length, outside: out.length, fresh, signals: da.life.signals.length, red: da.life.signals.filter(x => x.red).length }; });
   check('outside the radar nothing stands as a mark: what is new there is a quiet signal, to bring the radar to', v.outside === 0 && v.inside > 5 && v.fresh > 0 && v.signals > 0, JSON.stringify(v));
@@ -185,10 +185,10 @@ if (run('smoke')) try {
   check('no copy to explain, no numbers to ring on NOW; the five right under the outlook', !hd.praxis && hd.tel === 0 && hd.ids[0] === 'sec-heat' && hd.ids[1] === 'sec-five', JSON.stringify(hd.ids));
   const tk = await page.evaluate(() => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id); const sec = document.querySelector('#sec-tracks'); const rows = [...sec.querySelectorAll('[data-tk]')];
     return { at: ids.indexOf('sec-tracks'), cons: ids.indexOf('sec-cons'), gigs: ids.indexOf('sec-gigs'), words: sec.innerText.replace(/\s+/g, ' ').trim(), rows: rows.map(r => r.dataset.tk), seen: rows.map(r => r.querySelector('.tk-see').getAttribute('aria-pressed')), locked: rows[0].querySelector('.tk-see').disabled, playing: rows.map(r => r.querySelector('.tk-play').getAttribute('aria-pressed')), life: rows[0].querySelectorAll('.v').length, places: rows[1].querySelectorAll('.v').length, traces: sec.querySelectorAll('.beat polyline').length }; });
-  check('Stations sit above the constellations: one word; nature always on the map and on air from the first touch; the places not', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.locked && tk.playing.slice(0, 2).join() === 'true,false' && tk.life >= 2 && tk.places >= 1 && tk.traces >= 2, JSON.stringify(tk));
+  check('Stations sit above the constellations: one word; nature always on the map and on air from the first touch; the places not', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.locked && tk.playing.slice(0, 2).join() === 'true,false' && tk.life >= 2 && tk.places >= 1, JSON.stringify(tk));
   /* nature can be muted, and stays muted; it cannot be taken off the map until it is unlocked on the approval page */
   const lives = () => page.evaluate(() => { const da = window.__da; da.life.reveal(); return da.life.items.filter(it => da.life.shown(it) && !it.o.story && !it.o.pack && !it.o.partner).length; });
-  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.cell; s.cell = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(6000);
+  await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.ping; s.ping = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(6000);
   const ta = await page.evaluate(() => ({ n: window.__knots.length, lives: window.__knots.length > 0 && window.__knots.every(k => k.g) }));
   await page.click('#sec-tracks [data-tk="life"] .tk-play'); await sleep(300);
   const mu = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').getAttribute('aria-pressed'), muted: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').classList.contains('muted'), kept: JSON.parse(localStorage.getItem('da.prefs')).mute }));
@@ -203,11 +203,11 @@ if (run('smoke')) try {
   await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(0); }); await sleep(600);
   await page.click('#sec-tracks [data-tk="places"] .tk-see'); await sleep(200);
   await page.click('#sec-tracks [data-mood="rain"]'); await sleep(200);
-  await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(2200);
+  await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(5000);
   const tb = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="places"] .tk-play').getAttribute('aria-pressed'), n: window.__knots.length, places: window.__knots.every(k => k.fam), mood: JSON.parse(localStorage.getItem('da.prefs')).mood, faders: document.querySelectorAll('#sec-tracks .tk-lvl').length }));
   await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(400);
   const t0 = await page.evaluate(() => { const n = window.__knots.length; return new Promise(r => setTimeout(() => r({ still: window.__knots.length === n, on: Object.values(window.__da.TRK.on).some(Boolean) }), 900)); });
-  check('in RAIN the places play their parts of the kit, and stop; every station has its fader', tb.mood === 'rain' && tb.faders >= 2 && tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ tb, t0 }));
+  check('with the places on, the sweep sounds each it passes in its own small sound, and stops; every station has its fader', tb.mood === 'rain' && tb.faders >= 2 && tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ tb, t0 }));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
   check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
   const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });

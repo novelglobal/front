@@ -1,26 +1,21 @@
 /* ════════════════════════════════════════════════════════════════════
-   STATIONS — collections of the map, each seen on it or not, sounding or not, as loud as its fader. No music: no chords, no
-   grid, no beat. Every cell has a place on one harmonic series over a low A, set by its kind, so whatever sounds together
-   agrees; when it sounds is chance, more often the more there is in the radar. The lives sound as the mood's texture
-   (FOG long bowed resonances, RAIN glints and drops, WEIGHT low swells), the places in their own small real sounds, the cells
-   people add as bells; and the string figures near the radar sound their knots together, slowly rolled. Nature is always seen
-   (unless unlocked on the approval page) and on from the first touch, and can be muted; the others start off.
+   STATIONS — collections of the map. The radar is the instrument: when the sweep reaches a cell, the cell sounds, and a small
+   ring shows where. A station decides whether its cells sound, its fader how loud, the mood how: FOG a breath of a voice,
+   RAIN a crushed glitch, WEIGHT a thud. Nothing plays on its own: no tune, no grid, no backing. What sounds is what is there:
+   pitch from the kind's place on one harmonic series, brighter if new, fainter as it ages, bent or doubled if in danger;
+   places in their own small real sounds when their station is on; and under the trail, a drone that swells only over clusters
+   of life. Nature is always seen (unless unlocked on the approval page) and on from the first touch, and can be muted.
    ════════════════════════════════════════════════════════════════════ */
-/* a mood is a texture and a density: how often, on average, a station sounds each second, and for how long */
-const MOODS = { fog: { rate: 0.6, dur: [3, 7], w: 'FOG', ic: 'dusk' }, rain: { rate: 1.8, dur: [0.1, 0.4], w: 'RAIN', ic: 'rain' }, weight: { rate: 0.25, dur: [4, 9], w: 'WEIGHT', ic: 'night' } };
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' } };
 const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
-/* one harmonic series over a low A: every kind and every place takes a partial of it, the same each time */
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
 const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
-const fOf = v => F0 * partialOf(v.g || v.fam || v.pk || 'x');
 const lvlOf = id => { const v = (prefs.lvl || {})[id]; return v == null ? (id === 'life' ? 0.8 : 0.7) : clamp(v, 0, 1); };
 const TRK_FAMS = ['brand', 'service', 'third', 'network', 'circular', 'artists'];
 const FAM_IC = { brand: 'sign', service: 'give', third: 'host', network: 'people', circular: 'remix', artists: 'note', people: 'hug' };
 /* a pack's cells, sounded as the lives and places nearest them */
 const PACK_SPEC = { fruit: { g: 'plant' }, tree: { g: 'plant' }, garden: { g: 'bee' }, node: { fam: 'network' }, water: { g: 'aquatic' }, shade: { fam: 'third' }, refuge: { fam: 'people' }, place: { fam: 'service' } };
-const TRK = { on: {}, step: 0, next: 0, timer: 0, hits: {}, voices: {} };
-/* a station's trace: where, by chance, it sounded; seeded by the station and its mood, so it is the same each time */
-const patOf = id => { const r = seeded(`${id}|${moodOf()}`); const p = MOODS[moodOf()].rate; return [...Array(16).keys()].map(() => (r() < Math.min(0.8, p * 0.6) ? 1 : 0)); };
+const TRK = { on: {}, voices: {} };
 /* the tracks there are: the lives, the places, and every pack of cells shown to everyone */
 function trackList() {
   const packs = (SHARED.list || []).filter(x => x.kind === 'cells').map(x => { let d = {}; try { d = JSON.parse(x.body); } catch (e) { /* none */ }
@@ -40,51 +35,25 @@ function trackVoices(id) {
 const voiceMark = v => (v.g ? glyphSVG(v.g) : v.fam ? icon(FAM_IC[v.fam] || 'people') : PACK_KINDS[v.pk].g ? glyphSVG(PACK_KINDS[v.pk].g) : icon(PACK_KINDS[v.pk].i));
 const voxHTML = id => (TRK.voices[id] || []).map((v, i) => `<i class="v" data-v="${i}">${voiceMark(v)}</i>`).join('');
 const tkSel = id => `#sec-tracks [data-tk="${CSS.escape(id)}"]`;
-function freshVoices() {
-  for (const t of trackList()) {
-    const vs = trackVoices(t.id); const key = v => v.g || v.fam || v.pk; const was = (TRK.voices[t.id] || []).map(key).join(); TRK.voices[t.id] = vs;
-    const el = document.querySelector(tkSel(t.id)); if (el && vs.map(key).join() !== was) { el.querySelector('.vox').innerHTML = voxHTML(t.id); el.querySelector('.beat').innerHTML = beatTrace(t.id); }
-  }
+/* a cell reached by the sweep: does its station let it sound, and how. True if it sounded */
+function flashVoice(id, key) { const vs = TRK.voices[id] || []; const n = vs.findIndex(v => (v.g || v.fam || v.pk) === key); if (n < 0) return n; const v = document.querySelector(`${tkSel(id)} .v[data-v="${n}"]`); if (v) { v.classList.add('hit'); setTimeout(() => v.classList.remove('hit'), 420); } return n; }
+function pingCell(it, first) {
+  const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound) return false; const L = lvlOf(id); if (L < 0.02) return false;
+  const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
+  return snd.ping(o.pack ? (PACK_SPEC[o.pk] && PACK_SPEC[o.pk].fam ? PACK_SPEC[o.pk] : { g }) : { g }, F0 * partialOf(g || 'x') * (it.b.tone === 'flora' ? 2 : 1),
+    { mood: moodOf(), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: clamp((it.x / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi) });
 }
-/* chance: every tick, each station on may sound, more often the more cells it holds, and as the mood allows. Nothing
-   lines up, but everything is on one series, so whatever meets agrees. Now and then a string figure near the radar sounds */
-function sound(id, n, spec, f, at, opt) {
-  snd.cell(spec, f, at, opt);
-  setTimeout(() => { const v = document.querySelector(`${tkSel(id)} .v[data-v="${n}"]`); if (v) { v.classList.add('hit'); setTimeout(() => v.classList.remove('hit'), 420); } }, Math.max(0, at * 1000));
-}
-function strike(id, md) {
-  const vs = TRK.voices[id] || []; if (!vs.length) return; const L = lvlOf(id); const Mo = MOODS[md]; const n = Math.floor(Math.random() * vs.length); const v = vs[n];
-  const dur = Mo.dur[0] + Math.random() * (Mo.dur[1] - Mo.dur[0]); const pan = (Math.random() - 0.5) * 1.4; const at = Math.random() * 0.2;
-  if (id === 'life') sound(id, n, v.spec, fOf(v), at, { mood: md, dur, v: 0.05 * L, pan });
-  else if (id === 'places') sound(id, n, v.spec, fOf(v), at, { mood: md, v: 0.05 * L, pan });
-  else sound(id, n, v.spec, fOf(v) * 2, at, { bell: true, v: 0.06 * L, pan });
-  /* in RAIN, a glint often brings a few more, close behind, like drops from a branch */
-  if (md === 'rain' && id === 'life' && Math.random() < 0.4) for (let k = 1; k < 2 + Math.floor(Math.random() * 4); k++) { const m = Math.floor(Math.random() * vs.length); sound(id, m, vs[m].spec, fOf(vs[m]), at + k * (0.05 + Math.random() * 0.15), { mood: md, v: 0.035 * L, pan: pan + (Math.random() - 0.5) * 0.4 }); }
-}
-/* the string figures whose lives are in the radar: their knots, each at its place in the series, sounded together */
-function connection() {
-  try {
-    const cs = strings.list().filter(c => c.o && life.inScan(c.o.lat, c.o.lng)); if (!cs.length) return;
-    const c = cs[Math.floor(Math.random() * cs.length)]; const m = k => (c.f.n || {})[k] || (c.f.c || {})[k] || {};
-    const fs = [F0 * partialOf(glyphOf(c.o)), ...c.keys.map(k => { const x = m(k); return F0 * partialOf(x.g || x.fam || x.t || k); })].slice(0, 6);
-    snd.tie(fs, 0.1, 0.028 * lvlOf('life'));
-  } catch (e) { /* no figures yet */ }
-}
-function trkTick() {
-  const ids = Object.keys(TRK.on).filter(k => TRK.on[k]); if (!ids.length) { clearInterval(TRK.timer); TRK.timer = 0; return; }
-  if (!prefs.sound) { stopTracks(); return; }
-  const md = moodOf(), Mo = MOODS[md]; const now = performance.now() / 1000; const dt = TRK.next ? Math.min(0.25, now - TRK.next) : 0.06; TRK.next = now;
-  if (Math.floor(now / 4) !== TRK.step) { TRK.step = Math.floor(now / 4); freshVoices(); }
-  for (const id of ids) { const vs = TRK.voices[id] || []; if (!vs.length || lvlOf(id) < 0.02) continue; const rate = Mo.rate * (0.5 + 0.12 * vs.length) * (id === 'life' ? 1 : id === 'places' ? 0.8 : 0.4); if (Math.random() < rate * dt) strike(id, md); }
-  if (TRK.on.life && Math.random() < dt / 14) connection();
+function pingPlace(p) {
+  if (!TRK.on.places || !prefs.sound) return false; const L = lvlOf('places'); if (L < 0.02) return false;
+  /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
+  if (!p.cur && partialOf(p.n) % 3) return false; flashVoice('places', p.fam);
+  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOf(), v: 0.04 * L, pan: clamp(((p._x || 0) / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7 });
 }
 const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
   TRK.on[id] = on; const el = document.querySelector(tkSel(id));
   if (el) { el.classList.toggle('on', on); const b = el.querySelector('.tk-play'); b.setAttribute('aria-pressed', String(on)); b.classList.toggle('muted', id === 'life' && !on); b.innerHTML = playIcon(id, on); }
-  if (on && !TRK.timer) { TRK.step = 0; TRK.next = 0; freshVoices(); TRK.timer = setInterval(trkTick, 60); }
-  /* a station switched on is heard at once */
-  if (on && prefs.sound) { freshVoices(); strike(id, moodOf()); }
+  if (!on && id === 'life') snd.droneOff();
 }
 function stopTracks() { for (const id of Object.keys(TRK.on)) if (TRK.on[id]) setTrack(id, false); }
 /* seen on the map, or not: kept on this device */
@@ -94,18 +63,6 @@ function seeIt(id, on) {
   const el = document.querySelector(tkSel(id)); if (el) { el.classList.toggle('seen', on); el.querySelector('.tk-see').setAttribute('aria-pressed', String(on)); }
   life.redraw(); life.moved();
 }
-/* a fine trace of the beat, as a pen draws it on moving paper: a mark at each step a voice sounds, drawn twice over so it
-   can feed past without a seam */
-function traceSVG(ys) {
-  const n = ys.length, pts = []; for (let r = 0; r < 2; r++) ys.forEach((y, i) => pts.push(`${((r * n + i) / (2 * n) * 200).toFixed(1)},${(8 - y * 6.5).toFixed(1)}`));
-  pts.push(`200,${(8 - ys[0] * 6.5).toFixed(1)}`);
-  return `<svg viewBox="0 0 200 16" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts.join(' ')}"/></svg>`;
-}
-function beatTrace(id) {
-  const vs = TRK.voices[id] || []; const P = patOf(id); const ys = []; let h = 0;
-  for (let i = 0; i < 16; i++) for (let j = 0; j < 4; j++) { const hit = P[i] && vs.length; const v = hit ? (j === 1 ? 0.55 + 0.45 * (((h % vs.length) + 1) / vs.length) : j === 2 ? -0.35 : 0) : 0; if (hit && j === 3) h++; ys.push(v); }
-  return traceSVG(ys);
-}
 function tracksSection() {
   const list = trackList(); for (const t of list) TRK.voices[t.id] = trackVoices(t.id);
   const row = t => { const on = !!TRK.on[t.id], see = seeTrack(t.id);
@@ -114,7 +71,7 @@ function tracksSection() {
       + `<span class="vox">${voxHTML(t.id)}</span>`
       + `<input type="range" class="tk-lvl" min="0" max="100" step="1" value="${Math.round(lvlOf(t.id) * 100)}" aria-label="Level" style="--v:${Math.round(lvlOf(t.id) * 100)}%">`
       + `<button type="button" class="tk-play${t.id === 'life' && !on ? ' muted' : ''}" aria-pressed="${on}" aria-label="${t.id === 'life' ? 'Sound' : 'Play'}"${(TRK.voices[t.id] || []).length ? '' : ' disabled'}>${playIcon(t.id, on)}</button>`
-      + `<span class="beat">${beatTrace(t.id)}</span></li>`; };
+      + `</li>`; };
   const moods = Object.entries(MOODS).map(([k, m]) => `<button type="button" class="mood" data-mood="${k}" aria-pressed="${moodOf() === k}" aria-label="${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button>`).join('');
   const mute = `<button type="button" class="mood mute${prefs.sound ? '' : ' muted'}" data-mute-all aria-pressed="${!prefs.sound}" aria-label="Sound off" data-tip="${prefs.sound ? 'Sound off' : 'Sound on'}">${icon('sound', 'sm')}</button>`;
   return `<section class="sec tracks" id="sec-tracks"><div class="lab-row">${lab('Stations')}<span class="moods" role="group" aria-label="Mood">${moods}${mute}</span></div><ol class="deck">${list.map(row).join('')}</ol></section>`;
@@ -129,7 +86,7 @@ $('#view').addEventListener('click', e => {
     const b = e.target.closest('[data-mute-all]'); b.classList.toggle('muted', !prefs.sound); b.setAttribute('aria-pressed', String(!prefs.sound)); const ix = document.querySelector('#ix-sound'); if (ix) ix.setAttribute('aria-pressed', String(prefs.sound)); if (prefs.sound) snd.tick(1700); return;
   }
   const md = e.target.closest('[data-mood]');
-  if (md) { prefs.mood = md.dataset.mood; savePrefs(); TRK.step = 0; TRK.next = 0; document.querySelectorAll('#sec-tracks [data-mood]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mood === prefs.mood))); for (const t of trackList()) { const el = document.querySelector(tkSel(t.id)); if (el) el.querySelector('.beat').innerHTML = beatTrace(t.id); } snd.tick(1400); buzz(4); return; }
+  if (md) { prefs.mood = md.dataset.mood; savePrefs(); document.querySelectorAll('#sec-tracks [data-mood]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mood === prefs.mood))); snd.tick(1400); buzz(4); return; }
   const r = e.target.closest('[data-tk]'); if (!r) return; const id = r.dataset.tk;
   if (e.target.closest('.tk-lvl')) return;
   if (e.target.closest('.tk-see')) { seeIt(id, !seeTrack(id)); snd.tick(seeTrack(id) ? 1900 : 1200); buzz(4); return; }
