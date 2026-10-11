@@ -208,7 +208,7 @@ function viewNow() {
       <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><small class="why">${esc(whyOf(o, w))}</small><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
+    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
     + tracksSection()
     + consSection()
@@ -219,7 +219,7 @@ function viewNow() {
 const conRow = c => {
   const fresh = Date.now() - (c.t || 0) < 10 * 60e3;
   const sh = (c.shared || []).slice(0, 3).map(x => `<button type="button" class="con-sh" data-con="${esc(String(x.id))}" data-tip="${x.ks.length} shared">${esc(x.name)}</button>`).join('');
-  return `<li class="con${fresh ? ' fresh' : ''}"><button type="button" class="con-row" data-con="${esc(String(c.id))}" aria-label="${esc(c.name)}"><span class="con-chart">${strings.chartOf(c.id, 44)}</span><span class="nm"><b>${esc(c.name)}</b><small class="mono"><i class="mk dia"></i>${c.people} <i class="mk dot"></i>${c.lives}${c.water ? ` <i class="mk wav"></i>${c.water}` : ''} · ${c.edges} ${icon('string', 'sm')} · ${ago(c.born)}</small></span></button>`
+  return `<li class="con${fresh ? ' fresh' : ''}"><button type="button" class="con-row" data-con="${esc(String(c.id))}" aria-label="${esc(c.name)}"><span class="con-chart">${strings.chartOf(c.id, 44)}</span><span class="nm"><b style="--k:${(C.kind[M.GROUP[glyphOf(c.o)]] || C.kind.other)}">${esc(c.name)}</b><small class="mono"><i class="mk dia"></i>${c.people} <i class="mk dot"></i>${c.lives}${c.water ? ` <i class="mk wav"></i>${c.water}` : ''} · ${c.edges} ${icon('string', 'sm')} · ${ago(c.born)}</small></span></button>`
     + `<button type="button" class="ib" data-con-play="${esc(String(c.id))}" aria-label="Play" data-tip="Play">${icon('play')}</button><button type="button" class="ib" data-con-trace="${esc(String(c.id))}" aria-label="How it formed" data-tip="How it formed">${icon('trace')}</button>`
     + (sh ? `<p class="con-shs mono">${icon('string', 'sm')}${sh}</p>` : '') + `</li>`;
 };
@@ -247,9 +247,9 @@ const sigArt = s => { const own = sigSrc(s, false); const kp = kindPhoto(s); con
 const printedOf = s => s.printed || (SENT[s.code] && SENT[s.code].job === 'printed' ? 1 : 0);
 const sigRow = s => {
   const p = s.pin || {}; const st = sentWord(s); const tier = s.star ? 2 : printedOf(s) ? 1 : 0; const L = linesOf(s);
-  const act = L[L.length - 1] || s.threat || ''; const story = s.threat && s.threat !== act ? s.threat : L[0] && L[0] !== act ? L[0] : '';
-  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}"><b class="mono code">${esc(s.code)}</b>${sigArt(s)}`
-    + `<span class="cap"><strong class="act">${esc(act)}</strong>${story ? `<span class="story">${esc(story)}</span>` : ''}<span class="nm">${esc(p.cn || p.n || '')}</span></span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
+  const act = L[L.length - 1] || s.threat || p.cn || p.n || '';
+  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}" data-tip="${esc([p.cn || p.n, s.threat].filter(Boolean).join(' · '))}"><b class="mono code">${esc(s.code)}</b>${sigArt(s)}`
+    + `<span class="cap"><strong class="act">${esc(act)}</strong></span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
 };
 /* the board's order, behind the scenes: the four printed most, or held up on the approval page; then the newest */
 function boardOrder(sigs) {

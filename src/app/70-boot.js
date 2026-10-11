@@ -36,7 +36,12 @@ const tipEl = $('#tip'); let tipFor = null, tipT = 0;
 function showTip(el) {
   const t = el && el.dataset.tip; if (!t) return; tipFor = el; tipEl.textContent = t; tipEl.hidden = false;
   const r = el.getBoundingClientRect(); const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
-  let x = r.left + r.width / 2 - w / 2, y = r.top - h - 8; if (y < 6) y = r.bottom + 8; x = clamp(x, 6, Math.max(6, innerWidth - w - 6));
+  /* beside, never over: for anything in the page or the rail, to the left of it, level with the thing; elsewhere above it, or
+     below when there is no room */
+  let x = null, y = 0; const inRail = el.closest('#rail'); const inPage = !inRail && el.closest('#panel');
+  if (inRail || inPage) { const L = (inRail ? r.left : $('#panel').getBoundingClientRect().left) - w - 10; if (L >= 6) { x = L; y = r.top + r.height / 2 - h / 2; } }
+  if (x == null) { x = r.left + r.width / 2 - w / 2; y = r.top - h - 8; if (y < 6) y = r.bottom + 8; }
+  x = clamp(x, 6, Math.max(6, innerWidth - w - 6)); y = clamp(y, 6, Math.max(6, innerHeight - h - 6));
   tipEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
 }
 function hideTip() { clearTimeout(tipT); tipFor = null; tipEl.hidden = true; }
