@@ -63,7 +63,7 @@ const life = (() => {
       const k = PLACE_KINDS[o.kind] || PLACE_KINDS[0]; const g = placeGlyph(o);
       return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: Math.max(d, 18) + 6 };
     }
-    if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, hero: true }; }
+    if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, tier: 2, hero: true }; }
     /* a story: a slip issued about a life, standing where its life was */
     if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
     if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
@@ -74,23 +74,30 @@ const life = (() => {
     if (o.kind === 'lost') return { tone: 'lost', g: o.tx || o.g ? glyphOf(o) : 'paw', d: d + 4 };
     if (o.hum) {
       const k = o.kind; const gig = isGig(o); const i = gig ? 'hug' : o.i || (k === 'event' ? ((o.tags || []).includes('sound') ? 'sound' : 'people') : k === 'offer' ? 'give' : k === 'pulse' ? 'people' : k === 'refuge' ? 'refuge' : 'plus');
-      if (gig) return { tone: 'event', g: null, i, d: d + 2 };
-      return { tone: k === 'event' ? 'event' : k === 'offer' || k === 'pulse' ? 'offer' : 'need', g: o.g || null, i: o.g ? null : i, d, fresh: isFresh(o) };
+      if (gig) return { tone: 'event', g: null, i, d: d + 4 };
+      /* people: a need is the loudest thing here after an animal in trouble; an offer or a gathering is larger than a sighting */
+      return { tone: k === 'event' ? 'event' : k === 'offer' || k === 'pulse' ? 'offer' : 'need', g: o.g || null, i: o.g ? null : i, d: d + (k === 'need' ? 8 : 4), fresh: isFresh(o) };
     }
     const sub = subjectOf(o); const g = glyphOf(o); const flora = ['Plantae', 'Fungi'].includes(kindOf(sub)) || bandOf(o) === 5 || g === 'plant' || g === 'fungi';
     if (isCold(o)) return { tone: 'cold', g, d: Math.max(6, Math.round(d * 0.64)) };
     const deg = degOf(o);
     const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || isFresh(o));
-    if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)), sig: !!(sub.tx && sub.tx.th), dz: deg >= 3 ? deg : 0, fresh };
-    return { tone: M.toneOf(g), g, d: d + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0), sig: !!(sub.tx && sub.tx.th), fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
+    const tier = o.hist ? 0 : tierOf(o, sub);
+    if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, dz: deg >= 3 ? deg : 0, fresh };
+    return { tone: M.toneOf(g), g, d: d + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
   function placeGlyph(p) { const k = PLACE_KINDS[p.kind] || PLACE_KINDS[0]; if (p.g) return p.g; if (p.tx) return glyphOf(p); if (k.f === 'flora') return 'plant'; return ['fauna', 'injured', 'dead', 'lost'].includes(k.f) ? 'paw' : null; }
   /* how far to search for an animal lost: a dog runs, a cat hides close */
   const searchOf = o => o.search || ({ dog: 900, cat: 350 }[glyphOf(o)] || 500);
   const MOVING = new Set(['k-bird', 'k-mammal', 'k-insect', 'k-spider', 'k-reptile', 'k-water', 'k-other']);
+  /* how often each kind has been seen here: a kind seen once or twice is rare */
+  let tally = new Map();
+  /* common, rare, legendary: threatened or one of the five is legendary; a kind new here, or seen here only once, rare */
+  const tierOf = (o, sub) => (o.hero || (sub && sub.tx && sub.tx.th) ? 2 : o.isNew || (sub && sub.tx && (tally.get(sub.tx.id || sub.tx.n) || 0) <= 1) ? 1 : 0);
   function data() {
     if (!bx) return; items = []; const now = Date.now(); curD = sizeAt();
+    tally = new Map(); for (const o of S.obs) if (o.tx && !o.ob) { const k = o.tx.id || o.tx.n; tally.set(k, (tally.get(k) || 0) + 1); }
     for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.heroes, ...storyCells()]) {
       if (hiddenCell(o.id)) continue;
       const b = badgeOf(o, curD); const r0 = seeded(`${o.id}|${WEEK}`);
@@ -107,6 +114,17 @@ const life = (() => {
     }
     /* the lives in extreme danger in the months ahead keep a slow orange ring */
     items.filter(it => !it.pulse && !it.o.hum && it.b.dz >= 4).sort((a, b) => (b.hero - a.hero) || ((b.o.rare || 0) - (a.o.rare || 0))).slice(0, 4).forEach(it => { it.pulse = 1; it.pc = C.orange; });
+    /* a need for help, while it is new, keeps a slow orange ring */
+    for (const it of items) if (!it.pulse && it.o.hum && it.o.kind === 'need' && it.flag) { it.pulse = 1; it.pc = C.orange; }
+    /* declutter: in any spot about CAP.m across, at most CAP.n sightings of one kind show, the freshest; an alarm, a record
+       someone made, a story or a cell always shows */
+    const CAP = CONFIG.CAP || { m: 150, n: 2 }; const gm = CAP.m / 111320; const groups = new Map();
+    for (const it of items) {
+      it.capped = false; const o = it.o; if (it.alarm || it.hero || o.user || o.comm || o.story || o.pack || o.hum) continue;
+      const kind = (o.tx && (o.tx.id || o.tx.n)) || glyphOf(o); const key = `${kind}|${Math.floor(o.lat / gm)}|${Math.floor(o.lng / (gm / 0.79))}`;
+      if (!groups.has(key)) groups.set(key, []); groups.get(key).push(it);
+    }
+    for (const g of groups.values()) if (g.length > CAP.n) g.sort((a, b) => (b.flag - a.flag) || ((a.o.hist ? 1 : 0) - (b.o.hist ? 1 : 0)) || (stampOf(b.o) - stampOf(a.o))).slice(CAP.n).forEach(it => { it.capped = true; });
     for (const it of items) it.moving = !reduced() && (it.hero || (MOVING.has(it.b.tone) && !M.STILL.has(it.b.g)));
     const rank = it => (it.b.tone === 'hist' ? 0 : it.b.tone === 'cold' ? 1 : it.b.tone === 'flora' ? 1.5 : it.hero ? 7 : it.moving ? 4 : it.pulse || it.radar ? 6 : 3);
     items.sort((a, b) => rank(a) - rank(b));
@@ -130,11 +148,17 @@ const life = (() => {
     if (reduced()) { revealAll(); return; }
     if (!running() || !dt) return;
     const b0 = sweepB, b1 = sweepB + 360 * dt / SC.turn; sweepB = b1 % 360;
+    /* found the first time, rung softer on every pass after: the hand plays what it crosses, a tune of the ground */
     for (const it of items) {
-      if (!it.inS || seen.has(it.o.id)) continue;
-      let a = it.sb; if (a < b0) a += 360; if (a > b0 && a <= b1) { seen.set(it.o.id, now); if (!it.o.hist && it.b.tone !== 'cold') snd.blip(it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45); }
+      if (!it.inS) continue;
+      let a = it.sb; if (a < b0) a += 360; if (!(a > b0 && a <= b1)) continue;
+      const first = !seen.has(it.o.id); seen.set(it.o.id, now);
+      if (!it.o.hist && it.b.tone !== 'cold' && (first || shown(it))) snd.blip(it.alarm || it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45, it.sd / S.scan.r, !first);
     }
+    /* the trail: as it crosses more life, the drone under it swells */
+    if (now - droneT > 300) { droneT = now; let n = 0; for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n / 10); }
   }
+  let droneT = 0;
   let scanSave = 0;
   function setScan(lat, lng, r, save) {
     if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
@@ -167,7 +191,7 @@ const life = (() => {
   function replay() {
     if (!prefs.sound || S.mode === 'place') return 0;
     const found = items.filter(it => it.inS && seen.has(it.o.id) && shown(it) && !it.o.hist && it.b.tone !== 'cold').sort((a, b) => ((a.sb - sweepB + 360) % 360) - ((b.sb - sweepB + 360) % 360)).slice(0, 16);
-    found.forEach((it, i) => setTimeout(() => snd.blip(it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45), 80 + i * 130));
+    found.forEach((it, i) => setTimeout(() => snd.blip(it.alarm || it.b.dz >= 3 ? 0.9 : it.b.tone === 'flora' ? 0.1 : 0.45, it.sd / S.scan.r), 80 + i * 130));
     return found.length;
   }
   /* the radar glides to a new place: the hand keeps sweeping as it goes */
@@ -220,11 +244,15 @@ const life = (() => {
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
     /* each track seen or not: a pack of cells is its own; every life is the lives' track */
     if (o.pack ? !seeTrack('p:' + o.pack) : !o.story && !o.partner && !seeTrack('life')) return false;
-    /* the example stories stand on the map always, as receipts; the stories page shows every story, wherever it is */
-    if (o.story && (o.ex || (S.open && S.view === 1 && !S.mode))) return true;
+    /* the stories page shows every story, wherever it is */
+    if (o.story && S.open && S.view === 1 && !S.mode) return true;
+    if (it.capped && o.id !== S.sel) return false;
+    /* outside the radar nothing stands as a mark: what is new there, and the stories, are signals to bring the radar to */
+    if (!it.inS && o.id !== S.sel) return false;
+    if (o.story) return true;
     const found = it.inS && seen.has(o.id); const z = zoomNow();
     if (it.b.tone === 'hist') return found && z >= 14;
-    if (it.b.tone === 'flora') return it.flag || (found && z >= PLANT_Z);   /* a plant from the last 24 hours shows anywhere, like any other */
+    if (it.b.tone === 'flora') return it.flag || (found && z >= PLANT_Z);   /* a plant from the last 24 hours shows before the sweep finds it, like any other */
     return it.flag || found;
   }
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
@@ -311,8 +339,10 @@ const life = (() => {
     ctx.lineWidth = 1; for (let i = 0, f = 0.24; f < 0.95; f += 0.048, i++) { ring(f); ctx.strokeStyle = i % 3 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.07)'; ctx.stroke(); }
     ring(0.975); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke();
     ctx.restore();
-    const lr = Math.max(9, R * 0.075); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU); ctx.fillStyle = 'rgba(140,116,105,.9)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(cp.x, cp.y, lr * 0.62, 0, TAU); ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.stroke(); ctx.restore();
+    /* the centre: clear glass, a lens to press, not a colour */
+    const lr = Math.max(10, R * 0.07); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU);
+    const lg = ctx.createRadialGradient(cp.x - lr * 0.35, cp.y - lr * 0.4, 0, cp.x, cp.y, lr); lg.addColorStop(0, 'rgba(255,255,255,.22)'); lg.addColorStop(1, 'rgba(255,255,255,.03)');
+    ctx.fillStyle = lg; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.stroke(); ctx.restore();
   }
 
   /* ───────── the marks layer ───────── */
@@ -345,6 +375,27 @@ const life = (() => {
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
+  /* outside the radar: a quiet signal where something new is, or a story; a few faint rings, slow, to bring the radar there.
+     Red where an animal is in trouble or someone needs help; clay where there is a story */
+  let sigs = [];
+  function signals(ctx, now, still) {
+    sigs = []; if (S.mode === 'ping' || S.mode === 'place') return;
+    const g = new Map(); const cell = 26 / Math.pow(2, zoomNow() - 13) / 111320 * 1600;
+    for (const it of items) {
+      const o = it.o; if (it.inS || it.capped || !(it.flag || (o.story && o.ex) || o.pack)) continue;
+      if (o.pack ? !seeTrack('p:' + o.pack) : !o.story && !seeTrack('life')) continue;
+      const k = `${Math.floor(o.lat / cell)}|${Math.floor(o.lng / cell)}`; let s = g.get(k); if (!s) g.set(k, s = { lat: 0, lng: 0, n: 0, red: false, clay: false });
+      s.lat += o.lat; s.lng += o.lng; s.n++; if (it.alarm || (o.hum && o.kind === 'need')) s.red = true; if (o.story) s.clay = true;
+    }
+    for (const s of g.values()) {
+      s.lat /= s.n; s.lng /= s.n; const q = map.project([s.lng, s.lat]); if (off(q.x, q.y, 40)) continue; s.x = q.x; s.y = q.y; sigs.push(s);
+      const col = s.red ? '232,69,60' : s.clay ? '140,116,105' : '255,255,255'; const ph = ((((now / 2600) + Math.abs(s.lat * 997 % 1)) % 1) + 1) % 1; const rings = Math.min(3, 1 + Math.floor(Math.log2(s.n + 1)));
+      ctx.save();
+      for (let i = 0; i < rings; i++) { const p = still ? 0.35 + i * 0.25 : (ph + i / rings) % 1; ctx.beginPath(); ctx.arc(q.x, q.y, 4 + p * 16, 0, TAU); ctx.strokeStyle = `rgba(${col},${(0.5 * (1 - p)).toFixed(3)})`; ctx.lineWidth = 1.2; ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(q.x, q.y, 2.6, 0, TAU); ctx.fillStyle = `rgba(${col},.9)`; ctx.fill();
+      ctx.restore();
+    }
+  }
   /* the places' track, when seen: the human ecology inside the radar, each place in its family's mark, as in an open cell */
   let placesK = '', placesL = [];
   function placesIn() {
@@ -398,7 +449,7 @@ const life = (() => {
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
     if (!cellOpen && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
-    places(ctx);
+    places(ctx); signals(ctx, now, still);
     for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
     for (const it of items) {
       if (it.binned || !shown(it) || off(it.x, it.y)) continue;
@@ -495,6 +546,7 @@ const life = (() => {
     const consider = (d, h) => { if (d <= slack && (!best || d < best.d)) best = { ...h, d }; };
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
     if (S.mode === 'ping') { const n = strings.hit(x, y, slack); if (n) return n; }
+    for (const s of sigs) if (Math.hypot(s.x - x, s.y - y) < 14) return { kind: 'signal', lat: s.lat, lng: s.lng, d: 0 };
     if (seeTrack('places') && S.mode !== 'ping') placesL.forEach((p, i) => { if (p._x != null) consider(Math.hypot(p._x - x, p._y - y) - 5, { kind: 'place', id: i }); });
     const pd = printerSize() / 2 + 4; for (const p of PARTNERS) if (p.printer && p._x != null && Math.abs(p._x - x) < pd && y - p._y < pd && p._y - y < pd + 6) return { kind: 'partner', id: p.id, d: 0 };
     for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
@@ -557,6 +609,6 @@ const life = (() => {
     start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
     seen: () => seen, reveal: revealAll, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
-    get items() { return items; }, get bins() { return bins; }, get movers() { return movers; }, shown,
+    get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown,
   };
 })();

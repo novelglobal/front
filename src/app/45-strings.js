@@ -111,8 +111,13 @@ const strings = (() => {
   /* a string to a place that sells or leaves what harms this life */
   const hotIn = nodeOf => e => e.some(k => { const n = k !== 'pin' && nodeOf(k); return !!n && n.t === 'biz' && (n.harm || []).length > 0; });
   /* the human ecology, drawn small: a diamond for a shop or a brand, filled by what it does; a room for a third space; three linked dots for a network */
+  const CHAR = { circular: '12,203,189', network: '0,103,184', artists: '230,248,74', third: '140,116,105' };
   function placeMark(ctx, n, x, y, k, tied) {
-    const r = (n.cur ? 5 : 4) * k * (tied ? 1.18 : 1); const harm = (n.harm || []).length > 0;
+    const harm = (n.harm || []).length > 0; const ch = CHAR[n.fam];
+    /* the circular economy, community, the creative and third spaces carry more: larger, in a soft halo of their colour;
+       a brand or a service is quieter, smaller */
+    const r = (n.cur ? 5 : 4) * k * (tied ? 1.18 : 1) * (ch || harm ? 1.3 : 0.85);
+    if (ch || harm) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, TAU); ctx.fillStyle = `rgba(${harm ? '230,248,74' : ch},.22)`; ctx.fill(); ctx.restore(); }
     const dia = (rr, fill, stroke, lw = 1.4) => { ctx.beginPath(); ctx.moveTo(x, y - rr); ctx.lineTo(x + rr, y); ctx.lineTo(x, y + rr); ctx.lineTo(x - rr, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
     ctx.save();
     if (n.fam === 'third') { const h = r * 0.95; ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.navy; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, h * 0.38, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }

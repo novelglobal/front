@@ -50,6 +50,11 @@ document.addEventListener('click', e => { if (!coarse()) return; const el = e.ta
 /* every press answers with a small click, and the page's own buttons with a little more */
 document.addEventListener('click', e => { const b = e.target.closest('summary'); if (b) tick(1300); });
 
+/* on a phone the page folds down to its grip and back, at any stage; closed, it opens unfolded next time */
+$('#grip').addEventListener('click', () => { const m = !document.body.classList.contains('mini'); document.body.classList.toggle('mini', m); $('#grip').setAttribute('aria-pressed', String(m)); tick(m ? 1100 : 1500); });
+new MutationObserver(() => { if (document.body.classList.contains('shut') && document.body.classList.contains('mini')) { document.body.classList.remove('mini'); $('#grip').setAttribute('aria-pressed', 'false'); } }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+/* out of sight, the drone falls quiet; the sweep wakes it again */
+document.addEventListener('visibilitychange', () => { if (document.hidden) snd.droneOff(); });
 /* ───────── boot ───────── */
 document.title = CONFIG.NAME.replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
 document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); document.documentElement.classList.toggle('still', !prefs.motion);
