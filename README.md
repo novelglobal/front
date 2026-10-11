@@ -1,6 +1,6 @@
-# Direct Action
+# Direct Action Radio
 
-A radar over Brunswick to the Melbourne CBD for the El Niño summer of 2026–28. It shows live iNaturalist sightings, the El Niño threat, and the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. Make string figures between them, listen, notice and print out a four-line W.I.S.H. praxis poem  or brief receipt.
+A sonic radar over Brunswick to the Melbourne CBD for the El Niño summer of 2026–28. It shows live iNaturalist sightings, the El Niño threat, and the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. Make string figures between them, listen, notice and print out a four-line W.I.S.H. praxis poem  or brief receipt.
 
 By [novel.global](https://novel.global). MIT licence. Made on Wurundjeri Woi-wurrung Country.
 
