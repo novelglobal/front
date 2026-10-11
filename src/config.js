@@ -4,9 +4,10 @@ window.DA_CONFIG = {
   BY: 'novel.global',
   BBOX: { s: -37.823, w: 144.925, n: -37.748, e: 145.000 },      // Brunswick to the city
   TERRAIN_EXAGGERATION: 3,
-  DAYS: 45,                                                         // sightings from the last 45 days; older ones go cold
-  PAGES: 5,                                                         // × 200 sightings
-  HISTORY: { years: 2, days: 21, per: 200 },                        // the same weeks in past years
+  DAYS: 60,                                                         // sightings from the last 60 days; older ones go cold
+  PAGES: 8,                                                         // × 200 sightings
+  HISTORY: { years: 4, days: 30, per: 200 },                        // the same weeks in past years
+  CAP: { m: 150, n: 2 },                                            // in any spot about `m` metres across, at most `n` sightings of one kind show; the rest wait
   INAT_API: 'https://api.inaturalist.org/v1',
   INAT_WEB: 'https://www.inaturalist.org/observations/',
   INAT_TAXA: 'https://www.inaturalist.org/taxa/',

@@ -402,8 +402,16 @@
     else if (tone === 'story') rrect(ctx, x - r * 0.74, y - r * 1.04, r * 1.48, r * 2.08, 1.5);
     else ctx.arc(x, y, r, 0, TAU);
   }
+  /* one family, many tones: within a group's colour, each kind its own shade, lighter or darker, so kinds can be told apart */
+  const mixHex = (hex, t) => { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(t > 0 ? v + (255 - v) * t : v * (1 + t))); return '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''); };
+  const SHADE = [0, 0.2, -0.18, 0.34, -0.3, 0.1, -0.08, 0.26, -0.24];
+  const shadeOf = g => { const grp = GROUP[g]; if (!grp) return 0; const kin = Object.keys(GROUP).filter(k => GROUP[k] === grp); return SHADE[Math.max(0, kin.indexOf(g)) % SHADE.length]; };
+  const GOLD = '#F2C14E';
   function badge(ctx, b, x, y) {
-    const d = b.d || 22, r = d / 2, [bg, fg] = TONES[b.tone] || TONES.fauna;
+    const d = b.d || 22, r = d / 2; let [bg, fg] = TONES[b.tone] || TONES.fauna;
+    if (/^k-/.test(b.tone) && b.g && /^#/.test(bg)) bg = mixHex(bg, shadeOf(b.g));
+    /* legendary (threatened, or one of the five): a soft gold glow behind it */
+    if (b.tier >= 2) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r + 7, 0, TAU); const g0 = ctx.createRadialGradient(x, y, r * 0.6, x, y, r + 9); g0.addColorStop(0, 'rgba(242,193,78,.45)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.fill(); ctx.restore(); }
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;
     if (b.tone === 'hist') { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = bg; ctx.fill(); ctx.setLineDash([1.4, 1.6]); ctx.lineWidth = 1.1; ctx.strokeStyle = C.white; ctx.stroke(); ctx.restore(); return; }
     /* more than one seen: discs stacked behind */
@@ -421,8 +429,9 @@
     /* danger in the months ahead: a red ring when severe, a black ring at the extreme */
     const dz = b.dz || (b.hot ? 3 : 0);
     if (dz >= 3) { const R0 = r + (dz >= 4 ? 3.6 : 2.6); if (dz >= 4) { ctx.beginPath(); ctx.arc(x, y, R0, 0, TAU); ctx.lineWidth = 5.6; ctx.strokeStyle = C.white; ctx.stroke(); } ctx.beginPath(); ctx.arc(x, y, R0, 0, TAU); ctx.lineWidth = dz >= 4 ? 3.4 : 2.2; ctx.strokeStyle = C.deg[dz]; ctx.stroke(); }
-    /* threatened: a dashed ring */
-    if (b.sig) { ctx.beginPath(); ctx.arc(x, y, r + (dz >= 3 ? 7 : 3.4), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = C.white; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]); }
+    /* rare: a fine gold ring. Legendary: two, and a small spark at its shoulder */
+    if (b.tier >= 1) { const R1 = r + (dz >= 3 ? 7 : 3.2); ctx.beginPath(); ctx.arc(x, y, R1, 0, TAU); ctx.lineWidth = 1.3; ctx.strokeStyle = GOLD; ctx.stroke();
+      if (b.tier >= 2) { ctx.beginPath(); ctx.arc(x, y, R1 + 2.6, 0, TAU); ctx.lineWidth = 0.9; ctx.stroke(); const sx = x - r * 0.85, sy = y - r * 0.85, s = Math.max(2.8, d * 0.16); ctx.beginPath(); ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s * 0.28, sy - s * 0.28); ctx.lineTo(sx + s, sy); ctx.lineTo(sx + s * 0.28, sy + s * 0.28); ctx.lineTo(sx, sy + s); ctx.lineTo(sx - s * 0.28, sy + s * 0.28); ctx.lineTo(sx - s, sy); ctx.lineTo(sx - s * 0.28, sy - s * 0.28); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); } }
     /* new: a red point at the shoulder */
     if (b.fresh) { ctx.beginPath(); ctx.arc(x + r * 0.76, y - r * 0.76, Math.max(2.6, d * 0.13), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); ctx.lineWidth = 1.3; ctx.strokeStyle = C.white; ctx.stroke(); }
     ctx.restore();
@@ -430,11 +439,11 @@
   /* each icon drawn once into a bitmap, then placed: hundreds can move at once */
   const SPR = new Map();
   function badgeSprite(b, dpr = 1) {
-    const key = [b.g, b.i, b.tone, b.d, b.sig ? 1 : 0, b.fresh ? 1 : 0, b.n > 1 ? Math.min(3, b.n) : 0, b.carried ? 1 : 0, b.hot ? 1 : 0, b.dz || 0, dpr].join('|');
+    const key = [b.g, b.i, b.tone, b.d, b.tier || 0, b.fresh ? 1 : 0, b.n > 1 ? Math.min(3, b.n) : 0, b.carried ? 1 : 0, b.hot ? 1 : 0, b.dz || 0, dpr].join('|');
     let sp = SPR.get(key); if (sp) return sp;
-    const size = Math.ceil((b.d || 22) + 26); const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(size * dpr);
+    const size = Math.ceil((b.d || 22) + (b.tier ? 34 : 26)); const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(size * dpr);
     const x = cv.getContext('2d'); x.scale(dpr, dpr); badge(x, { ...b, a: 1 }, size / 2, size / 2);
-    sp = { cv, size }; SPR.set(key, sp); if (SPR.size > 1200) SPR.delete(SPR.keys().next().value);
+    sp = { cv, size }; SPR.set(key, sp); while (SPR.size > 320) SPR.delete(SPR.keys().next().value);   /* bounded: a phone's memory is small, and every zoom makes new sizes */
     return sp;
   }
   /* how each kind of life moves: small, true to its kind, never far from where it was seen.

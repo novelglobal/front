@@ -77,7 +77,8 @@ let refreshQ = 0;
 function refresh() { if (refreshQ) return; refreshQ = requestAnimationFrame(() => { refreshQ = 0; buildHeroes(); life.data(); if (S.mode === 'ping') strings.refresh(); refreshPanel(); if (S.mode) refreshRecord(); }); }
 setInterval(() => { $$('#panel .cdn[data-up]').forEach(t => { t.textContent = elapsed(+t.dataset.up); }); }, 1000);
 /* a month chosen on the strip: the page and the ground show that stretch of three months */
-const pickMonth = k => { k = clamp(k, 0, OUT_N - 1); if (k === S.mo) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
+/* a month pressed: the outlook moves to it, and its readout opens; pressed again, the readout closes */
+const pickMonth = (k, read) => { k = clamp(k, 0, OUT_N - 1); if (read) S.moRead = S.moRead === k ? null : k; if (k === S.mo && !read) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
 /* the search area of an animal lost: shown, and the whole of it framed */
 function searchFor(id) {
   const o = S.byId.get(id); if (!o) return; if (!prefs.areas) { prefs.areas = true; savePrefs(); }
@@ -86,7 +87,7 @@ function searchFor(id) {
 }
 viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
-  const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo); return; }
+  const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
   const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
@@ -124,14 +125,24 @@ function monthKinds() {
   if (hn && !picks.includes('human')) { const ks = [...Array(OUT_N).keys()].filter(k => inWin(hn, outMonth(k).m)); if (ks.length) picks[ks[Math.floor(ks.length / 2)]] = 'human'; }
   return picks;
 }
-/* twelve months: each a bar in its degree, orange to black, the chosen three standing taller; under each, the kind of life
-   it puts most at risk. No words */
+/* the outlook as a graphic equaliser: a column of lit segments for every month, as high as its heat, from orange through red
+   to black at the extreme. Pressed, a month opens its readout: the month, its danger, its window, and the lives it reaches */
+const EQ_SEGS = 10, EQ_LIT = [2, 4, 6, 8, 10];
+const segTone = i => (i < 3 ? 0 : i < 5 ? 1 : i < 7 ? 2 : i < 9 ? 3 : 4);
 function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
-  return `<div class="mstrip" style="--n:${OUT_N}">`
-    + `<div class="ms-m" role="group" aria-label="Months">${ks.map(k => { const Mo = outMonth(k); return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}" data-mo="${k}" aria-pressed="${k === S.mo}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]} · ${HORIZON[Mo.h]}"><i></i><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; }).join('')}</div>`
-    + `<div class="ms-k">${ks.map(k => { const Mo = outMonth(k); const g = gs[k]; return `<span class="d${Mo.lv}${span(k) ? ' on' : ''}${g === 'human' ? ' us' : ''}" data-tip="${esc(M.KINDS[g] || '')} · ${MON[Mo.m]}">${glyphSVG(g)}<b></b></span>`; }).join('')}</div>`
-    + `</div>`;
+  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
+    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s">${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
+  return `<div class="mstrip eq" style="--n:${OUT_N}"><div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
+    + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
+}
+/* a month's readout: as a stereo's display would show it */
+function readout(k, top) {
+  const Mo = outMonth(k); const m = Mo.m; const ws = OUT.windows.filter(w => inWin(w, m));
+  const gs = [top, ...ws.flatMap(w => w.g)].filter((g, i, a) => g && a.indexOf(g) === i).slice(0, 7);
+  return `<div class="eq-read" role="status"><p class="mono"><b>${MON[m]} ${Mo.y}</b><span class="dg d${Mo.lv}">${DEG[Mo.lv]}</span>${ws.map(w => `<span>${esc(w.w)}</span>`).join('')}<span class="hz">${HORIZON[Mo.h]}</span></p>`
+    + (ws.length ? `<p class="why">${esc(ws[0].why)}</p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
+    + `<p class="eq-k">${gs.map(g => `<i class="${g === 'human' ? 'us' : ''}" data-tip="${esc(M.KINDS[g] || '')}">${glyphSVG(g)}</i>`).join('')}</p></div>`;
 }
 function bindOutlook() {
   const st = $('#sec-heat .ms-m'); if (!st) return;
@@ -243,7 +254,7 @@ function bindStories() {
   art('art-guide', [{ tone: 'k-mammal', g: 'flyingfox', dz: 3 }, { tone: 'injured', g: 'possum' }, { tone: 'lost', g: 'dog' }, { tone: 'event', i: 'hug' }, { tone: 'story', g: 'bee', carried: true }, { tone: 'need', i: 'shade' }, { tone: 'flora', g: 'plant' }, { tone: 'dead', g: 'bird' }]);
   $('#rx-open').addEventListener('click', () => { openReceive($('#rx').hidden); tick(1500); });
   $('#rx').addEventListener('submit', e => { e.preventDefault(); const t = $('#rx-t').value.trim(); if (!t) { nudge($('#rx-t')); return; } receive(t); });
-  $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); if (!prefs.sound) stopTracks(); tick(); });
+  $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } tick(); });
   $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', !prefs.motion); life.data(); tick(); });
   $('#ix-areas').addEventListener('click', e => { prefs.areas = !prefs.areas; e.currentTarget.setAttribute('aria-pressed', String(prefs.areas)); savePrefs(); life.redraw(); tick(); });
   $('#ix-night').addEventListener('click', e => { prefs.night = !darkNow(); e.currentTarget.setAttribute('aria-pressed', String(prefs.night)); savePrefs(); applyNight(); tick(); });

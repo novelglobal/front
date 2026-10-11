@@ -77,7 +77,8 @@ map.on('click', e => {
     if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
     if (h.kind === 'tribe') { selectTribe(h.id); return; }
     if (h.kind === 'partner') { selectPartner(h.id); return; }
-    if (h.kind === 'place') { life.hover(h); tick(1500); return; }   /* a place on the places' track: its name, also on a phone */
+    if (h.kind === 'place') { life.hover(h); tick(1500); return; }
+    if (h.kind === 'signal') { life.moveScan(h.lat, h.lng, true); tick(1700); return; }   /* a place on the places' track: its name, also on a phone */
     select(h.id); return;
   }
   if (S.mode) { closeRecord(); return; }

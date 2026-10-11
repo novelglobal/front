@@ -9,8 +9,9 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 2 | Save and share, with your approval | Built, on staging |
 | 3 | Print queue and the pager printer | Built, on staging; the printers at Pickles, Kines and Coffee Bar Elsie to set up |
 | 3b | Final polish: DIRECT ACTION on NOW, twenty example stories, two slip styles, the local mesh, cell packs | Live |
-| 3c | Stations seen or played, first visits, night | Built, on staging |
-| 3d | The radar as glass and vinyl, clay, the outlook restored, nature locked on | Built, on staging |
+| 3c | Stations seen or played, first visits, night | Live |
+| 3d | The radar as glass and vinyl, clay, the outlook restored, nature locked on | Live |
+| 3e | Sound as an ecology, the equaliser, hierarchy, signals outside the radar | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -102,6 +103,17 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **The map:** a click on open ground glides the radar there, inside it or out; only a long press makes a new record.
 - **Clay** (#8C7469), the complement of Artifact (PPG10-16, #69808B): the guide's colour, the new icon, and the five and the stories on the map.
 - **The radar:** a disc of glass over the ground, light gathered at its upper edge, a record's fine grooves, a clay label at its centre, and a sheen that turns with the sweep.
+
+## Stage 3e — sound as an ecology, the equaliser, hierarchy
+
+*Built, on staging.*
+
+- **NOW:** the outlook is a graphic equaliser, a column of lit segments each month as high as its heat, orange to red to black. A month pressed opens a small readout: its danger, its window and why, and the lives it reaches.
+- **Sound:** a long, dark hall behind everything. The sweep rings each cell as a soft bell, low near the centre and higher at the rim, every pass, and strange (a semitone off) where something is in danger. As the sweep's trail crosses life, a low drone swells under it.
+- **Stations:** a generative score in D minor. Nature is a choir (each kind a voice), the places are the kit (each family its own drum), packs of cells ring as bells. Three moods: FOG, RAIN, WEIGHT. Each station has a fader.
+- **The map:** past and new sightings both reach further (60 days, four past years); in any spot about 150 m across, at most two of a kind show. Outside the radar nothing stands as a mark: what is new is a quiet signal, red if urgent, clay if a story; pressed, the radar goes there.
+- **Hierarchy:** each kind its own shade of its group's colour; rare (new here, or seen once) with a gold ring; legendary (threatened, or one of the five) with two and a spark. A need for help is larger and rings orange. Circular, community, creative and third places carry a halo; brands and services are quieter.
+- **Fixes:** night keeps the W.I.S.H. form paper; a slip keeps its photograph in either style; the radar's centre is clear glass; on a phone the action is a small pill at the bottom right and the page folds to its grip at any stage; bounded caches so a long session on a phone does not run out of memory.
 
 ## Stage 4 — live data through Cloudflare
 

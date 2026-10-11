@@ -283,6 +283,8 @@ $('#s-acts').addEventListener('click', async e => {
   if (a === 'remove') { await ledgerAdd({ type: 'redact', ref: s.key }); snd.snap(0); closeRecord(); }
   if (a === 'style') { prefs.slip = isTty() ? 'paper' : 'tty'; savePrefs(); b.setAttribute('aria-pressed', String(isTty())); snd.tick(1800); buzz(6);
     const host = $('#s-slip'); host.classList.toggle('tty', isTty());
+    /* either style keeps its photograph: whichever was hidden when the slip was drawn is filled now */
+    fillFig(host, s, false); fillHero(host, s);
     if (isTty()) for (const el of host.querySelectorAll('.sl-code, .sl-life b')) scramble(el, el.textContent); }
 });
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
