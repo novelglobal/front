@@ -78,10 +78,21 @@ const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a 
 const isTty = () => prefs.slip === 'tty';
 /* the terminal's hero: the slip's own photograph, else an open one of the same kind of life seen here */
 /* an open photograph of the same kind of life seen here, with its credit: for a slip with none of its own, such as the examples */
+const KPH = store.get('da.kph.v1', {});   /* a kind's photograph, asked of iNaturalist by name when no sighting here has one */
 function kindPhoto(s) {
   const n = (s.pin || {}).n; if (!n) return null;
   for (const o of S.obs) { if (!o.tx || o.tx.n !== n) continue; if (o.ph && o.ph.u && licOpen(o.ph.l)) return o.ph; const t = o.tx.id && TXI[o.tx.id]; if (t && t.ph && t.ph.u) return t.ph; }
-  return null;
+  return KPH[n] || null;
+}
+let kphAsked = false;
+async function askKindPhotos(sigs) {
+  if (kphAsked) return; kphAsked = true; let got = 0;
+  for (const s of sigs) {
+    const n = (s.pin || {}).n; if (!n || KPH[n] !== undefined || sigSrc(s, false) || kindPhoto(s)) continue;
+    try { const j = await (await fetch(`${CONFIG.INAT_API}/taxa?${new URLSearchParams({ q: n, per_page: 1, locale: 'en' })}`)).json(); const dp = ((j.results || [])[0] || {}).default_photo || {};
+      KPH[n] = dp.medium_url && licOpen(dp.license_code) ? { u: dp.medium_url, l: dp.license_code, a: dp.attribution || '' } : null; if (KPH[n]) got++; } catch (e) { /* asked again next visit */ }
+  }
+  store.set('da.kph.v1', KPH); if (got && S.view === 1) refreshPanel();
 }
 const ownOrKind = s => !s.img || s.img.k === 'kind';
 function heroSrc(s, big) {

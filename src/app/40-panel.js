@@ -240,13 +240,16 @@ viewEl.addEventListener('click', e => {
 /* ───────── STORIES: the signals board, newest first ───────── */
 const THEMES = { heat: 'HEAT', water: 'WATER', pollinate: 'POLLINATORS', diversity: 'DIVERSITY', night: 'NIGHT', food: 'FOOD', circular: 'CIRCULAR', cats: 'CATS' };
 /* the board: every slip, this device's and the ones shown to everyone, each with where it has got to */
-/* a signal as a card: its photograph (its own, else its kind's) or its mark, large; its code, its life. Held up: gold */
-const sigArt = s => { const own = sigSrc(s, false); const ph = own || (kindPhoto(s) ? photoURL(kindPhoto(s).u, 'small') : ''); const p = s.pin || {};
+/* a signal as a story card, every one the same shape: its photograph (its own, else its kind's) or its mark; what to do,
+   bold, first; the story under it, plain; the life; the code small in the corner. Held up: gold, doubled; printed: gold */
+const sigArt = s => { const own = sigSrc(s, false); const kp = kindPhoto(s); const ph = own || (kp ? photoURL(kp.u, 'medium') : ''); const p = s.pin || {};
   return ph ? `<img class="art" src="${esc(ph)}" alt="" loading="lazy">` : `<span class="art mark">${glyphSVG(p.g || 'paw')}</span>`; };
 const printedOf = s => s.printed || (SENT[s.code] && SENT[s.code].job === 'printed' ? 1 : 0);
 const sigRow = s => {
-  const p = s.pin || {}; const st = sentWord(s); const tier = s.star ? 2 : printedOf(s) ? 1 : 0;
-  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}" data-tip="${esc(linesOf(s).pop() || s.threat || '')}">${sigArt(s)}<b class="mono">${esc(s.code)}</b><span class="nm">${esc(p.cn || p.n || '')}</span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
+  const p = s.pin || {}; const st = sentWord(s); const tier = s.star ? 2 : printedOf(s) ? 1 : 0; const L = linesOf(s);
+  const act = L[L.length - 1] || s.threat || ''; const story = s.threat && s.threat !== act ? s.threat : L[0] && L[0] !== act ? L[0] : '';
+  return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}"><b class="mono code">${esc(s.code)}</b>${sigArt(s)}`
+    + `<span class="cap"><strong class="act">${esc(act)}</strong>${story ? `<span class="story">${esc(story)}</span>` : ''}<span class="nm">${esc(p.cn || p.n || '')}</span></span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
 };
 /* the board's order, behind the scenes: the four printed most, or held up on the approval page; then the newest */
 function boardOrder(sigs) {
@@ -259,7 +262,7 @@ function viewStories() {
   const sigs = S.signals;
   return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
-      + (() => { const all = boardOrder(sigs); const more = all.slice(8); return `<ol class="sigs cards">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<details class="more-sigs"><summary aria-label="More">${icon('next', 'sm')}<span class="mono">${more.length}</span></summary><ol class="sigs cards">${more.map(sigRow).join('')}</ol></details>` : ''); })()
+      + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<details class="more-sigs"><summary aria-label="More">${icon('next', 'sm')}<span class="mono">${more.length}</span></summary><ol class="sigs cards small">${more.map(sigRow).join('')}</ol></details>` : ''); })()
       + `</section>`
     + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
