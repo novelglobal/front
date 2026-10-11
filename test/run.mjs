@@ -23,9 +23,10 @@ const apiServer = createTestHarness({ root: ROOT, workers: [{ configPath: './wra
 const API_O = (await apiServer.listen()).url.origin;
 const admin = async (p, body) => { const r = await apiServer.fetch(new URL('/api/admin/' + p, API_O), { method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${ADMIN_KEY}`, 'content-type': 'application/json', origin: API_O }, body: body ? JSON.stringify(body) : undefined }); return r.json(); };
 
-async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false } = {}) {
+async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false, dark = false } = {}) {
   /* the radar stays where it is pinned, unless a check is about a first visit */
-  if (!first) await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', '{"found":true,"start2":true}'); } catch (e) { /* no storage */ } });
+  /* and by day (night is the default), unless a check is about the night */
+  if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, dark ? '{"found":true,"start2":true}' : '{"found":true,"start2":true,"night":false}');
   await ctx.route('**/*', async route => {
     const url = route.request().url(); const u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -219,6 +220,10 @@ if (run('smoke')) try {
   check('STORIES: the signals board with twenty examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 20 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
   const bd = await page.evaluate(() => ({ top: document.querySelectorAll('#sec-signals > .sigs.cards > li').length, more: document.querySelectorAll('#sec-signals .more-sigs .sig-row').length, art: [...document.querySelectorAll('#sec-signals .sig-row')].every(r => r.querySelector('.art')), shut: !document.querySelector('#sec-signals .more-sigs').open }));
   check('the board shows eight signals as cards, each with its photograph or mark; the rest fold away', bd.top === 8 && bd.more === 12 && bd.art && bd.shut, JSON.stringify(bd));
+  const sm = await page.evaluate(async () => { const d = document.querySelector('#sec-signals .more-sigs'); d.open = true; await new Promise(r => setTimeout(r, 300)); const rows = [...d.querySelectorAll('.sig-row')]; const hs = rows.map(r => Math.round(r.getBoundingClientRect().height)); const arts = rows.map(r => { const a = r.querySelector('.art').getBoundingClientRect(); return Math.abs(a.width - a.height) <= 1; }); const font = getComputedStyle(d.querySelector('.act')).fontFamily; d.open = false; return { hs: [...new Set(hs)], square: arts.every(Boolean), font }; });
+  check('the folded cards are all one size, their pictures square, their words in the radio type', sm.hs.length === 1 && sm.square && /VT323/.test(sm.font), JSON.stringify(sm));
+  const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
+  check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
   check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-stories.png');
@@ -899,16 +904,19 @@ if (run('offline')) try {
 
 // ───────── night: as the device is set, or chosen in Settings; the page darkens, the ground dims, a slip stays paper ─────────
 if (run('night')) try {
-  const ctx = await newCtx({ colorScheme: 'dark' }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'night');
+  const ctx = await newCtx(); await wire(ctx, { dark: true }); const page = await ctx.newPage(); watch(page, 'night');
   await page.goto('https://oan.test/index.html'); await ready(page, '', true); await settle(page);
   const n0 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), page: getComputedStyle(document.querySelector('#panel')).backgroundColor, ground: getComputedStyle(document.querySelector('.maplibregl-canvas')).filter }));
-  check('night follows the device: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
+  check('night is the default, whatever the device: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
   await tab(page, 1); await sleep(500); await tap(page, '#ix-night'); await sleep(300);
   const n1 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), kept: JSON.parse(localStorage.getItem('da.prefs')).night, pressed: document.querySelector('#ix-night').getAttribute('aria-pressed') }));
   check('and NIGHT in Settings turns it off, or on, and keeps it', !n1.night && n1.kept === false && n1.pressed === 'false', JSON.stringify(n1));
   await tap(page, '#ix-night'); await sleep(300); await page.evaluate(() => window.__da.openSignal('ex:DA-0RNG')); await sleep(1500);
-  const n2 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), slip: getComputedStyle(document.querySelector('#s-slip')).backgroundColor }));
-  check('a slip stays paper at night', n2.night && n2.slip === 'rgb(252, 251, 247)', JSON.stringify(n2));
+  const n2 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), slip: getComputedStyle(document.querySelector('#s-slip')).backgroundColor, tty: document.querySelector('#s-slip').classList.contains('tty') }));
+  check('a slip stays paper at night, set as the terminal', n2.night && n2.slip === 'rgb(252, 251, 247)' && n2.tty, JSON.stringify(n2));
+  /* every tab's icon stands out from its tab at night, pressed or not */
+  const tn = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const c = s => (s.match(/\d+/g) || []).slice(0, 3).reduce((a, b) => a + +b, 0); return Math.abs(c(getComputedStyle(t).color) - c(getComputedStyle(t).backgroundColor)); }));
+  check('at night every tab icon stands out from its tab', tn.every(d => d > 300), JSON.stringify(tn));
   await shot(page, '70-night.png');
   await ctx.close();
 } catch (e) { results.push(`FAIL  section night: ${e.message.split('\n')[0]}`); }

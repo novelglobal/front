@@ -25,6 +25,7 @@ html.night{color-scheme:dark;--white:#151515;--paper:#262626;--grey:#4A4A4A;--gr
 /* night: buttons and controls carry a clear edge, so nothing sinks into the charcoal */
 html.night .pill,html.night .tog,html.night .mood,html.night .tk,html.night .docs button,html.night .src-dl a,html.night .pack-up label,html.night .more-sigs summary,html.night .gigs a,html.night .ib{box-shadow:inset 0 0 0 1px #5A5A5A}
 html.night .rail .tab{box-shadow:0 0 0 1px #5A5A5A}
+html.night .tab:not([aria-pressed="true"]){background:rgba(21,21,21,.94)}
 html.night .maplibregl-canvas{filter:brightness(.52) saturate(.72) contrast(1.06)}
 html.night .band{--slip:#1C1C1C;--ink:#EDEDED;box-shadow:inset 0 0 0 1px var(--grey)}
 html.night .eq-c i.t4,html.night .b-count .sun.d4{box-shadow:inset 0 0 0 1px rgba(227,233,231,.32)}
@@ -165,7 +166,7 @@ body.shut .trace{left:50vw;max-width:calc(100vw - 32px)}
 .rail{position:fixed;z-index:7;top:calc(var(--top) + 12px);right:12px;display:flex;flex-direction:column;gap:6px;transition:right .34s var(--ease)}
 body:not(.shut) .rail{right:calc(var(--page) + 12px)}
 .tab{position:relative;width:40px;height:40px;display:grid;place-items:center;background:rgba(255,255,255,.94);color:var(--navy);box-shadow:0 2px 10px rgba(0,0,0,.25)}
-.tab .sq{display:grid;place-items:center}
+.tab .sq{display:grid;place-items:center;width:auto;height:auto;border:0;background:none}
 .tab .sq .i{width:18px;height:18px}
 .tab[aria-pressed="true"]{background:var(--navy);color:var(--white)}
 .tab:hover:not([aria-pressed="true"]){background:var(--teal-wash)}
@@ -911,14 +912,16 @@ html.night .con-row .nm b{color:color-mix(in srgb,var(--k,#fff) 55%,#fff)}
   mask:linear-gradient(#000 0 0) top/100% calc(100% - var(--tear)) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/calc(2 * var(--tear)) var(--tear) repeat-x}
 .sigs.cards .sig-row:hover{border-color:#141412}
 .sigs.cards .art{flex:none;display:grid;place-items:center;width:100%;aspect-ratio:1;object-fit:cover;background:#ECEAE3}
-.sigs.cards .art.mark .i{width:38%;height:38%;color:var(--clay)}
+.sigs.cards .art{height:auto;min-height:0}
+.sigs.cards .art.mark .i{width:38%;height:auto;aspect-ratio:1;color:var(--clay)}
 .sigs.cards .code{position:absolute;z-index:1;top:10px;left:10px;padding:2px 5px;border-radius:3px;background:rgba(17,25,22,.62);color:#fff;font-size:8px;font-weight:500;letter-spacing:.06em}
 .sigs.cards .cap{display:flex;flex-direction:column;padding:9px 3px 6px;flex:1}
 .sigs.cards .act{font:700 13px/1.22 var(--sans);color:#141412;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:3.66em}
 .sigs.cards.small .art{aspect-ratio:1}
 .sigs.cards.small .sig-row{--tear:4px;padding:4px 4px calc(var(--tear) + 1px)}
 .sigs.cards.small .cap{padding:5px 1px 3px}
-.sigs.cards.small .act{font-size:9.5px;line-height:1.2;-webkit-line-clamp:3;min-height:3.6em}
+/* the small cards' words in the radio's own type: they read better small */
+.sigs.cards.small .act{font:400 14px/1 'VT323',ui-monospace,monospace;letter-spacing:.02em;-webkit-line-clamp:3;min-height:3em}
 .sigs.cards.small .code{font-size:7px;top:6px;left:6px;padding:1px 3px}
 .sigs.cards .st{position:absolute;z-index:1;top:11px;right:11px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 2px #FCFBF7}
 .sigs.cards .t1{border-color:#F2C14E}

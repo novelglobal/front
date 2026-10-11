@@ -81,10 +81,10 @@ const seeTrack = id => { if (id === 'life' && CFG.lifeLock) return true; const v
 const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
-/* night: as the device is set, until chosen in Settings. The page darkens and the ground dims; a slip stays paper */
-const darkNow = () => (prefs.night != null ? !!prefs.night : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+/* night is the default, until turned off in Settings. The page darkens and the ground dims; a slip stays paper */
+const darkNow = () => (prefs.night != null ? !!prefs.night : true);
 const applyNight = () => document.documentElement.classList.toggle('night', darkNow());
-applyNight(); try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (prefs.night == null) applyNight(); }); } catch (e) { /* no media queries */ }
+applyNight();
 const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));
 if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; store.set('da.me', me); }
 const S = {
