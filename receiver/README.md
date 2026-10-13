@@ -13,7 +13,7 @@ Raspberry Pi: pull.py ── asks every few seconds ─────────�
 
 Two open-source projects do the work with the hardware:
 
-- **printd** (<https://github.com/HansF/printd>, MIT) drives the ESC/POS printer. `pull.py` sends each slip's bytes to its `POST /print/raw`.
+- **printd** (<https://github.com/HansF/printd>, MIT) drives the ESC/POS printer. It is installed straight from GitHub, as it is not on PyPI. `pull.py` sends each slip's bytes to its `POST /print/raw`.
 - **Meshtastic's Python library** (<https://github.com/meshtastic/python>, GPL-3.0) sends a slip's mesh line over a LoRa radio. It runs as its own program on the Pi, apart from the website's code.
 
 ## What you need
@@ -49,7 +49,7 @@ Load the paper, connect the PS-180 supply, then hold **FEED** while switching th
 ```sh
 sudo mkdir -p /opt/printd && sudo chown da /opt/printd
 sudo -u da python3 -m venv /opt/printd/venv
-sudo -u da /opt/printd/venv/bin/pip install printd
+sudo -u da /opt/printd/venv/bin/pip install git+https://github.com/HansF/printd
 ```
 
 Write its settings, with a long random key of your own in place of `<a long random key>`:
