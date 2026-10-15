@@ -1524,3 +1524,154 @@ html:not(.night) #zine,html:not(.night) .cover{background:#E6E4DD url("data:imag
 /* the pixel menu, cold */
 .pick{border-radius:4px}
 @media (prefers-reduced-motion:reduce){.tv-card,.lk-mark.pulse svg{animation:none}}
+
+/* ═════════ the tension: on every page something serious, filed and ruled, beside something that plays. The checklist is a
+   protocol; the layers are toys. The W.I.S.H. is a document; the pieces are stickers. The queue is a readout; the sheet is
+   fun. The W.I.S.H.es are filed; the posters hang on a wall ═════════ */
+/* RADIO: the checklist, a protocol. Numbered, ruled, mono; each step stamped when done */
+.checks{gap:0;padding:4px 0 0;margin-top:20px;box-shadow:none;border-top:2px solid var(--navy);border-bottom:1px solid var(--navy);background:transparent}
+.chk+.chk{border-top:1px solid var(--edge)}
+.chk-b{grid-template-columns:22px 26px 1fr 22px;gap:10px;padding:9px 2px}
+.chk-n{font-size:10px;letter-spacing:.08em;color:var(--grey-text)}
+.chk-ic{width:26px;height:26px;border-radius:0;background:transparent!important;color:var(--navy)!important;box-shadow:none}
+.chk-ic .i{width:17px;height:17px}.cl-wk{font:600 17px/1 var(--mono)}
+.chk-w{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.chk.ok .chk-w{text-decoration:none;opacity:.55}
+.chk-box{border:1px solid var(--navy);border-radius:0;color:var(--haz);background:transparent!important}
+.chk.ok .chk-box{border-color:var(--haz);transform:rotate(-6deg);box-shadow:inset 0 0 0 1px var(--haz)}
+.chk.ok .chk-box .i{width:14px;height:14px;stroke-width:2}
+.chk:not(.ok) .chk-b:hover .chk-w{text-decoration:underline;text-underline-offset:3px}
+.chk:not(.ok)+.chk:not(.ok){opacity:.62}
+/* RADIO: the layers, toys. Round keys that jump when pressed, meters that dance in their colour */
+.lyr-k{border-radius:999px!important;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.lyr-k:active{transform:scale(.9)}
+.lyr.on .lyr-k{animation:pop .32s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{40%{transform:scale(1.12) rotate(-3deg)}}
+.lyr-m{border-radius:999px!important}
+.lyr .lv i{border-radius:3px}
+.lyr .lv i.hit{transform:scaleY(1.5);transition:transform .1s}
+/* WISH MAKER: the W.I.S.H., a document. Paper in both lights, a double rule, its number, the letters set in a serif, the
+   lines ruled to write on, R&D stamped, the muse as a seal */
+.wish-form{position:relative;padding:20px 18px 16px;border-radius:2px;background:#F3F0E6;color:#16140F;box-shadow:inset 0 0 0 1px rgba(22,20,15,.55),inset 0 0 0 4px #F3F0E6,inset 0 0 0 5px rgba(22,20,15,.3),0 18px 40px rgba(0,0,0,.28);--navy:#16140F;--edge:rgba(22,20,15,.22);--lcd:transparent;--lcd-ink:#16140F;--grey-text:#7B776B;--white:#F3F0E6}
+.wf-no{position:absolute;top:9px;right:14px;font-size:9.5px;letter-spacing:.14em;color:#7B776B}
+.wf-seal{position:absolute;right:12px;bottom:58px;width:54px;height:54px;color:rgba(22,20,15,.12);transform:rotate(-12deg);pointer-events:none}
+.wf-seal svg{width:54px;height:54px}
+.wf-h{margin:4px 0 12px;padding-bottom:10px;border-bottom:1px solid rgba(22,20,15,.55)}
+.wk{width:auto!important;height:auto!important;background:transparent!important;color:#16140F!important;font:italic 700 34px/1 'Playfair Display',Georgia,serif!important;letter-spacing:0;padding:0 2px}
+.wk+.wk::before{content:"·";margin-right:6px;font-style:normal;color:#7B776B}
+.wf-keys{gap:6px;align-items:baseline}
+.rnd{background:transparent}
+.wf-l{grid-template-columns:22px 1fr;gap:10px}
+.wf-i,.wl-w .wf-i,.wl-i .wf-i,.wl-s .wf-i,.wl-h .wf-i{width:22px;height:22px;box-shadow:none!important;color:#16140F!important;opacity:.7}
+.wf-i .i{width:15px;height:15px}
+.wish-form select,.wf-l input{height:32px;padding:0 2px;border-radius:0!important;background:transparent!important;color:#16140F!important;box-shadow:none!important;border:0;border-bottom:1px solid rgba(22,20,15,.4);font:400 14px var(--mono)}
+.wf-l input::placeholder{color:#8C877A!important;font:italic 400 15px 'Playfair Display',Georgia,serif}
+.wf-l input:focus,.wish-form select:focus{outline:none;border-bottom:1.5px solid #16140F}
+.send-b{margin-top:12px;height:44px;border-radius:2px;background:#16140F!important;color:#F3F0E6!important}
+.send-b .sb-arrow{display:none}
+html.night .wish-form{box-shadow:inset 0 0 0 1px rgba(22,20,15,.55),inset 0 0 0 4px #F3F0E6,inset 0 0 0 5px rgba(22,20,15,.3),0 0 0 1px rgba(169,240,236,.25),0 24px 60px rgba(0,0,0,.6)}
+/* WISH MAKER: the pieces, stickers. Photographs cut round, charts, marks; each tilts under the hand */
+.pcs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.pc-t{display:grid;place-items:center;width:100%;aspect-ratio:1;border-radius:10px;color:var(--navy);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.pc-t:hover{transform:rotate(-6deg) scale(1.08)}
+.pc-t.sp{border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px var(--white),0 0 0 3px var(--edge)}
+.pc-t.sp img{width:100%;height:100%;object-fit:cover}
+.pc-t img{width:72%;height:72%}.pc-t.sp img{width:100%;height:100%}
+.pc-t .chart{width:88%;height:88%}
+.pc-t.slip,.pc-t.fig{box-shadow:inset 0 0 0 1px var(--edge)}
+.pc-t .i{width:20px;height:20px}.pc-t .i.k{width:26px;height:26px}
+/* WISH MAKER: the boards, a row of tabs; the active one named in place; its signals as their lives */
+.book .bk-h{gap:8px}
+.b-keys{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
+.b-key{height:28px;padding:0 10px;font-size:10px;letter-spacing:.12em;border:1px solid var(--edge);border-radius:3px;color:var(--grey-text)}
+.b-keys .bg-n{width:130px;height:28px;flex:none;border:1px solid var(--navy);border-radius:3px}
+.book .bgroup{border:0;background:transparent;box-shadow:none;padding:0}
+.g-sigs{margin:8px 0 0}
+.g-sig{grid-template-columns:28px 1fr auto;padding:6px 0;border-top:1px solid var(--edge)}
+.g-play{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--edge)}
+.g-lives{display:flex;gap:6px}.g-lives .i{width:18px;height:18px}
+.g-sig small{font-size:9.5px;color:var(--grey-text)}
+/* PRINT SHOP: the stickers play */
+.stk{transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.stk:hover{transform:rotate(-8deg) scale(1.12)}
+.zl{display:flex;flex-direction:column;align-items:center;gap:2px}.zl .i{width:15px;height:15px}
+.zl-d{display:flex;gap:2px}.zl-d b{width:4px;height:4px;border-radius:50%;background:var(--edge)}.zl-d b.on{background:currentColor}
+/* PORTFOLIO: the W.I.S.H.es filed, as cards in a drawer */
+.filed{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.filed-b{display:block;width:100%;padding:10px 12px 12px;text-align:left;border-top:2px solid var(--navy);border-bottom:1px solid var(--edge);color:var(--navy)}
+.filed-b:hover{background:var(--acryl)}
+.fl-h{display:flex;gap:10px;font-size:9.5px;letter-spacing:.12em;color:var(--grey-text)}.fl-h b{color:var(--haz)}
+.fl-for{display:block;margin:6px 0 2px;font:italic 400 15px/1.2 'Playfair Display',Georgia,serif}
+.fl-l{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px}
+.fl-l li{display:grid;grid-template-columns:16px 1fr;gap:6px;font:400 11.5px/1.35 var(--mono)}
+.fl-l b{color:var(--grey-text)}
+.filed-none{display:grid;place-items:center;width:100%;height:84px;border:1px dashed var(--edge);color:var(--grey-text)}
+.filed-none .i{width:22px;height:22px}
+/* PORTFOLIO: the posters on a wall beside the page, the newest as the hero */
+.gallery{position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);display:grid;grid-template-rows:1fr auto auto;justify-items:center;gap:14px;padding:40px 24px 24px;overflow:auto;background:#070B0D url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22rgba%28169%2C240%2C236%2C.02%29%22%2F%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M28.6%2022.6q3.4-2.6%206.8%200l.6%209.6q-4%202.2-8%200z%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M23.4%2021q-1.6%208%20.2%2016.6M40.6%2021q1.6%208-.2%2016.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2222.8%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2241.2%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2225.4%22%20cy%3D%2219.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2216.8%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2235.6%22%20cy%3D%2217.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2239.2%22%20cy%3D%2222.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2227.4%22%20cy%3D%2227.4%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2237%22%20cy%3D%2228.4%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2224.6%22%20cy%3D%2225.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2238.4%22%20cy%3D%2234%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2226.2%22%20cy%3D%2234.2%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3C%2Fsvg%3E") right 40px bottom 50px/240px no-repeat}
+html:not(.night) .gallery{background:#E6E4DD url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22rgba%2812%2C14%2C14%2C.02%29%22%2F%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M28.6%2022.6q3.4-2.6%206.8%200l.6%209.6q-4%202.2-8%200z%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M23.4%2021q-1.6%208%20.2%2016.6M40.6%2021q1.6%208-.2%2016.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2222.8%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2241.2%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2225.4%22%20cy%3D%2219.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2216.8%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2235.6%22%20cy%3D%2217.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2239.2%22%20cy%3D%2222.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2227.4%22%20cy%3D%2227.4%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2237%22%20cy%3D%2228.4%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2224.6%22%20cy%3D%2225.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2238.4%22%20cy%3D%2234%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2226.2%22%20cy%3D%2234.2%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3C%2Fsvg%3E") right 40px bottom 50px/240px no-repeat}
+body.shut .gallery,.gallery[hidden]{display:none}
+@media (max-width:760px){.gallery{right:0;bottom:50vh;padding:20px 12px}}
+.gl-hero{margin:0;display:grid;justify-items:center;gap:10px;min-height:0}
+.gl-hero img{display:block;max-width:min(100%,560px);max-height:calc(100vh - 230px);background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.2);transform:rotate(-1.2deg);animation:hang .7s cubic-bezier(.3,1.4,.5,1)}
+@keyframes hang{0%{transform:translateY(-14px) rotate(-4deg);opacity:0}100%{transform:rotate(-1.2deg);opacity:1}}
+.gl-hero figcaption{font-size:10px;letter-spacing:.14em;color:var(--grey-text)}
+.gl-acts{display:flex;gap:8px}.gl-acts .key{width:46px;flex:none}
+.gl-wall{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+.gl-t{display:block;width:62px;padding:3px;background:#fff;transform:rotate(var(--r));box-shadow:0 6px 14px rgba(0,0,0,.35);transition:transform .18s}
+.gl-t:hover,.gl-t.on{transform:rotate(0) translateY(-4px) scale(1.06)}
+.gl-t.on{outline:2px solid var(--haz);outline-offset:2px}
+.gl-t img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top}
+.gl-none{display:grid;place-items:center;width:min(70%,360px);aspect-ratio:3/4;align-self:center;border:1px dashed var(--edge)}
+/* PORTFOLIO: start again, with its warning */
+.rst{color:var(--haz)}
+.rst-w{margin-top:10px;padding:12px;border:1px solid var(--haz);color:var(--navy)}
+.rst-w p{display:flex;gap:8px;margin:0 0 10px;font:400 11.5px/1.4 var(--mono)}.rst-w p .i{flex:none;width:16px;height:16px;color:var(--haz)}
+.rst-a{display:flex;gap:6px;justify-content:flex-end}.rst-a .key{flex:0 0 auto;padding:0 12px}
+.rst-yes{background:var(--haz)!important;border-color:var(--haz)!important;color:#fff!important;gap:6px}
+@media (prefers-reduced-motion:reduce){.lyr.on .lyr-k,.gl-hero img{animation:none}}
+.chk.ok .chk-box{color:var(--haz)!important}
+.wk{display:inline-block!important}
+.wf-keys{flex-wrap:nowrap;white-space:nowrap}
+
+/* ═════════ one muse at a time: the watermark in the page and the one over the surface beside it take turns, each fading
+   out as the other comes; the lockup's muse breathes ═════════ */
+.panel .leaf{background-image:none}
+html #zine,html .cover,html:not(.night) #zine,html:not(.night) .cover,html .gallery,html:not(.night) .gallery{background-image:none!important}
+html.night #board::before{background:linear-gradient(rgba(220,235,255,.12) 1px,transparent 1px) 0 0/130px 130px,linear-gradient(90deg,rgba(220,235,255,.12) 1px,transparent 1px) 0 0/130px 130px}
+html:not(.night) #board::before{background:linear-gradient(rgba(40,120,140,.08) 1px,transparent 1px) 0 0/26px 26px,linear-gradient(90deg,rgba(40,120,140,.08) 1px,transparent 1px) 0 0/26px 26px}
+.panel::after{content:"";position:absolute;right:-40px;bottom:-30px;width:260px;height:260px;background:var(--wm) center/contain no-repeat;pointer-events:none;z-index:2}
+body.off-map:not(.shut)::after{content:"";position:fixed;right:calc(var(--page) + 36px);bottom:46px;width:240px;height:240px;background:var(--wm) center/contain no-repeat;pointer-events:none;z-index:7;animation:wm-b 22s ease-in-out infinite}
+body.off-map:not(.shut) .panel::after{animation:wm-a 22s ease-in-out infinite}
+@keyframes wm-a{0%,38%{opacity:1}50%,88%{opacity:0}100%{opacity:1}}
+@keyframes wm-b{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
+@media (max-width:760px){body.off-map:not(.shut)::after{right:24px;bottom:calc(50vh + 24px);width:160px;height:160px}}
+/* the lockup: the name level with the bell, the bell slowly pulsing and the threads swaying */
+.lockup{align-items:center}
+.lk-mark{width:48px;height:52px;overflow:visible}
+.lk-mark svg{width:48px;height:48px;margin-top:10px}
+.lk-n{line-height:1;transform:translateY(-1px)}
+.lk-mark .jb{transform-origin:32px 36px;animation:bell 4.6s ease-in-out infinite}
+.lk-mark .jt{transform-origin:32px 38px;animation:sway 4.6s ease-in-out infinite}
+@keyframes bell{0%,100%{transform:scale(1,1)}35%{transform:scale(1.05,.93)}55%{transform:scale(.98,1.03) translateY(-1px)}}
+@keyframes sway{0%,100%{transform:skewX(0)}35%{transform:skewX(4deg) scaleY(.97)}70%{transform:skewX(-3deg)}}
+/* PRINT: the last step, under its own heading. Each key a final act, solid, with the mark of something leaving */
+#sec-out{margin-top:6px}
+.out-h{display:flex;align-items:center;gap:10px;margin:0 0 10px;font:600 11px/1 var(--mono);letter-spacing:.32em;color:var(--navy)}
+.out-h::before,.out-h::after{content:"";flex:1;height:1px;background:var(--navy)}
+.out-h::before{flex:0 0 14px}
+.seg.outs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0}
+.seg.outs .key{position:relative;height:56px;background:var(--navy)!important;border-color:var(--navy)!important;color:var(--white)!important;border-radius:3px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.seg.outs .key .i{width:22px;height:22px}
+.seg.outs .key[data-pout="send"]{background:var(--haz)!important;border-color:var(--haz)!important;color:#fff!important}
+.seg.outs .key:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.out-go{position:absolute;top:6px;right:7px;width:8px;height:8px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;opacity:.7}
+.out-go::after{content:"";position:absolute;top:-1px;right:-1px;width:10px;height:1.5px;background:currentColor;transform-origin:right;transform:rotate(-45deg)}
+/* the pieces: constellations as their charts */
+.pc-b .chart{width:34px;height:34px;color:var(--navy)}
+@media (prefers-reduced-motion:reduce){.lk-mark .jb,.lk-mark .jt,body.off-map:not(.shut)::after,body.off-map:not(.shut) .panel::after{animation:none}}
+body:not(.off-map) .gallery{display:none}
+/* the checklist with no marks of its own: numbers, words, boxes. The receive key square and level with its label */
+.chk-b{grid-template-columns:24px 1fr 22px}
+#rx-open{display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:3px;flex:none}
+#rx-open .i{width:15px;height:15px;margin:0}

@@ -263,7 +263,7 @@ if (run('smoke')) try {
     document.querySelector('#board [data-bt="undo"]').click(); await wait(500); out.board = [n0, n1, da.boardJSON().objects.length]; return out; });
   check('what was made here is a piece: the W.I.S.H. sent is the receipt, stamped by hand, and onto the WISH MAKER board, where UNDO takes it back', pcs.shopPieces >= 1 && pcs.page === 'base,stamp' && pcs.assets >= 1 && pcs.board[1] === pcs.board[0] + 1 && pcs.board[2] === pcs.board[0], JSON.stringify(pcs));
   const ck = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); da.setView(2); await wait(900); document.querySelector('#view [data-pout="poster"]').click(); await wait(1500); da.setView(0); await wait(700); return { rows: [...document.querySelectorAll('#sec-heat .chk')].map(r => r.classList.contains('ok')), words: [...document.querySelectorAll('#sec-heat .chk-w')].map(w => w.textContent), start: !!document.querySelector('#sec-heat .start-k'), posters: da.POSTERS2.length, clues: document.querySelectorAll('#sec-heat .clue').length }; });
-  check('once a signal is started, RADIO shows the checklist in place of the clues: found, a wish, a poster ticked; the receipt waits for its photograph; START for another', ck.clues === 0 && ck.rows.join() === 'true,true,true,false' && ck.words[3] === 'Printed a receipt' && ck.start && ck.posters === 1, JSON.stringify(ck));
+  check('once a signal is started, RADIO shows the checklist in place of the clues: where, start, finish, a poster, print; START hidden until the round is done', ck.clues === 0 && ck.rows.join() === 'true,true,true,true,false' && ck.words.join('|') === 'Where are you?|Start a W.I.S.H.|Finish a W.I.S.H.|Make a poster|Print' && !ck.start && ck.posters === 1, JSON.stringify(ck));
   await page.evaluate(() => { const da = window.__da; da.setView(0); }); await sleep(500);
   const back = await page.evaluate(() => ({ cover: getComputedStyle(document.querySelector('#cover')).display, zine: document.querySelector('#zine').hidden, board: document.querySelector('#board').hidden }));
   check('only RADIO shows the ground', back.cover === 'none' && back.zine && back.board, JSON.stringify(back));
@@ -285,7 +285,7 @@ if (run('smoke')) try {
   const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
   check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
-  check('the posters made here head the portfolio, then the stories; the settings and sources at its foot', order[0] === 'sec-posters' && order[1] === 'sec-board' && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
+  check('the W.I.S.H.es finished here head the portfolio, then the stories; the settings and sources at its foot; the posters on the wall beside it', order[0] === 'sec-wishes' && order[1] === 'sec-board' && order.includes('sec-set') && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-portfolio.png');
   /* the day's thread: a life looked at ties the first knot */
   const th0 = await page.evaluate(() => document.querySelectorAll('#rail .tab.tied').length);
@@ -311,6 +311,13 @@ if (run('smoke')) try {
   check('novel.global: the name, the muse at the head of RADIO and on its tab; the radio plays on under the WISH MAKER', ng.title === 'novel.global' && ng.lockup === 'novel.global' && ng.muse && ng.icon === '#g-jelly' && ng.playsOn, JSON.stringify(ng));
   check('the PRINT SHOP: no readings row, the receipt larger than it prints, words again for another face, tape again for bandana, a bandana, eight packs', ng.styles === 0 && ng.z > 1 && ng.faces[0] !== ng.faces[1] && ng.texts === 1 && ng.tape === 'image' && ng.rag && ng.packs === 8 && ng.goth > 10, JSON.stringify(ng));
   check('a poster on the map is a card that turns over; the board leaves as a PDF', ng.hit === 'poster' && ng.tarot && ng.pdf === '%PDF-', JSON.stringify(ng));
+  const ng2 = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
+    da.setOpen(true); da.setView(0); await wait(400); const m = document.querySelector('[data-lmood="water"]'); m.click(); m.click(); out.tip = m.dataset.tip; out.mood = (JSON.parse(localStorage.getItem('da.prefs')).lm || {}).water;
+    da.setView(2); await wait(1200); const z = []; for (let i = 0; i < 3; i++) { document.querySelector('#zine [data-zt="zoom"]').click(); await wait(200); z.push(da.PRESS.z); } out.z = z;
+    da.setView(3); await wait(800); out.gallery = !document.querySelector('#gallery').hidden && !!document.querySelector('#gallery .gl-hero img'); out.filed = document.querySelectorAll('#sec-wishes .filed-b').length;
+    document.querySelector('#ix-reset').click(); await wait(200); out.warn = !document.querySelector('#rst-w').hidden; document.querySelector('#rst-no').click(); await wait(100); out.kept = document.querySelector('#rst-w').hidden && da.POSTERS2.length > 0;
+    da.setView(0); await wait(300); return out; });
+  check('a layer\'s mood names itself on the hover as it turns; the strip at three sizes; the posters on the wall beside the filed W.I.S.H.es; start again only after a warning', ng2.tip === 'WEIGHT' && ng2.mood === 'weight' && new Set(ng2.z).size === 3 && ng2.gallery && ng2.filed >= 1 && ng2.warn && ng2.kept, JSON.stringify(ng2));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section smoke: ${e.message.split('\n').slice(0, process.env.DBG_STACK ? 8 : 1).join(' | ')}`); }
 
@@ -336,8 +343,8 @@ if (run('portfolio')) try {
 if (run('first')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'first');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
-  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade').hidden && !!document.querySelector('#arcade use[href="#g-search"]') && document.querySelector('#arcade').innerText.trim() }; });
-  check('a first visit: every mark on the map, no radar, and the first clue on the ground: a magnifier, find yourself', !f.placed && f.knob && f.shown > 20 && f.press === 'find yourself', JSON.stringify(f));
+  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade') && (document.querySelector('#sec-heat .clue[data-clue="1"]') || {}).textContent }; });
+  check('a first visit: every mark on the map, no radar, nothing over the ground; the first clue in the page: find yourself', !f.placed && f.knob && f.shown > 20 && /find yourself/.test(f.press || ''), JSON.stringify(f));
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(500);
   const m = await page.evaluate(() => { const r = window.__da.map.getContainer().getBoundingClientRect(); return [r.left + r.width * 0.42, r.top + r.height * 0.55]; });
   await page.mouse.click(m[0], m[1]); await sleep(700);

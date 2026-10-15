@@ -109,8 +109,8 @@ function setTrack4(k, on) {
   life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200); buzz(4);
 }
 /* the radio on: the sound woken inside the touch, and every layer that is on played by the sweep. Off: quiet, and still */
-/* the first clue over the ground, find yourself, until the radar is put down */
-function arcadeOff() { $('#arcade').hidden = true; }
+/* the first clue lived over the ground in an earlier build; it is in the page now */
+function arcadeOff() { const el = $('#arcade'); if (el) el.hidden = true; }
 /* started: the radar stands where it was last, or where the touch was, or where the map is looking */
 function startRadio(play = true, at) {
   arcadeOff();
@@ -159,7 +159,7 @@ $('#view').addEventListener('click', e => {
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); markTweak(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); markTweak(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); markTweak(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); lm.dataset.tip = MOODS[nx].w; if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */

@@ -12,7 +12,7 @@ const WISH = { w: ['What we know', 'The evidence: news, data, a theory'], i: ['I
 /* a record opened from the bare map closes back to the bare map; one opened from a page closes back to that page */
 function openRecord() {
   /* a life opened from any page: the ground shows, to look at it there */
-  showBoard(false); showZine(false); document.body.classList.remove('off-map');
+  showBoard(false); showZine(false); showGallery(false); document.body.classList.remove('off-map');
   if (!S.open) { S.from = 'map'; setOpen(true); } else if (rec.hidden) S.from = 'view';
   rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); stopHeroes();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', 'false'));

@@ -470,9 +470,20 @@
     /* more than one seen: discs stacked behind */
     if (b.n > 1) for (let k = Math.min(2, b.n - 1); k >= 1; k--) { ctx.beginPath(); ctx.arc(x + k * 3.4, y - k * 3.4, r, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = bg === C.white ? C.navy : bg; ctx.stroke(); }
     shape(ctx, b.tone, x, y, r);
-    ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5; ctx.fillStyle = bg; ctx.fill(); ctx.shadowColor = 'transparent';
-    ctx.lineWidth = 1.6; ctx.strokeStyle = ['need', 'lost', 'story'].includes(b.tone) ? C.navy : b.tone === 'dead' ? C.red : C.white;
+    /* a life is a little glass bell, lit from inside as a jellyfish is: its own colour glowing softly into the dark around it,
+       the body a touch clear so the ground shows through, a fine rim inside its edge and a highlight where the light falls */
+    const lit = /^k-|^fauna$|^flora$|^night$/.test(b.tone || 'fauna');
+    if (lit) {
+      ctx.save(); ctx.shadowColor = bg; ctx.shadowBlur = Math.max(6, r * 0.9); ctx.globalAlpha *= 0.55; ctx.fillStyle = bg; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.globalAlpha *= 0.86; ctx.fillStyle = bg; ctx.fill(); ctx.restore();
+    } else { ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5; ctx.fillStyle = bg; ctx.fill(); ctx.shadowColor = 'transparent'; }
+    ctx.lineWidth = lit ? 1.2 : 1.6; ctx.strokeStyle = ['need', 'lost', 'story'].includes(b.tone) ? C.navy : b.tone === 'dead' ? C.red : lit ? 'rgba(255,255,255,.82)' : C.white;
     if (b.tone === 'lost') ctx.setLineDash([2.6, 2.2]); ctx.stroke(); ctx.setLineDash([]);
+    if (lit && r >= 5) {
+      ctx.save(); ctx.beginPath(); ctx.arc(x, y, r - 2.2, 0, TAU); ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x - r * 0.1, y - r * 0.1, r * 0.64, Math.PI * 1.08, Math.PI * 1.46); ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, r * 0.13); ctx.strokeStyle = 'rgba(255,255,255,.62)'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + r * 0.42, y + r * 0.44, Math.max(0.6, r * 0.07), 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fill(); ctx.restore();
+    }
     /* a gathering: the rings of a calendar page */
     if (b.tone === 'event') { ctx.fillStyle = C.white; for (const sx of [-0.45, 0.45]) { ctx.beginPath(); ctx.arc(x + sx * r, y - r * 0.86, r * 0.13, 0, TAU); ctx.fill(); } }
     /* a signal: the slip's top band */
@@ -609,9 +620,9 @@
   /* as svg: ink for its lines, and a faint fill for the bell */
   function jellySVG(ink = '#DDF6F2', glass = 'rgba(169,240,236,.14)', w = 64) {
     const d = (path, sw, extra = '') => `<path d="${path}" fill="none" stroke="${ink}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="${w}" height="${w}"><path d="${JELLY.bell}" fill="${glass}"/>${d(JELLY.bell, 1.6)}${d(JELLY.gut, 0.8, ' opacity=".6"')}${d(JELLY.ridge, 0.7, ' opacity=".7"')}`
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="${w}" height="${w}"><g class="jb"><path d="${JELLY.bell}" fill="${glass}"/>${d(JELLY.bell, 1.6)}${d(JELLY.gut, 0.8, ' opacity=".6"')}${d(JELLY.ridge, 0.7, ' opacity=".7"')}`
       + JELLY.eyes.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.5" fill="${ink}"/>`).join('') + JELLY.flecks.map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".75" fill="${ink}" opacity=".55"/>`).join('')
-      + JELLY.threads.map(t => d(t, 0.7) + d(t, 2.1, ' stroke-dasharray=".01 3.2"')).join('') + `</svg>`;
+      + `</g><g class="jt">` + JELLY.threads.map(t => d(t, 0.7) + d(t, 2.1, ' stroke-dasharray=".01 3.2"')).join('') + `</g></svg>`;
   }
   let JP = null;
   /* on a canvas, at x, y, size across; a = how far the bell has pulsed (0 to 1) */

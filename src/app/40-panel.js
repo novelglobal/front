@@ -18,7 +18,7 @@ new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'))
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
-  if (!on) { stopHeroes(); showBoard(false); showZine(false); document.body.classList.remove('off-map'); if (S.mode) closeRecord('view'); }
+  if (!on) { stopHeroes(); showBoard(false); showZine(false); showGallery(false); document.body.classList.remove('off-map'); if (S.mode) closeRecord('view'); }
   else document.body.classList.toggle('off-map', S.view !== 0);
   /* on a phone the sheet covers the lower half: the radar moves up into the half left open */
   if (phone() && S.mapReady && !S.mode) map.easeTo({ center: [S.scan.lng, S.scan.lat], offset: on ? [0, -innerHeight * 0.27] : [0, 0], duration: reduced() ? 0 : 500 });
@@ -76,7 +76,7 @@ function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k;
   viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
-  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open);
+  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') bindPortfolio();
   if (k === 'signs') fillThumbs();
@@ -250,17 +250,19 @@ function cluesHTML() {
 /* once a signal is started: the checklist, as an old handheld's manual lists what it does. Each a coloured tile and its
    mark, the line, and a box ticked when done */
 const wishStarted = () => S.signals.some(x => !x.ex && !x.shared && linesOf(x).length >= 2) || WKEYS.filter(k => String(WDRAFT[k] || '').trim()).length >= 2;
+const printedAny = () => !!store.get('da.printed.v1', 0) || PROOFS.length > 0 || S.signals.some(x => !x.ex && !x.shared && /PRINTED/.test(sentWord(x)));
 function checklistHTML() {
   const rows = [
-    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Discovered where you are', c: 'var(--glow)' },
-    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Started a wish', c: 'var(--bone)', go: 1 },
-    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Made a poster', c: 'var(--acid)', go: 2 },
-    { ok: PROOFS.length > 0, ic: `${icon('receipt')}${icon('camera', 'sm')}`, w: 'Printed a receipt', c: 'var(--haz)', proof: true },
+    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Where are you?' },
+    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Start a W.I.S.H.', go: 1 },
+    { ok: mineOf().some(x => linesOf(x).length), ic: icon('sign'), w: 'Finish a W.I.S.H.', go: 1 },
+    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Make a poster', go: 2 },
+    { ok: printedAny(), ic: icon('print'), w: 'Print', go: 3 },
   ];
-  return `<ol class="checks">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}" style="--cc:${r.c}">`
-    + (r.proof && !r.ok ? `<label class="chk-b" data-tip="A photograph of the receipt, held up, while the printer is online"><input type="file" id="proof-in" accept="image/*" capture="environment" hidden>` : `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}>`)
-    + `<span class="chk-ic">${r.ic}</span><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i>` + (r.proof && !r.ok ? '</label>' : '</button>') + `</li>`).join('')}</ol>`
-    + (S.tweaked && placed() ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>START</span></button>` : '');
+  const done = rows.filter(r => r.ok).length;
+  return `<ol class="checks" aria-label="${done} of ${rows.length}">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}">`
+    + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(i + 1).padStart(2, '0')}</b><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i></button></li>`).join('')}</ol>`
+    + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>START</span></button>` : '');
 }
 /* the lockup: the muse and the name. Tapped, the muse pulses and rings; tapped five times quickly, the water fills with them */
 const lockup = () => `<header class="lockup"><button type="button" class="lk-mark" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button><b class="lk-n">novel.global</b></header>`;
@@ -337,11 +339,32 @@ async function loadPosts() {
 }
 const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${labI('out', 'Work', POSTS.length)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
 const postersHero = () => (POSTERS2.length ? `<section class="sec posters-hero" id="sec-posters"><figure class="ph-hero"><img src="${POSTERS2[0].img}" alt=""></figure>${POSTERS2.length > 1 ? `<ol class="ph-more">${POSTERS2.slice(1).map(p => `<li><img src="${p.img}" alt=""></li>`).join('')}</ol>` : ''}</section>` : '');
+/* the W.I.S.H.es finished here, as filed: their number, the day, what each was for, and the four lines */
+const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length);
+  return ws.length ? `<section class="sec wishes" id="sec-wishes"><ol class="filed">${ws.slice(0, 24).map((x, i) => `<li><button type="button" class="filed-b" data-sig="${esc(x.key)}"><span class="fl-h mono"><b>№ ${String(ws.length - i).padStart(3, '0')}</b><span>${esc(x.code)}</span><span>${fmtStamp(x.at)}</span></span>${x.note ? `<span class="fl-for">${esc(x.note.split(' · ')[0])}</span>` : ''}<ol class="fl-l">${WKEYS.map(k => (x.lines || {})[k] ? `<li><b>${k.toUpperCase()}</b>${esc(x.lines[k])}</li>` : '').join('')}</ol></button></li>`).join('')}</ol></section>`
+    : `<section class="sec wishes" id="sec-wishes"><button type="button" class="filed-none" data-go-view="1" aria-label="The WISH MAKER">${icon('sign')}</button></section>`; };
+/* ───────── the gallery: beside the portfolio, the posters finished here, the newest as the hero, the rest on the wall ───────── */
+let galleryAt = 0;
+function showGallery(on) {
+  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = POSTERS2; galleryAt = Math.min(galleryAt, Math.max(0, ps.length - 1));
+  if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
+  const p = ps[galleryAt];
+  g.innerHTML = `<figure class="gl-hero"><img src="${p.img}" alt=""><figcaption class="mono">№ ${String(ps.length - galleryAt).padStart(3, '0')} · ${fmtStamp(p.at)}</figcaption></figure>`
+    + `<div class="gl-acts"><button type="button" class="key" data-gl="tarot" aria-label="As a card" data-tip="As a card">${icon('stories')}</button><button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
+    + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg"><img src="${x.img}" alt=""></button></li>`).join('')}</ol>` : '');
+}
+document.addEventListener('click', e => {
+  const g = e.target.closest('#gallery'); if (!g) return;
+  const t = e.target.closest('[data-gl-i]'); if (t) { galleryAt = +t.dataset.glI; showGallery(true); tick(1500); return; }
+  const a = e.target.closest('[data-gl]'); const p = POSTERS2[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
+  if (a.dataset.gl === 'tarot') openTarot(p.id);
+  if (a.dataset.gl === 'png') { const l = document.createElement('a'); l.href = p.img; l.download = `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
+});
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return postersHero() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
@@ -353,13 +376,20 @@ function viewPortfolio() {
       + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}" data-tip="${esc(w)} · ${esc(tip)}">${icon(ic)}</button>`).join('')}</div>`
       + packSection()
       + `</section>`
-    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
+    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
+      + `<div class="rst-w" id="rst-w" hidden role="alertdialog" aria-label="Start again"><p>${icon('alert')}<span>Everything made on this device goes: signals, boards, W.I.S.H.es, posters, the press. This cannot be undone.</span></p><div class="rst-a"><button type="button" class="key" id="rst-no" aria-label="Keep it">${icon('close')}</button><button type="button" class="key rst-yes" id="rst-yes">${icon('reset')}<b class="mono">CLEAR</b></button></div></div></section>`
     + `<details class="sec" id="sec-src"><summary>${labI('quote', 'Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
 /* a story as a line, as a forum lists them: a small photograph, the headline, the code */
 const sigLine = s => { const p = s.pin || {}; const L = linesOf(s); const act = L[L.length - 1] || s.threat || p.cn || p.n || '';
   return `<li><button type="button" class="sig-line${s.ex ? ' ex' : ''}" data-sig="${esc(s.key)}" data-tip="${esc([p.cn || p.n, s.threat].filter(Boolean).join(' · '))}">${sigArt(s)}<span class="hl">${esc(act)}</span><b class="mono code">${esc(s.code)}</b></button></li>`; };
 function openReceive(on) { const f = $('#rx'), b = $('#rx-open'); if (!f) return; f.hidden = !on; b.setAttribute('aria-expanded', String(on)); if (on) setTimeout(() => $('#rx-t').focus(), 30); }
+/* start again: everything made on this device cleared (the caches of what was fetched stay), then a fresh page */
+const KEEP_ON_RESET = /^da\.(obs|hist|tx|hg|wx|tiles|shared|partners|posts|kph|me|cfg)\b/;
+function resetAll() {
+  try { for (const k of Object.keys(localStorage)) if (/^da\./.test(k) && !KEEP_ON_RESET.test(k)) localStorage.removeItem(k); } catch (e) { /* no storage */ }
+  snd.tear(); setTimeout(() => location.reload(), 250);
+}
 function bindPortfolio() {
   const art = (id, list) => { const host = $('#' + id); if (host) host.innerHTML = list.map(b => `<img src="${badgeImg(b, 30)}" alt="">`).join(''); };
   art('art-field', ['bird', 'possum', 'bee', 'orb', 'lizard', 'frog', 'moth', 'turtle'].map(g => ({ tone: M.toneOf(g), g })));
@@ -373,6 +403,9 @@ function bindPortfolio() {
   $('#ix-printers').addEventListener('click', e => { prefs.printers = !prefs.printers; e.currentTarget.setAttribute('aria-pressed', String(prefs.printers)); savePrefs(); life.redraw(); tick(); });
   const hb = $('#ix-hidden'); if (hb) hb.addEventListener('click', () => { const n = HIDE.size; showAllHidden(); life.data(); hb.remove(); toast(`${n} SHOWN`); snd.pluck(0.3, 0); });
   $('#ix-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });
+  $('#ix-reset').addEventListener('click', () => { $('#rst-w').hidden = false; snd.tick(600); buzz([20, 40, 20]); $('#rst-w').scrollIntoView({ block: 'nearest' }); });
+  $('#rst-no').addEventListener('click', () => { $('#rst-w').hidden = true; tick(1400); });
+  $('#rst-yes').addEventListener('click', () => resetAll());
 }
 /* data to take away */
 const csvCell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };

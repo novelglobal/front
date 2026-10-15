@@ -90,9 +90,9 @@ const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind 
 const names = (cells, n = 6) => [...new Set((cells || []).map(c => c.n))].slice(0, n).join(', ');
 /* what a signal from the radio says: where and when; what each layer heard, by name; its constellations */
 function mixText(m) {
-  const L = m.layers || {}; const line = (k, w) => { const x = L[k] || {}; return x.on ? `${w} · ${(MOODS[x.mood] || {}).w || ''}\n  ${names(x.cells) || '—'}` : `${w} · OFF`; };
-  return [`${m.where.place} · ${fmtStamp(m.at)}`, `${m.where.lat}, ${m.where.lng} · ${metres(m.where.r)}`, '', line('life', 'LIFE'), line('community', 'COMMUNITY'), line('water', 'WATER'), line('pollution', 'POLLUTION'),
-    ...((m.figs || []).length ? ['', `CONSTELLATIONS · ${m.figs.map(g => g.name).join(', ')}`] : [])].join('\n');
+  const L = m.layers || {}; const n = k => ((L[k] || {}).on ? ((L[k] || {}).cells || []).length : '–');
+  return [`${m.where.place.toUpperCase()} · ${fmtStamp(m.at)}`, `LIFE ${n('life')}  PLACES ${n('community')}  WATER ${n('water')}  HARM ${n('pollution')}`,
+    ...((m.figs || []).length ? [m.figs.map(g => g.name).join(' · ')] : [])].join('\n');
 }
 async function placeMix(m) {
   const c = await showBoard(true); if (!c) return; const f = window.fabric;
@@ -136,7 +136,7 @@ function flyToTab(i, from) {
   requestAnimationFrame(() => { el.style.transform = `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px,${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(.25) rotate(-12deg)`; el.style.opacity = '.2'; });
   setTimeout(() => { el.remove(); tab.classList.add('got'); setTimeout(() => tab.classList.remove('got'), 600); }, 650);
 }
-const speciesText = sp => [sp.n, sp.latin, `${sp.place} · ${fmtStamp(sp.at)}`, sp.st ? '' : null, sp.st || null].filter(v => v != null).join('\n');
+const speciesText = sp => [sp.n, sp.latin].filter(Boolean).join('\n');
 /* a pixel menu, as an old handheld lists its options: a box, a row each, the chosen one barred */
 function pickMenu(btn, items, onPick) {
   $$('.pick').forEach(x => x.remove()); if (!items.length) { tick(600); return; }
@@ -175,9 +175,11 @@ async function placeAsset(kind, id) {
 }
 const assetRow = (kind, id, ic, word) => `<li><button type="button" class="as-b" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="On the board">${ic}<span class="mono">${esc(word)}</span>${icon('plus', 'sm')}</button></li>`;
 function assetsHTML() {
-  const cells = myCells().slice(0, 20), slips = S.signals.filter(x => !x.ex && !x.shared).slice(0, 20), figs = strings.list().slice(0, 20), sps = SPECIES.slice(0, 20);
+  const cells = myCells().slice(0, 12), slips = S.signals.filter(x => !x.ex && !x.shared).slice(0, 8), figs = strings.list().slice(0, 12), sps = SPECIES.slice(0, 18);
   if (!cells.length && !slips.length && !figs.length && !sps.length) return '';
-  return `<section class="sec assets" id="sec-assets"><ol class="as-l">${sps.map(sp => assetRow('l', sp.id, glyphSVG(sp.g), sp.n)).join('')}${cells.map(o => assetRow('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => assetRow('s', x.key, icon('receipt', 'sm'), `${x.code} · ${NAME_UP(x)}`)).join('')}${figs.map(g => assetRow('c', g.id, icon('string', 'sm'), g.name)).join('')}</ol></section>`;
+  const tile = (kind, id, art, tip, cls = '') => `<li><button type="button" class="pc-t${cls}" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="${esc(tip)}" data-tip="${esc(tip)}">${art}</button></li>`;
+  return `<section class="sec assets" id="sec-assets"><ol class="pcs">${sps.map(sp => tile('l', sp.id, sp.ph ? `<img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : glyphSVG(sp.g), sp.n, ' sp')).join('')}`
+    + `${figs.map(g => tile('c', g.id, strings.chartOf(g.id, 44), g.name, ' fig')).join('')}${cells.map(o => tile('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => tile('s', x.key, icon('receipt'), `${NAME_UP(x)} · ${x.code}`, ' slip')).join('')}</ol></section>`;
 }
 /* a note, or several, from field notes in Markdown: each heading and what is under it */
 async function notesIn(md) {
@@ -258,7 +260,8 @@ const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by
 /* each line's sign: what we know (looked for), it would be great (the sun), so let's create (made anew), here is how (by hand) */
 const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
-  return `<form class="wish-form" id="wish-form" autocomplete="off"><div class="wf-h"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><b class="rnd" aria-hidden="true">R&amp;D</b></div>`
+  const no = String(S.signals.filter(x => !x.ex && !x.shared).length + 1).padStart(3, '0');
+  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-no mono" aria-hidden="true">№ ${no}</span><i class="wf-seal" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 54)}</i><div class="wf-h"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><b class="rnd" aria-hidden="true">R&amp;D</b></div>`
     + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><select id="wf-for" aria-label="What it is for">${intentOptions()}</select></label>`
     + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
     + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
@@ -301,15 +304,14 @@ function bookMD() {
   for (const b of BOARDS) { const objs = (((boardOf(b.id) || {}).json || {}).objects || []).filter(o => o.text && o.daKind); if (!objs.length) continue; out.push(`## ${b.n}`, ''); for (const o of objs) out.push(`### ${o.daKind.toUpperCase()}`, '', ...String(o.text).split('\n').map(l => (l ? `> ${l}` : '>')), ''); }
   return out.join('\n');
 }
-const sigRow2 = m => `<li class="g-sig"><span class="mono">${esc(m.where.place)} · ${fmtStamp(m.at)}</span><span class="pg-l">${LAYERS.map(L => { const x = m.layers[L.k] || {}; return `<i class="${x.on ? 'on' : ''}">${icon(L.ic, 'sm')}${x.on ? icon((MOODS[x.mood] || MOODS.fog).ic, 'sm') : ''}</i>`; }).join('')}</span>`
-  + `<span class="pg-a"><button type="button" class="ib" data-mix="${esc(m.id)}" aria-label="Play on the radio">${icon('play', 'sm')}</button><button type="button" class="ib" data-board-mix="${esc(m.id)}" aria-label="On this board">${icon('plus', 'sm')}</button></span></li>`;
+const sigRow2 = m => { const gs = [...new Set(((m.layers.life || {}).cells || []).map(c => c.g).filter(Boolean))].slice(0, 6);
+  return `<li class="g-sig"><button type="button" class="g-play" data-mix="${esc(m.id)}" aria-label="Play on the radio" data-tip="${esc(`${m.where.place} · ${fmtStamp(m.at)}`)}">${icon('play', 'sm')}</button><span class="g-lives">${gs.map(g => glyphSVG(g)).join('')}</span><small class="mono">${fmtStamp(m.at).split(' ')[1] || ''}</small></li>`; };
 function viewSignals() {
-  const groups = BOARDS.map(b => { const on = b.id === boardId; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === b.id); const figs = ms.flatMap(m => m.figs || []);
-    return `<li class="bgroup${on ? ' on' : ''}">${on ? `<div class="bg-h"><input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name"><small class="mono">${ms.length} · ${figs.length}</small></div>` : `<button type="button" class="bg-h" data-board="${esc(b.id)}" aria-pressed="false"><b class="mono">${esc(b.n)}</b><small class="mono">${ms.length} · ${figs.length}</small></button>`}`
-      + (ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : '') + (figs.length ? `<ol class="g-figs">${figs.map(g => `<li class="mono">${icon('string', 'sm')}${esc(g.name)}</li>`).join('')}</ol>` : '') + (on ? consSection() : '') + `</li>`; }).join('');
+  const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === on.id);
   return `<section class="sec" id="sec-wish">${wishForm()}</section>` + assetsHTML()
-    + `<section class="sec book" id="sec-book"><div class="bk-h"><i class="bk-ic" data-tip="Boards">${icon('base')}</i><span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes">${icon('download')}</button><label class="ib" aria-label="Bring field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
-    + `<ol class="bgroups">${groups}</ol></section>`;
+    + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
+    + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes" data-tip="Field notes out">${icon('download')}</button><label class="ib" aria-label="Bring field notes in" data-tip="Field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
+    + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();
 }
 $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-book-md]')) { download(`field-notes-${isoDay(new Date())}.md`, bookMD(), 'text/markdown;charset=utf-8'); tick(1800); return; }
