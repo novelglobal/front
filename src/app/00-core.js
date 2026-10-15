@@ -92,7 +92,7 @@ const CFG = Object.assign({ lifeLock: true }, store.get('da.cfg.v1', {}));
 const seeTrack = id => {
   if (id === 'life' && CFG.lifeLock) return true;
   /* the places are two tracks: EXPOSURE, those on notice; COMMUNITY, those that care */
-  if (id === 'places') return !!(T4.exposure || T4.community);
+  if (id === 'places') return !!(T4.pollution || T4.community);
   const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v;
 };
 /* the print location: the first partner place with a W.I.S.H. printer */
@@ -102,7 +102,7 @@ const savePrefs = () => store.set('da.prefs', prefs);
 /* the radar stands only where it was put: a first tap on the map puts it there, and it stays there between visits */
 const placed = () => !!prefs.placed;
 /* the tracks on the map besides the lives: off until a key lights them */
-const T4 = Object.assign({ climate: false, exposure: false, community: false }, prefs.t4 || {});
+const T4 = Object.assign({ water: false, pollution: false, community: false }, prefs.t4 || {});
 /* the day's thread: noticed, responded, acted. It starts again each day */
 const DAY = (() => { const t = store.get('da.day.v1', {}); const d = new Date(); const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; return t.d === today ? t : { d: today }; })();
 /* night is the default, until turned off in Settings. The page darkens and the ground dims; a slip stays paper */

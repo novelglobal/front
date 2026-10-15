@@ -18,7 +18,7 @@ new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'))
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
-  if (!on) { stopHeroes(); if (S.mode) closeRecord('view'); }
+  if (!on) { stopHeroes(); showBoard(false); if (S.mode) closeRecord('view'); }
   /* on a phone the sheet covers the lower half: the radar moves up into the half left open */
   if (phone() && S.mapReady && !S.mode) map.easeTo({ center: [S.scan.lng, S.scan.lat], offset: on ? [0, -innerHeight * 0.27] : [0, 0], duration: reduced() ? 0 : 500 });
   life.moved();
@@ -72,10 +72,10 @@ function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k;
   viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
-  viewEl.scrollTop = 0;
+  viewEl.scrollTop = 0; showBoard(k === 'signals' && S.open);
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') bindPortfolio();
-  if (k === 'radio' && (T4.climate || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
+  if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
@@ -227,22 +227,20 @@ const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
 function viewRadio() {
-  const alarms = alarmsNow(); const ex = extremeAhead(); const m = MOODS[moodOf()];
-  /* the radio is its instructions: where are you; turn it on, and mix its live layers; El Niño, kept for later; share the
-     mix. No labels, no tags: the steps are the only words */
+  const ex = extremeAhead();
+  /* the radio is its instructions: where are you; turn it on, and mix its live layers, each in its own mood; El Niño, kept
+     for later; share the mix. No labels, no tags, no lists: the five and anything in trouble stand on the map, opened there */
   const step = (n, done, body) => `<li class="st${done ? ' done' : ''}" data-step="${n}"><b class="sn mono">${n}</b><div class="sb">${body}</div></li>`;
   return `<section class="band" id="sec-heat">
       <h2 class="b-head">DIRECT ACTION RADIO</h2>
       ${ex ? `<div class="b-count${ex.now ? ' now' : ''}" data-tip="${esc(ex.tip)}"><i class="sun d4">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</div>` : ''}
       <ol class="steps">
         ${step(1, placed(), `<p class="sw">Where are you?</p>`)}
-        ${step(2, S.radio, `<p class="sw">Turn on the radio</p><div class="radio-row"><button type="button" class="radio-b${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio"${placed() ? '' : ' disabled'}>${icon(S.radio ? 'pause' : 'play')}</button><button type="button" class="mood-b" data-mood-next aria-label="Mood: ${m.w}">${icon(m.ic, 'sm')}<span>${m.w}</span></button></div>${layersHTML()}`)}
+        ${step(2, S.radio, `<p class="sw">Turn on the radio</p><div class="radio-row"><button type="button" class="radio-b${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio"${placed() ? '' : ' disabled'}>${icon(S.radio ? 'pause' : 'play')}</button></div>${layersHTML()}`)}
         ${step(3, false, `<p class="sw">El Niño</p>${monthStrip()}`)}
         ${step(4, false, `<p class="sw">Share the mix</p><button type="button" class="share-b" data-share-mix${placed() ? '' : ' disabled'}>${icon('share', 'sm')}<span>SIGNALS</span></button>`)}
       </ol>
-    </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five" data-tip="${esc(FIVE_WHY)}"><ol class="hero-list">${fiveHere().map(({ o, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b></span></button></li>`).join('')}</ol></section>` : '')
-    + (alarms.length ? `<section class="sec alarms" id="sec-alarms"><ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '');
+    </section>`;
 }
 
 /* ───────── constellations: every string figure, newest first, as it forms; the knots it shares with others ───────── */
@@ -290,20 +288,6 @@ function boardOrder(sigs) {
 /* ───────── SIGNALS: the work of a response. The figures tied around a life, the W.I.S.H. issued from them, and the groups
    already caring for the ground. The writing itself happens on the life's card, beside the map it came from ───────── */
 const mineOf = () => S.signals.filter(s => !s.ex && !s.shared);
-/* a mix shared from the radio: where, its layers lit as they were, its constellations; pressed, it plays again */
-const mixRow = m => `<li><button type="button" class="mix-row" data-mix="${esc(m.id)}" aria-label="Play this mix">${icon('play', 'sm')}<span class="nm"><b>${esc(m.where.place || '')}</b><small class="mono">${metres(m.where.r)} · ${ago(m.at)}</small></span><span class="mx-l">${LAYERS.map(L => `<i class="${(m.layers[L.k] || {}).on ? 'on' : ''}">${icon(L.ic, 'sm')}</i>`).join('')}${m.figs.length ? `<i class="on">${icon('string', 'sm')}${m.figs.length}</i>` : ''}</span></button></li>`;
-const wishRow = s => { const p = s.pin || {}; const L = linesOf(s); const st = sentWord(s);
-  return `<li><button type="button" class="wish-row" data-sig="${esc(s.key)}"><span class="w-chart">${(s.nodes || []).length > 1 ? chartSVG(s, 40) : glyphSVG(p.g || 'paw')}</span><span class="nm"><b>${esc(NAME_UP(s))}</b><small class="mono">${esc(s.code)} · ${L.length}/4${st ? ` · ${esc(st)}` : ''}</small></span></button></li>`; };
-function viewSignals() {
-  const cs = strings.list(); const mine = mineOf();
-  const empty = !cs.length && !mine.length && !MIXES.length;
-  return (MIXES.length ? `<section class="sec" id="sec-mixes"><ol class="mixes">${MIXES.slice(0, 20).map(mixRow).join('')}</ol></section>` : '') + (empty ? `<section class="sec quiet" id="sec-start"><button type="button" class="to-radar" data-to-radar aria-label="The radar">${icon('radar')}</button></section>` : '')
-    + consSection()
-    + (mine.length ? `<section class="sec" id="sec-wish">${lab(`W.I.S.H. · ${mine.length}`)}<ol class="wishes">${mine.slice(0, 40).map(wishRow).join('')}</ol></section>` : '')
-    /* the groups already caring for ground here: small, each opens its patch and its site */
-    + `<section class="sec groups" id="sec-groups">${lab('Groups')}<ol class="tribes-s">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}" data-tip="${esc(t.w)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><b>${esc(t.n)}</b></button></li>`).join('')}</ol></section>`;
-}
-
 /* ───────── SIGNS: the studio for paper. Three ways a slip is set, the slips issued here as the receipts they make, the
    printers that take them, and a blank to fill by hand ───────── */
 const STYLES = [{ k: 'paper', w: 'PAPER', ic: 'receipt' }, { k: 'tty', w: '>', ic: '' }, { k: 'conn', w: 'CONNECTION', ic: 'string' }];

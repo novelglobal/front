@@ -249,7 +249,7 @@ details.sec[open]>summary .lab::after{content:" –"}
 /* the outlook as a graphic equaliser: lit segments, orange to red to black, each month's column as high as its heat */
 .mo{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:2px 1px 0;border-radius:2px}
 .mo:hover{background:rgba(20,20,18,.04)}
-.eq-c{display:flex;flex-direction:column;gap:2px}
+.eq-c{display:flex;flex-direction:column;gap:2px;height:58px;flex:none;overflow:visible}
 .eq-c i{display:block;height:4px;background:rgba(20,20,18,.07)}
 .eq-c i.l{background:var(--deg0)}
 .eq-c i.t1{background:var(--deg1)}.eq-c i.t2{background:var(--deg2)}.eq-c i.t3{background:var(--deg3)}.eq-c i.t4{background:var(--deg4)}
@@ -949,7 +949,6 @@ html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 
 /* the radio: the one question, until something is noticed today */
 .b-ask{margin:-2px 0 12px;font:400 17px/1.15 'VT323',ui-monospace,monospace;letter-spacing:.02em;color:var(--ink);opacity:.82}
 /* time: hold or play, beside the months */
-.mstrip{grid-template-columns:auto 1fr;align-items:end;gap:6px}
 .t-play{width:24px;height:24px;display:grid;place-items:center;color:var(--ink);border:1px solid currentColor;border-radius:50%;opacity:.7}
 .t-play:hover,.t-play[aria-pressed="true"]{opacity:1}
 .t-play .i{width:11px;height:11px}
@@ -1039,7 +1038,6 @@ a.sig-line{text-decoration:none;color:inherit}
 .share-b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--ink);color:var(--ink);font:400 16px/1 'VT323',ui-monospace,monospace;letter-spacing:.08em}
 .share-b:disabled{opacity:.3}
 .share-b .i{width:13px;height:13px}
-.st .mstrip{margin-top:2px}
 .mixes li{border-top:1px solid var(--paper)}
 .mixes li:first-child{border-top:0}
 .mix-row{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;width:100%;padding:9px 0;text-align:left}
@@ -1050,3 +1048,31 @@ a.sig-line{text-decoration:none;color:inherit}
 .mx-l i.on{opacity:1;color:var(--navy)}
 .mx-l .i{width:13px;height:13px}
 #sec-five .hero-row .nm b{font-size:11px}
+
+/* each layer's own mood, an icon; the equaliser lifts while the radio plays */
+.lyr{grid-template-columns:112px 26px 1fr 26px 64px}
+.lyr-m{width:26px;height:28px;display:grid;place-items:center;color:var(--ink);border:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
+.lyr-m .i{width:13px;height:13px}
+body.on-air .eq-c{animation:lift 1.8s ease-in-out var(--d, 0s) infinite;transform-origin:50% 100%}
+@keyframes lift{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.14)}}
+@media (prefers-reduced-motion:reduce){body.on-air .eq-c{animation:none}}
+
+/* ───────── SIGNALS: the board over the map, and the field book beside it ───────── */
+.board{position:fixed;z-index:6;top:0;left:0;bottom:0;right:calc(var(--page) + 64px);background:#141412 radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px) 0 0/22px 22px}
+body.shut .board{display:none}
+.board canvas{display:block}
+@media (max-width:760px){.board{right:0;bottom:50vh}}
+.book .bk-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
+.book .bk-t{margin:0;font-size:28px}
+.pages{list-style:none;margin:0;padding:0}
+.page{padding:10px 0;border-top:1px solid var(--paper)}
+.page:first-child{border-top:0}
+.pg-h{display:flex;align-items:baseline;gap:8px}
+.pg-h b{font-size:12px;letter-spacing:.08em}
+.pg-h small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+.pg-a{margin-left:auto;display:flex;gap:2px}
+.pg-l{list-style:none;display:flex;gap:10px;margin:6px 0 0;padding:0}
+.pg-l li{display:flex;align-items:center;gap:2px;opacity:.3}
+.pg-l li.on{opacity:1}
+.pg-l .i{width:13px;height:13px}
+.pg-l span{font:400 14px/1 'VT323',ui-monospace,monospace}

@@ -140,7 +140,8 @@ const life = (() => {
   }
   /* everything inside found at once: quietly, or arriving as the hand would show it */
   function revealAll(arrive) { const t = performance.now() - (arrive ? 0 : 2000); for (const it of items) if (it.inS && !seen.has(it.o.id)) seen.set(it.o.id, t); }
-  const paused = () => !!S.mode || document.hidden;
+  /* the radar keeps playing while a life is looked at: only the radio being off, or the page hidden, stills it */
+  const paused = () => !S.radio || S.mode === 'place' || document.hidden;
   const running = () => !reduced() && !paused();
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {
@@ -159,8 +160,8 @@ const life = (() => {
     }
     /* the places' station: each place the sweep crosses sounds in its own small sound */
     if (TRK.on.places) for (const p of placesIn()) { if (p.sb == null) { p.sb = bearing(S.scan.lat, S.scan.lng, p.lat, p.lng); } let a = p.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingPlace(p)) pings.push({ lat: p.lat, lng: p.lng, t: now, c: '140,116,105' }); }
-    /* CLIMATE: each air temperature now, higher as it is hotter; drinking water, a drop */
-    if (TRK.on.climate) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
+    /* WATER: each drinking fountain and body of water the hand passes, a drop */
+    if (TRK.on.water) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
     /* the constellations in the radar join the mix: each plays as the hand passes its life */
     if (S.radio && prefs.sound) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '140,116,105' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
@@ -305,7 +306,7 @@ const life = (() => {
        or an open cell looks */
     const lit = cellOpen ? cellPts : null;
     if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fill(); ctx.restore(); }
-    if (placed() && !cellOpen && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
+    if (placed() && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
     /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
@@ -315,7 +316,7 @@ const life = (() => {
     /* a hero chosen: the ground it is known from */
     const h = S.mode === 'ping' && S.byId.get(S.sel); if (h && h.hero) patch(ctx, h.home.map(([a, b]) => [a, b, 170]), C.kind[M.GROUP[glyphOf(h)]] || C.kind.other, 0.3);
     /* the radar's rim: a hairline with a tick every ten degrees, longer every thirty, a notch at north */
-    if (ringPts.length) {
+    if (placed() && ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
       const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
       ctx.beginPath();
@@ -325,8 +326,8 @@ const life = (() => {
       ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
       ctx.restore();
     }
-    /* CLIMATE, or any hot day, inside the radar: drinking water, and the air temperature now */
-    if (T4.climate || (S.wx.tmax || 0) >= HEAT.hot) {
+    /* WATER, or any hot day, inside the radar: drinking water; on a hot day, the air temperature now */
+    if (T4.water || (S.wx.tmax || 0) >= HEAT.hot) {
       for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', f.x, f.y, 10, C.cobalt); }
       for (const s of S.sensors) {
         if (s.x == null || !inScan(s.lat, s.lng)) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
@@ -386,19 +387,19 @@ const life = (() => {
   /* every mark stands on the map now, so nothing outside the radar needs a signal to point to it */
   let sigs = [];
   function signals() { sigs = []; }
-  /* the climate inside the radar: the air temperature sensors and the drinking fountains, where CLIMATE is on */
+  /* the water inside the radar: drinking fountains, and the ponds and wetlands of the waterways, where WATER is on */
   let climK = '', climL = [];
   function climateIn() {
-    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${S.sensors.length},${S.fountains.length}`; if (k === climK) return climL;
-    climK = k; climL = [...S.sensors.map(x => ({ ...x, k: 'temp' })), ...S.fountains.map(x => ({ ...x, k: 'water' }))].filter(x => inScan(x.lat, x.lng)).map(x => ({ ...x, sb: bearing(S.scan.lat, S.scan.lng, x.lat, x.lng) }));
+    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${S.fountains.length}`; if (k === climK) return climL;
+    climK = k; climL = [...S.fountains.map(x => ({ ...x, k: 'fountain' })), ...(WATERS.points || []).map(p => ({ lat: +p[1], lng: +p[2], n: p[0], k: 'water' })), ...(WATERS.lines || []).flatMap(([n, pts]) => pts.map(q => ({ lat: q[0], lng: q[1], n, k: 'creek' })))].filter(x => inScan(x.lat, x.lng)).map(x => ({ ...x, sb: bearing(S.scan.lat, S.scan.lng, x.lat, x.lng) }));
     return climL;
   }
   /* the places' track, when seen: the human ecology inside the radar, each place in its family's mark, as in an open cell */
   let placesK = '', placesL = [];
   function placesIn() {
-    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length},${!!T4.exposure}${!!T4.community}`; if (k === placesK) return placesL;
-    /* EXPOSURE: the places on notice, that harm life; COMMUNITY: the rest, that care */
-    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? T4.exposure : T4.community)).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', on: !!(b.h || []).length, sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
+    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length},${!!T4.pollution}${!!T4.community}`; if (k === placesK) return placesL;
+    /* POLLUTION: the places on notice, that harm life; COMMUNITY: the rest, that care */
+    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? T4.pollution : T4.community)).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', on: !!(b.h || []).length, sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
     return placesL;
   }
   function places(ctx) {
@@ -445,7 +446,7 @@ const life = (() => {
     const t = now / 1000, still = reduced(); const amp = clamp((zoomNow() - 12) / 3, 0.35, 1); const cellOpen = S.mode === 'ping';
     /* a lost animal's search area, when search areas are on */
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
-    if (placed() && !cellOpen && S.mode !== 'place' && !still) hand(ctx);
+    if (placed() && S.radio && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
     places(ctx); signals(ctx, now, still);
     /* where something sounded: a ring opening from it */
@@ -608,7 +609,7 @@ const life = (() => {
   return {
     start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
-    seen: () => seen, reveal: revealAll, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
+    seen: () => seen, reveal: revealAll, climateIn, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
     get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown,
   };
 })();

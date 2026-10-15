@@ -12,7 +12,7 @@ By [novel.global](https://novel.global). MIT licence. Made on Wurundjeri Woi-wur
 
 Run `npm ci` and then `npm run build`, which writes the site to `dist/`. The site deploys as a Cloudflare Worker that serves `dist/` and runs the shared board and the print queues on D1. `receiver/` sets up a printer at a partner place. Put the site's address in `PORTAL_URL` in `src/config.js` so that printed codes link back to it. `HANDOVER.md` explains the source, the tests and the plan.
 
-Settings live in `src/config.js`: `SCAN` for the radar, `SIGNAL` for the limits, `ROLES` and `PRESSURES` for what harms each kind of life, and `EVENTS_URL` for a published CSV of gatherings. `examples.js` holds twenty example stories, marked EX, each with its mode, scale and sources.
+Settings live in `src/config.js`: `SCAN` for the radar, `SIGNAL` for the limits, `ROLES` and `PRESSURES` for what harms each kind of life, and `EVENTS_URL` for a published CSV of gatherings. `examples.js` holds one example story, the orangutan, marked EX: the blank slate.
 
 ## Sources
 
