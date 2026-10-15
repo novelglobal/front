@@ -4,7 +4,14 @@
    and the gigs. STORIES: the signals people have issued, newest first, then the groups, the tools and the sources.
    ════════════════════════════════════════════════════════════════════ */
 const panel = $('#panel'), rail = $('#rail'), viewEl = $('#view');
-rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><i class="flag" hidden></i></button>`).join('');
+rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
+/* the day's thread: a knot tied at each destination as the journey reaches it, and the string drawn on to it */
+function drawThread() { const t = [0, 1, 2].filter(n => DAY[n]); $$('#rail .tab').forEach((b, i) => b.classList.toggle('tied', !!DAY[i])); rail.style.setProperty('--tp', `${t.length ? Math.max(...t) * 46 : 0}px`); }
+function tie(n) {
+  if (DAY[n]) return; DAY[n] = Date.now(); store.set('da.day.v1', DAY); drawThread();
+  if (prefs.sound) snd.knot({ fam: 'people' }, F0 * [4, 5, 6][n], 0.05, 0.6, 0.6);
+}
+drawThread();
 rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i); if (i === S.view && S.open && !S.mode) { setOpen(false); return; } setView(i); });
 rail.addEventListener('keydown', e => { const b = e.target.closest('.tab'); if (!b) return; const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return; e.preventDefault(); const all = $$('#rail .tab'); all[(all.indexOf(b) + d + all.length) % all.length].focus(); });
 new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'));
@@ -43,7 +50,7 @@ const telOf = o => (o.tel ? o.tel : o.kind === 'injured' ? ((o.tags || []).inclu
 const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<button type="button" class="callb lostb" data-search="${esc(String(o.id))}">${icon('lost')}<small>SEARCH</small></button>` : tel ? `<a class="callb${o.kind === 'dead' ? ' deadb' : ''}" href="${tel}">${icon('phone')}<small>${o.kind === 'dead' ? 'REPORT' : 'CALL'}</small></a>` : '';
   return `<li class="alarm ${o.kind}"><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b><small>${o.kind === 'injured' ? 'HURT' : o.kind === 'dead' ? 'DEAD · DO NOT TOUCH' : 'LOST'} · ${since(o.at)}</small></span></button>${act}</li>`; };
 
-/* ───────── the two pages ───────── */
+/* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
   const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k;
   if (S.mode && !keep) closeRecord('view');
@@ -56,16 +63,19 @@ function setView(i, keep, part) {
   try { history.replaceState(null, '', '#' + (part || VIEWS[i].k)); } catch (e) { /* file:// */ }
 }
 /* a part of a page by name */
-const PARTS = { now: [0, null], outlook: [0, 'sec-heat'], five: [0, 'sec-five'], heroes: [0, 'sec-five'], alerts: [0, 'sec-alarms'], constellations: [0, 'sec-cons'], cons: [0, 'sec-cons'], gigs: [0, 'sec-gigs'], events: [0, 'sec-gigs'],
-  stories: [1, null], signals: [1, 'sec-signals'], receive: [1, 'sec-signals'], groups: [1, 'sec-groups'], tools: [1, 'sec-tools'], field: [1, 'sec-tools'], briefs: [1, 'sec-briefs'], settings: [1, 'sec-set'], sources: [1, 'sec-src'] };
+const PARTS = { radio: [0, null], now: [0, null], outlook: [0, 'sec-heat'], tracks: [0, 'sec-heat'], five: [0, 'sec-five'], heroes: [0, 'sec-five'], alerts: [0, 'sec-alarms'], gigs: [0, 'sec-gigs'], events: [0, 'sec-gigs'],
+  signals: [1, null], constellations: [1, 'sec-cons'], cons: [1, 'sec-cons'], groups: [1, 'sec-groups'],
+  signs: [2, null], slips: [2, 'sec-slips'], printers: [2, 'sec-prn'],
+  portfolio: [3, null], stories: [3, null], board: [3, 'sec-board'], receive: [3, 'sec-board'], briefs: [3, 'sec-briefs'], tools: [3, 'sec-tools'], field: [3, 'sec-tools'], settings: [3, 'sec-set'], sources: [3, 'sec-src'] };
 function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && document.getElementById(id); if (!el) return; if (el.tagName === 'DETAILS') el.open = true; if (part === 'receive') openReceive(true); viewEl.scrollTop = Math.max(0, el.offsetTop - 8); }
 function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k;
-  viewEl.innerHTML = k === 'now' ? viewNow() : viewStories();
+  viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
   viewEl.scrollTop = 0;
-  if (k === 'now') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else { stopHeroes(); bindStories(); }
-  if (k === 'now' && (S.wx.tmax || 0) >= HEAT.hot) loadOverlays();
+  if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
+  if (k === 'portfolio') bindPortfolio();
+  if (k === 'radio' && (T4.climate || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
@@ -78,7 +88,7 @@ function refresh() { if (refreshQ) return; refreshQ = requestAnimationFrame(() =
 setInterval(() => { $$('#panel .cdn[data-up]').forEach(t => { t.textContent = elapsed(+t.dataset.up); }); }, 1000);
 /* a month chosen on the strip: the page and the ground show that stretch of three months */
 /* a month pressed: the outlook moves to it, and its readout opens; pressed again, the readout closes */
-const pickMonth = (k, read) => { k = clamp(k, 0, OUT_N - 1); if (read) S.moRead = S.moRead === k ? null : k; if (k === S.mo && !read) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
+const pickMonth = (k, read) => { if (read && timeOn()) setTime(false); k = clamp(k, 0, OUT_N - 1); if (read) S.moRead = S.moRead === k ? null : k; if (k === S.mo && !read) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
 /* the search area of an animal lost: shown, and the whole of it framed */
 function searchFor(id) {
   const o = S.byId.get(id); if (!o) return; if (!prefs.areas) { prefs.areas = true; savePrefs(); }
@@ -88,9 +98,12 @@ function searchFor(id) {
 viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
+  if (e.target.closest('[data-time]')) { setTime(!timeOn()); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
   const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
+  const sy = e.target.closest('[data-style]'); if (sy) { prefs.slip = sy.dataset.style; savePrefs(); $$('#view [data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.slip))); tick(1500); buzz(4); return; }
+  if (e.target.closest('[data-to-radar]')) { setOpen(false); return; }
   if (e.target.closest('a[href]')) return;
   const tr = e.target.closest('[data-tribe]'); if (tr) { selectTribe(tr.dataset.tribe); return; }
   const b = e.target.closest('[data-id]'); if (b) { const v = b.dataset.id; select(/^\d+$/.test(v) ? +v : v); }
@@ -99,7 +112,19 @@ viewEl.addEventListener('click', e => {
 function flags() { const f = $$('#rail .flag'); if (f[0]) f[0].hidden = !alarmsNow().length; }
 
 /* ───────── NOW ───────── */
-const HORIZON = { f: 'FORECAST', m: 'MODELLED', p: 'NO OUTLOOK YET' };
+/* what each month's danger rests on: a published outlook, a modelled scenario, or nothing issued yet */
+const HORIZON = { f: 'OUTLOOK', m: 'SCENARIO', p: 'NO OUTLOOK YET' };
+/* the radar is time: each turn of the hand moves the outlook a month on, and back to now after the last. A month pressed, or a
+   life looked at, holds it there. The months are the outlook's own; nothing is added past them */
+const timeOn = () => prefs.time !== false;
+function stepMonth(k) {
+  S.mo = k; life.data();
+  $$('#sec-heat .mo').forEach(b => { const i = +b.dataset.mo; b.classList.toggle('on', i >= k && i < k + 3); });
+  const sp = $('#sec-heat .b-span'); if (sp) sp.innerHTML = spanText(k);
+}
+function turned() { if (!timeOn() || S.mode || S.moRead != null) return; stepMonth(S.mo + 1 >= OUT_N ? nowK() : S.mo + 1); }
+function setTime(on) { prefs.time = on; savePrefs(); const b = $('#sec-heat [data-time]'); if (b) { b.setAttribute('aria-pressed', String(on)); b.innerHTML = icon(on ? 'pause' : 'play', 'sm'); b.dataset.tip = on ? 'Hold' : 'Play'; } tick(on ? 1600 : 1100); }
+const spanText = k => `<b>${monthsWord(outMonth(k).m, outMonth(Math.min(OUT_N - 1, k + 2)).m)}</b> · <span class="hz">${HORIZON[outMonth(k).h]}</span>`;
 /* the next unseasonable stretch, and the days until it lands */
 function nextWindow() {
   const k0 = nowK(); let best = null;
@@ -133,7 +158,7 @@ function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
   const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
     return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s">${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
-  return `<div class="mstrip eq" style="--n:${OUT_N}"><div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
+  return `<div class="mstrip eq" style="--n:${OUT_N}"><button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time" data-tip="${timeOn() ? 'Hold' : 'Play'}">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button><div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
 /* a month's readout: as a stereo's display would show it */
@@ -141,7 +166,8 @@ function readout(k, top) {
   const Mo = outMonth(k); const m = Mo.m; const ws = OUT.windows.filter(w => inWin(w, m));
   const gs = [top, ...ws.flatMap(w => w.g)].filter((g, i, a) => g && a.indexOf(g) === i).slice(0, 7);
   return `<div class="eq-read" role="status"><p class="mono"><b>${MON[m]} ${Mo.y}</b><span class="dg d${Mo.lv}">${DEG[Mo.lv]}</span>${ws.map(w => `<span>${esc(w.w)}</span>`).join('')}<span class="hz">${HORIZON[Mo.h]}</span></p>`
-    + (ws.length ? `<p class="why">${esc(ws[0].why)}</p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
+    /* a window's reason is a relationship to look into, and says so; the outlook's own words are its summary */
+    + (ws.length ? `<p class="why"><i class="hy mono">HYPOTHESIS</i>${esc(ws[0].why)}</p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
     + `<p class="eq-k">${gs.map(g => `<i class="${g === 'human' ? 'us' : ''}" data-tip="${esc(M.KINDS[g] || '')}">${glyphSVG(g)}</i>`).join('')}</p></div>`;
 }
 function bindOutlook() {
@@ -163,6 +189,8 @@ function fiveHere() {
   for (const h of heroesRanked()) { if (here.length >= 5) break; if (!here.some(x => (x.o.tx || {}).n === (h.o.tx || {}).n)) here.push(h); }
   return here;
 }
+/* how the five are chosen, said on the heading's hover: the ranking is this page's own, not a universal one */
+const FIVE_WHY = 'Inside the radar · ranked by the danger in the months ahead, a threatened status, trouble now, and how hard heat and dry are on its kind · one of each kind';
 const whyOf = (o, w) => (w && w.why) || threatOf(o) || (o.heroOf && o.heroOf.why) || '';
 let heroRaf = 0;
 function stopHeroes() { cancelAnimationFrame(heroRaf); heroRaf = 0; }
@@ -195,23 +223,23 @@ function extremeAhead() {
 const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
-function viewNow() {
-  const nw = nextWindow(); const alarms = alarmsNow(); const k0 = S.mo, k1 = Math.min(OUT_N - 1, S.mo + 2);
+function viewRadio() {
+  const alarms = alarmsNow();
   const events = [...S.community, ...S.user].filter(o => o.isEvent && liveEvent(o)).sort((a, b) => (isGig(b) - isGig(a)) || (a.start || 0) - (b.start || 0));
-  const lvNow = outMonth(nowK()).lv;
   const ex = extremeAhead();
-  /* the headline is the act; under it, the time left to act before extreme heat, ticking */
+  /* the headline is the act; under it, the time left to act before extreme heat, ticking; the months as time; the tracks.
+     Until something is noticed today, the one question */
   return `<section class="band" id="sec-heat">
       <h2 class="b-head">DIRECT ACTION RADIO</h2>
+      ${DAY[0] ? '' : '<p class="b-ask">what do you notice today? what feels important? select something.</p>'}
       ${ex ? `<div class="b-count${ex.now ? ' now' : ''}" data-tip="${esc(ex.tip)}"><i class="sun d4">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</div>` : ''}
       ${monthStrip()}
-      <p class="b-span mono"><b>${monthsWord(outMonth(k0).m, outMonth(k1).m)}</b> · ${HORIZON[outMonth(k0).h]}</p>
+      <p class="b-span mono">${spanText(S.mo)}</p>
+      ${tracksKeys()}
       <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
     </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five">${lab('Five in greatest need')}<ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
+    + (S.heroes.length ? `<section class="sec five" id="sec-five"><h3 class="lab" data-tip="${esc(FIVE_WHY)}">Five in greatest need</h3><ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
     + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
-    + tracksSection()
-    + consSection()
     + `<section class="sec" id="sec-gigs">${lab('Gigs')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener" data-tip="${esc(g.n)}">${icon('hug', 'sm')}<span>${esc(g.w)}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`;
 }
 
@@ -237,7 +265,7 @@ viewEl.addEventListener('click', e => {
   const c = e.target.closest('[data-con]'); if (c) { e.stopPropagation(); const v = c.dataset.con; showConstellation(/^\d+$/.test(v) ? +v : v, 'glow'); }
 }, true);
 
-/* ───────── STORIES: the signals board, newest first ───────── */
+/* ───────── the board of stories, newest first ───────── */
 const THEMES = { heat: 'HEAT', water: 'WATER', pollinate: 'POLLINATORS', diversity: 'DIVERSITY', night: 'NIGHT', food: 'FOOD', circular: 'CIRCULAR', cats: 'CATS' };
 /* the board: every slip, this device's and the ones shown to everyone, each with where it has got to */
 /* a signal as a story card, every one the same shape: its photograph (its own, else its kind's) or its mark; what to do,
@@ -257,27 +285,65 @@ function boardOrder(sigs) {
   const top = [...sigs].filter(s => score(s) > 0).sort((a, b) => score(b) - score(a) || b.at - a.at).slice(0, 4);
   return [...top, ...sigs.filter(s => !top.includes(s)).sort((a, b) => b.at - a.at)];
 }
-function viewStories() {
+/* ───────── SIGNALS: the work of a response. The figures tied around a life, the W.I.S.H. issued from them, and the groups
+   already caring for the ground. The writing itself happens on the life's card, beside the map it came from ───────── */
+const mineOf = () => S.signals.filter(s => !s.ex && !s.shared);
+const wishRow = s => { const p = s.pin || {}; const L = linesOf(s); const st = sentWord(s);
+  return `<li><button type="button" class="wish-row" data-sig="${esc(s.key)}"><span class="w-chart">${(s.nodes || []).length > 1 ? chartSVG(s, 40) : glyphSVG(p.g || 'paw')}</span><span class="nm"><b>${esc(NAME_UP(s))}</b><small class="mono">${esc(s.code)} · ${L.length}/4${st ? ` · ${esc(st)}` : ''}</small></span></button></li>`; };
+function viewSignals() {
+  const cs = strings.list(); const mine = mineOf();
+  const empty = !cs.length && !mine.length;
+  return (empty ? `<section class="sec quiet" id="sec-start"><button type="button" class="to-radar" data-to-radar aria-label="The radar">${icon('radar')}</button></section>` : '')
+    + consSection()
+    + (mine.length ? `<section class="sec" id="sec-wish">${lab(`W.I.S.H. · ${mine.length}`)}<ol class="wishes">${mine.slice(0, 40).map(wishRow).join('')}</ol></section>` : '')
+    /* the groups already caring for ground here: small, each opens its patch and its site */
+    + `<section class="sec groups" id="sec-groups">${lab('Groups')}<ol class="tribes-s">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}" data-tip="${esc(t.w)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><b>${esc(t.n)}</b></button></li>`).join('')}</ol></section>`;
+}
+
+/* ───────── SIGNS: the studio for paper. Three ways a slip is set, the slips issued here as the receipts they make, the
+   printers that take them, and a blank to fill by hand ───────── */
+const STYLES = [{ k: 'paper', w: 'PAPER', ic: 'receipt' }, { k: 'tty', w: '>', ic: '' }, { k: 'conn', w: 'CONNECTION', ic: 'string' }];
+const styleNow = () => (isConn() ? 'conn' : isTty() ? 'tty' : 'paper');
+function viewSigns() {
+  const mine = mineOf(); const prn = [MASTER, ...PARTNERS].filter(Boolean);
+  return `<section class="sec" id="sec-style"><div class="styles" role="group" aria-label="Style">${STYLES.map(t => `<button type="button" class="sty${t.k === 'tty' ? ' tty-b' : ''}" data-style="${t.k}" aria-pressed="${styleNow() === t.k}">${t.ic ? icon(t.ic, 'sm') : ''}<span>${t.w}</span></button>`).join('')}</div></section>`
+    + (mine.length ? `<section class="sec" id="sec-slips">${lab(`Slips · ${mine.length}`)}<ol class="slips-l">${mine.slice(0, 40).map(s => { const st = sentWord(s); return `<li><button type="button" class="slip-row" data-sig="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><small class="mono">${esc(st || fmtStamp(s.at))}</small></button></li>`; }).join('')}</ol></section>` : '')
+    + `<section class="sec" id="sec-prn">${lab('Printers')}<ol class="prn-l">${prn.map(p => { const st = PSTATE[p.id] || {}; return `<li class="${st.ready ? 'on' : ''}"><img class="pm" src="${printerImg(p, st)}" alt=""><span class="nm"><b>${esc(p.n)}</b><small class="mono">${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}${st.printed ? ` · ${st.printed} PRINTED` : ''}${st.queued ? ` · ${st.queued} IN QUEUE` : ''}</small></span></li>`; }).join('')}</ol>`
+    + `<div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}<span>BLANK SLIP</span></button></div></section>`;
+}
+
+/* ───────── PORTFOLIO: what has been made, to learn from. Work written on the approval page, the board of stories, the
+   briefs they answer, the tools. The work opens on its own page, portfolio.html ───────── */
+const POSTS = store.get('da.posts.v1', []); let postsAsked = false;
+async function loadPosts() {
+  if (postsAsked) return; postsAsked = true;
+  try { const j = await apiJSON('/posts'); POSTS.splice(0, POSTS.length, ...((j && j.posts) || []).slice(0, 60)); store.set('da.posts.v1', POSTS); if (S.view === 3 && !S.mode) refreshPanel(); } catch (e) { /* as last heard */ }
+}
+const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${lab(`Work · ${POSTS.length}`)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
+function viewPortfolio() {
+  loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return `<section class="sec board" id="sec-signals"><div class="lab-row">${lab(`Signals · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
+  return postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${lab(`Stories · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
-      + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<details class="more-sigs"><summary aria-label="More">${icon('next', 'sm')}<span class="mono">${more.length}</span></summary><ol class="sigs cards small">${more.map(sigRow).join('')}</ol></details>` : ''); })()
+      /* eight as cards; the rest as a list, a photograph and a headline each */
+      + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
       + `</section>`
+    + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
     + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
-      + `</div><div class="docs">${[['blank', 'print', 'BLANK SLIP', 'A blank W.I.S.H. slip to fill by hand'], ['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div>`
+      + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div>`
       + packSection()
       + `</section>`
-    + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
-    /* the groups already caring for ground here: small, each opens its patch and its site */
-    + `<section class="sec groups" id="sec-groups">${lab('Groups')}<ol class="tribes-s">${S.tribes.map(t => `<li><button type="button" class="row" data-tribe="${esc(t.id)}" data-tip="${esc(t.w)}"><i class="patch" style="--c:${(C.tribe[t.kind] || C.tribe.park)}"></i><b>${esc(t.n)}</b></button></li>`).join('')}</ol></section>`
     + `<section class="sec" id="sec-set">${lab('Settings')}<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><button type="button" class="tog lb" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}<small>AREAS</small></button><button type="button" class="tog lb" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}<small>NIGHT</small></button><button type="button" class="tog lb" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}<small>PRINTERS</small></button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
     + `<details class="sec" id="sec-src"><summary>${lab('Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
+/* a story as a line, as a forum lists them: a small photograph, the headline, the code */
+const sigLine = s => { const p = s.pin || {}; const L = linesOf(s); const act = L[L.length - 1] || s.threat || p.cn || p.n || '';
+  return `<li><button type="button" class="sig-line${s.ex ? ' ex' : ''}" data-sig="${esc(s.key)}" data-tip="${esc([p.cn || p.n, s.threat].filter(Boolean).join(' · '))}">${sigArt(s)}<span class="hl">${esc(act)}</span><b class="mono code">${esc(s.code)}</b></button></li>`; };
 function openReceive(on) { const f = $('#rx'), b = $('#rx-open'); if (!f) return; f.hidden = !on; b.setAttribute('aria-expanded', String(on)); if (on) setTimeout(() => $('#rx-t').focus(), 30); }
-function bindStories() {
+function bindPortfolio() {
   const art = (id, list) => { const host = $('#' + id); if (host) host.innerHTML = list.map(b => `<img src="${badgeImg(b, 30)}" alt="">`).join(''); };
   art('art-field', ['bird', 'possum', 'bee', 'orb', 'lizard', 'frog', 'moth', 'turtle'].map(g => ({ tone: M.toneOf(g), g })));
   art('art-guide', [{ tone: 'k-mammal', g: 'flyingfox', dz: 3 }, { tone: 'injured', g: 'possum' }, { tone: 'lost', g: 'dog' }, { tone: 'event', i: 'hug' }, { tone: 'story', g: 'bee', carried: true }, { tone: 'need', i: 'shade' }, { tone: 'flora', g: 'plant' }, { tone: 'dead', g: 'bird' }]);

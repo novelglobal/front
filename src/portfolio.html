@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>novel.global</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#8C7469">
+<style>
+/*FONTS*/
+  :root { --ink:#141412; --soft:#6B6A63; --rule:#DDDAD0; --page:#FCFBF7; --clay:#8C7469;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace; --sans:'Poppins',ui-sans-serif,system-ui,sans-serif; --tty:'VT323',ui-monospace,monospace; }
+  html.night { --ink:#EDEDED; --soft:#9A9890; --rule:#333; --page:#151515; color-scheme:dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.6 var(--sans); }
+  a { color: inherit; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 22px 16px 80px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--ink); }
+  header a { text-decoration: none; }
+  .home { font: 400 26px/1 var(--tty); letter-spacing: .02em; }
+  .what { font: 500 10px var(--mono); letter-spacing: .14em; color: var(--soft); }
+  .what:hover { color: var(--ink); }
+  h2.cat { display: flex; justify-content: space-between; margin: 34px 0 6px; font: 500 10px var(--mono); letter-spacing: .14em; color: var(--soft); }
+  ol.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  ol.list li { border-bottom: 1px solid var(--rule); }
+  ol.list a { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: center; padding: 10px 0; text-decoration: none; }
+  ol.list .c { width: 52px; height: 52px; object-fit: cover; background: var(--rule); display: block; }
+  ol.list .t { font-weight: 600; font-size: 15px; line-height: 1.3; }
+  ol.list .s { display: block; font-weight: 400; font-size: 13px; color: var(--soft); }
+  ol.list .d { font: 500 10px var(--mono); letter-spacing: .08em; color: var(--soft); white-space: nowrap; }
+  ol.list a:hover .t { text-decoration: underline; text-underline-offset: 3px; }
+  .none { padding: 60px 0; text-align: center; font: 400 20px var(--tty); color: var(--soft); }
+  article { padding-top: 22px; }
+  article .cover { width: 100%; max-height: 70vh; object-fit: cover; display: block; background: var(--rule); }
+  article .meta { margin: 18px 0 6px; font: 500 10px var(--mono); letter-spacing: .12em; color: var(--soft); }
+  article h1 { margin: 0 0 12px; font: 600 clamp(24px, 5vw, 34px)/1.15 var(--sans); letter-spacing: -.01em; }
+  article .lead { margin: 0 0 22px; font-size: 18px; line-height: 1.5; }
+  article .body { max-width: 62ch; }
+  article .body h3 { margin: 28px 0 6px; font: 500 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  article .body p { margin: 0 0 14px; }
+  article .links { list-style: none; margin: 26px 0 0; padding: 12px 0 0; border-top: 1px solid var(--rule); font: 500 11px var(--mono); letter-spacing: .06em; }
+  article .links li { padding: 3px 0; }
+  .back { display: inline-block; margin-top: 34px; font: 500 10px var(--mono); letter-spacing: .14em; text-decoration: none; color: var(--soft); }
+  .back:hover { color: var(--ink); }
+  .draft { display: inline-block; margin-left: 8px; padding: 1px 5px; border: 1px solid var(--clay); color: var(--clay); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><a class="home" href="portfolio.html">novel.global</a><a class="what" href="./">DIRECT ACTION RADIO ↗</a></header>
+  <main id="main"></main>
+</div>
+<script>
+/* novel.global's portfolio: authored work, of which DIRECT ACTION RADIO is one, by category, as a list; one post at a time by its address. Night unless turned off in the app.
+   Everything is set as text, never as markup. A preview from the approval page reads a draft with the password in this tab */
+(() => {
+  'use strict';
+  try { const p = JSON.parse(localStorage.getItem('da.prefs') || '{}'); document.documentElement.classList.toggle('night', p.night == null ? true : !!p.night); } catch (e) { document.documentElement.classList.add('night'); }
+  const main = document.getElementById('main');
+  const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'text') e.textContent = v; else e.setAttribute(k, v); } for (const c of kids.flat()) if (c) e.append(c); return e; };
+  const day = d => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-AU', { month: 'short', year: 'numeric' }).toUpperCase(); } catch (e) { return d || ''; } };
+  const host = u => { try { const x = new URL(u); return (x.hostname.replace(/^www\./, '') + x.pathname).replace(/\/$/, ''); } catch (e) { return u; } };
+  const preview = new URLSearchParams(location.search).get('preview'); const KEY = sessionStorage.getItem('da.admin') || '';
+  const get = p => fetch(p, preview && KEY ? { headers: { authorization: `Bearer ${KEY}` }, cache: 'no-store' } : {}).then(r => (r.ok ? r.json() : Promise.reject(r.status)));
+  /* a body: paragraphs between blank lines; a line beginning ## is a heading */
+  const bodyOf = t => String(t || '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(b => (b.startsWith('## ') ? el('h3', { text: b.slice(3) }) : el('p', { text: b })));
+  function post(x, cover) {
+    document.title = `${x.title} · novel.global`;
+    main.replaceChildren(el('article', {}, x.cover ? el('img', { class: 'cover', src: cover, alt: '' }) : null,
+      el('p', { class: 'meta' }, `${[x.cat, day(x.day)].filter(Boolean).join(' · ')}`, x.status === 'draft' ? el('span', { class: 'draft', text: 'DRAFT' }) : null),
+      el('h1', { text: x.title }), x.summary ? el('p', { class: 'lead', text: x.summary }) : null, el('div', { class: 'body' }, bodyOf(x.body)),
+      (x.links || []).length ? el('ul', { class: 'links' }, x.links.map(u => el('li', {}, el('a', { href: u, target: '_blank', rel: 'noopener', text: host(u) })))) : null,
+      el('a', { class: 'back', href: preview ? 'admin' : '#', text: preview ? '← APPROVAL' : '← NOVEL.GLOBAL' })));
+    scrollTo(0, 0);
+  }
+  function index(list) {
+    document.title = 'novel.global';
+    if (!list.length) { main.replaceChildren(el('p', { class: 'none', text: 'nothing published yet' })); return; }
+    const cats = [...new Set(list.map(x => x.cat || 'WORK'))];
+    main.replaceChildren(...cats.flatMap(c => { const xs = list.filter(x => (x.cat || 'WORK') === c);
+      return [el('h2', { class: 'cat' }, el('span', { text: c }), el('span', { text: String(xs.length) })),
+        el('ol', { class: 'list' }, xs.map(x => el('li', {}, el('a', { href: '#' + x.slug }, x.cover ? el('img', { class: 'c', src: `/api/posts/${encodeURIComponent(x.slug)}/cover`, alt: '', loading: 'lazy' }) : el('span', { class: 'c' }),
+          el('span', { class: 't' }, x.title, x.summary ? el('span', { class: 's', text: x.summary }) : null), el('span', { class: 'd', text: day(x.day) })))))]; }));
+  }
+  async function route() {
+    try {
+      if (preview) { const j = await get(`/api/admin/posts/${encodeURIComponent(preview)}`); const r = await fetch(`/api/admin/posts/${encodeURIComponent(preview)}/cover`, { headers: { authorization: `Bearer ${KEY}` }, cache: 'no-store' }); post(j.post, r.ok ? URL.createObjectURL(await r.blob()) : ''); return; }
+      const slug = decodeURIComponent(location.hash.slice(1));
+      if (slug && slug !== 'portfolio') { const j = await get(`/api/posts/${encodeURIComponent(slug)}`); post(j.post, `/api/posts/${encodeURIComponent(slug)}/cover`); return; }
+      const j = await get('/api/posts'); index(j.posts || []);
+    } catch (e) { main.replaceChildren(el('p', { class: 'none', text: e === 404 ? 'not found' : 'no signal' })); }
+  }
+  addEventListener('hashchange', route); route();
+})();
+</script>
+</body>
+</html>

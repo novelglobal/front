@@ -10,10 +10,15 @@ const PLACES = window.DA_PLACES || [], FAMILIES = window.DA_FAMILIES || {}, STAT
 const SIG = Object.assign({ line: 48, mesh: 200, pager: 80 }, CONFIG.SIGNAL || {});
 /* the build this page came from: its commit, and a branch only on a preview */
 const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector('meta[name="da-build"]') || {}).content || '').split(' '); return { sha, branch }; })();
+/* four destinations. The first three are one journey, tied along a thread: notice on the radio, respond in signals, act in
+   signs. The portfolio stands apart. Behind the scenes: make it right, make it work, make it beautiful */
 const VIEWS = [
-  { k: 'now', icon: 'now', label: 'Now', w: 'NOW' },
-  { k: 'stories', icon: 'stories', label: 'Stories', w: 'STORIES' },
+  { k: 'radio', icon: 'now', label: 'Direct Action Radio', w: 'RADIO', was: 'now' },
+  { k: 'signals', icon: 'string', label: 'Signals', w: 'SIGNALS' },
+  { k: 'signs', icon: 'receipt', label: 'Signs', w: 'SIGNS' },
+  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', was: 'stories' },
 ];
+const viewIx = k => Math.max(0, VIEWS.findIndex(v => v.k === k || v.was === k));
 /* degrees of danger in the months ahead: orange, deeper as it rises. Red is kept for now. */
 const DEG = ['LOW', 'WATCH', 'HIGH', 'SEVERE', 'EXTREME'];
 const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#g-${name}"/></svg>`;
@@ -43,7 +48,15 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
 };
-const loadImage = (src, cors) => new Promise((res, rej) => { const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error('image')); im.src = src; });
+const loadOne = (src, cors) => new Promise((res, rej) => { const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error('image')); im.src = src; });
+/* a photograph whose pixels are needed (to dither it for paper): through novel.global, which lets the page read it; else
+   straight from its host, asked afresh so a copy the browser kept without that permission is not used */
+const PHOTO_HOST = /^https:\/\/(inaturalist-open-data\.s3\.amazonaws\.com|static\.inaturalist\.org)\/photos\//;
+const loadImage = (src, cors) => {
+  if (!cors || !PHOTO_HOST.test(src)) return loadOne(src, cors);
+  const fresh = () => loadOne(src + (src.includes('?') ? '&' : '?') + 'da=1', true);
+  return /^https?:$/.test(location.protocol) ? loadOne(`/api/img?u=${encodeURIComponent(src)}`, true).catch(fresh) : fresh();
+};
 let toastT = 0;
 function toast(msg, ms = 2400) { const t = $('#toast'); t.textContent = msg; t.hidden = false; t.classList.remove('in'); void t.offsetWidth; t.classList.add('in'); clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms); }
 function nudge(el) { if (!el) return; el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); el.focus({ preventScroll: true }); buzz(20); }
@@ -76,11 +89,20 @@ const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLower
 const TRK_SEE = { life: true, places: false };
 /* the site's own settings, as last heard: the nature station stays on the map for everyone unless unlocked on the approval page */
 const CFG = Object.assign({ lifeLock: true }, store.get('da.cfg.v1', {}));
-const seeTrack = id => { if (id === 'life' && CFG.lifeLock) return true; const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v; };
+const seeTrack = id => {
+  if (id === 'life' && CFG.lifeLock) return true;
+  /* the places are two tracks: EXPOSURE, those on notice; COMMUNITY, those that care */
+  if (id === 'places') return !!(T4.exposure || T4.community);
+  const v = (prefs.trk || {})[id]; return v == null ? (id in TRK_SEE ? TRK_SEE[id] : true) : !!v;
+};
 /* the print location: the first partner place with a W.I.S.H. printer */
 const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
+/* the tracks on the map besides the lives: off until a key lights them */
+const T4 = Object.assign({ climate: false, exposure: false, community: false }, prefs.t4 || {});
+/* the day's thread: noticed, responded, acted. It starts again each day */
+const DAY = (() => { const t = store.get('da.day.v1', {}); const d = new Date(); const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; return t.d === today ? t : { d: today }; })();
 /* night is the default, until turned off in Settings. The page darkens and the ground dims; a slip stays paper */
 const darkNow = () => (prefs.night != null ? !!prefs.night : true);
 const applyNight = () => document.documentElement.classList.toggle('night', darkNow());

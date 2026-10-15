@@ -81,7 +81,7 @@ function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
   if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
   const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
-  strings.open(o, opt.sig); openRecord();
+  strings.open(o, opt.sig); openRecord(); if (!opt.sig) tie(0);
   if (S.mapReady) map.easeTo({ center: [o.lng, o.lat], zoom: Math.max(map.getZoom(), 15.4), offset: sheetOffset(), duration: reduced() ? 0 : 700 });
   life.hover(null); life.select();
   fillFront(o);
@@ -517,6 +517,7 @@ function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; s
 /* issued: the slip feeds out of the printer and becomes a signal. The four lines are asked for, never required:
    a record can be issued and printed as it stands */
 async function issue(o) {
+  tie(1);
   const L = Object.fromEntries(WKEYS.map(k => [k, $('#w-' + k).value.trim()]));
   const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o);
   const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;

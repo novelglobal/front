@@ -26,6 +26,9 @@ try {
   check('health answers ok with the build', h.status === 200 && /^ok \w+/.test(h.text), h.text);
   const pa = await call('/api/partners');
   check('every partner place has a print queue, none paired yet', pa.status === 200 && ['pickles', 'kines', 'elsie'].every(id => pa.json.partners.some(p => p.id === id && !p.paired && !p.ready)), JSON.stringify(pa.json));
+  check('novel.global has its own print queue too', pa.json.partners.some(p => p.id === 'novelglobal'), JSON.stringify(pa.json.partners.map(p => p.id)));
+  const im1 = await call('/api/img?u=' + encodeURIComponent('https://example.org/photos/1/medium.jpg')), im2 = await call('/api/img?u=' + encodeURIComponent('http://static.inaturalist.org/photos/1/medium.jpg')), im3 = await call('/api/img?u=' + encodeURIComponent('https://static.inaturalist.org/sounds/1.mp3'));
+  check('photographs pass through from iNaturalist only', im1.status === 400 && im2.status === 400 && im3.status === 400, `${im1.status} ${im2.status} ${im3.status}`);
 
   /* a story sent to Pickles: it waits, and so does its print */
   const s1 = await call('/api/stories', { method: 'POST', body: story('DA-7K2Q', { dest: 'pickles', escpos: Buffer.from([0x1B, 0x40, 65, 10]).toString('base64'), mesh: 'DA-7K2Q NOISY MINER', photo: JPEG }) });
@@ -122,6 +125,16 @@ try {
     call('/api/stories', { method: 'POST', raw: '{"kind":"story",' + '"x":"' + 'a'.repeat(1000000) + '"}' }),
   ]);
   check('a bad code, a bad story, an unknown place, a photograph not a JPEG, another site, too large: each refused', bad.map(b => b.status).join(',') === '400,400,400,400,403,413', bad.map(b => b.status).join(','));
+  /* the portfolio: a post written on the approval page is a draft, unseen, until published */
+  const pd0 = await call('/api/admin/posts', { method: 'POST', body: { title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a', 'javascript:alert(1)'], cover: JPEG } });
+  const pd = await call('/api/admin/posts', { method: 'POST', key: KEY, body: { title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a', 'javascript:alert(1)'], cover: JPEG } });
+  const po0 = await call('/api/posts'); const one0p = await call('/api/posts/fan-night-a-case-study');
+  check('a post without the password is refused; with it, it waits as a draft nobody sees', pd0.status === 401 && pd.status === 201 && pd.json.slug === 'fan-night-a-case-study' && po0.json.posts.length === 0 && one0p.status === 404, `${pd0.status} ${pd.status} ${JSON.stringify(pd.json)} ${po0.json.posts.length} ${one0p.status}`);
+  await call('/api/admin/posts', { method: 'POST', key: KEY, body: { id: pd.json.id, title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a'], status: 'published' } });
+  const po1 = await call('/api/posts'); const po1one = await call('/api/posts/fan-night-a-case-study'); const cov = await call('/api/posts/fan-night-a-case-study/cover');
+  check('published, it is listed with its category and cover, and only https links are kept', po1.json.posts.length === 1 && po1.json.posts[0].cat === 'WORK' && po1.json.posts[0].cover && po1one.json.post.links.join() === 'https://example.org/a' && cov.status === 200 && cov.type === 'image/jpeg', `${JSON.stringify(po1.json)} ${cov.status}`);
+  await call(`/api/admin/posts/${pd.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } });
+  check('deleted, it is gone', (await call('/api/posts')).json.posts.length === 0);
   /* the receiver itself: pull.py, against this Worker, writing the slip to a file instead of a printer */
   const py = (process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python']).find(c => { try { return spawnSync(c, ['--version']).status === 0; } catch (e) { return false; } });
   if (py) {

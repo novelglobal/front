@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════════
-   STATIONS — collections of the map. The radar is the instrument: when the sweep reaches a cell, the cell sounds, and a small
+   TRACKS (stations in an earlier build) — collections of the map. The radar is the instrument: when the sweep reaches a cell, the cell sounds, and a small
    ring shows where. A station decides whether its cells sound, its fader how loud, the mood how: FOG a breath of a voice,
    RAIN a crushed glitch, WEIGHT a thud. Nothing plays on its own: no tune, no grid, no backing. What sounds is what is there:
    pitch from the kind's place on one harmonic series, brighter if new, fainter as it ages, bent or doubled if in danger;
@@ -32,11 +32,9 @@ function trackVoices(id) {
   if (id === 'places') { const fams = new Set(bizNear(S.scan.lat, S.scan.lng, S.scan.r).map(b => b.fam)); return TRK_FAMS.filter(f => fams.has(f)).map(fam => ({ fam, spec: { fam } })); }
   const t = trackList().find(x => x.id === id); return t ? t.kinds.map(k => ({ pk: k, spec: PACK_SPEC[k] || PACK_SPEC.place })) : [];
 }
-const voiceMark = v => (v.g ? glyphSVG(v.g) : v.fam ? icon(FAM_IC[v.fam] || 'people') : PACK_KINDS[v.pk].g ? glyphSVG(PACK_KINDS[v.pk].g) : icon(PACK_KINDS[v.pk].i));
-const voxHTML = id => (TRK.voices[id] || []).map((v, i) => `<i class="v" data-v="${i}">${voiceMark(v)}</i>`).join('');
-const tkSel = id => `#sec-tracks [data-tk="${CSS.escape(id)}"]`;
-/* a cell reached by the sweep: does its station let it sound, and how. True if it sounded */
-function flashVoice(id, key) { const vs = TRK.voices[id] || []; const n = vs.findIndex(v => (v.g || v.fam || v.pk) === key); if (n < 0) return n; const v = document.querySelector(`${tkSel(id)} .v[data-v="${n}"]`); if (v) { v.classList.add('hit'); setTimeout(() => v.classList.remove('hit'), 420); } return n; }
+const tkSel = id => `[data-tk="${CSS.escape(id)}"]`;
+/* each kind keeps its own voice, from its name */
+const flashVoice = (id, key) => partialOf(key || 'x') % 8;
 function pingCell(it, first) {
   const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound) return false; const L = lvlOf(id); if (L < 0.02) return false;
   const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
@@ -69,37 +67,47 @@ function freshOf(id) {
   if (id === 'places') return `${bizNear(S.scan.lat, S.scan.lng, S.scan.r).length}`;
   const x = (SHARED.list || []).find(y => 'p:' + y.code === id); return x ? `${(JSON.parse(x.body || '{}').cells || []).length} · ${ago(x.at)}` : '';
 }
-function tracksSection() {
-  const list = trackList(); for (const t of list) TRK.voices[t.id] = trackVoices(t.id);
-  const row = t => { const on = !!TRK.on[t.id], see = seeTrack(t.id);
-    const tip = [t.tip, freshOf(t.id)].filter(Boolean).join(' · ');
-    return `<li class="tk${on ? ' on' : ''}${see ? ' seen' : ''}" data-tk="${esc(t.id)}"${tip ? ` data-tip="${esc(tip)}"` : ''}>`
-      + `<button type="button" class="tk-see" aria-pressed="${see}" aria-label="On the map"${t.id === 'life' && CFG.lifeLock ? ' disabled' : ''}><i></i></button>`
-      + `<span class="vox">${voxHTML(t.id)}</span>`
-      + `<input type="range" class="tk-lvl" min="0" max="100" step="1" value="${Math.round(lvlOf(t.id) * 100)}" aria-label="Level" style="--v:${Math.round(lvlOf(t.id) * 100)}%">`
-      + `<button type="button" class="tk-play${t.id === 'life' && !on ? ' muted' : ''}" aria-pressed="${on}" aria-label="${t.id === 'life' ? 'Sound' : 'Play'}"${(TRK.voices[t.id] || []).length ? '' : ' disabled'}>${playIcon(t.id, on)}</button>`
-      + `</li>`; };
-  const moods = Object.entries(MOODS).map(([k, m]) => `<button type="button" class="mood" data-mood="${k}" aria-pressed="${moodOf() === k}" aria-label="${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button>`).join('');
-  const mute = `<button type="button" class="mood mute${prefs.sound ? '' : ' muted'}" data-mute-all aria-pressed="${!prefs.sound}" aria-label="Sound off" data-tip="${prefs.sound ? 'Sound off' : 'Sound on'}">${icon('sound', 'sm')}</button>`;
-  return `<section class="sec tracks" id="sec-tracks"><div class="lab-row">${lab('Stations')}<span class="moods" role="group" aria-label="Mood">${moods}${mute}</span></div><ol class="deck">${list.map(row).join('')}</ol></section>`;
+/* TRACKS: four domains of the living system, as four keys on the radio, and 1 to 4 on a keyboard. A key lit is on the map and
+   on air. CLIMATE: the air temperature now and drinking water; LIVING: the lives; EXPOSURE: the places on notice, that harm
+   life; COMMUNITY: the places that care, and the sound of every pack of cells shown to everyone. No panel, no faders */
+const TRACKS = [{ k: 'climate', w: 'CLIMATE', ic: 'heat' }, { k: 'living', w: 'LIVING', ic: 'fauna' }, { k: 'exposure', w: 'EXPOSURE', ic: 'harm' }, { k: 'community', w: 'COMMUNITY', ic: 'people' }];
+const trackOn = k => (k === 'living' ? !prefs.mute : !!T4[k]);
+/* what each key holds, for its hover: counts only */
+function trackCount(k) {
+  if (k === 'living') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist).length;
+  if (k === 'climate') return S.sensors.length + S.fountains.length;
+  const ps = bizNear(S.scan.lat, S.scan.lng, S.scan.r); const ex = ps.filter(b => (b.h || []).length).length;
+  return k === 'exposure' ? ex : ps.length - ex + (SHARED.list || []).filter(x => x.kind === 'cells').length;
 }
-$('#view').addEventListener('input', e => {
-  const f = e.target.closest('.tk-lvl'); if (!f) return; const r = f.closest('[data-tk]'); prefs.lvl = { ...(prefs.lvl || {}), [r.dataset.tk]: +f.value / 100 }; f.style.setProperty('--v', `${f.value}%`); savePrefs();
-});
+function setTrack4(k, on) {
+  if (k === 'living') { prefs.mute = !on; if (!CFG.lifeLock) prefs.trk = { ...(prefs.trk || {}), life: on }; savePrefs(); setTrack('life', on && prefs.sound); }
+  else { T4[k] = on; prefs.t4 = { ...T4 }; savePrefs(); }
+  if (k === 'climate' && on) loadOverlays();
+  setTrack('places', (T4.exposure || T4.community) && prefs.sound);
+  for (const t of trackList()) if (t.id.startsWith('p:')) setTrack(t.id, T4.community && prefs.sound);
+  document.querySelectorAll(`[data-t4="${k}"]`).forEach(b => b.setAttribute('aria-pressed', String(on)));
+  life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200); buzz(4);
+}
+function tracksKeys() {
+  const m = MOODS[moodOf()];
+  return `<div class="t4" role="group" aria-label="Tracks">${TRACKS.map((t, i) => `<button type="button" class="t4k" data-t4="${t.k}" aria-pressed="${trackOn(t.k)}" aria-keyshortcuts="${i + 1}" data-tip="${t.w} · ${trackCount(t.k)}">${icon(t.ic, 'sm')}<small>${t.w}</small></button>`).join('')}`
+    + `<span class="t4s"><button type="button" class="t4m" data-mood-next aria-label="Mood: ${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button><button type="button" class="t4m${prefs.sound ? '' : ' muted'}" data-mute-all aria-pressed="${!prefs.sound}" aria-label="Sound off" data-tip="${prefs.sound ? 'Sound off' : 'Sound on'}">${icon('sound', 'sm')}</button></span></div>`;
+}
 $('#view').addEventListener('click', e => {
-  /* everything quiet, or back: the radar, its drone and every station; nature comes back on air unless muted */
-  if (e.target.closest('[data-mute-all]')) {
-    prefs.sound = !prefs.sound; savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } else { snd.wake(); if (!prefs.mute) setTrack('life', true); }
-    const b = e.target.closest('[data-mute-all]'); b.classList.toggle('muted', !prefs.sound); b.setAttribute('aria-pressed', String(!prefs.sound)); const ix = document.querySelector('#ix-sound'); if (ix) ix.setAttribute('aria-pressed', String(prefs.sound)); if (prefs.sound) snd.tick(1700); return;
+  /* everything quiet, or back: the radar, its drone and every track; nature comes back on air unless muted */
+  const mu = e.target.closest('[data-mute-all]');
+  if (mu) {
+    prefs.sound = !prefs.sound; savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } else { snd.wake(); if (!prefs.mute) setTrack('life', true); if (T4.exposure || T4.community) setTrack('places', true); }
+    mu.classList.toggle('muted', !prefs.sound); mu.setAttribute('aria-pressed', String(!prefs.sound)); mu.dataset.tip = prefs.sound ? 'Sound off' : 'Sound on'; const ix = document.querySelector('#ix-sound'); if (ix) ix.setAttribute('aria-pressed', String(prefs.sound)); if (prefs.sound) snd.tick(1700); return;
   }
-  const md = e.target.closest('[data-mood]');
-  if (md) { prefs.mood = md.dataset.mood; savePrefs(); document.querySelectorAll('#sec-tracks [data-mood]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mood === prefs.mood))); snd.tick(1400); buzz(4); return; }
-  const r = e.target.closest('[data-tk]'); if (!r) return; const id = r.dataset.tk;
-  if (e.target.closest('.tk-lvl')) return;
-  if (e.target.closest('.tk-see')) { seeIt(id, !seeTrack(id)); snd.tick(seeTrack(id) ? 1900 : 1200); buzz(4); return; }
-  const p = e.target.closest('.tk-play'); if (!p || p.disabled) return;
-  if (!prefs.sound) { toast('SOUND OFF'); return; }
-  const on = !TRK.on[id]; setTrack(id, on); if (id === 'life') { prefs.mute = !on; savePrefs(); } buzz(4);
+  const md = e.target.closest('[data-mood-next]');
+  if (md) { const ks = Object.keys(MOODS); prefs.mood = ks[(ks.indexOf(moodOf()) + 1) % ks.length]; savePrefs(); const m = MOODS[prefs.mood]; md.innerHTML = icon(m.ic, 'sm'); md.dataset.tip = m.w; md.setAttribute('aria-label', `Mood: ${m.w}`); snd.tick(1400); buzz(4); return; }
+  const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
+});
+/* 1 to 4 on a keyboard: the four tracks, as the radio's presets */
+addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '') || (e.target && e.target.isContentEditable)) return;
+  const i = '1234'.indexOf(e.key); if (i < 0) return; const k = TRACKS[i].k; setTrack4(k, !trackOn(k));
 });
 /* an earlier build kept a track of one's own here; its store goes */
 try { indexedDB.deleteDatabase('da.tracks'); } catch (e) { /* none */ }

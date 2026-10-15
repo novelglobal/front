@@ -12,6 +12,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 3c | Stations seen or played, first visits, night | Live |
 | 3d | The radar as glass and vinyl, clay, the outlook restored, nature locked on | Live |
 | 3e | Sound as an ecology, the equaliser, hierarchy, signals outside the radar | Built, on staging |
+| 0.03 | Four destinations on one thread; TRACKS; time on the radar; the CONNECTION receipt; the portfolio | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
@@ -125,6 +126,19 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **Night** keeps the equaliser's colours.
 - **The radar is the instrument:** nothing plays on its own. When the sweep reaches a cell it sounds, and a ring opens where: FOG a breath of a voice, RAIN a crushed glitch, WEIGHT a thud; brighter if new, fainter with age, bent or doubled if in danger. With the places on, they sound as it passes them. A drone swells only where the trail crosses a cluster, and only while nature is on. Stations are switches, faders and a mood; nothing else.
 - **Story cards:** every signal one shape: the photograph (its own, its kind's from the sightings, else asked of iNaturalist once), what to do in bold, the story plain, the life, the code in the corner. Eight large, two across; the rest small, four across. A mute for everything sits beside the moods.
+
+## Version 0.03 — four destinations, one thread
+
+*Built, on staging.*
+
+- **Four destinations:** RADIO, SIGNALS, SIGNS and PORTFOLIO, on the rail. The first three are one journey, joined by a thread whose knots tie as the day's journey reaches them; it starts again each day.
+- **RADIO:** the one question until something is noticed today. The radar is time: each turn moves the outlook a month on. Each month says what it rests on (OUTLOOK, SCENARIO, NO OUTLOOK YET); a window's reason is a HYPOTHESIS.
+- **TRACKS** replace the stations panel: CLIMATE, LIVING, EXPOSURE and COMMUNITY as four keys (1 to 4 on a keyboard), with the mood and sound off beside them.
+- **SIGNALS:** constellations, the W.I.S.H. issued here, the caring groups.
+- **SIGNS:** three styles, including the new CONNECTION receipt, which joins a person to a real group near the life, with when it meets and where; the slips; the printers; a blank slip.
+- **PORTFOLIO:** posts written on the approval page (PORTFOLIO tab: drafts, a cover, a category, links, preview, publish and unpublish), shown in the app and on `portfolio.html`; the board, its folded stories as a list; the briefs and tools.
+- **novel.global's own printer** (`DA_MASTER`), first in the send list.
+- **Fixes:** a photograph's credit is readable at night; photographs reach the paper (through `/api/img`, which lets the page read iNaturalist's pixels to dither them); the torn cards stand out by day; headlines are never cut.
 
 ## Stage 4 — live data through Cloudflare
 

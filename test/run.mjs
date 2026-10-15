@@ -26,7 +26,7 @@ const admin = async (p, body) => { const r = await apiServer.fetch(new URL('/api
 async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false, dark = false } = {}) {
   /* the radar stays where it is pinned, unless a check is about a first visit */
   /* and by day (night is the default), unless a check is about the night */
-  if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, dark ? '{"found":true,"start2":true}' : '{"found":true,"start2":true,"night":false}');
+  if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, dark ? '{"found":true,"start2":true,"time":false}' : '{"found":true,"start2":true,"night":false,"time":false}');
   await ctx.route('**/*', async route => {
     const url = route.request().url(); const u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -34,6 +34,12 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
     const ok = (body, type, extra = {}) => route.fulfill({ status: 200, body, headers: { 'content-type': type, 'access-control-allow-origin': '*', ...extra } });
     const json = o => ok(JSON.stringify(o), 'application/json');
     try {
+      /* a photograph through novel.global: the same fake photograph, readable by the page */
+      if ((u.host === 'oan.test' || u.host === 'novel.global') && u.pathname === '/api/img') {
+        const m = (u.searchParams.get('u') || '').match(/photos\/(\d+)\/(\w+)\./); if (!m) return route.fulfill({ status: 400, body: 'u' });
+        const size = { square: 75, small: 240, medium: 500, large: 1024 }[m[2]] || 240; const k = `p${m[1]}-${size}`; if (!cache.has(k)) cache.set(k, await photo(+m[1], size));
+        return ok(cache.get(k), 'image/jpeg');
+      }
       if ((u.host === 'oan.test' || u.host === 'novel.global') && u.pathname.startsWith('/api/')) {
         const rq = route.request(); const headers = { ...rq.headers(), origin: API_O }; delete headers.host;
         const r = await apiServer.fetch(new URL(u.pathname + u.search, API_O), { method: rq.method(), headers, body: rq.postDataBuffer() || undefined });
@@ -126,25 +132,25 @@ if (ONLY.includes('dbg')) try {
   await ctx.close();
 } catch (e) { results.push(`FAIL  section dbg: ${e.message.split('\n')[0]}`); }
 
-// ───────── smoke: the bare radar, then the two pages ─────────
+// ───────── smoke: the bare radar, then the four destinations ─────────
 if (run('smoke')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'smoke');
   await page.goto('https://oan.test/index.html#stories'); await ready(page, '', true); await settle(page);
   const land = await page.evaluate(() => { const da = window.__da; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const panel = document.querySelector('#panel').getBoundingClientRect(); return { open: da.S.open, view: da.S.view, five: document.querySelectorAll('#sec-five .hero-row').length, radarLeftOfPage: c.x < panel.left, hash: location.hash }; });
-  check('the site lands on NOW, the radar beside it, even from a link to another page', land.open && land.view === 0 && land.five === 5 && land.radarLeftOfPage && land.hash === '#now', JSON.stringify(land));
+  check('the site lands on RADIO, the radar beside it, even from a link to another page', land.open && land.view === 0 && land.five === 5 && land.radarLeftOfPage && land.hash === '#radio', JSON.stringify(land));
   const adm = await page.evaluate(() => { const a = document.querySelector('.maplibregl-ctrl-attrib a.da-admin'); return a ? { href: a.getAttribute('href'), text: a.textContent, nextTo: !!(a.previousElementSibling && a.previousElementSibling.classList.contains('da-build')) } : null; });
   check('a small ADMIN link sits beside the build in the information corner', adm && adm.href === 'admin' && adm.text === 'ADMIN' && adm.nextTo, JSON.stringify(adm));
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(600);
   const a = await page.evaluate(() => { const da = window.__da; const vis = el => !!el && !el.hidden && el.getBoundingClientRect().width > 0; const panel = document.querySelector('#panel').getBoundingClientRect();
-    return { shut: document.body.classList.contains('shut'), panelOff: panel.left >= innerWidth - 2, tabs: document.querySelectorAll('#rail .tab').length, knob: vis(document.querySelector('#knob')), ring: vis(document.querySelector('#ring')), seen: da.life.seen().size, sweep: da.life.sweep, words: document.body.innerText.replace(/\s+/g, ' ').trim().split(' ').filter(w => /[a-z]{3,}/i.test(w)).length }; });
-  check('closed, the page leaves only the radar and its two handles', a.shut && a.panelOff && a.tabs === 2 && a.knob && a.ring && a.words <= 12, JSON.stringify(a));
+    return { shut: document.body.classList.contains('shut'), panelOff: panel.left >= innerWidth - 2, tabs: document.querySelectorAll('#rail .tab').length, knots: document.querySelectorAll('#rail .tab .knot').length, knob: vis(document.querySelector('#knob')), ring: vis(document.querySelector('#ring')), seen: da.life.seen().size, sweep: da.life.sweep, words: document.body.innerText.replace(/\s+/g, ' ').trim().split(' ').filter(w => /[a-z]{3,}/i.test(w)).length }; });
+  check('closed, the page leaves only the radar, its two handles and four destinations, three on a thread', a.shut && a.panelOff && a.tabs === 4 && a.knots === 3 && a.knob && a.ring && a.words <= 12, JSON.stringify(a));
   await sleep(3500);
   const b = await page.evaluate(() => ({ seen: window.__da.life.seen().size, sweep: window.__da.life.sweep }));
   check('the sweep turns and finds what lies inside it', b.sweep !== a.sweep && b.seen > a.seen, `${JSON.stringify(a)} → ${JSON.stringify(b)}`);
   await page.evaluate(() => { window.__blips = 0; const s = window.__da.snd; const o = s.ping; s.ping = (...a) => { const r = o.apply(s, a); if (r) window.__blips++; return r; }; });
   await page.keyboard.press('a'); await sleep(2600);
   const bl = await page.evaluate(() => ({ blips: window.__blips, found: window.__da.life.items.filter(it => it.inS && window.__da.life.seen().has(it.o.id) && window.__da.life.shown(it) && !it.o.hist && it.b.tone !== 'cold').length }));
-  check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16) - 2, JSON.stringify(bl));
+  check('at the first touch the radar plays what it has found so far, and goes on as it sweeps', bl.found > 0 && bl.blips >= Math.min(bl.found, 16) - 4, JSON.stringify(bl));
   const v = await page.evaluate(async () => { const da = window.__da; da.life.reveal(); await new Promise(r => setTimeout(r, 300)); const its = da.life.items; const shown = its.filter(it => da.life.shown(it)); const out = shown.filter(it => !it.inS);
     const fresh = its.filter(it => !it.inS && it.flag && !it.capped).length; return { inside: shown.length - out.length, outside: out.length, fresh, signals: da.life.signals.length, red: da.life.signals.filter(x => x.red).length }; });
   check('outside the radar nothing stands as a mark: what is new there is a quiet signal, to bring the radar to', v.outside === 0 && v.inside > 5 && v.fresh > 0 && v.signals > 0, JSON.stringify(v));
@@ -163,74 +169,107 @@ if (run('smoke')) try {
   check('icons are half size from afar, full size close in', sz.far <= sz.near * 0.6, JSON.stringify(sz));
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
-  const now = await page.evaluate(() => ({ open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, sentences: ([...document.querySelectorAll('#view > section:not(#sec-five)')].map(x => x.innerText).join(' ').match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }));
-  check('NOW: the outlook, the five, the gigs, in labels and no sentences', now.open && now.five === 5 && now.months === 12 && !!now.count && now.gigs === 2 && now.sentences === 0, JSON.stringify(now));
-  const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const ks = [...band.querySelectorAll('.ms-k span')]; const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
-    const deg = ['--deg0', '--deg1', '--deg2', '--deg3', '--deg4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim().toLowerCase());
-    return { bg: getComputedStyle(band).backgroundColor, ks: ks.length, glyphs: ks.filter(k => k.querySelector('use[href^="#k-"]') && k.querySelector('b')).length, us: band.querySelectorAll('.ms-k .us use[href="#k-human"]').length, tips: ks.map(k => k.dataset.tip),
-      five: rows.length, label: five ? five.querySelector('.lab, h3, h4, [class*="lab"]') && five.innerText.split('\n')[0] : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.every(r => r.querySelectorAll('.chips i').length >= 1), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText, deg }; });
+  const now = await page.evaluate(() => { const ask = document.querySelector('#sec-heat .b-ask'); return { open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, count: (document.querySelector('.b-count b') || {}).textContent, gigs: document.querySelectorAll('#sec-gigs .gigs a').length, ask: ask ? ask.textContent : '', sentences: ([...document.querySelectorAll('#view > section:not(#sec-five)')].map(x => x.innerText).join(' ').replace(ask ? ask.innerText : '', '').match(/[a-z]{3,}[.!?](\s|$)/g) || []).length }; });
+  check('RADIO: the one question, the outlook, the five, the gigs; otherwise labels, no sentences', now.open && now.five === 5 && now.months === 12 && !!now.count && now.gigs === 2 && now.sentences === 0 && now.ask === 'what do you notice today? what feels important? select something.', JSON.stringify(now));
+  const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
+    return { five: rows.length, label: five ? five.innerText.split('\n')[0] : '', why: five ? (five.querySelector('.lab') || {}).dataset.tip : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.every(r => r.querySelectorAll('.chips i').length >= 1), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText }; });
   const eq = await page.evaluate(async () => { const cols = [...document.querySelectorAll('#sec-heat .mo')]; const lit = cols.map(c => c.querySelectorAll('.eq-c i.l').length); const none = !document.querySelector('.eq-read');
     cols[3].click(); await new Promise(r => setTimeout(r, 400)); const rd = document.querySelector('.eq-read');
-    const out = { cols: cols.length, segs: cols[0].querySelectorAll('.eq-c i').length, lit, none, read: rd ? rd.innerText : '', icons: rd ? rd.querySelectorAll('.eq-k use[href^="#k-"]').length : 0, us: rd ? rd.querySelectorAll('.eq-k .us').length : 0 };
+    const out = { cols: cols.length, segs: cols[0].querySelectorAll('.eq-c i').length, lit, none, read: rd ? rd.innerText : '', hy: !!(rd && rd.querySelector('.hy')), icons: rd ? rd.querySelectorAll('.eq-k use[href^="#k-"]').length : 0 };
     document.querySelectorAll('#sec-heat .mo')[3].click(); await new Promise(r => setTimeout(r, 300)); out.closed = !document.querySelector('.eq-read'); return out; });
-  check('the outlook is an equaliser: a column of lit segments each month, as high as its heat; pressed, a month shows its lives and why', eq.cols === 12 && eq.segs === 10 && Math.max(...eq.lit) === 10 && Math.min(...eq.lit) >= 2 && eq.none && /JAN 2027/.test(eq.read) && /EXTREME/.test(eq.read) && eq.icons >= 3 && eq.closed, JSON.stringify(eq));
-  check('the five in greatest need, named, with what they face, the focus under the outlook', nw.five === 5 && /five in greatest need/i.test(nw.label) && nw.names.every(Boolean) && nw.chips && nw.pics === 5, JSON.stringify({ five: nw.five, label: nw.label, names: nw.names }));
+  check('the outlook is an equaliser; pressed, a month shows its lives, what it rests on, and its reason as a hypothesis', eq.cols === 12 && eq.segs === 10 && Math.max(...eq.lit) === 10 && Math.min(...eq.lit) >= 2 && eq.none && /JAN 2027/.test(eq.read) && /EXTREME/.test(eq.read) && /SCENARIO/.test(eq.read) && /HYPOTHESIS/.test(eq.read) && eq.hy && eq.icons >= 3 && eq.closed, JSON.stringify(eq));
+  check('the five in greatest need, named, with what they face, and how they are chosen on the heading', nw.five === 5 && /five in greatest need/i.test(nw.label) && /ranked by/.test(nw.why || '') && nw.names.every(Boolean) && nw.chips && nw.pics === 5, JSON.stringify({ five: nw.five, label: nw.label, why: nw.why }));
   check('no El Niño label, no watch chip, no stage names in the outlook', !/EL NI|WATCH|EARLY HEAT|DRY FLOWERING|HOT NIGHTS|DROUGHT/.test(nw.words), nw.words.replace(/\s+/g, ' '));
   const hd = await page.evaluate(async () => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id).filter(Boolean); const d4 = [...document.querySelectorAll('#sec-heat .mo.d4 .eq-c i.l')]; const h = document.querySelector('#sec-heat .b-head'); const cd = document.querySelector('#sec-heat .b-count .cd');
     const c0 = cd ? cd.textContent : ''; await new Promise(r => setTimeout(r, 2300)); const c1 = cd ? document.querySelector('#sec-heat .b-count .cd').textContent : '';
     return { head: h.textContent, font: getComputedStyle(h).fontFamily, oneLine: h.getBoundingClientRect().height < parseFloat(getComputedStyle(h).fontSize) * 1.3, fits: h.scrollWidth <= h.parentElement.clientWidth, sun: !!document.querySelector('#sec-heat .b-count .sun.d4 use[href="#g-heat"]'), c0, c1, tip: (document.querySelector('#sec-heat .b-count') || {}).dataset ? document.querySelector('#sec-heat .b-count').dataset.tip : '',
-      ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], d4op: [...new Set(d4.map(i => getComputedStyle(i.parentElement).opacity))], mark: (() => { const pk = document.querySelector('#sec-heat .mo.d4 .eq-c i.pk'); return pk ? getComputedStyle(pk, '::after').content : ''; })(), tel: document.querySelectorAll('#view a[href^="tel:"]').length, praxis: !!document.querySelector('#sec-praxis') }; });
-  check('NOW leads with DIRECT ACTION RADIO on one line, in the terminal type', hd.head === 'DIRECT ACTION RADIO' && /VT323/.test(hd.font) && hd.oneLine && hd.fits, JSON.stringify(hd));
+      ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], mark: (() => { const pk = document.querySelector('#sec-heat .mo.d4 .eq-c i.pk'); return pk ? getComputedStyle(pk, '::after').content : ''; })(), tel: document.querySelectorAll('#view a[href^="tel:"]').length, stations: !!document.querySelector('#sec-tracks, .tk-lvl') }; });
+  check('RADIO leads with DIRECT ACTION RADIO on one line, in the terminal type', hd.head === 'DIRECT ACTION RADIO' && /VT323/.test(hd.font) && hd.oneLine && hd.fits, JSON.stringify(hd));
   check('under it, a countdown to act before extreme heat, ticking', hd.sun && /^\d+D \d\d:\d\d:\d\d$/.test(hd.c0) && hd.c0 !== hd.c1 && /EXTREME/.test(hd.tip), JSON.stringify({ c0: hd.c0, c1: hd.c1, tip: hd.tip }));
   check('extreme months reach black, with a small cross', hd.d4 >= 1 && hd.d4bg.includes('rgb(20, 20, 18)') && /†/.test(hd.mark), JSON.stringify({ d4bg: hd.d4bg, mark: hd.mark }));
-  check('no copy to explain, no numbers to ring on NOW; the five right under the outlook', !hd.praxis && hd.tel === 0 && hd.ids[0] === 'sec-heat' && hd.ids[1] === 'sec-five', JSON.stringify(hd.ids));
-  const tk = await page.evaluate(() => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id); const sec = document.querySelector('#sec-tracks'); const rows = [...sec.querySelectorAll('[data-tk]')];
-    return { at: ids.indexOf('sec-tracks'), cons: ids.indexOf('sec-cons'), gigs: ids.indexOf('sec-gigs'), words: sec.innerText.replace(/\s+/g, ' ').trim(), rows: rows.map(r => r.dataset.tk), seen: rows.map(r => r.querySelector('.tk-see').getAttribute('aria-pressed')), locked: rows[0].querySelector('.tk-see').disabled, playing: rows.map(r => r.querySelector('.tk-play').getAttribute('aria-pressed')), life: rows[0].querySelectorAll('.v').length, places: rows[1].querySelectorAll('.v').length, traces: sec.querySelectorAll('.beat polyline').length }; });
-  check('Stations sit above the constellations: one word; nature always on the map and on air from the first touch; the places not', tk.at >= 0 && (tk.cons < 0 || tk.at < tk.cons) && tk.at < tk.gigs && /^stations$/i.test(tk.words) && tk.rows.slice(0, 2).join() === 'life,places' && tk.seen.slice(0, 2).join() === 'true,false' && tk.locked && tk.playing.slice(0, 2).join() === 'true,false' && tk.life >= 2 && tk.places >= 1, JSON.stringify(tk));
-  /* nature can be muted, and stays muted; it cannot be taken off the map until it is unlocked on the approval page */
+  check('no stations panel, no faders, no numbers to ring; the five right under the outlook', !hd.stations && hd.tel === 0 && hd.ids[0] === 'sec-heat' && hd.ids[1] === 'sec-five', JSON.stringify(hd.ids));
+  /* TRACKS: four keys on the radio; nature on air from the first touch and on the map for everyone, the rest off */
+  const tk = await page.evaluate(() => { const ks = [...document.querySelectorAll('#sec-heat [data-t4]')]; return { keys: ks.map(k => k.dataset.t4), words: ks.map(k => k.innerText.trim()), on: ks.map(k => k.getAttribute('aria-pressed')), mood: !!document.querySelector('#sec-heat [data-mood-next]'), mute: !!document.querySelector('#sec-heat [data-mute-all]') }; });
+  check('TRACKS: CLIMATE, LIVING, EXPOSURE and COMMUNITY as four keys, the lives alone on; the mood and sound off beside them', tk.keys.join() === 'climate,living,exposure,community' && tk.words.join() === 'CLIMATE,LIVING,EXPOSURE,COMMUNITY' && tk.on.join() === 'false,true,false,false' && tk.mood && tk.mute, JSON.stringify(tk));
   const lives = () => page.evaluate(() => { const da = window.__da; da.life.reveal(); return da.life.items.filter(it => da.life.shown(it) && !it.o.story && !it.o.pack && !it.o.partner).length; });
   await page.evaluate(() => { window.__knots = []; const s = window.__da.snd; const o = s.ping; s.ping = (spec, ...a) => { window.__knots.push(spec); return o.call(s, spec, ...a); }; }); await sleep(6000);
   const ta = await page.evaluate(() => ({ n: window.__knots.length, lives: window.__knots.length > 0 && window.__knots.every(k => k.g) }));
-  await page.click('#sec-tracks [data-tk="life"] .tk-play'); await sleep(300);
-  const mu = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').getAttribute('aria-pressed'), muted: document.querySelector('#sec-tracks [data-tk="life"] .tk-play').classList.contains('muted'), kept: JSON.parse(localStorage.getItem('da.prefs')).mute }));
-  const l0 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see', { force: true }); await sleep(300); const l1 = await lives();
+  await page.click('#sec-heat [data-t4="living"]'); await sleep(300);
+  const mu = await page.evaluate(() => ({ on: document.querySelector('#sec-heat [data-t4="living"]').getAttribute('aria-pressed'), kept: JSON.parse(localStorage.getItem('da.prefs')).mute }));
+  const l0 = await lives();
   await admin('settings', { lifeLock: false }); await page.evaluate(() => window.__da.loadSettings()); await sleep(500);
-  await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l2 = await lives(); await page.click('#sec-tracks [data-tk="life"] .tk-see'); await sleep(300); const l3 = await lives();
+  await page.click('#sec-heat [data-t4="living"]'); await sleep(300); const l1 = await lives(); await page.click('#sec-heat [data-t4="living"]'); await sleep(300); const l2 = await lives(); await page.click('#sec-heat [data-t4="living"]'); await sleep(300); const l3 = await lives();
   await admin('settings', { lifeLock: true }); await page.evaluate(() => window.__da.loadSettings()); await sleep(300);
-  check('nature on air from the first touch, mutable, kept muted; locked on the map until unlocked on the approval page', ta.lives && ta.n >= 1 && mu.on === 'false' && mu.muted && mu.kept === true && l0 > 5 && l1 === l0 && l2 === 0 && l3 === l0, JSON.stringify({ ta, mu, l0, l1, l2, l3 }));
-  await page.click('#sec-tracks [data-tk="places"] .tk-see'); await page.evaluate(() => window.__da.setOpen(false)); await sleep(900);
-  const pl = await page.evaluate(() => { const da = window.__da; const m = da.map.getContainer().getBoundingClientRect(); let n = 0; for (let x = 0; x < m.width; x += 6) for (let y = 0; y < m.height; y += 6) { const h = da.life.hit(x, y, true); if (h && h.kind === 'place') { n++; if (n > 3) return { n, kept: JSON.parse(localStorage.getItem('da.prefs')).trk }; } } return { n, kept: JSON.parse(localStorage.getItem('da.prefs')).trk }; });
-  check('the places station comes onto the map when seen, kept', pl.n > 3 && pl.kept.places === true, JSON.stringify(pl));
+  check('LIVING on air from the first touch; off, it is muted and kept so, still on the map until unlocked on the approval page', ta.lives && ta.n >= 1 && mu.on === 'false' && mu.kept === true && l0 > 5 && l1 === l0 && l2 === 0 && l3 === l0, JSON.stringify({ ta, mu, l0, l1, l2, l3 }));
+  await page.click('#sec-heat [data-t4="community"]'); await page.keyboard.press('3'); await page.evaluate(() => window.__da.setOpen(false)); await sleep(900);
+  const pl = await page.evaluate(() => { const da = window.__da; const m = da.map.getContainer().getBoundingClientRect(); let n = 0; for (let x = 0; x < m.width; x += 6) for (let y = 0; y < m.height; y += 6) { const h = da.life.hit(x, y, true); if (h && h.kind === 'place') { n++; if (n > 3) break; } } return { n, kept: JSON.parse(localStorage.getItem('da.prefs')).t4 }; });
+  check('COMMUNITY by its key and EXPOSURE by 3 on a keyboard bring the places onto the map, kept', pl.n > 3 && pl.kept.community === true && pl.kept.exposure === true, JSON.stringify(pl));
+  const split = await page.evaluate(() => { const da = window.__da; da.setTrack4('exposure', false); return { t4: { ...da.T4 } }; });
   await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(0); }); await sleep(600);
-  await page.click('#sec-tracks [data-tk="places"] .tk-see'); await sleep(200);
-  await page.click('#sec-tracks [data-mood="rain"]'); await sleep(200);
-  await page.evaluate(() => { window.__knots = []; }); await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(5000);
-  const tb = await page.evaluate(() => ({ on: document.querySelector('#sec-tracks [data-tk="places"] .tk-play').getAttribute('aria-pressed'), n: window.__knots.length, places: window.__knots.every(k => k.fam), mood: JSON.parse(localStorage.getItem('da.prefs')).mood, faders: document.querySelectorAll('#sec-tracks .tk-lvl').length }));
-  await page.click('#sec-tracks [data-tk="places"] .tk-play'); await sleep(400);
-  const t0 = await page.evaluate(() => { const n = window.__knots.length; return new Promise(r => setTimeout(() => r({ still: window.__knots.length === n, on: Object.values(window.__da.TRK.on).some(Boolean) }), 900)); });
-  check('with the places on, the sweep sounds each it passes in its own small sound, and stops; every station has its fader', tb.mood === 'rain' && tb.faders >= 2 && tb.on === 'true' && tb.n >= 2 && tb.places && t0.still && !t0.on, JSON.stringify({ tb, t0 }));
+  await page.click('#sec-heat [data-mood-next]'); await sleep(200);
+  await page.evaluate(() => { window.__knots = []; }); await sleep(5000);
+  const tb = await page.evaluate(() => ({ n: window.__knots.filter(k => k.fam).length, mood: JSON.parse(localStorage.getItem('da.prefs')).mood }));
+  await page.click('#sec-heat [data-t4="community"]'); await sleep(400);
+  const t0 = await page.evaluate(() => { const n = window.__knots.filter(k => k.fam).length; return new Promise(r => setTimeout(() => r({ still: window.__knots.filter(k => k.fam).length === n, on: !!window.__da.TRK.on.places }), 900)); });
+  check('with COMMUNITY on, the sweep sounds each place it passes in its own small sound, and stops when off; the mood turns on one key', tb.mood === 'rain' && tb.n >= 2 && t0.still && !t0.on && split.t4.exposure === false, JSON.stringify({ tb, t0, split }));
   const mo = await page.evaluate(() => { const was = window.__da.S.mo; document.querySelectorAll('#sec-heat .mo')[4].click(); return [was, window.__da.S.mo]; });
   check('a month on the strip moves the outlook', mo[1] === 4 && mo[0] !== 4, JSON.stringify(mo));
+  /* time: each whole turn of the radar moves the outlook a month on, and back to now after the last; held, it stays */
+  const tm = await page.evaluate(async () => { const da = window.__da; document.querySelectorAll('#sec-heat .mo')[4].click(); await new Promise(r => setTimeout(r, 200)); da.setTime(true); const k0 = da.S.mo; da.turned(); const k1 = da.S.mo; const span = document.querySelector('#sec-heat .b-span').textContent; da.S.mo = 11; da.turned(); const k2 = da.S.mo; da.setTime(false); da.turned(); const k3 = da.S.mo; return { k0, k1, span, k2, k3, play: document.querySelector('#sec-heat [data-time]').getAttribute('aria-pressed') }; });
+  check('the radar is time: a turn moves the outlook a month on, back to now after the last; held, it stays', tm.k1 === tm.k0 + 1 && /OUTLOOK|SCENARIO|NO OUTLOOK/.test(tm.span) && tm.k2 < tm.k1 && tm.k3 === tm.k2 && tm.play === 'false', JSON.stringify(tm));
   const hero = await page.evaluate(() => { const r = document.querySelector('#sec-five .hero-row'); return { tip: r.dataset.tip, chips: r.querySelectorAll('.chips i').length }; });
   check('each of the five carries its danger and the days until its window', hero.chips >= 2 && hero.tip.length > 10, JSON.stringify(hero));
   await page.evaluate(() => { window.__da.closeRecord(); window.__da.setOpen(true); window.__da.setView(0); }); await sleep(500);
-  await shot(page, '02-now.png');
+  await shot(page, '02-radio.png');
+  /* SIGNALS: nothing made yet, the way back to the radar; the groups */
   await tab(page, 1); await sleep(600);
-  const st = await page.evaluate(() => { const rows = [...document.querySelectorAll('#sec-signals .sig-row')]; return { rows: rows.length, ex: rows.filter(r => r.classList.contains('ex')).length, codes: rows.map(r => r.querySelector('b').textContent), groups: document.querySelectorAll('#sec-groups .row').length, docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
-  check('STORIES: the signals board with twenty examples marked EX, the groups and the tools; no votes, no sign-up', st.rows === 20 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.groups === 6 && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
-  const bd = await page.evaluate(() => ({ top: document.querySelectorAll('#sec-signals > .sigs.cards > li').length, more: document.querySelectorAll('#sec-signals .more-sigs .sig-row').length, art: [...document.querySelectorAll('#sec-signals .sig-row')].every(r => r.querySelector('.art')), shut: !document.querySelector('#sec-signals .more-sigs').open }));
-  check('the board shows eight signals as cards, each with its photograph or mark; the rest fold away', bd.top === 8 && bd.more === 12 && bd.art && bd.shut, JSON.stringify(bd));
-  const sm = await page.evaluate(async () => { const d = document.querySelector('#sec-signals .more-sigs'); d.open = true; await new Promise(r => setTimeout(r, 300)); const rows = [...d.querySelectorAll('.sig-row')]; const hs = rows.map(r => Math.round(r.getBoundingClientRect().height)); const arts = rows.map(r => { const a = r.querySelector('.art').getBoundingClientRect(); return Math.abs(a.width - a.height) <= 1; }); const font = getComputedStyle(d.querySelector('.act')).fontFamily; d.open = false; return { hs: [...new Set(hs)], square: arts.every(Boolean), font }; });
-  check('the folded cards are all one size, their pictures square, their words in the radio type', sm.hs.length === 1 && sm.square && /VT323/.test(sm.font), JSON.stringify(sm));
+  const sg = await page.evaluate(() => ({ back: !!document.querySelector('#view [data-to-radar]'), groups: document.querySelectorAll('#sec-groups .row').length, hash: location.hash }));
+  check('SIGNALS: with nothing made yet, only the way back to the radar, and the six caring groups', sg.back && sg.groups === 6 && sg.hash === '#signals', JSON.stringify(sg));
+  /* SIGNS: three styles, the printers with novel.global first, a blank slip */
+  await tab(page, 2); await sleep(600);
+  const sn = await page.evaluate(() => ({ styles: [...document.querySelectorAll('#view [data-style]')].map(b => b.dataset.style), pressed: (document.querySelector('#view [data-style][aria-pressed="true"]') || {}).dataset.style, prn: [...document.querySelectorAll('#sec-prn .prn-l b')].map(b => b.textContent), blank: !!document.querySelector('#view [data-doc="blank"]') }));
+  await page.click('#view [data-style="conn"]'); await sleep(200); const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('da.prefs')).slip); await page.click('#view [data-style="paper"]');
+  check('SIGNS: PAPER, > and CONNECTION, the one chosen kept; the printers, novel.global first; a blank slip', sn.styles.join() === 'paper,tty,conn' && sn.pressed === 'paper' && sn.prn[0] === 'novel.global' && sn.prn.length === 4 && sn.blank && kept === 'conn', JSON.stringify({ sn, kept }));
+  /* PORTFOLIO: the board, eight as cards, the rest as a list; the briefs, the tools */
+  await tab(page, 3); await sleep(600);
+  const st = await page.evaluate(() => { const cards = [...document.querySelectorAll('#sec-board .sig-row')], lines = [...document.querySelectorAll('#sec-board .sig-line')]; return { cards: cards.length, lines: lines.length, ex: [...cards, ...lines].filter(r => r.classList.contains('ex')).length, codes: [...cards, ...lines].map(r => r.querySelector('.code').textContent), art: [...cards, ...lines].every(r => r.querySelector('.art')), docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
+  check('PORTFOLIO: twenty example stories marked EX, eight as cards and the rest as a list, each with its picture; the tools; no votes, no sign-up', st.cards === 8 && st.lines === 12 && st.ex === 20 && st.codes.includes('DA-0RNG') && st.art && st.docs === 4 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  const ln = await page.evaluate(() => { const r = document.querySelector('#sec-board .sig-line'); const a = r.querySelector('.art').getBoundingClientRect(); const hl = r.querySelector('.hl'); return { square: Math.abs(a.width - a.height) <= 1 && a.width <= 44, full: hl.scrollWidth <= hl.clientWidth + 1 && getComputedStyle(hl).textOverflow !== 'ellipsis' }; });
+  check('past the eight, a story is a line: a small square picture and its whole headline', ln.square && ln.full, JSON.stringify(ln));
   const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
   check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
-  check('the signals are the board at the top; the groups sit lower, small', order[0] === 'sec-signals' && order.indexOf('sec-groups') > order.indexOf('sec-tools'), order.join(' '));
-  await shot(page, '03-stories.png');
-  await tap(page, '#rail .tab[data-i="1"]'); await sleep(500);
+  check('the stories are at the top of the portfolio, the settings and sources at its foot', order[0] === 'sec-board' && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
+  await shot(page, '03-portfolio.png');
+  /* the day's thread: a life looked at ties the first knot */
+  const th0 = await page.evaluate(() => document.querySelectorAll('#rail .tab.tied').length);
+  await page.evaluate(() => { const da = window.__da; da.select(da.S.obs.find(o => o.tx).id); }); await sleep(600);
+  const th1 = await page.evaluate(() => ({ tied: [...document.querySelectorAll('#rail .tab')].map(t => t.classList.contains('tied')), kept: !!JSON.parse(localStorage.getItem('da.day.v1'))[0], tp: document.querySelector('#rail').style.getPropertyValue('--tp') }));
+  check('noticing a life ties the first knot on the thread, kept for the day', th0 === 0 && th1.tied.join() === 'true,false,false,false' && th1.kept && th1.tp === '0px', JSON.stringify({ th0, th1 }));
+  await page.evaluate(() => window.__da.closeRecord()); await sleep(300);
+  await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(3); }); await sleep(400);
+  await tap(page, '#rail .tab[data-i="3"]'); await sleep(500);
   check('the same tab closes the page again', await page.evaluate(() => document.body.classList.contains('shut')));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section smoke: ${e.message.split('\n')[0]}`); }
+
+// ───────── the portfolio: a post published on the approval page, listed in the app and read on its own page ─────────
+if (run('portfolio')) try {
+  const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'portfolio');
+  const made = await admin('posts', { title: 'Fan night at Kines', cat: 'case study', summary: 'Twelve fans repaired before the first 35°.', body: 'We met at six.\n\n## What worked\n\nA queue, a bench, a list.', links: ['https://example.org/fans'], status: 'published' });
+  await admin('posts', { title: 'A draft nobody sees', body: 'Not yet.' });
+  await page.goto('https://oan.test/index.html'); await ready(page); await tab(page, 3); await sleep(1200);
+  const inApp = await page.evaluate(() => ({ view: window.__da.S.view, rows: [...document.querySelectorAll('#sec-work .sig-line')].map(a => ({ t: a.querySelector('.hl').textContent, href: a.getAttribute('href'), cat: a.querySelector('.code').textContent })) }));
+  check('PORTFOLIO lists the work published, never a draft, each linking to its own page', inApp.view === 3 && inApp.rows.length === 1 && inApp.rows[0].t === 'Fan night at Kines' && inApp.rows[0].cat === 'CASE STUDY' && inApp.rows[0].href === `portfolio.html#${made.slug}`, JSON.stringify(inApp));
+  await page.goto('https://oan.test/portfolio.html'); await sleep(1200);
+  const idx = await page.evaluate(() => ({ home: document.querySelector('header .home').textContent, title: document.title, cats: [...document.querySelectorAll('h2.cat')].map(h => h.innerText.replace(/\s+/g, ' ')), rows: document.querySelectorAll('ol.list li').length, night: document.documentElement.classList.contains('night') }));
+  await page.click('ol.list a'); await sleep(900);
+  const one = await page.evaluate(() => ({ h1: document.querySelector('article h1').textContent, heads: [...document.querySelectorAll('article .body h3')].map(h => h.textContent), paras: document.querySelectorAll('article .body p').length, links: [...document.querySelectorAll('article .links a')].map(a => a.textContent), scripts: document.querySelectorAll('article script').length }));
+  check('portfolio.html, novel.global: the work by category as a list with counts; a post on its own address, its body set as text', idx.home === 'novel.global' && idx.title === 'novel.global' && idx.cats.join() === 'CASE STUDY 1' && idx.rows === 1 && one.h1 === 'Fan night at Kines' && one.heads.join() === 'What worked' && one.paras === 2 && one.links.join() === 'example.org/fans' && !one.scripts, JSON.stringify({ idx, one }));
+  await shot(page, '04-portfolio-post.png');
+  for (const x of (await admin('posts')).posts) await admin(`posts/${x.id}`, { action: 'delete' });
+  await ctx.close();
+} catch (e) { results.push(`FAIL  section portfolio: ${e.message.split('\n')[0]}`); }
 
 // ───────── a first visit: the radar starts where most kinds of animals were seen lately ─────────
 if (run('first')) try {
@@ -422,10 +461,12 @@ if (run('strings')) try {
   check('a click outside the radius closes only what is looked at; the cell stays open', st.mode === 'ping' && !st.peeked, JSON.stringify(st));
   await page.keyboard.press('Escape'); await sleep(600);
   check('Esc closes the cell and the sweep goes on', await page.evaluate(() => !window.__da.S.mode && document.body.classList.contains('shut')));
-  await tab(page, 0); await sleep(600);
+  await tab(page, 1); await sleep(600);
+  const knots = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => t.classList.contains('tied')).join());
+  check('a string tied ties the second knot on the thread', knots === 'true,true,false,false', knots);
   const cons = await page.evaluate(() => [...document.querySelectorAll('#sec-cons li.con')].map(li => ({ name: li.querySelector('.nm b').textContent, chart: !!li.querySelector('.con-chart svg path'), play: !!li.querySelector('[data-con-play]'), trace: !!li.querySelector('[data-con-trace]') })));
-  check('NOW lists the constellations as they form, each with its chart, its song and its story', cons.length >= 1 && cons[0].name === 'Side gate web' && cons[0].chart && cons[0].play && cons[0].trace, JSON.stringify(cons));
-  await shot(page, '13-now-cons.png');
+  check('SIGNALS lists the constellations as they form, each with its chart, its song and its story', cons.length >= 1 && cons[0].name === 'Side gate web' && cons[0].chart && cons[0].play && cons[0].trace, JSON.stringify(cons));
+  await shot(page, '13-signals-cons.png');
   await page.evaluate(() => { window.__songs = 0; const da = window.__da; const o = da.snd.song; da.snd.song = seq => { window.__songs++; return o.call(da.snd, seq); }; });
   await page.click('#sec-cons [data-con-play]'); await sleep(300);
   check('a constellation plays as a song from the list', await page.evaluate(() => window.__songs) >= 1);
@@ -524,8 +565,8 @@ if (run('wish')) try {
   await shot(page, '21-signal.png');
   await tap(page, '#r-back'); await sleep(600);
   check('back from the signal returns to its card', await face(page) === 'front');
-  await page.evaluate(() => window.__da.closeRecord()); await page.evaluate(() => window.__da.setView(1)); await sleep(500);
-  const top = await page.evaluate(() => { const r = document.querySelector('#sec-signals .sig-row'); return { code: r.querySelector('b').textContent, ex: r.classList.contains('ex'), count: document.querySelector('#sec-signals .lab').textContent }; });
+  await page.evaluate(() => window.__da.closeRecord()); await page.evaluate(() => window.__da.setView(3)); await sleep(500);
+  const top = await page.evaluate(() => { const r = document.querySelector('#sec-board .sig-row'); return { code: r.querySelector('.code').textContent, ex: r.classList.contains('ex'), count: document.querySelector('#sec-board .lab').textContent }; });
   check('the board shows it first, above the examples', top.code === s.code && !top.ex && /1/.test(top.count), JSON.stringify(top));
   const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'wish-recv');
   await p2.goto(link); await ready(p2); await sleep(2200);
@@ -595,7 +636,7 @@ if (run('outputs')) try {
   check('the slip prints as one strip, 58 mm wide', pages === 1 && Math.abs(box[0] - 164.4) < 3, `${pages} page · ${box.join('×')} pt`);
   await page.evaluate(() => window.__da.printBlank()); await page.waitForFunction(() => window.__printed >= 2, null, { timeout: 15000 });
   check('a blank slip prints for filling in by hand', await page.evaluate(() => /DA-____/.test(window.__lastSlip.text)));
-  const csv = fs.readFileSync(await (async () => { await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(500); return dl('#sec-tools [data-doc="signals"]'); })(), 'utf8');
+  const csv = fs.readFileSync(await (async () => { await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(3); }); await sleep(500); return dl('#sec-tools [data-doc="signals"]'); })(), 'utf8');
   check('the signals download as a table', csv.split('\n').length === 22 && csv.startsWith('code,issued') && csv.includes(code), `${csv.split('\n').length} rows`);
   await ctx.close();
 } catch (e) { results.push(`FAIL  section outputs: ${e.message.split('\n')[0]}`); }
@@ -604,10 +645,10 @@ if (run('outputs')) try {
 if (run('board')) try {
   const ctx = await newCtx(); await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://oan.test' }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'board');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
-  await tab(page, 1); await sleep(400);
-  await page.click('#sec-signals .sig-row[data-sig="ex:DA-0RNG"]'); await sleep(2200);
+  await tab(page, 3); await sleep(400);
+  await page.click('#sec-board [data-sig="ex:DA-0RNG"]'); await sleep(2200);
   const ex = await page.evaluate(() => { const da = window.__da; const c = da.map.getCenter(); const s = da.S.signals.find(x => x.code === 'DA-0RNG'); return { mode: da.S.mode, sel: da.S.sel, face: da.face(), no: document.querySelector('#r-no').textContent, near: Math.hypot(c.lat - s.pin.lat, c.lng - s.pin.lng) < 0.01, knots: document.querySelectorAll('#s-slip .sl-knots li').length, live: [...da.strings.nodes.keys()].filter(k => k.startsWith('s:DA-0RNG:')).length, marks: da.life.items.filter(i => i.o.code === 'DA-0RNG').length, acts: [...document.querySelectorAll('#s-acts [data-sa]')].map(b => b.dataset.sa).join(' ') }; });
-  check('an example opens as one cell, open and live, its slip turned up, marked EX and not removable', ex.mode === 'ping' && ex.sel === 'sp:DA-0RNG' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.live === 3 && ex.marks === 1 && ex.acts === 'remix pin style', JSON.stringify(ex));
+  check('an example opens as one cell, open and live, its slip turned up, marked EX and not removable', ex.mode === 'ping' && ex.sel === 'sp:DA-0RNG' && ex.face === 'signal' && /EX/.test(ex.no) && ex.near && ex.knots === 3 && ex.live === 3 && ex.marks === 1 && ex.acts === 'remix pin style conn', JSON.stringify(ex));
   await settle(page); await clickNode(page, 's:DA-0RNG:a');
   const lk = await page.evaluate(() => ({ peeked: window.__da.strings.peeked, card: !document.querySelector('#peek').hidden }));
   check('its knots can be looked at, like any other', lk.peeked === 's:DA-0RNG:a' && lk.card, JSON.stringify(lk));
@@ -615,14 +656,14 @@ if (run('board')) try {
   await tap(page, '#s-acts [data-sa="remix"]'); await sleep(1800);
   const rm = await page.evaluate(() => { const da = window.__da; return { sel: da.S.sel, face: da.face(), lines: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), fig: da.strings.fig.e.length }; });
   check('REMIX opens the slip on the same life with its lines and its figure', rm.sel === 'sp:DA-0RNG' && rm.face === 'wish' && rm.lines.every(Boolean) && rm.fig === 3, JSON.stringify(rm));
-  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(400);
+  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(3); }); await sleep(400);
   await tap(page, '#rx-open'); await page.fill('#rx-t', 'DA-TST1 BOGONG MOTH\n-37.7700,144.9600\nW Moths fell 99.5% in three years\nI Dark streets\nS Dark is a habitat.\nH Lights off at close'); await tap(page, '#rx button[type="submit"]'); await sleep(1500);
   const rx = await page.evaluate(() => { const da = window.__da; const s = da.S.signals.find(x => x.code === 'DA-TST1'); return { have: !!s, recv: s && s.recv, mode: da.S.mode, h: s && s.lines.h }; });
   check('RECEIVE takes a mesh message pasted in', rx.have && rx.recv && rx.mode === 'ping' && rx.h === 'Lights off at close', JSON.stringify(rx));
   await page.evaluate(() => window.__da.receive('DA-TST2 GREY-HEADED FLYING-FOX\n-37.7800,144.9500\nCamps cook above 42 degrees\nShade before the heat\nWater is a habitat\nHose the trees at noon')); await sleep(900);
   const rx2 = await page.evaluate(() => { const s = window.__da.S.signals.find(x => x.code === 'DA-TST2'); return s && s.lines; });
   check('and one without letters, line by line', rx2 && rx2.w === 'Camps cook above 42 degrees' && rx2.h === 'Hose the trees at noon', JSON.stringify(rx2));
-  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(400);
+  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(3); }); await sleep(400);
   await tap(page, '#rx-open'); await page.fill('#rx-t', ' da-0rng '); await tap(page, '#rx button[type="submit"]'); await sleep(1200);
   const rc = await page.evaluate(() => ({ code: window.__da.S.issued && window.__da.S.issued.code, face: window.__da.face(), mode: window.__da.S.mode }));
   await page.evaluate(() => window.__da.receive('DA-ZZZZ')); await sleep(600);
@@ -670,13 +711,13 @@ if (run('share')) try {
   check('approved: the sender sees it join the printer queue', /IN THE QUEUE/.test(st1) && /PICKLES/.test(st1), st1);
   /* another device: the board shows it to everyone */
   const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'share-2');
-  await p2.goto('https://oan.test/index.html'); await ready(p2); await sleep(1500); await tab(p2, 1); await sleep(600);
-  const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-signals .sig-row')].find(x => x.querySelector('b').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || { getAttribute: () => '' }).getAttribute('aria-label') || '' : '' }; }, s0.code);
+  await p2.goto('https://oan.test/index.html'); await ready(p2); await sleep(1500); await tab(p2, 3); await sleep(600);
+  const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-board .sig-row')].find(x => x.querySelector('.code').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || { getAttribute: () => '' }).getAttribute('aria-label') || '' : '' }; }, s0.code);
   check('on another device it stands on the board, for everyone', b2.row && b2.sh && /SHOWN/.test(b2.st), JSON.stringify(b2));
   await ctx2.close();
   /* a third device, from the code printed on the slip */
   const ctx3 = await newCtx(); await wire(ctx3); const p3 = await ctx3.newPage(); watch(p3, 'share-3');
-  await p3.goto('https://oan.test/index.html'); await ready(p3); await p3.evaluate(() => localStorage.removeItem('da.shared.v1')); await tab(p3, 1); await sleep(400);
+  await p3.goto('https://oan.test/index.html'); await ready(p3); await p3.evaluate(() => localStorage.removeItem('da.shared.v1')); await tab(p3, 3); await sleep(400);
   await tap(p3, '#rx-open'); await p3.fill('#rx-t', s0.code.toLowerCase()); await tap(p3, '#rx button[type="submit"]'); await sleep(1600);
   const r3 = await p3.evaluate(() => ({ code: window.__da.S.issued && window.__da.S.issued.code, face: window.__da.face(), mode: window.__da.S.mode }));
   check('RECEIVE: the code printed on the slip brings the story up on any device', r3.code === s0.code && r3.face === 'signal' && r3.mode === 'ping', JSON.stringify(r3));
@@ -703,7 +744,7 @@ if (run('share')) try {
   const recs = (await admin('stories?status=waiting')).stories.filter(x => x.kind === 'record');
   check('a record placed here is shared for approval, without its contact', /WAITING FOR APPROVAL/.test(rs) && recs.length === 1 && /magpie/.test(recs[0].body) && !/0400/.test(recs[0].body), JSON.stringify({ rs, recs: recs.map(r => r.body) }));
   /* a pack of cells: read from a Markdown file, seen, sent for approval, then on the map for everyone */
-  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.setOpen(true); da.setView(1); }); await sleep(700);
+  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.setOpen(true); da.setView(3); }); await sleep(700);
   const MD = ['# Fruit and radios', 'by: Merri Street neighbours', '', '- fruit | Lemon tree, laneway | -37.7701, 144.9602 | pick freely', '- node | Rooftop repeater | -37.7664, 144.9731 | LongFast | https://meshtastic.org',
     '| kind | name | lat | lng |', '|---|---|---|---|', '| water | Bird bath | -37.7688 | 144.9705 |', '- Fig on the corner | -37.7712, 144.9611', '- tree | Somewhere far | -33.86, 151.21', '- no place at all'].join('\n');
   await page.setInputFiles('#pack-f', { name: 'fruit-and-radios.md', mimeType: 'text/markdown', buffer: Buffer.from(MD) }); await sleep(600);
@@ -718,11 +759,8 @@ if (run('share')) try {
   const onMap = await page.evaluate(() => { const da = window.__da; const its = da.life.items.filter(it => it.o.pack); return { n: its.length, kinds: its.map(it => it.o.pk).sort().join(), tones: [...new Set(its.map(it => it.b.tone))].sort().join(), icons: its.map(it => it.b.i || it.b.g).sort().join(), who: (its[0] || {}).o && its[0].o.who }; });
   check('approved, its cells stand on the map for everyone, each as its kind', onMap.n === 4 && onMap.kinds === 'fruit,fruit,node,water' && onMap.tones === 'offer' && /mesh/.test(onMap.icons) && /give/.test(onMap.icons) && onMap.who === 'Merri Street neighbours', JSON.stringify(onMap));
   await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); }); await sleep(700);
-  const ptk = await page.evaluate(() => { const r = [...document.querySelectorAll('#sec-tracks [data-tk]')].find(x => x.dataset.tk.startsWith('p:')); return r ? { id: r.dataset.tk, v: r.querySelectorAll('.v').length, seen: r.querySelector('.tk-see').getAttribute('aria-pressed') } : null; });
-  if (ptk) await page.click(`#sec-tracks [data-tk="${ptk.id}"] .tk-see`); await sleep(300);
-  const pk2 = await page.evaluate(() => window.__da.life.items.filter(it => it.o.pack && window.__da.life.shown(it)).length);
-  if (ptk) await page.click(`#sec-tracks [data-tk="${ptk.id}"] .tk-see`);
-  check('a pack of cells is a track of its own on NOW: its kinds, seen on the map or not', ptk && ptk.v === 3 && ptk.seen === 'true' && pk2 === 0, JSON.stringify({ ptk, pk2 }));
+  const ptk = await page.evaluate(() => { const da = window.__da; const t = [...document.querySelectorAll('#sec-heat [data-t4="community"]')].length; da.snd.wake(); da.setTrack4('community', true); const on = Object.entries(da.TRK.on).filter(([k, v]) => k.startsWith('p:') && v).map(([k]) => k); const seen = da.life.items.filter(it => it.o.pack && da.life.shown(it)).length; da.setTrack4('community', false); const off = Object.entries(da.TRK.on).filter(([k, v]) => k.startsWith('p:') && v).length; return { t, on, seen, off }; });
+  check('a pack of cells sounds with COMMUNITY, and stops with it', ptk.t === 1 && ptk.on.length === 1 && ptk.off === 0, JSON.stringify(ptk));
   /* this group's stories go, so the other checks see the board as it was */
   for (const st of ['waiting', 'shown', 'refused']) for (const x of (await admin('stories?status=' + st)).stories) await admin(`stories/${x.id}`, { action: 'delete' });
   await ctx.close();
@@ -813,7 +851,7 @@ if (run('hide')) try {
   await tap(page, '#r-five [data-five-reset]'); await sleep(1600);
   const f2 = await page.evaluate(() => ({ name: document.querySelector('#r-name').textContent, stored: (JSON.parse(localStorage.getItem('da.five.v1') || '[]')[0]) || null }));
   check('RESET brings the first back', f2.name === hf.name && !f2.stored, JSON.stringify(f2));
-  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setOpen(true); window.__da.setView(1); }); await sleep(700);
+  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setOpen(true); window.__da.setView(3); }); await sleep(700);
   const sh = await page.evaluate(() => (document.querySelector('#ix-hidden') || {}).textContent || '');
   await tap(page, '#ix-hidden'); await sleep(500);
   const back = await page.evaluate(id => window.__da.life.items.some(i => i.o.id === id) && !document.querySelector('#ix-hidden'), it);
@@ -831,7 +869,7 @@ if (run('lost')) try {
   check('a lost animal opens with SEARCH; its area is off until asked for', l0.main === 'SEARCH' && !l0.areas && l0.radar >= 800 && l0.toggle, JSON.stringify(l0));
   await tap(page, '#r-do [data-do="areas"]'); await sleep(300);
   check('the area toggles on from its card', await page.evaluate(() => window.__da.prefs.areas === true && document.querySelector('#r-do [data-do="areas"]').getAttribute('aria-pressed') === 'true'));
-  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(1); }); await sleep(400);
+  await page.evaluate(() => { window.__da.closeRecord(); window.__da.setView(3); }); await sleep(400);
   await tap(page, '#ix-areas'); await sleep(200);
   check('and off again from the settings', await page.evaluate(() => window.__da.prefs.areas === false));
   await ctx.close();
@@ -896,8 +934,8 @@ if (run('offline')) try {
   const ctx = await newCtx(); await wire(ctx, { inat: false, ens: false, comOK: false }); const page = await ctx.newPage(); watch(page, 'offline');
   await page.goto('https://oan.test/index.html');
   await page.waitForFunction(() => window.__da && window.__da.S.mapReady && document.body.classList.contains('nosignal'), null, { timeout: 60000 });
-  await sleep(800); await tab(page, 1); await sleep(400);
-  const off = await page.evaluate(() => ({ items: window.__da.life.items.length, five: window.__da.S.heroes.length, sigs: document.querySelectorAll('#sec-signals .sig-row').length }));
+  await sleep(800); await tab(page, 3); await sleep(400);
+  const off = await page.evaluate(() => ({ items: window.__da.life.items.length, five: window.__da.S.heroes.length, sigs: document.querySelectorAll('#sec-board .sig-row, #sec-board .sig-line').length, codes: [...document.querySelectorAll('#sec-board .code')].map(c => c.textContent).join(' ') }));
   check('without a signal the five and the example signals still stand', off.five === 5 && off.items >= 5 && off.sigs === 20, JSON.stringify(off));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section offline: ${e.message.split('\n')[0]}`); }
@@ -908,7 +946,7 @@ if (run('night')) try {
   await page.goto('https://oan.test/index.html'); await ready(page, '', true); await settle(page);
   const n0 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), page: getComputedStyle(document.querySelector('#panel')).backgroundColor, ground: getComputedStyle(document.querySelector('.maplibregl-canvas')).filter }));
   check('night is the default, whatever the device: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
-  await tab(page, 1); await sleep(500); await tap(page, '#ix-night'); await sleep(300);
+  await tab(page, 3); await sleep(500); await tap(page, '#ix-night'); await sleep(300);
   const n1 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), kept: JSON.parse(localStorage.getItem('da.prefs')).night, pressed: document.querySelector('#ix-night').getAttribute('aria-pressed') }));
   check('and NIGHT in Settings turns it off, or on, and keeps it', !n1.night && n1.kept === false && n1.pressed === 'false', JSON.stringify(n1));
   await tap(page, '#ix-night'); await sleep(300); await page.evaluate(() => window.__da.openSignal('ex:DA-0RNG')); await sleep(1500);
@@ -983,7 +1021,7 @@ if (ONLY.includes('look')) try {
   const P = phone ? 'p-' : '';
   await shot(page, `${P}l01-radar.png`);
   await page.evaluate(() => { window.__da.life.reveal(); window.__da.setView(0); }); await sleep(1500); await shot(page, `${P}l02-now.png`);
-  await page.evaluate(() => window.__da.setView(1)); await sleep(1500); await shot(page, `${P}l03-stories.png`);
+  await page.evaluate(() => window.__da.setView(3)); await sleep(1500); await shot(page, `${P}l03-stories.png`);
   await page.evaluate(() => { const s = window.__da.S.signals.find(x => x.code === 'DA-0RNG'); window.__da.openSignal(s.key); }); await sleep(2500); await shot(page, `${P}l04-example.png`);
   await page.evaluate(() => window.__da.closeRecord()); await sleep(300);
   await page.evaluate(() => window.__da.selectTribe('tribe:T03')); await sleep(2200); await shot(page, `${P}l05-group.png`);

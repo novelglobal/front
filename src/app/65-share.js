@@ -63,7 +63,7 @@ async function directAction(s0, dest) {
   const payload = { kind: 'story', code: s.code, body: packSignal(s), lat: +s.pin.lat, lng: +s.pin.lng, dest: p ? p.id : dest === 'mesh' ? 'mesh' : '', mesh: meshText(s) };
   if (p) { try { payload.escpos = b64bytes(await escpos(s, p.paper)); } catch (e) { /* the words go without the bytes */ } }
   const own = s.img && s.img.k === 'own' ? sigSrc(s, false) : ''; if (own && /^data:/.test(own)) { const ph = await photoToSend(own); if (ph) payload.photo = ph; }
-  SENT[s.code] = { dest: payload.dest, status: 'sending', at: Date.now() }; saveSent();
+  SENT[s.code] = { dest: payload.dest, status: 'sending', at: Date.now() }; saveSent(); tie(2);
   try { const j = await post(payload); SENT[s.code] = { ...SENT[s.code], id: j.id, status: j.status, job: j.job ? j.job.status : null }; }
   catch (e) {
     if (e.status) { delete SENT[s.code]; saveSent(); throw e; }
