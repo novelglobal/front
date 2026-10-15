@@ -107,7 +107,7 @@ viewEl.addEventListener('click', e => {
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
   const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
-  const sy = e.target.closest('[data-style]'); if (sy) { prefs.slip = sy.dataset.style; savePrefs(); $$('#view [data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.slip))); tick(1500); buzz(4); return; }
+  const sy = e.target.closest('[data-style]'); if (sy) { prefs.slip = sy.dataset.style; savePrefs(); $$('#view [data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.slip))); if (S.view === 2) showZine(true); tick(1500); buzz(4); return; }
   if (e.target.closest('[data-to-radar]')) { setOpen(false); return; }
   if (e.target.closest('a[href]')) return;
   const tr = e.target.closest('[data-tribe]'); if (tr) { selectTribe(tr.dataset.tribe); return; }
@@ -239,7 +239,7 @@ function viewRadio() {
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="Turn on the radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
-      <button type="button" class="share-b" data-share-mix aria-label="Send the signal">${icon('share', 'sm')}<span>SIGNAL</span></button>
+      <button type="button" class="share-b" data-share-mix aria-label="Start a signal">${icon('share', 'sm')}<span>START A SIGNAL</span></button>
     </section>`;
 }
 
@@ -292,15 +292,6 @@ const mineOf = () => S.signals.filter(s => !s.ex && !s.shared);
    printers that take them, and a blank to fill by hand ───────── */
 const STYLES = [{ k: 'paper', w: 'PAPER', ic: 'receipt' }, { k: 'tty', w: '>', ic: '' }, { k: 'conn', w: 'CONNECTION', ic: 'string' }];
 const styleNow = () => (isConn() ? 'conn' : isTty() ? 'tty' : 'paper');
-function viewSigns() {
-  const mine = mineOf(); const prn = [MASTER, ...PARTNERS].filter(Boolean);
-  return (POSTERS.length ? `<section class="sec" id="sec-posters"><ol class="posters">${POSTERS.map(p => `<li><button type="button" class="poster-b" data-poster="${esc(p.id)}" aria-label="On the page"><img src="${p.png}" alt=""></button></li>`).join('')}</ol></section>` : '')
-    + `<section class="sec" id="sec-style"><div class="styles" role="group" aria-label="Style">${STYLES.map(t => `<button type="button" class="sty${t.k === 'tty' ? ' tty-b' : ''}" data-style="${t.k}" aria-pressed="${styleNow() === t.k}">${t.ic ? icon(t.ic, 'sm') : ''}<span>${t.w}</span></button>`).join('')}</div></section>`
-    + (mine.length ? `<section class="sec" id="sec-slips">${lab(`Slips · ${mine.length}`)}<ol class="slips-l">${mine.slice(0, 40).map(s => { const st = sentWord(s); return `<li><button type="button" class="slip-row" data-sig="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><small class="mono">${esc(st || fmtStamp(s.at))}</small></button></li>`; }).join('')}</ol></section>` : '')
-    + `<section class="sec" id="sec-prn">${lab('Printers')}<ol class="prn-l">${prn.map(p => { const st = PSTATE[p.id] || {}; return `<li class="${st.ready ? 'on' : ''}"><img class="pm" src="${printerImg(p, st)}" alt=""><span class="nm"><b>${esc(p.n)}</b><small class="mono">${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}${st.printed ? ` · ${st.printed} PRINTED` : ''}${st.queued ? ` · ${st.queued} IN QUEUE` : ''}</small></span></li>`; }).join('')}</ol>`
-    + `<div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}<span>BLANK SLIP</span></button></div></section>`;
-}
-
 /* ───────── PORTFOLIO: what has been made, to learn from. Work written on the approval page, the board of stories, the
    briefs they answer, the tools. The work opens on its own page, portfolio.html ───────── */
 const POSTS = store.get('da.posts.v1', []); let postsAsked = false;

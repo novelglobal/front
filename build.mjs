@@ -61,7 +61,7 @@ fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Direct Action</title>
 <meta name="description" content="A radar over Brunswick to the city: live iNaturalist sightings, the El NiÃ±o threat to each life, string figures between them and the places around them, and a four-line W.I.S.H. slip for small printers, mesh radios and pagers.">
-<meta name="theme-color" content="#8C7469">
+<meta name="theme-color" content="#1B2726">
 <meta name="da-build" content="${sha}${preview ? ` ${branch}` : ''}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
