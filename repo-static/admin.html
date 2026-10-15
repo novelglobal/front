@@ -38,12 +38,22 @@
   .printer h3 { margin: 0 0 4px; font-size: 15px; }
   .printer .acts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
   .token { margin-top: 10px; padding: 10px; background: var(--slip); border: 1px dashed var(--navy); font: 12px/1.5 var(--mono); word-break: break-all; white-space: pre-wrap; }
+  .post-row { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 10px 14px; margin: 0 0 6px; background: #fff; }
+  .post-row img, .post-row .ph { width: 56px; height: 56px; object-fit: cover; background: var(--paper); display: block; }
+  .post-row b { display: block; font-size: 14px; }
+  .ed { display: grid; gap: 10px; padding: 14px; background: #fff; }
+  .ed label { display: grid; gap: 4px; font: 500 10px var(--mono); letter-spacing: .1em; color: var(--grey); }
+  .ed input, .ed textarea, .ed select { width: 100%; padding: 8px; border: 1px solid var(--navy); font: 14px/1.5 var(--sans); color: var(--ink); background: #fff; }
+  .ed textarea.body { min-height: 260px; }
+  .ed .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ed .cv { width: 160px; height: 110px; object-fit: cover; background: var(--paper); display: block; }
+  .ed .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   @media (max-width: 560px) { .card { grid-template-columns: 1fr; } .card img { width: 100%; height: auto; aspect-ratio: 1; } }
 </style>
 </head>
 <body>
 <header><b>DIRECT ACTION · APPROVAL</b><nav id="tabs" hidden>
-  <button type="button" data-tab="waiting" class="on">WAITING</button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="printers">PRINTERS</button><button type="button" data-tab="stations">STATIONS</button><button type="button" id="out">LOCK</button>
+  <button type="button" data-tab="waiting" class="on">WAITING</button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="printers">PRINTERS</button><button type="button" data-tab="stations">TRACKS</button><button type="button" data-tab="posts">PORTFOLIO</button><button type="button" id="out">LOCK</button>
 </nav></header>
 <main id="main">
   <form class="gate" id="gate">

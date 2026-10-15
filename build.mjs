@@ -41,6 +41,7 @@ fs.writeFileSync(path.join(out, 'app.js'), fs.readdirSync(path.join(src, 'app'))
 for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
 /* the guide reads the same marks and words as the app, in the same type */
 fs.writeFileSync(path.join(out, 'guide.html'), read(path.join(src, 'guide.html')).replace('/*FONTS*/', faces.join('\n')));
+fs.writeFileSync(path.join(out, 'portfolio.html'), read(path.join(src, 'portfolio.html')).replace('/*FONTS*/', faces.join('\n')));
 fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts â€” `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday) and VT323 (Peter Hull), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
 const sw = read(path.join(out, 'sw.js')).replace("'vendor/qrcode.js', ", "'vendor/qrcode.js', " + files.map(f => `'${f}'`).join(', ') + ', ');
 fs.writeFileSync(path.join(out, 'sw.js'), sw);

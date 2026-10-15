@@ -229,7 +229,7 @@ const strings = (() => {
     if (String(k).startsWith('x:')) { bringIn(idOf(k.slice(2)), true); return; }
     if (!nodes.has(k)) return;
     if (inFig(k)) { untie(k); if (peekKey === k) card(); return; }
-    tieTo(k, fig.end); if (peekKey && peekKey !== k) unpeek(); save(); changed();
+    tieTo(k, fig.end); if (peekKey && peekKey !== k) unpeek(); save(); changed(); tie(1);
   }
   let bornAt = 0;
   function tieTo(k, from, at = 0, quiet = false) {

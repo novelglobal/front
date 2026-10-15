@@ -76,6 +76,33 @@ const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a 
 /* two styles for every slip, on screen, on paper and at the printer: the paper slip, and the terminal (prefs.slip 'tty'):
    the life's photograph as its hero, then its code, its name and the four lines, in VT323, and nothing more */
 const isTty = () => (prefs.slip ? prefs.slip === 'tty' : darkNow());   /* by night the terminal, unless a style was chosen */
+/* CONNECTION, the third way a slip is set: a receipt that joins a person to a real group or place. The signal and where; the
+   relation tied; a group already caring for ground near it, with when it meets and where to find it; the next step written.
+   Every line comes from the slip itself or from the listed groups and places: nothing is made up to fill it */
+const isConn = () => prefs.slip === 'conn';
+const shortU = u => { try { const x = new URL(u); return (x.hostname.replace(/^www\./, '') + x.pathname).replace(/\/$/, ''); } catch (e) { return ''; } };
+function connOf(s) {
+  const p = s.pin || {}; const rels = relOrder(s.nodes || []);
+  const rel = rels.find(n => relKind(n) === 'care') || rels.find(n => relKind(n) === 'also') || rels[0] || null;
+  const g = p.g || ''; const d = t => (Number.isFinite(+p.lat) ? (tribeNear(t, +p.lat, +p.lng) || { d: 1e9 }).d : 1e9);
+  const groups = (S.tribes || []).filter(t => t.link).sort((a, b) => ((b.g || []).includes(g) - (a.g || []).includes(g)) || d(a) - d(b));
+  const site = rels.find(n => relKind(n) === 'care' && urlOf(n)); const t = groups[0];
+  const join = t && (d(t) < 3000 || !site) ? { n: t.n, when: t.when || '', u: t.link } : site ? { n: site.n, when: '', u: urlOf(site) } : null;
+  const step = String((s.lines || {}).h || '').trim() || linesOf(s).pop() || '';
+  return { rel, join, step };
+}
+function connText(s, cols = 32) {
+  const p = s.pin || {}; const c = connOf(s); const rule = '-'.repeat(cols); const out = [];
+  const field = (k, v) => wrap(v, cols - 8).map((l, i) => (i ? '        ' : (k + '        ').slice(0, 8)) + l);
+  out.push(padTo('CONNECTION', s.code, cols), rule, ...field('SIGNAL', NAME_UP(s)));
+  if (s.threat) out.push(...field('', s.threat));
+  out.push(...field('PLACE', `${p.place || ''} ${(+p.lat).toFixed(3)} ${(+p.lng).toFixed(3)}`.trim()));
+  if (c.rel) out.push(...field('TIED', `${c.rel.n} - ${relPhrase(c.rel)}`));
+  if (c.join) { out.push(rule, ...field('JOIN', c.join.n)); if (c.join.when) out.push(...field('', c.join.when)); if (shortU(c.join.u)) out.push(...field('', shortU(c.join.u))); }
+  if (c.step) out.push(rule, ...field('NEXT', c.step));
+  if (s.who) out.push(rule, `- ${s.who}`);
+  return ascii(out.join('\n'));
+}
 /* the terminal's hero: the slip's own photograph, else an open one of the same kind of life seen here */
 /* an open photograph of the same kind of life seen here, with its credit: for a slip with none of its own, such as the examples */
 const KPH = store.get('da.kph.v1', {});   /* a kind's photograph, asked of iNaturalist by name when no sighting here has one */
@@ -242,7 +269,7 @@ function slipHTML(s, blank) {
   /* the terminal's hero, drawn on every slip and shown only in that style: the photograph, or the life's own mark */
   return `<div class="sl-perf" aria-hidden="true"></div>${blank ? '' : `<figure class="sl-hero" aria-hidden="true"><img class="sl-hi" alt="">${glyphSVG(p.g || 'paw', 'sl-ha')}</figure>`}<header class="sl-head mono"><span>${blank ? `<b class="sl-code">${esc(s.code || 'DA-····')}</b>` : ''}${s.ex ? '<i class="ex">EX</i>' : ''}</span><span class="sl-time">${blank ? '__.__.__ __:__' : fmtStamp(s.at)}</span></header>`
     + (blank ? `<figure class="sl-fig blank"></figure>` : hasImg ? `<figure class="sl-fig"><img class="sl-img" alt=""><figcaption class="sl-cap mono">${esc(printCredit(s))}</figcaption></figure>` : '')
-    + `<div class="sl-body"><div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt class="sid">CODE</dt><dd class="sid sl-code">${esc(s.code)}</dd><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}${modeOf(s) ? `<dt>MODE</dt><dd>${esc(modeOf(s))}</dd>` : ''}</dl>`}</div>`
+    + `<div class="sl-body">${blank ? '' : `<pre class="sl-conn mono">${esc(connText(s, 34))}</pre>`}<div class="sl-life">${blank ? '<b>&nbsp;</b><span class="mono ln"></span>' : `<b>${esc(NAME_UP(s))}</b>${p.n && p.n !== p.cn ? `<i>${esc(p.n)}</i>` : ''}<dl class="sl-meta mono"><dt class="sid">CODE</dt><dd class="sid sl-code">${esc(s.code)}</dd><dt>SITE</dt><dd>${esc(p.place || '')} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}</dd>${s.when ? `<dt>WINDOW</dt><dd>${esc(s.when)}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}</dd>` : ''}${modeOf(s) ? `<dt>MODE</dt><dd>${esc(modeOf(s))}</dd>` : ''}</dl>`}</div>`
     + (s.threat ? `<p class="sl-threat">${esc(s.threat)}</p>` : '')
     + (blank ? `<ol class="sl-wish poem">${WKEYS.map(k => `<li><small>${esc(WISH[k][0].toLowerCase())}</small></li>`).join('')}</ol>` : L.length ? `<ol class="sl-wish poem">${L.map(t => `<li><span>${esc(t)}</span></li>`).join('')}</ol>` : '')
     /* the figure first, as it lies on the ground; then each relation, numbered as the figure numbers it */
@@ -255,11 +282,11 @@ function slipHTML(s, blank) {
 }
 function fillSignal(s) {
   const host = $('#s-slip'); host.innerHTML = slipHTML(s); renderQR(host.querySelector('.sl-qr'), qrText(s)); fillFig(host, s, false); fillHero(host, s);
-  host.classList.toggle('ex', !!s.ex); host.classList.toggle('tty', isTty());
+  host.classList.toggle('ex', !!s.ex); host.classList.toggle('tty', isTty()); host.classList.toggle('conn', isConn());
   $('#r-no').textContent = `${s.code}${s.ex ? ' · EX' : s.recv ? ' · RECEIVED' : ''}`;
   /* each machine as itself, with a link to what it is */
   $('#s-out').innerHTML = OUTPUTS.map(m => `<span class="out-w"><button type="button" class="out" data-out="${m.k}" data-tip="${esc(m.tip)}">${icon(m.ic)}<small>${m.w}</small></button><a class="out-ref" href="${esc(m.ref)}" target="_blank" rel="noopener" aria-label="What a ${esc(m.w)} is" data-tip="What it is">${icon('out', 'sm')}</a></span>`).join('');
-  const mine = !s.ex; $('#s-acts').innerHTML = `<button type="button" class="pill" data-sa="remix">${icon('remix', 'sm')}REMIX</button><button type="button" class="pill" data-sa="pin">${icon('where', 'sm')}PIN</button><button type="button" class="pill tty-b" data-sa="style" aria-pressed="${isTty()}" aria-label="Terminal">&gt;</button>${mine ? `<button type="button" class="pill quiet" data-sa="remove">${icon('close', 'sm')}REMOVE</button>` : ''}`;
+  const mine = !s.ex; $('#s-acts').innerHTML = `<button type="button" class="pill" data-sa="remix">${icon('remix', 'sm')}REMIX</button><button type="button" class="pill" data-sa="pin">${icon('where', 'sm')}PIN</button><button type="button" class="pill tty-b" data-sa="style" aria-pressed="${isTty()}" aria-label="Terminal">&gt;</button><button type="button" class="pill" data-sa="conn" aria-pressed="${isConn()}" aria-label="Connection" data-tip="CONNECTION">${icon('string', 'sm')}</button>${mine ? `<button type="button" class="pill quiet" data-sa="remove">${icon('close', 'sm')}REMOVE</button>` : ''}`;
   $('#s-text').hidden = true; $('#s-send').hidden = true; fillSentLine(s);
 }
 /* where a slip has got to: sent, waiting, shown, in a queue, printed */
@@ -293,8 +320,9 @@ $('#s-acts').addEventListener('click', async e => {
   if (a === 'remix') remixSignal(s);
   if (a === 'pin' && S.mapReady) map.easeTo({ center: [s.pin.lng, s.pin.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 600 });
   if (a === 'remove') { await ledgerAdd({ type: 'redact', ref: s.key }); snd.snap(0); closeRecord(); }
-  if (a === 'style') { prefs.slip = isTty() ? 'paper' : 'tty'; savePrefs(); b.setAttribute('aria-pressed', String(isTty())); snd.tick(1800); buzz(6);
-    const host = $('#s-slip'); host.classList.toggle('tty', isTty());
+  if (a === 'style' || a === 'conn') { prefs.slip = a === 'conn' ? (isConn() ? 'paper' : 'conn') : isTty() ? 'paper' : 'tty'; savePrefs(); snd.tick(1800); buzz(6);
+    $$('#s-acts [data-sa="style"]').forEach(x => x.setAttribute('aria-pressed', String(isTty()))); $$('#s-acts [data-sa="conn"]').forEach(x => x.setAttribute('aria-pressed', String(isConn())));
+    const host = $('#s-slip'); host.classList.toggle('tty', isTty()); host.classList.toggle('conn', isConn());
     /* either style keeps its photograph: whichever was hidden when the slip was drawn is filled now */
     fillFig(host, s, false); fillHero(host, s);
     if (isTty()) for (const el of host.querySelectorAll('.sl-code, .sl-life b')) scramble(el, el.textContent); }
@@ -302,7 +330,7 @@ $('#s-acts').addEventListener('click', async e => {
 async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } }
 async function output(k, s, btn) {
   const pre = $('#s-text'); const show = t => { pre.hidden = false; pre.textContent = t; pre.dataset.n = k === 'mesh' ? `${bytes(t)} B` : `${t.length}`; };
-  if (k === 'print') { printSlip(s); return; }
+  tie(2); if (k === 'print') { printSlip(s); return; }
   if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); buzz(6); return; }
   if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); try { if (navigator.share && url) { await navigator.share({ title: s.code, text: (s.lines || {}).h || '', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
   btn.classList.add('busy'); snd.printer(700);
@@ -330,10 +358,11 @@ function dither(img, levels) {
   return img;
 }
 /* the slip as an image: its words set first, to learn how tall they are; then the photograph as tall as the words under it */
-async function slipCanvas(s, W, levels, tty = isTty()) {
+async function slipCanvas(s, W, levels, tty = isTty(), conn = isConn()) {
   /* the teletype sets every word in VT323, a terminal's type, a third larger to read the same */
   const k = W / 384; const pad = Math.round(14 * k); const mono = (px, wt = 500) => (tty ? `400 ${Math.max(9, Math.round(px * 1.32 * k))}px VT323, monospace` : `${wt} ${Math.max(7, Math.round(px * k))}px "IBM Plex Mono", monospace`); const sans = (wt, px) => `${wt} ${Math.max(8, Math.round(px * k))}px Poppins, sans-serif`;
   try { await document.fonts.ready; if (tty) await document.fonts.load('16px VT323'); } catch (e) { /* fallback type */ }
+  if (conn) return connCanvas(s, W, levels, k, pad);
   if (tty) return ttyCanvas(s, W, levels, k, pad, mono);
   const T = document.createElement('canvas'); T.width = W; T.height = 6000; const x = T.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, T.height); x.fillStyle = '#000'; x.textBaseline = 'top';
   let y = Math.round(6 * k); const p = s.pin || {};
@@ -400,7 +429,19 @@ async function ttyCanvas(s, W, levels, k, pad, mono) {
   o2.putImageData(id, 0, 0);
   return out;
 }
-async function slipPNG(s, W, levels, tty = isTty()) { const cv = await slipCanvas(s, W, levels, tty); return new Promise(res => cv.toBlob(b => res(b), 'image/png')); }
+/* the connection as an image: its lines set in a monospace the width of the paper, as a printer's own font sets them */
+async function connCanvas(s, W, levels, k, pad) {
+  const cols = W >= 500 ? 42 : 32; const lines = connText(s, cols).split('\n'); const cw = (W - pad * 2) / cols; const px = Math.max(7, Math.floor(cw / 0.6)); const lh = Math.round(px * 1.32);
+  const T = document.createElement('canvas'); T.width = W; T.height = 4000; const x = T.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, T.height); x.fillStyle = '#000'; x.textBaseline = 'top';
+  let y = Math.round(12 * k);
+  lines.forEach((l, i) => { x.font = `${i === 0 ? 700 : 500} ${px}px "IBM Plex Mono", monospace`; if (/^-+$/.test(l)) { x.fillRect(pad, y + lh / 2, W - pad * 2, Math.max(1, Math.round(1.5 * k))); } else x.fillText(l, pad, y); y += lh; });
+  const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(12 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(10 * k); } }
+  x.font = `500 ${px}px "IBM Plex Mono", monospace`; x.fillText(ascii(CONFIG.COUNTRY), pad, y); y += lh + pad;
+  const out = document.createElement('canvas'); out.width = W; out.height = y; out.getContext('2d').drawImage(T, 0, 0, W, y, 0, 0, W, y);
+  const o2 = out.getContext('2d'); const id = o2.getImageData(0, 0, W, y); const d = id.data; for (let i = 0; i < d.length; i += 4) { const v = d[i] / 255; const q = levels === 2 ? (v < 0.55 ? 0 : 1) : Math.round(v * 3) / 3; d[i] = d[i + 1] = d[i + 2] = Math.round(q * 255); d[i + 3] = 255; } o2.putImageData(id, 0, 0);
+  return out;
+}
+async function slipPNG(s, W, levels, tty = isTty(), conn = isConn()) { const cv = await slipCanvas(s, W, levels, tty, conn); return new Promise(res => cv.toBlob(b => res(b), 'image/png')); }
 /* ───────── raw bytes for an ESC/POS receipt printer: the photograph as raster lines, the slip with its figure above the relations,
    a QR code and a cut. The paper sets the width: 384 dots and 32 columns on 58 mm, about 512 and 42 on 80 mm (DA_PRINTERS) ───────── */
 const PRINTERS = window.DA_PRINTERS || { 58: { w: '58 MM', dots: 384, cols: 32 } };
@@ -413,10 +454,12 @@ function rasterOf(cv) {
   }
   return out;
 }
-async function escpos(s, paper = '58', tty = isTty()) {
+async function escpos(s, paper = '58', tty = isTty(), conn = isConn()) {
   const P = PRINTERS[paper] || PRINTERS[58] || { dots: 384, cols: 32 }; const W = P.dots - (P.dots % 8);
   const b = []; const put = (...a) => { for (const v of a) b.push(v); }; const txt = t => { for (const ch of ascii(t)) put(ch.charCodeAt(0)); }; const img = cv => { for (const v of rasterOf(cv)) b.push(v); put(0x0A); };
   put(0x1B, 0x40, 0x1B, 0x74, 0x00);                                        /* initialise; code page 437 */
+  if (conn) { const all = connText(s, P.cols).split('\n'); put(0x1B, 0x45, 0x01); txt(all[0] + '\n'); put(0x1B, 0x45, 0x00); txt(all.slice(1).join('\n') + '\n'); }
+  else {
   if (tty) {   /* the terminal: the hero first, the photograph or the life's own mark, square */
     const src = heroSrc(s, false); let cv = null; try { cv = src ? await bwCanvas(src, W, W, 2) : null; } catch (e) { cv = null; }
     if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = W; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, W); M.glyph(x, (s.pin || {}).g || 'paw', W / 2, W / 2, W * 0.62, '#000'); }
@@ -434,6 +477,7 @@ async function escpos(s, paper = '58', tty = isTty()) {
     /* the figure as it lies on the ground, above the relations it numbers */
     if (relOrder(s.nodes || []).length > 1) { const H = Math.round(W * 0.5) & ~7; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); drawChart(x, s, W / 2, H / 2, H - 8, W / 200); img(cv); }
     txt(lines.slice(ri).join('\n') + '\n');
+  }
   }
   const q = unescape(encodeURIComponent(qrText(s))); const n = q.length + 3;
   if (q.length < 1200) {   /* up to about version 26 at three dots a module: still inside 384 dots */
@@ -459,7 +503,7 @@ function printSheet(el) {
 }
 function printSlip(s, blank) {
   return serial(async () => {
-    const el = $('#p-slip'); el.innerHTML = slipHTML(s, blank); el.classList.toggle('blank', !!blank); el.classList.toggle('tty', isTty());
+    const el = $('#p-slip'); el.innerHTML = slipHTML(s, blank); el.classList.toggle('blank', !!blank); el.classList.toggle('tty', isTty()); el.classList.toggle('conn', !blank && isConn());
     if (!blank) renderQR(el.querySelector('.sl-qr'), qrText(s)); else el.querySelector('.sl-qr').innerHTML = '';
     try { await document.fonts.ready; if (isTty()) await document.fonts.load('16px VT323'); } catch (e) { /* fallback type */ }
     if (!blank) await Promise.all([fillFig(el, s, true), fillHero(el, s, true)]);

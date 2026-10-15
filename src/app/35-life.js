@@ -148,6 +148,8 @@ const life = (() => {
     if (reduced()) { revealAll(); return; }
     if (!running() || !dt) return;
     const b0 = sweepB, b1 = sweepB + 360 * dt / SC.turn; sweepB = b1 % 360;
+    /* a whole turn: time moves on a month */
+    if (b1 >= 360) turned();
     /* found the first time, rung softer on every pass after: the hand plays what it crosses, a tune of the ground */
     for (const it of items) {
       if (!it.inS) continue;
@@ -322,8 +324,8 @@ const life = (() => {
       ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
       ctx.restore();
     }
-    /* on a hot day, inside the radar: drinking water, and the air temperature now */
-    if ((S.wx.tmax || 0) >= HEAT.hot) {
+    /* CLIMATE, or any hot day, inside the radar: drinking water, and the air temperature now */
+    if (T4.climate || (S.wx.tmax || 0) >= HEAT.hot) {
       for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', f.x, f.y, 10, C.cobalt); }
       for (const s of S.sensors) {
         if (s.x == null || !inScan(s.lat, s.lng)) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
@@ -404,8 +406,9 @@ const life = (() => {
   /* the places' track, when seen: the human ecology inside the radar, each place in its family's mark, as in an open cell */
   let placesK = '', placesL = [];
   function placesIn() {
-    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length}`; if (k === placesK) return placesL;
-    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
+    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${(S.biz || []).length},${!!T4.exposure}${!!T4.community}`; if (k === placesK) return placesL;
+    /* EXPOSURE: the places on notice, that harm life; COMMUNITY: the rest, that care */
+    placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? T4.exposure : T4.community)).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', on: !!(b.h || []).length, sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
     return placesL;
   }
   function places(ctx) {

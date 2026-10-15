@@ -34,6 +34,7 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS jobs_queue ON jobs(printer, status, created)`,
   `CREATE TABLE IF NOT EXISTS hits (k TEXT NOT NULL, t INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)`,
+  `CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, slug TEXT UNIQUE, title TEXT NOT NULL, summary TEXT, body TEXT, cat TEXT, links TEXT, day TEXT, status TEXT NOT NULL DEFAULT 'draft', cover BLOB, created INTEGER, updated INTEGER)`,
   `CREATE INDEX IF NOT EXISTS hits_k ON hits(k, t)`,
 ];
 const readied = new WeakMap();
@@ -203,6 +204,12 @@ async function admin(db, env, req, parts) {
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
+  /* the portfolio's posts: every one, drafts too; one to edit; saved; deleted */
+  if (what === 'posts' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT ${POST_COLS} FROM posts ORDER BY day DESC, created DESC LIMIT 500`).all(); return json({ posts: results.map(postOut) }); }
+  if (what === 'posts' && !id && req.method === 'POST') return savePost(db, req);
+  if (what === 'posts' && id && parts[2] === 'cover') return postCover(db, id, true);
+  if (what === 'posts' && id && req.method === 'GET') return onePost(db, id, true);
+  if (what === 'posts' && id && req.method === 'POST') { const b = await body(req); if (b.action !== 'delete') return fail(400, 'action'); await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run(); return json({ ok: true }); }
   if (what === 'settings' && req.method === 'POST') { const b = await body(req); for (const k of Object.keys(SETTINGS)) if (typeof b[k] === 'boolean') await db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, b[k] ? '1' : '0').run(); return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'printers' && !id) {
@@ -226,8 +233,51 @@ async function admin(db, env, req, parts) {
   return fail(404, 'not found');
 }
 
+/* ───────── a photograph passed through, so the page may read its pixels: to dither it for a slip, a PNG or a printer.
+   iNaturalist's photographs only; kept a day at the edge ───────── */
+const IMG_HOSTS = ['inaturalist-open-data.s3.amazonaws.com', 'static.inaturalist.org'];
+async function imgThrough(url) {
+  let t; try { t = new URL(url.searchParams.get('u') || ''); } catch (e) { return fail(400, 'u'); }
+  if (t.protocol !== 'https:' || !IMG_HOSTS.includes(t.hostname) || !t.pathname.startsWith('/photos/')) return fail(400, 'u');
+  const r = await fetch(t.toString(), { cf: { cacheEverything: true, cacheTtl: 86400 } }); const type = r.headers.get('content-type') || '';
+  if (!r.ok || !type.startsWith('image/') || +(r.headers.get('content-length') || 0) > 8e6) return fail(502, 'img');
+  return new Response(r.body, { headers: { 'content-type': type, 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } });
+}
+
+/* ───────── the portfolio: posts written on the approval page, drafts until published. Only published posts are read here ───────── */
+const POST_COLS = 'id, slug, title, summary, cat, day, status, cover IS NOT NULL AS has_cover, updated';
+const postOut = r => ({ ...r, cover: !!r.has_cover, has_cover: undefined, links: r.links ? JSON.parse(r.links) : undefined });
+async function listPosts(db) { const { results } = await db.prepare(`SELECT ${POST_COLS} FROM posts WHERE status = 'published' ORDER BY day DESC, created DESC LIMIT 300`).all(); return json({ posts: results.map(postOut) }); }
+async function onePost(db, slug, any) {
+  const r = await db.prepare(`SELECT ${POST_COLS}, body, links FROM posts WHERE ${any ? 'id' : 'slug'} = ?${any ? '' : " AND status = 'published'"}`).bind(slug).first();
+  return r ? json({ post: postOut(r) }) : fail(404, 'not found');
+}
+async function postCover(db, key, any) {
+  const r = await db.prepare(`SELECT cover FROM posts WHERE ${any ? 'id' : 'slug'} = ?${any ? '' : " AND status = 'published'"}`).bind(key).first();
+  if (!r || !r.cover) return fail(404, 'not found');
+  return new Response(new Uint8Array(r.cover), { headers: { 'content-type': 'image/jpeg', 'cache-control': any ? 'no-store' : 'public, max-age=600', 'x-content-type-options': 'nosniff' } });
+}
+const slugOf = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'post';
+const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+async function savePost(db, req) {
+  const b = await body(req); const title = str(b.title, 140); if (!title) return fail(400, 'title');
+  const links = (Array.isArray(b.links) ? b.links : []).map(u => str(u, 300)).filter(u => /^https:\/\/[^\s]+$/.test(u)).slice(0, 12);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') ? b.day : new Date().toISOString().slice(0, 10);
+  const status = b.status === 'published' ? 'published' : 'draft'; const t = now();
+  const pic = b.cover ? dataURL(b.cover) : null; if (b.cover && !pic) return fail(400, 'cover');
+  const id = typeof b.id === 'string' && /^[A-Za-z0-9_-]{8,40}$/.test(b.id) ? b.id : rid();
+  const was = await db.prepare('SELECT id, slug FROM posts WHERE id = ?').bind(id).first();
+  /* a post keeps its address once made; a new one takes its title's, numbered if that is taken */
+  let slug = was ? was.slug : slugOf(str(b.slug, 60) || title); if (!was) for (let i = 2; await db.prepare('SELECT 1 FROM posts WHERE slug = ?').bind(slug).first(); i++) slug = `${slugOf(title).slice(0, 55)}-${i}`;
+  const f = [title, str(b.summary, 400), str(b.body, 40000), str(b.cat, 40).toUpperCase(), JSON.stringify(links), day, status, t];
+  if (was) await db.prepare(`UPDATE posts SET title = ?, summary = ?, body = ?, cat = ?, links = ?, day = ?, status = ?, updated = ?${pic || b.cover === null ? ', cover = ?' : ''} WHERE id = ?`).bind(...f, ...(pic || b.cover === null ? [pic] : []), id).run();
+  else await db.prepare('INSERT INTO posts (title, summary, body, cat, links, day, status, updated, cover, id, slug, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(...f, pic, id, slug, t).run();
+  return json({ id, slug, status }, was ? 200 : 201);
+}
+
 /* ───────── the router ───────── */
 async function api(req, env, url) {
+  if (url.pathname === '/api/img' && req.method === 'GET') return imgThrough(url);
   const db = dbOf(env); if (!db) return fail(503, 'no database');
   await ready(db); if (Math.random() < 0.05) await tidy(db);
   const p = url.pathname.replace(/^\/api\//, '').split('/').filter(Boolean).map(decodeURIComponent); const m = req.method;
@@ -237,6 +287,9 @@ async function api(req, env, url) {
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
+  if (p[0] === 'posts' && !p[1] && m === 'GET') return listPosts(db);
+  if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
+  if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
   if (p[0] === 'settings' && m === 'GET') return json(await settingsOf(db));
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);

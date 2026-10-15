@@ -26,7 +26,7 @@
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'posts') await posts(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
   }
 
   /* ───────── stories: what each one says, its photograph, where it was sent ───────── */
@@ -88,14 +88,56 @@
       tok);
     return card;
   }
-  /* ───────── stations: the nature station stays on for every visitor, unless unlocked here ───────── */
+  /* ───────── tracks: LIVING, the lives, stays on the map for every visitor, unless unlocked here ───────── */
   async function stations() {
     const r = await api('settings'); const st = await r.json(); const card = el('section', { class: 'printer' });
-    card.append(el('h3', { text: 'Nature station' }), el('div', { class: 'note', text: st.lifeLock ? 'ALWAYS ON THE MAP FOR EVERY VISITOR. THEY CAN MUTE IT.' : 'UNLOCKED: VISITORS CAN TAKE IT OFF THE MAP.' }),
+    card.append(el('h3', { text: 'LIVING' }), el('div', { class: 'note', text: st.lifeLock ? 'ALWAYS ON THE MAP FOR EVERY VISITOR. THEY CAN MUTE IT.' : 'UNLOCKED: VISITORS CAN TAKE IT OFF THE MAP.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.lifeLock ? 'on' : '', text: st.lifeLock ? 'LOCKED ON' : 'UNLOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ lifeLock: !st.lifeLock }) }); show('stations'); } })));
     main.replaceChildren(card);
   }
   async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...list.map(printerCard)); }
+
+  /* ───────── the portfolio: posts written here, kept as drafts until published; a cover, a category, links ───────── */
+  async function coverOf(id, img) { try { const r = await api(`posts/${id}/cover`); img.src = URL.createObjectURL(await r.blob()); } catch (e) { /* none */ } }
+  async function posts() {
+    const r = await api('posts'); const { posts: list } = await r.json();
+    const rows = list.map(x => { const img = x.cover ? el('img', { alt: '' }) : el('span', { class: 'ph' }); if (x.cover) coverOf(x.id, img);
+      return el('div', { class: 'post-row' }, img, el('div', {}, el('b', { text: x.title }), el('span', { class: 'note', text: `${x.status === 'published' ? 'PUBLISHED' : 'DRAFT'} · ${x.cat || 'WORK'} · ${x.day || ''} · /portfolio.html#${x.slug}` })),
+        el('button', { type: 'button', text: 'EDIT', onclick: () => editor(x.id) })); });
+    main.replaceChildren(el('div', { class: 'acts', style: 'margin:0 0 12px' }, el('button', { type: 'button', class: 'on', text: 'NEW POST', onclick: () => editor(null) }), el('a', { href: 'portfolio.html', target: '_blank', rel: 'noopener', class: 'note', text: 'THE PORTFOLIO ↗' })),
+      ...(rows.length ? rows : [el('p', { class: 'empty', text: 'NO POSTS YET' })]));
+  }
+  /* a cover chosen on this device: made smaller and re-encoded here, which also drops its location and camera details */
+  const shrink = file => new Promise((res, rej) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = 0.82, u = c.toDataURL('image/jpeg', q); while (u.length > 410e3 && q > 0.4) { q -= 0.08; u = c.toDataURL('image/jpeg', q); } URL.revokeObjectURL(im.src); res(u); }; im.onerror = rej; im.src = URL.createObjectURL(file); });
+  async function editor(id) {
+    const x = id ? (await (await api('posts/' + id)).json()).post : { title: '', summary: '', body: '', cat: '', links: [], day: new Date().toISOString().slice(0, 10), status: 'draft' };
+    let cover; const cv = el('img', { class: 'cv', alt: '' }); if (id && x.cover) coverOf(id, cv);
+    const f = (n, tag = 'input', attrs = {}) => el(tag, { name: n, ...attrs });
+    const title = f('title', 'input', { maxlength: 140, required: true }); title.value = x.title;
+    const cat = f('cat', 'input', { maxlength: 40, placeholder: 'WORK · HARDWARE · WRITING' }); cat.value = x.cat || '';
+    const day = f('day', 'input', { type: 'date' }); day.value = x.day || '';
+    const sum = f('summary', 'textarea', { rows: 2, maxlength: 400 }); sum.value = x.summary || '';
+    const body = f('body', 'textarea', { class: 'body', maxlength: 40000, placeholder: 'Paragraphs between blank lines. A line starting ## is a heading.' }); body.value = x.body || '';
+    const links = f('links', 'textarea', { rows: 3, placeholder: 'https://… one a line' }); links.value = (x.links || []).join('\n');
+    const pick = f('cover', 'input', { type: 'file', accept: 'image/*' }); pick.addEventListener('change', async () => { const fl = pick.files[0]; if (!fl) return; cover = await shrink(fl); cv.src = URL.createObjectURL(fl); });
+    const note = el('span', { class: 'note' });
+    const save = async status => {
+      if (!title.value.trim()) { title.focus(); return; }
+      const r = await api('posts', { method: 'POST', body: JSON.stringify({ id: id || undefined, title: title.value, cat: cat.value, day: day.value, summary: sum.value, body: body.value, links: links.value.split('\n').map(s => s.trim()).filter(Boolean), status, ...(cover ? { cover } : {}) }) });
+      const j = await r.json(); id = j.id; note.textContent = status === 'published' ? `PUBLISHED · /portfolio.html#${j.slug}` : 'SAVED AS A DRAFT'; return j;
+    };
+    main.replaceChildren(el('form', { class: 'ed', onsubmit: e => e.preventDefault() },
+      el('label', {}, 'TITLE', title), el('div', { class: 'two' }, el('label', {}, 'CATEGORY', cat), el('label', {}, 'DATE', day)),
+      el('label', {}, 'SUMMARY', sum), el('label', {}, 'BODY', body), el('label', {}, 'LINKS', links),
+      el('label', {}, 'COVER', cv, pick),
+      el('div', { class: 'acts' },
+        el('button', { type: 'button', text: 'SAVE DRAFT', onclick: () => save('draft') }),
+        el('button', { type: 'button', class: 'on', text: x.status === 'published' ? 'UPDATE' : 'PUBLISH', onclick: () => save('published') }),
+        x.status === 'published' ? el('button', { type: 'button', text: 'UNPUBLISH', onclick: () => save('draft') }) : null,
+        el('button', { type: 'button', text: 'PREVIEW', onclick: async () => { await save(x.status === 'published' ? 'published' : 'draft'); window.open(`portfolio.html?preview=${encodeURIComponent(id)}`, '_blank'); } }),
+        id ? el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: async () => { if (!confirm('Delete this post for good?')) return; await api('posts/' + id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('posts'); } }) : null,
+        el('button', { type: 'button', text: 'BACK', onclick: () => show('posts') }), note)));
+  }
 
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
   $('#out').addEventListener('click', () => lock('LOCKED'));

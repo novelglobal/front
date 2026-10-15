@@ -444,7 +444,8 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .r-fig.alarm{box-shadow:inset 0 -4px var(--red)}
 .r-credit{position:absolute;left:0;bottom:0;max-width:100%;padding:3px 7px;background:rgba(255,255,255,.88);font-size:9px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .r-credit:empty{display:none}
-.r-credit a{text-decoration:none}
+.r-credit a{text-decoration:none;color:inherit}
+html.night .r-credit{color:#0B2545}
 .r-id{padding:16px var(--gut) 0}
 .r-name{font:600 25px/1.08 var(--sans);letter-spacing:-.01em}
 .r-latin{margin-top:4px;font-size:12.5px;color:var(--grey-text)}
@@ -916,12 +917,16 @@ html.night .con-row .nm b{color:color-mix(in srgb,var(--k,#fff) 55%,#fff)}
 .sigs.cards .art.mark .i{width:38%;height:auto;aspect-ratio:1;color:var(--clay)}
 .sigs.cards .code{position:absolute;z-index:1;top:10px;left:10px;padding:2px 5px;border-radius:3px;background:rgba(17,25,22,.62);color:#fff;font-size:8px;font-weight:500;letter-spacing:.06em}
 .sigs.cards .cap{display:flex;flex-direction:column;padding:9px 3px 6px;flex:1}
-.sigs.cards .act{font:700 13px/1.22 var(--sans);color:#141412;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:3.66em}
+.sigs.cards .act{font:700 13px/1.22 var(--sans);color:#141412;display:block;overflow-wrap:anywhere}
+/* by day the paper is a shade darker than the page, so the torn card stands out from it */
+html:not(.night) .sigs.cards .sig-row{background:#EFECE3;border-color:#C9C4B6}
+html:not(.night) .sigs.cards .art{background:#E2DED3}
+html:not(.night) .sigs.cards .st{box-shadow:0 0 0 2px #EFECE3}
 .sigs.cards.small .art{aspect-ratio:1}
 .sigs.cards.small .sig-row{--tear:4px;padding:4px 4px calc(var(--tear) + 1px)}
 .sigs.cards.small .cap{padding:5px 1px 3px}
 /* the small cards' words in the radio's own type: they read better small */
-.sigs.cards.small .act{font:400 14px/1 'VT323',ui-monospace,monospace;letter-spacing:.02em;-webkit-line-clamp:3;min-height:3em}
+.sigs.cards.small .act{font:400 14px/1 'VT323',ui-monospace,monospace;letter-spacing:.02em}
 .sigs.cards.small .code{font-size:7px;top:6px;left:6px;padding:1px 3px}
 .sigs.cards .st{position:absolute;z-index:1;top:11px;right:11px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 2px #FCFBF7}
 .sigs.cards .t1{border-color:#F2C14E}
@@ -934,3 +939,73 @@ html.night .con-row .nm b{color:color-mix(in srgb,var(--k,#fff) 55%,#fff)}
 .more-sigs[open] summary .i{transform:rotate(90deg)}
 .more-sigs .sigs{margin-top:8px}
 html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 1px var(--grey)}
+
+/* ───────── 0.03: four destinations on one thread; TRACKS as keys; time on the radar; the connection receipt ───────── */
+/* the rail: a fine thread through the first three, a knot at each, tied in clay as the day's journey reaches it */
+.rail::before{content:"";position:absolute;left:-9px;top:20px;width:1px;height:92px;pointer-events:none;background:linear-gradient(var(--clay) 0 var(--tp, 0px),rgba(255,255,255,.42) var(--tp, 0px))}
+.tab .knot{position:absolute;left:-12px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;border:1px solid rgba(255,255,255,.7);background:rgba(11,11,11,.55);pointer-events:none;transition:background .4s var(--ease),transform .4s var(--ease)}
+.tab.tied .knot{background:var(--clay);border-color:var(--clay);transform:scale(1.15)}
+.tab.apart{margin-top:10px}
+/* the radio: the one question, until something is noticed today */
+.b-ask{margin:-2px 0 12px;font:400 17px/1.15 'VT323',ui-monospace,monospace;letter-spacing:.02em;color:var(--ink);opacity:.82}
+/* time: hold or play, beside the months */
+.mstrip{grid-template-columns:auto 1fr;align-items:end;gap:6px}
+.t-play{width:24px;height:24px;display:grid;place-items:center;color:var(--ink);border:1px solid currentColor;border-radius:50%;opacity:.7}
+.t-play:hover,.t-play[aria-pressed="true"]{opacity:1}
+.t-play .i{width:11px;height:11px}
+.eq-read .hy{display:inline-block;margin-right:7px;padding:0 4px;border:1px solid #6E6C66;font:400 12px/1.25 'VT323',ui-monospace,monospace;letter-spacing:.08em;color:#BDBBB2;vertical-align:1px}
+/* TRACKS: four keys, as a radio's presets; the mood and the sound beside them */
+.t4{display:flex;align-items:stretch;gap:3px;margin-top:10px}
+.t4k{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);color:var(--ink);opacity:.62;transition:opacity .2s,background .2s}
+.t4k small{font:400 13px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.t4k .i{width:14px;height:14px}
+.t4k:hover{opacity:.9}
+.t4k[aria-pressed="true"]{opacity:1;background:var(--ink);color:var(--slip);border-color:var(--ink)}
+.t4s{display:flex;flex-direction:column;gap:3px;margin-left:3px}
+.t4m{position:relative;flex:1;width:26px;display:grid;place-items:center;color:var(--ink);opacity:.7}
+.t4m:hover{opacity:1}
+.t4m .i{width:13px;height:13px}
+.t4m.muted::after{content:"";position:absolute;width:14px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
+/* SIGNALS */
+.quiet{display:grid;place-items:center;padding:40px 0}
+.to-radar{width:64px;height:64px;display:grid;place-items:center;border:1px solid var(--grey);border-radius:50%;color:var(--navy)}
+.to-radar:hover{border-color:var(--navy)}
+.to-radar .i{width:26px;height:26px}
+.wishes li,.slips-l li,.prn-l li{border-top:1px solid var(--paper)}
+.wishes li:first-child,.slips-l li:first-child,.prn-l li:first-child{border-top:0}
+.wish-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;text-align:left}
+.wish-row .w-chart{flex:none;width:40px;height:40px;display:grid;place-items:center;background:#FCFBF7;color:#141412}
+.wish-row .w-chart svg{width:40px;height:40px}
+.wish-row .w-chart .i{width:20px;height:20px}
+.wish-row .nm,.slip-row .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wish-row small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+/* SIGNS */
+.styles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sty{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border:1px solid var(--grey);font:500 10px var(--mono);letter-spacing:.08em;color:var(--navy)}
+.sty.tty-b span{font:400 20px/1 'VT323',ui-monospace,monospace}
+.sty[aria-pressed="true"]{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.slip-row{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;width:100%;padding:8px 0;text-align:left;align-items:baseline}
+.slip-row b{font-size:10px;letter-spacing:.06em}
+.slip-row small{grid-column:2;font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+.prn-l li{display:flex;align-items:center;gap:10px;padding:6px 0}
+.prn-l .pm{width:34px;height:34px;flex:none;opacity:.55}
+.prn-l li.on .pm{opacity:1}
+.prn-l .nm{display:flex;flex-direction:column;gap:2px}
+.prn-l small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+.prn-l li.on small{color:var(--teal)}
+#sec-prn .docs{grid-template-columns:repeat(3,1fr)}
+/* PORTFOLIO: past the first eight, a list, as a forum lists them */
+.sigs.list{margin-top:10px}
+.sigs.list li{border-top:1px solid var(--paper)}
+.sig-line{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;width:100%;padding:6px 0;text-align:left}
+.sig-line .art{width:40px;height:40px;object-fit:cover;display:grid;place-items:center;background:#ECEAE3}
+.sig-line .art.mark .i{width:20px;height:20px;color:var(--clay)}
+.sig-line .hl{font:600 12.5px/1.3 var(--sans);color:var(--navy)}
+.sig-line .code{font-size:9px;letter-spacing:.06em;color:var(--grey-text);font-weight:500}
+.sig-line:hover .hl{text-decoration:underline}
+/* the connection receipt: only its own words, as they print, and the code to scan */
+.sl-conn{display:none;margin:0;font:500 10.5px/1.45 var(--mono);white-space:pre-wrap;color:#141412}
+.slip.conn .sl-conn{display:block}
+.slip.conn>.sl-hero,.slip.conn>.sl-fig,.slip.conn>.sl-head,.slip.conn .sl-body>:not(.sl-conn):not(.sl-qr):not(.sl-foot){display:none}
+#press .sl-conn{font-size:7pt}
+a.sig-line{text-decoration:none;color:inherit}

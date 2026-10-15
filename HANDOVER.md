@@ -91,11 +91,19 @@ Two styles, chosen with **>** beside PIN and kept in `prefs.slip`. The default i
 
 Each output machine is drawn as its hardware and links to a reference page about it. Pasting a link, a packed signal or a mesh message into RECEIVE on the STORIES page brings a signal back into the app.
 
-### The pages
+### The pages: four destinations (0.03)
 
-- **NOW** shows DIRECT ACTION, a countdown to the first month of extreme heat, and a calendar: twelve months in their degree, the five in greatest need on the month their window opens (each can be swapped for any life), the kinds each month reaches; then anything hurt or lost right now, the tracks, the constellations, and gigs.
-- **STORIES** shows the signals board (the device's own signals plus three examples marked EX), the six caring groups, the tools (the field list, the guide, a blank slip to fill by hand, and four CSV downloads) and the settings.
-- `field.html` is a field list of 204 kinds of life. `guide.html` is a visual key to every mark, kept under about 620 words.
+The rail holds four destinations. The first three are one journey, joined by a fine thread with a knot at each; a knot ties in clay as the day's journey reaches it (`DAY`, `da.day.v1`, starting again each day): a life opened, a string tied or a W.I.S.H. issued, a slip sent or printed. PORTFOLIO stands apart. Behind the scenes, never on screen: **make it right** (RADIO), **make it work** (SIGNALS), **make it beautiful** (SIGNS and PORTFOLIO).
+
+- **RADIO** (`#radio`; `#now` still lands here): DIRECT ACTION RADIO; until something is noticed today, the one question; the countdown to the first month of extreme heat; the outlook as an equaliser with **time**: each turn of the radar's hand moves the outlook a month on, and back to now after the last (hold or play beside the months; a month pressed, or a life looked at, holds it). Each month says what it rests on: OUTLOOK (published), SCENARIO (modelled) or NO OUTLOOK YET; a window's reason is marked HYPOTHESIS. Under it, **TRACKS**: four keys, also 1 to 4 on a keyboard. CLIMATE (air temperature now and drinking water, any day), LIVING (the lives, and their sound), EXPOSURE (the places on notice, that harm life), COMMUNITY (the places that care; the sound of packs of cells). Beside them, the mood (FOG, RAIN, WEIGHT, cycled) and sound off. Then the five in greatest need, anything hurt or lost, and gigs. There is no stations panel and no faders.
+- **SIGNALS** (`#signals`): the constellations, the W.I.S.H. issued on this device, and the six caring groups. Writing happens on the life's card, beside the map it came from, so its place is never lost.
+- **SIGNS** (`#signs`): the studio for paper. Three styles (PAPER, `>`, CONNECTION), the slips issued here with where each has got to, the printers (novel.global first) and whether each is online, and a blank slip to fill by hand.
+- **PORTFOLIO** (`#portfolio`; `#stories` still lands here): work published from the approval page, the board of stories (eight as cards, the rest as a list, a photograph and a headline each), RECEIVE, the briefs, the tools, the settings and the sources.
+- `portfolio.html` is novel.global's portfolio, of which DIRECT ACTION RADIO is one work: published posts by category, as lists with counts, and each post on its own address (`portfolio.html#slug`). `field.html` is a field list of 204 kinds of life. `guide.html` is a visual key to every mark, kept under about 620 words.
+
+### The CONNECTION receipt
+
+The third slip style (`prefs.slip = 'conn'`, `connText()`, `connCanvas()`, and `escpos(s, paper, tty, conn)`): CONNECTION and the code; the SIGNAL (the life and its threat); the PLACE; what it is TIED to (the first caring relation); a group to JOIN, already caring for ground near it, with when it meets and its address (from `DA_TRIBES`, else a tied place with a site of its own); and the NEXT step (the W.I.S.H.'s last line, "here is how it works"). Then the QR code. Every line comes from the slip or the listed groups and places; nothing is made up to fill it. On screen it shows exactly the words that print.
 
 ### How data flows today
 
@@ -257,7 +265,7 @@ npm test                          # builds, then runs every check (about 12 minu
 ONLY=strings npm run test:one     # one group
 ```
 
-On a new machine, install Playwright's Chromium once with `npx playwright install chromium`. `npm run test:api` runs the Worker's checks alone (Python runs `pull.py` against it where it is installed). The browser test groups are `smoke`, `first`, `radar`, `strings`, `places`, `wish`, `outputs`, `board`, `share`, `place`, `lost`, `hide`, `phone`, `hot`, `offline`, `field`, `events`, `guide` and `static`. Two more groups only run when named: `dbg` runs a script file inside the page, and `look` takes screenshots. Screenshots are written to `test/shots/`. In the browser console, `window.__da` exposes the app's state and functions for debugging.
+On a new machine, install Playwright's Chromium once with `npx playwright install chromium`. `npm run test:api` runs the Worker's checks alone (Python runs `pull.py` against it where it is installed). The browser test groups are `smoke`, `portfolio`, `first`, `radar`, `strings`, `places`, `wish`, `outputs`, `board`, `share`, `place`, `lost`, `hide`, `phone`, `hot`, `offline`, `field`, `events`, `guide` and `static`. Two more groups only run when named: `dbg` runs a script file inside the page, and `look` takes screenshots. Screenshots are written to `test/shots/`. In the browser console, `window.__da` exposes the app's state and functions for debugging.
 
 ## Design rules
 
@@ -318,7 +326,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v12` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v25` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
