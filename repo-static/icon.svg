@@ -1,8 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#8C7469"/>
-  <circle cx="256" cy="256" r="158" fill="#FFFFFF" fill-opacity=".12"/>
-  <circle cx="256" cy="256" r="158" fill="none" stroke="#FFFFFF" stroke-width="34"/>
-  <line x1="256" y1="256" x2="361" y2="151" stroke="#FFFFFF" stroke-width="30" stroke-linecap="round"/>
-  <circle cx="256" cy="256" r="46" fill="#FFFFFF"/>
-  <circle cx="256" cy="256" r="13" fill="#8C7469"/>
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B4D4C"/><stop offset=".55" stop-color="#1B2726"/><stop offset="1" stop-color="#101716"/></linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".34"/><stop offset=".45" stop-color="#FFFFFF" stop-opacity=".04"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <radialGradient id="led" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFB3A3"/><stop offset=".45" stop-color="#FF4A2E"/><stop offset="1" stop-color="#FF4A2E" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#shell)"/>
+  <g fill="none" stroke="#7FD1C2" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".55">
+    <path d="M78 150h70l30 30v60"/><path d="M434 360h-72l-28-28v-54"/><path d="M150 440v-56l26-26h40"/><path d="M362 72v54l-24 24h-44"/>
+  </g>
+  <g fill="none" stroke="#D4AF5F" stroke-width="5" stroke-linecap="round" opacity=".55"><path d="M96 300h52"/><path d="M364 214h52"/><path d="M226 78v40"/><path d="M286 394v40"/></g>
+  <g fill="#D4AF5F" opacity=".75"><circle cx="78" cy="150" r="9"/><circle cx="434" cy="360" r="9"/><circle cx="150" cy="440" r="9"/><circle cx="362" cy="72" r="9"/></g>
+  <circle cx="256" cy="256" r="150" fill="#FFFFFF" fill-opacity=".05"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#E6F3F1" stroke-width="22"/>
+  <line x1="256" y1="256" x2="352" y2="160" stroke="#E6F3F1" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="40" fill="#E6F3F1"/>
+  <circle cx="256" cy="256" r="12" fill="#1B2726"/>
+  <circle cx="404" cy="112" r="34" fill="url(#led)"/>
+  <circle cx="404" cy="112" r="11" fill="#FF4A2E"/>
+  <g fill="#9AA6A5"><circle cx="58" cy="58" r="13"/><circle cx="454" cy="58" r="13"/><circle cx="58" cy="454" r="13"/><circle cx="454" cy="454" r="13"/></g>
+  <g stroke="#3B4545" stroke-width="4" stroke-linecap="round"><path d="M50 58h16"/><path d="M446 58h16"/><path d="M50 454h16"/><path d="M446 454h16"/></g>
+  <rect width="512" height="512" rx="96" fill="url(#gloss)"/>
+  <rect x="3" y="3" width="506" height="506" rx="93" fill="none" stroke="#FFFFFF" stroke-opacity=".3" stroke-width="6"/>
 </svg>

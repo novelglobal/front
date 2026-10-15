@@ -98,7 +98,7 @@ function connText(s, cols = 32) {
   if (s.threat) out.push(...field('', s.threat));
   out.push(...field('PLACE', `${p.place || ''} ${(+p.lat).toFixed(3)} ${(+p.lng).toFixed(3)}`.trim()));
   if (c.rel) out.push(...field('TIED', `${c.rel.n} - ${relPhrase(c.rel)}`));
-  if (c.join) { out.push(rule, ...field('JOIN', c.join.n)); if (c.join.when) out.push(...field('', c.join.when)); if (shortU(c.join.u)) out.push(...field('', shortU(c.join.u))); }
+  if (c.join) { out.push(rule, ...field('JOIN', c.join.n)); if (c.join.when) out.push(...field('', c.join.when)); const u = shortU(c.join.u); for (let i = 0; i < u.length; i += cols - 8) out.push(...field('', u.slice(i, i + cols - 8))); }
   if (c.step) out.push(rule, ...field('NEXT', c.step));
   if (s.who) out.push(rule, `- ${s.who}`);
   return ascii(out.join('\n'));

@@ -1115,3 +1115,66 @@ body.off-map:not(.shut) .cover{display:block}
 .poster-b img{display:block;width:100%}
 #press .slip.zine{width:auto;padding:0}
 #board .tools,#zine .tools{padding-right:72px}
+
+/* ───────── transparent electronics: clear and smoked polycarbonate, the circuit seen through it, labels as on the back of
+   hardware. The radio's button, the board and the press ───────── */
+.hero-play{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.55),rgba(255,255,255,.1) 42%,rgba(200,225,230,.06) 70%),rgba(210,230,235,.08);border:1px solid rgba(255,255,255,.45);color:var(--ink);box-shadow:inset 0 0 0 7px rgba(255,255,255,.05),inset 0 -10px 18px rgba(0,0,0,.28),0 10px 22px rgba(0,0,0,.35);backdrop-filter:blur(6px);overflow:hidden}
+.hero-play::before{content:"";position:absolute;inset:10px;border-radius:50%;opacity:.5;background:linear-gradient(90deg,transparent 48%,rgba(127,209,194,.7) 48% 52%,transparent 52%) 0 0/22px 100%,linear-gradient(0deg,transparent 48%,rgba(212,175,95,.6) 48% 52%,transparent 52%) 0 0/100% 18px;-webkit-mask:radial-gradient(circle,#000 55%,transparent 72%);mask:radial-gradient(circle,#000 55%,transparent 72%)}
+.hero-play::after{content:"";position:absolute;top:13px;right:22px;width:6px;height:6px;border-radius:50%;background:#5A2A20;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+.hero-play.on::after{background:#FF4A2E;box-shadow:0 0 8px 2px rgba(255,74,46,.7)}
+.hero-play .hp-ring{border-color:rgba(255,255,255,.35)}
+.hero-play.on .hp-ring{border-color:#7FD1C2}
+html:not(.night) .hero-play{background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.9),rgba(255,255,255,.3) 45%,rgba(160,190,195,.25) 75%),rgba(170,200,205,.25);border-color:rgba(20,20,18,.35)}
+#board{background:#0E1413 linear-gradient(rgba(127,209,194,.05) 1px,transparent 1px) 0 0/26px 26px,linear-gradient(90deg,rgba(127,209,194,.05) 1px,transparent 1px) 0 0/26px 26px}
+#zine{background:#121615}
+#board .tools,#zine .tools{background:linear-gradient(180deg,rgba(190,220,225,.14),rgba(190,220,225,.05));border-bottom:1px solid rgba(190,225,230,.25);backdrop-filter:blur(8px)}
+#board .tools::before,#zine .tools::before,#board .tools::after{content:"";position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#cfd8d8,#6a7474);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4)}
+#board .tools::before,#zine .tools::before{left:4px}
+.tools .bt{flex-direction:column;gap:1px;min-width:44px;height:42px;background:rgba(220,240,240,.06);border-color:rgba(190,225,230,.28);border-radius:4px;color:#E2EFEE}
+.tools .bt small{font:500 7.5px/1 var(--mono);letter-spacing:.12em;color:#9FC9C2}
+.tools .bt.on{background:rgba(127,209,194,.35);border-color:#7FD1C2}
+.hw-label{position:absolute;left:0;right:0;bottom:0;height:26px;margin:0;padding:0 14px;display:flex;align-items:center;font-size:8.5px;letter-spacing:.14em;color:rgba(190,225,230,.6);border-top:1px solid rgba(190,225,230,.18);background:rgba(190,220,225,.05);white-space:nowrap;overflow:hidden}
+#zine .desk{bottom:26px}
+.roll{display:grid;justify-items:center;padding:6px 0 30px}
+.roll-img{display:block;width:302px;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.55);image-rendering:pixelated}
+.roll-img.r58{width:228px}.roll-img.gb{width:320px}
+.roll-blank{display:block;width:302px;height:420px;background:repeating-linear-gradient(#F6F5F0 0 22px,#EDEBE3 22px 23px);opacity:.25}
+#zine:not(.paging) .desk .canvas-container{display:none!important}
+#zine.paging .roll{display:none}
+/* SIGNALS' page: the W.I.S.H. form; the boards, each with its signals and constellations */
+.wish-form{display:grid;gap:8px;padding:14px;border:1px solid color-mix(in srgb,var(--navy) 22%,transparent);background:linear-gradient(180deg,rgba(190,220,225,.07),transparent)}
+.wf-t{margin:0;font-size:30px}
+.wish-form select,.wf-l input{width:100%;height:34px;padding:0 8px;background:transparent;color:var(--navy);border:1px solid color-mix(in srgb,var(--navy) 28%,transparent);font:400 17px 'VT323',ui-monospace,monospace}
+.wf-l{display:grid;gap:3px}
+.wf-l span{font-size:8.5px;letter-spacing:.14em;color:var(--grey-text)}
+.send-b{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;margin-top:4px;background:var(--navy);color:var(--white);font:400 18px/1 'VT323',ui-monospace,monospace;letter-spacing:.1em}
+.send-b .i{width:14px;height:14px}
+.bk-a{display:flex;gap:2px}
+.bk-a label.ib{cursor:pointer}
+.bgroups{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bgroup{border:1px solid color-mix(in srgb,var(--navy) 16%,transparent);padding:8px 10px}
+.bgroup.on{border-color:#7FD1C2}
+.bg-h{display:flex;align-items:baseline;justify-content:space-between;width:100%;text-align:left}
+.bg-h b{font-size:11px;letter-spacing:.12em}
+.bg-h small{font-size:9px;color:var(--grey-text)}
+.g-sigs,.g-figs{list-style:none;margin:6px 0 0;padding:0}
+.g-sig{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--paper)}
+.g-sig > span.mono{font-size:10px;letter-spacing:.06em}
+.g-sig .pg-l{display:flex;gap:6px;margin:0}
+.g-sig .pg-l i{display:flex;opacity:.3}.g-sig .pg-l i.on{opacity:1}
+.g-sig .pg-l .i{width:12px;height:12px}
+.g-figs li{display:flex;align-items:center;gap:6px;padding:3px 0 3px 10px;font-size:10px;letter-spacing:.04em}
+.g-figs .i{width:12px;height:12px}
+.bgroup .cons{margin-top:8px}
+/* SIGNS' page */
+.seg{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.seg .sty{flex:1 1 auto;height:34px;padding:0 8px;font-size:9px}
+.seg.outs .sty{background:rgba(127,209,194,.08)}
+.slip-row.on{background:rgba(127,209,194,.12)}
+.stickers{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.stk{display:block;width:100%;padding:2px;border-radius:6px}
+.stk:hover{background:rgba(127,209,194,.15)}
+.stk img{display:block;width:100%}
+
+.bk-t,.wf-t{color:var(--navy)}
+#sec-slips .bk-t{display:block;margin:0 0 10px;font-size:24px}
