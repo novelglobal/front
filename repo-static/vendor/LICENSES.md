@@ -124,3 +124,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Copyright (c) 2009 Kazuhiko Arase. Licensed under the MIT licence: http://www.opensource.org/licenses/mit-license.php
 The word "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
+
+## Fabric.js 5.3.0 — `fabric.min.js`
+
+The canvas the SIGNALS board is drawn on, as in the open dreamboard project (MIT). From npm, `fabric@5.3.0`, sha1 199297b6409e3a6279c16c1166da2b2a9e3e8b9b.
+
+Copyright (c) 2008-2015 Printio (Juriy Zaytsev, Maxim Chernyak)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

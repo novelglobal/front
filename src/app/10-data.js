@@ -123,6 +123,14 @@ const NECTAR_GENERA = new Set(['eucalyptus', 'corymbia', 'angophora', 'grevillea
 const genusOfX = x => ((x.tx && x.tx.n) || '').toLowerCase().split(/\s+/)[0];
 const isFood = x => { const n = ((x.tx && x.tx.n) || '').toLowerCase(); return n.startsWith('ficus') || FOOD_GENERA.has(n.split(' ')[0]); };
 const isPlant = x => ['Plantae'].includes(kindOf(x)) || (!x.tx && bandOf(x) === 5);
+/* every body of water, each at its nearest point to here */
+function watersNear(lat, lng) {
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540; const out = [];
+  const seg = (a, b) => { const ax = (a[1] - lng) * kx, ay = (a[0] - lat) * ky, bx = (b[1] - lng) * kx, by = (b[0] - lat) * ky; const dx = bx - ax, dy = by - ay; const t = clamp(-(ax * dx + ay * dy) / (dx * dx + dy * dy || 1), 0, 1); return { d: Math.hypot(ax + dx * t, ay + dy * t), lat: a[0] + (b[0] - a[0]) * t, lng: a[1] + (b[1] - a[1]) * t }; };
+  for (const [n, pts] of WATERS.lines) { let best = null; for (let i = 0; i < pts.length - 1; i++) { const s2 = seg(pts[i], pts[i + 1]); if (!best || s2.d < best.d) best = s2; } if (best) out.push({ ...best, n }); }
+  for (const [n, a, b] of WATERS.points) out.push({ d: haversine(lat, lng, a, b), n, lat: a, lng: b });
+  return out;
+}
 function waterNear(lat, lng) {
   const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540; let best = { d: Infinity, n: '', lat, lng };
   const seg = (a, b) => { const ax = (a[1] - lng) * kx, ay = (a[0] - lat) * ky, bx = (b[1] - lng) * kx, by = (b[0] - lat) * ky; const dx = bx - ax, dy = by - ay; const t = clamp(-(ax * dx + ay * dy) / (dx * dx + dy * dy || 1), 0, 1); return { d: Math.hypot(ax + t * dx, ay + t * dy), lat: a[0] + (b[0] - a[0]) * t, lng: a[1] + (b[1] - a[1]) * t }; };

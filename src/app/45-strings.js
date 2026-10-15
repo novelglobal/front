@@ -54,7 +54,9 @@ const strings = (() => {
       const dd = haversine(o.lat, o.lng, p.lat, p.lng), k = dd > R * 0.85 ? (R * 0.85) / dd : 1;
       out.set('t:' + t.tid, { key: 't:' + t.tid, t: 'group', n: t.n, kind: t.kind, what: t.w, link: t.link, lat: o.lat + (p.lat - o.lat) * k, lng: o.lng + (p.lng - o.lng) * k, d: p.d });
     }
-    const wn = waterNear(o.lat, o.lng); if (wn.n && wn.d <= R) out.set('w:' + norm(wn.n), { key: 'w:' + norm(wn.n), t: 'water', n: wn.n, lat: wn.lat, lng: wn.lng, d: wn.d });
+    /* WATER: every creek, wetland and pond within reach, each at its nearest point, and the drinking fountains */
+    for (const wn of watersNear(o.lat, o.lng)) if (wn.d <= R) out.set('w:' + norm(wn.n), { key: 'w:' + norm(wn.n), t: 'water', n: wn.n, lat: wn.lat, lng: wn.lng, d: wn.d });
+    S.fountains.map((f, i) => ({ f, i, d: haversine(o.lat, o.lng, f.lat, f.lng) })).filter(x => x.d <= R).sort((a, b) => a.d - b.d).slice(0, 8).forEach(({ f, d }) => { const k = `w:f${f.lat.toFixed(5)},${f.lng.toFixed(5)}`; out.set(k, { key: k, t: 'water', n: 'Drinking water', lat: f.lat, lng: f.lng, d }); });
     for (const [k, m] of Object.entries(fig.c || {})) out.set(k, { ...m, key: k, t: 'custom', d: haversine(o.lat, o.lng, m.lat, m.lng) });
     /* knots tied before stay, even when the radius has shrunk or the places have not loaded yet */
     for (const [k, m] of Object.entries(fig.n || {})) if (!out.has(k) && inFig(k)) out.set(k, { ...m, key: k, h: m.h || [], harm: (m.h || []).filter(r => press.has(r)), d: haversine(o.lat, o.lng, m.lat, m.lng), away: true });
