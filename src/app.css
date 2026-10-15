@@ -21,7 +21,7 @@
   --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
 }
 /* night: the page darkens, the ground dims under it. A slip, a receipt, stays paper, as it would in the hand */
-html.night{color-scheme:dark;--white:#151515;--paper:#262626;--grey:#4A4A4A;--grey-text:#A6A6A6;--navy:#EDEDED;--cobalt:#7BBDF5;--teal-wash:#1F2E2C;--ground:#0B0B0B}
+html.night{color-scheme:dark;--white:#15122A;--paper:#221D40;--grey:#3B3566;--grey-text:#A49ED0;--navy:#F2EFFF;--cobalt:#8FD3FF;--teal-wash:#1E2A3C;--ground:#0D0B1C}
 /* night: buttons and controls carry a clear edge, so nothing sinks into the charcoal */
 html.night .pill,html.night .tog,html.night .mood,html.night .tk,html.night .docs button,html.night .src-dl a,html.night .pack-up label,html.night .more-sigs summary,html.night .gigs a,html.night .ib{box-shadow:inset 0 0 0 1px #5A5A5A}
 html.night .rail .tab{box-shadow:0 0 0 1px #5A5A5A}
@@ -1139,8 +1139,6 @@ html:not(.night) .hero-play{background:radial-gradient(circle at 34% 28%,rgba(25
 .roll-img{display:block;width:302px;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.55);image-rendering:pixelated}
 .roll-img.r58{width:228px}.roll-img.gb{width:320px}
 .roll-blank{display:block;width:302px;height:420px;background:repeating-linear-gradient(#F6F5F0 0 22px,#EDEBE3 22px 23px);opacity:.25}
-#zine:not(.paging) .desk .canvas-container{display:none!important}
-#zine.paging .roll{display:none}
 /* SIGNALS' page: the W.I.S.H. form; the boards, each with its signals and constellations */
 .wish-form{display:grid;gap:8px;padding:14px;border:1px solid color-mix(in srgb,var(--navy) 22%,transparent);background:linear-gradient(180deg,rgba(190,220,225,.07),transparent)}
 .wf-t{margin:0;font-size:30px}
@@ -1221,3 +1219,142 @@ body:not(.shut) .arcade{right:var(--page)}
 .feed.torn .fp-paper{animation:tearoff .9s ease-in forwards;height:170px;clip-path:polygon(0 0,100% 0,100% 96%,92% 100%,84% 96%,76% 100%,68% 96%,60% 100%,52% 96%,44% 100%,36% 96%,28% 100%,20% 96%,12% 100%,4% 96%,0 100%)}
 @keyframes feedout{0%{height:0}20%{height:30px}35%{height:28px}100%{height:170px}}
 @keyframes tearoff{0%{transform:translateY(0) rotate(0)}30%{transform:translateY(6px) rotate(-3deg)}100%{transform:translateY(260px) rotate(14deg);opacity:0}}
+
+/* ═════════ the final look: clear acrylic in colour, LCD readouts, chunky flat keys, violet ink by night. Words only in the
+   clues; every name on a long hover ═════════ */
+:root{--pink:#FF7EB0;--magenta:#E0218A;--sun:#FFD23F;--tang:#FF8A1F;--violet:#6B4FC0;--ice:#BFEAE2;--lcd:#C9D4B6;--lcd-ink:#2C3324;--acryl:rgba(191,234,226,.10);--edge:rgba(191,234,226,.42)}
+html:not(.night){--acryl:rgba(107,79,192,.06);--edge:rgba(107,79,192,.28)}
+html.night body{background:var(--white)}
+/* the panel: a sheet of clear acrylic, its edge catching light */
+.band{border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--acryl);box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 rgba(255,255,255,.25)}
+html.night .band{--slip:transparent;--ink:#F2EFFF}
+.lab.labi{display:inline-flex;align-items:center;gap:6px;color:var(--grey-text)}
+.lab.labi .i{width:15px;height:15px}
+.lab.labi b{font-size:11px;color:var(--navy)}
+/* El Niño's count, in orange, beside its sun */
+.b-emerg{align-items:center;margin:2px 0 14px}
+.b-emerg .sun{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--tang);color:#15122A}
+.b-emerg .sun .i{width:18px;height:18px}
+.b-emerg .cd{font-size:34px;color:var(--tang)}
+/* the hottest months: a heat mark above the column, clear of every other */
+.ms-m{padding-top:16px}
+.mo.d4 .eq-c i.pk::after{content:"\25B2";top:-15px;font:400 11px/1 var(--mono);color:#FF4A2E!important;text-shadow:0 0 6px rgba(255,74,46,.6)}
+/* the radio's button: flat, chunky, its outline drawn; pressed, it sinks */
+.hero-play{width:86px;height:86px;margin:18px auto 16px;background:var(--pink)!important;border:3px solid #15122A!important;color:#15122A!important;box-shadow:0 5px 0 #15122A!important;backdrop-filter:none;transition:transform .08s,box-shadow .08s}
+.hero-play::before,.hero-play::after{display:none}
+html:not(.night) .hero-play{border-color:#2A2550!important;box-shadow:0 5px 0 #2A2550!important}
+.hero-play.press,.hero-play:active{transform:translateY(4px);box-shadow:0 1px 0 #15122A!important}
+.hero-play.on{background:var(--sun)!important}
+.hero-play .i{width:30px;height:30px}
+.hero-play .hp-ring{inset:-9px;border:2px dashed var(--edge)}
+.hero-play.on .hp-ring{border-color:var(--magenta)}
+/* the layers: one chunky key each, in its own colour; its mood and volume beside */
+.lyr{grid-template-columns:52px 30px 1fr 34px;gap:6px}
+.lyr-k{justify-content:center;height:34px;border-radius:9px;border:2px solid var(--edge);background:var(--acryl);color:var(--navy)}
+.lyr-k .i{width:18px;height:18px}
+.lyr[data-lyr="life"]{--lc:#7FD1C2}.lyr[data-lyr="community"]{--lc:#FF7EB0}.lyr[data-lyr="water"]{--lc:#8FD3FF}.lyr[data-lyr="pollution"]{--lc:#FF8A1F}
+.lyr.on .lyr-k{background:var(--lc);border-color:var(--lc);color:#15122A}
+.lyr-m{border-radius:8px;border-color:var(--edge)}
+.lyr .lv i.hit{background:var(--lc)}
+.lyr-v[data-v="0"] i:nth-child(1),.lyr-v[data-v="1"] i:nth-child(-n+2),.lyr-v[data-v="2"] i{background:var(--lc,var(--navy))}
+/* the clues: three small LCD screens. One lit and waiting, done ones ticked, the rest locked */
+.clues{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:8px}
+.clue-b{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),inset 0 3px 8px rgba(44,51,36,.25);text-align:left}
+.clue .ci{display:flex;gap:4px;align-items:center}
+.clue .ci .i{width:20px;height:20px}
+.clue .cq{font:400 24px/1 "VT323",ui-monospace,monospace}
+.clue .cw{font:400 19px/1.05 "VT323",ui-monospace,monospace;letter-spacing:.03em}
+.clue .ck{position:absolute;right:10px;top:50%;margin-top:-9px;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:var(--lcd-ink);color:var(--lcd)}
+.clue .ck .i{width:11px;height:11px}
+.clue .lk{position:absolute;right:12px;top:50%;width:12px;height:9px;margin-top:-2px;border-radius:2px;background:rgba(44,51,36,.5)}
+.clue .lk::before{content:"";position:absolute;left:2px;top:-6px;width:8px;height:7px;border:2px solid rgba(44,51,36,.5);border-bottom:0;border-radius:5px 5px 0 0}
+.clue.done .clue-b{opacity:.55}
+.clue.locked .clue-b{opacity:.3;filter:grayscale(1)}
+.clue.now .clue-b{animation:cluein 1.6s ease-in-out infinite}
+.clue.now[data-clue="3"] .clue-b{background:var(--sun);cursor:pointer}
+.clue.now[data-clue="3"] .cw{font-size:22px}
+.clue.go .clue-b{animation:cluego .42s ease-in forwards}
+@keyframes cluein{50%{box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),0 0 0 4px rgba(255,210,63,.45)}}
+@keyframes cluego{to{transform:translateX(30px);opacity:0}}
+/* the first clue, floating on the ground until the radar is put down; it lets every touch through */
+.clue-map{position:fixed;z-index:6;left:50%;bottom:34px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),0 10px 30px rgba(0,0,0,.4);pointer-events:none;animation:cluein 1.6s ease-in-out infinite}
+body:not(.shut) .clue-map{left:calc((100% - var(--page)) / 2)}
+.clue-map[hidden]{display:none}
+.clue-map .ci{display:flex;gap:4px}.clue-map .i{width:22px;height:22px}
+.clue-map .cq{font:400 26px/1 "VT323",ui-monospace,monospace}
+.clue-map .cw{font:400 22px/1 "VT323",ui-monospace,monospace}
+/* the air over the ground */
+.wx-fx{position:absolute;inset:0;z-index:2;pointer-events:none;mix-blend-mode:screen}
+/* the rail: acrylic keycaps */
+.tab{border-radius:10px;background:rgba(21,18,42,.72)!important;box-shadow:inset 0 0 0 1.5px var(--edge),0 4px 0 rgba(0,0,0,.35)!important;color:#F2EFFF}
+html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
+.tab[aria-pressed="true"]{background:var(--sun)!important;color:#15122A!important;box-shadow:inset 0 0 0 1.5px var(--sun),0 2px 0 rgba(0,0,0,.35)!important}
+/* the WISH MAKER: its letters as keys; each line its sign; the send as a key */
+.wish-form{border-radius:14px;background:linear-gradient(160deg,rgba(255,126,176,.12),rgba(107,79,192,.08));box-shadow:inset 0 0 0 1px var(--edge)}
+.wf-keys{display:flex;gap:6px;margin-bottom:4px}
+.wk{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;font:400 26px/1 "VT323",ui-monospace,monospace;color:#15122A;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.wk-w{background:#7FD1C2}.wk-i{background:#FFD23F}.wk-s{background:#FF7EB0}.wk-h{background:#FF8A1F}
+.wf-l{grid-template-columns:34px 1fr;align-items:center;gap:8px}
+.wf-i{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:#15122A}
+.wl-w .wf-i{background:#7FD1C2}.wl-i .wf-i{background:#FFD23F}.wl-s .wf-i{background:#FF7EB0}.wl-h .wf-i{background:#FF8A1F}.wf-l.by .wf-i{background:var(--acryl);color:var(--navy);box-shadow:inset 0 0 0 1px var(--edge)}
+.wf-i .i{width:18px;height:18px}
+.wish-form select,.wf-l input{border-radius:8px;background:var(--lcd);color:var(--lcd-ink);border:0;box-shadow:inset 0 2px 5px rgba(44,51,36,.3)}
+.wf-l input::placeholder{color:rgba(44,51,36,.55)}
+.send-b{position:relative;height:46px;border-radius:12px;background:var(--magenta);color:#fff;box-shadow:0 4px 0 #15122A;overflow:hidden}
+.send-b .i{width:22px;height:22px}
+.send-b:active{transform:translateY(3px);box-shadow:0 1px 0 #15122A}
+.sb-arrow{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent) -100% 0/40% 100% no-repeat;animation:sweepbtn 2.4s ease-in-out infinite}
+@keyframes sweepbtn{to{background-position:200% 0}}
+.bk-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:var(--navy);box-shadow:inset 0 0 0 1px var(--edge)}
+.bgroup{border-radius:12px;border:1px solid var(--edge);background:var(--acryl)}
+.bgroup.on{border-color:var(--sun);box-shadow:0 0 0 1px var(--sun)}
+.as-b{border-radius:10px;background:var(--acryl);border-color:var(--edge)}
+/* the PRINT SHOP: a printer with its light, an LCD queue, chunky keys for the paper, its reading and its outs */
+.ps-h{display:flex;align-items:center;justify-content:flex-start;min-height:74px}
+.ps-printer{position:relative;display:grid;place-items:center;width:64px;height:64px;border-radius:14px;background:var(--acryl);box-shadow:inset 0 0 0 1px var(--edge)}
+.ps-printer img{width:46px;height:46px}
+.ps-led{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:#5A2A20}
+.ps-printer.on .ps-led{background:#7CFF6B;box-shadow:0 0 8px #7CFF6B}
+.lcd{position:relative;margin:0 var(--gut) 14px;padding:10px 12px;border-radius:12px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),inset 0 3px 8px rgba(44,51,36,.25)}
+.lcd .lcd-ic{display:inline-flex;align-items:center;gap:6px}
+.lcd .lcd-ic .i{width:20px;height:20px}
+.lcd .lcd-ic b{font:400 22px/1 "VT323",ui-monospace,monospace}
+.lcd .slips-l li{border-top:1px dotted rgba(44,51,36,.4)}
+.lcd .slip-row{color:var(--lcd-ink);grid-template-columns:auto 1fr auto}
+.lcd .slip-row.on{background:rgba(44,51,36,.12)}
+.lcd .slip-row .nm{font:400 17px/1 "VT323",ui-monospace,monospace}
+.st-dot{width:8px;height:8px;border-radius:50%;background:rgba(44,51,36,.25)}
+.st-dot.w{background:var(--tang)}.st-dot.q{background:#2E9E4F;animation:arcblink 1s steps(2,end) infinite}
+.seg.keys{gap:6px}
+.key{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:4px;height:42px;border-radius:10px;border:2px solid var(--edge);background:var(--acryl);color:var(--navy);box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.key .i{width:18px;height:18px}
+.key b{font:400 17px/1 "VT323",ui-monospace,monospace}
+.key[aria-pressed="true"]{background:var(--sun);border-color:var(--sun);color:#15122A}
+.key:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.seg.outs .key{background:rgba(255,126,176,.14)}
+.seg.outs .key[data-pout="send"]{background:var(--magenta);border-color:var(--magenta);color:#fff}
+.stickers{grid-template-columns:repeat(6,1fr)}
+.stk.add{display:grid;place-items:center;aspect-ratio:1;border:2px dashed var(--edge);border-radius:10px;color:var(--navy);cursor:pointer}
+.stk.add .i{width:20px;height:20px}
+.pc-b{border-radius:10px;border-color:var(--edge)}
+.swatches{display:flex;gap:3px;margin-left:8px;align-items:center}
+.sw{width:22px;height:22px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.35);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.sw.on{border-color:#fff;transform:scale(1.15)}
+.sw.pick{position:relative;overflow:hidden;background:conic-gradient(#FF7EB0,#FFD23F,#7FD1C2,#8FD3FF,#6B4FC0,#FF7EB0)}
+.sw.pick input{position:absolute;inset:-6px;opacity:0;cursor:pointer}
+#zine-words{border-radius:8px;background:var(--lcd);color:var(--lcd-ink);border:0;box-shadow:inset 0 2px 5px rgba(44,51,36,.3)}
+#zine:not([data-fmt="zine"]) .desk{place-items:start center}
+#zine .desk .canvas-container{border-radius:2px}
+#zine:not([data-fmt="zine"]) .desk .canvas-container{box-shadow:0 18px 40px rgba(0,0,0,.55)}
+#zine .desk .canvas-container{display:block!important}
+.roll{display:none!important}
+/* the surfaces: violet ink, a dotted grid as in the old manuals; the keys of the tools as acrylic */
+#board,#zine,.cover{background:#15122A radial-gradient(rgba(191,234,226,.16) 1px,transparent 1.3px) 0 0/18px 18px!important}
+#board .tools,#zine .tools{background:linear-gradient(180deg,rgba(255,126,176,.16),rgba(107,79,192,.10))!important;border-bottom:2px dotted rgba(191,234,226,.35)!important}
+.tools .bt{border-radius:9px;background:rgba(255,255,255,.08);border:2px solid var(--edge);box-shadow:0 3px 0 rgba(0,0,0,.35);min-width:40px;height:38px}
+.tools .bt small{display:none}
+.tools .bt.on{background:var(--sun)!important;border-color:var(--sun)!important;color:#15122A}
+/* the hardware's labels: there for whoever lingers */
+.hw-label{opacity:0;transition:opacity .4s}
+.hw-label:hover{opacity:.75;transition-delay:1s}
+@media (prefers-reduced-motion:reduce){.clue.now .clue-b,.clue-map,.sb-arrow{animation:none}}

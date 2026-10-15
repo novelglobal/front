@@ -32,7 +32,7 @@ const saveSoon = debounce(() => saveBoard(false), 400);
 const TOOLS = [['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['save', 'check', 'SAVE']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
-  t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}">${icon(ic)}<small>${w}</small></button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
+  t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
   $('#board-label').textContent = 'WISH MAKER · MODEL DA-03 · IN: SIGNALS, CELLS, CONSTELLATIONS · OUT: STORIES TO PRINT · LINK JOINS, A CLICK ON A STRING LETS IT GO · CONTAINS LIVE DATA';
 }
 /* the board shows over the ground while SIGNALS is open */
@@ -153,13 +153,15 @@ $('#board').addEventListener('click', e => { const b = e.target.closest('[data-b
 
 /* ───────── the W.I.S.H.: the master form. Four lines written for a signal, sent on as a story waiting to print ───────── */
 const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by: '' });
+/* each line's sign: what we know (looked for), it would be great (the sun), so let's create (made anew), here is how (by hand) */
+const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
   const ms = MIXES; const sel = ms.some(m => m.id === WDRAFT.mix) ? WDRAFT.mix : (ms[0] || {}).id || '';
-  return `<form class="wish-form" id="wish-form" autocomplete="off"><b class="b-head wf-t">W.I.S.H.</b>`
+  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span>`
     + (ms.length ? `<select id="wf-mix" aria-label="The signal it answers">${ms.map(m => `<option value="${esc(m.id)}"${m.id === sel ? ' selected' : ''}>${esc(m.where.place)} · ${fmtStamp(m.at)}</option>`).join('')}</select>` : '')
-    + WKEYS.map(k => `<label class="wf-l"><span class="mono">${esc(WISH[k][0].toUpperCase())}</span><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][1])}" spellcheck="true"></label>`).join('')
-    + `<label class="wf-l by"><span class="mono">BY</span><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="name"></label>`
-    + `<button type="submit" class="send-b">${icon('share', 'sm')}<span>SEND THE SIGNAL</span></button></form>`;
+    + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][0])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][1])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
+    + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
+    + `<button type="submit" class="send-b" aria-label="Send the signal" data-tip="Send the signal">${icon('share')}<i class="sb-arrow" aria-hidden="true"></i></button></form>`;
 }
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const mx = $('#wf-mix'); if (mx) WDRAFT.mix = mx.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-mix') { WDRAFT.mix = e.target.value; store.set('da.wish.v1', WDRAFT); } });
@@ -205,7 +207,7 @@ function viewSignals() {
     return `<li class="bgroup${on ? ' on' : ''}">${on ? `<div class="bg-h"><input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name"><small class="mono">${ms.length} · ${figs.length}</small></div>` : `<button type="button" class="bg-h" data-board="${esc(b.id)}" aria-pressed="false"><b class="mono">${esc(b.n)}</b><small class="mono">${ms.length} · ${figs.length}</small></button>`}`
       + (ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : '') + (figs.length ? `<ol class="g-figs">${figs.map(g => `<li class="mono">${icon('string', 'sm')}${esc(g.name)}</li>`).join('')}</ol>` : '') + (on ? consSection() : '') + `</li>`; }).join('');
   return `<section class="sec" id="sec-wish">${wishForm()}</section>` + assetsHTML()
-    + `<section class="sec book" id="sec-book"><div class="bk-h"><b class="b-head bk-t">BOARDS</b><span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes">${icon('download')}</button><label class="ib" aria-label="Bring field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
+    + `<section class="sec book" id="sec-book"><div class="bk-h"><i class="bk-ic" data-tip="Boards">${icon('base')}</i><span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes">${icon('download')}</button><label class="ib" aria-label="Bring field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<ol class="bgroups">${groups}</ol></section>`;
 }
 $('#view').addEventListener('click', e => {

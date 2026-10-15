@@ -119,10 +119,10 @@ function startRadio(play = true, at) {
     S.started = true; const c = at || (prefs.placed ? null : S.mapReady ? map.getCenter() : null);
     if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, null, true); } else life.setScan(null, null, null, false);
   }
-  life.redraw(); life.moved(); if (play) setRadio(true); else if (S.open && S.view === 0 && !S.mode) refreshPanel();
+  life.redraw(); life.moved(); if (play) setRadio(true); if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
 /* a song made: a layer changed, a mood, a volume, a string tied. Only then can a signal start */
-function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
+function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
   S.radio = on;
@@ -146,8 +146,8 @@ const VOLS = [0.35, 0.7, 1];
 const volStep = k => VOLS.reduce((best, v, i) => (Math.abs(v - layerLvl(k)) < Math.abs(VOLS[best] - layerLvl(k)) ? i : best), 0);
 function layersHTML() {
   return `<ol class="lyrs" role="group" aria-label="Layers">${LAYERS.map((L, i) => { const on = trackOn(L.k); const m = MOODS[moodOfLayer(L.k)]; const v = volStep(L.k);
-    return `<li class="lyr${on ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="lyr-k" data-t4="${L.k}" aria-pressed="${on}" aria-keyshortcuts="${i + 1}" aria-label="${L.w}">${icon(L.ic, 'sm')}<span>${L.w}</span></button>`
-      + `<button type="button" class="lyr-m" data-lmood="${L.k}" aria-label="${L.w} mood: ${m.w}">${icon(m.ic, 'sm')}</button>`
+    return `<li class="lyr${on ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="lyr-k" data-t4="${L.k}" aria-pressed="${on}" aria-keyshortcuts="${i + 1}" aria-label="${L.w}" data-tip="${L.w}">${icon(L.ic)}</button>`
+      + `<button type="button" class="lyr-m" data-lmood="${L.k}" aria-label="${L.w} mood: ${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button>`
       + `<span class="lv" aria-hidden="true">${'<i></i>'.repeat(8)}</span>`
       + `<button type="button" class="lyr-v" data-vol="${L.k}" data-v="${v}" aria-label="${L.w} volume">${'<i></i>'.repeat(3)}</button></li>`; }).join('')}</ol>`;
 }
@@ -155,7 +155,7 @@ $('#view').addEventListener('input', e => {
   const f = e.target.closest('[data-lvl]'); if (!f) return; prefs.lvl = { ...(prefs.lvl || {}), [f.dataset.lvl]: +f.value / 100 }; f.style.setProperty('--v', `${f.value}%`); savePrefs();
 });
 $('#view').addEventListener('click', e => {
-  const r = e.target.closest('[data-radio]'); if (r) { setRadio(!S.radio); return; }
+  const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); markTweak(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
