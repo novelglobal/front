@@ -140,6 +140,12 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **novel.global's own printer** (`DA_MASTER`), first in the send list.
 - **Fixes:** a photograph's credit is readable at night; photographs reach the paper (through `/api/img`, which lets the page read iNaturalist's pixels to dither them); the torn cards stand out by day; headlines are never cut.
 
+## RADIO as the foundation
+
+*Built, on staging.* Every mark on the map; the radar only plays. Four steps as the only words: where are you (the radar stands where the first tap lands), turn on the radio (live data layers to mix, the constellations in the mix), El Niño (time held back for now), share the mix (to SIGNALS, versioned). Labels, chips and tags removed from RADIO.
+
+**Next for the mix:** a board where mixes are pulled in and joined, Miro-like. The candidate is Drawflow (github.com/jerosoler/Drawflow): MIT, plain JavaScript with no framework, exports and imports JSON, so a mix can be a node carrying its data and sound design. Rete.js (MIT, active) is the larger alternative. React Flow and Excalidraw need React; tldraw's licence is not open. Or a mix plays for everyone within the radius of a printer.
+
 ## Stage 4 — live data through Cloudflare
 
 Every visitor shares one copy of the data, instead of each browser asking iNaturalist and OpenStreetMap.

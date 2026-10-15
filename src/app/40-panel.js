@@ -99,6 +99,8 @@ viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
   if (e.target.closest('[data-time]')) { setTime(!timeOn()); return; }
+  if (e.target.closest('[data-share-mix]')) { shareMix(); return; }
+  const pm = e.target.closest('[data-mix]'); if (pm) { playMix(pm.dataset.mix); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
   const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
@@ -116,7 +118,8 @@ function flags() { const f = $$('#rail .flag'); if (f[0]) f[0].hidden = !alarmsN
 const HORIZON = { f: 'OUTLOOK', m: 'SCENARIO', p: 'NO OUTLOOK YET' };
 /* the radar is time: each turn of the hand moves the outlook a month on, and back to now after the last. A month pressed, or a
    life looked at, holds it there. The months are the outlook's own; nothing is added past them */
-const timeOn = () => prefs.time !== false;
+/* time on the radar is held back until it is developed: CONFIG.FEATURES.time turns it on */
+const timeOn = () => !!(CONFIG.FEATURES || {}).time && prefs.time !== false;
 function stepMonth(k) {
   S.mo = k; life.data();
   $$('#sec-heat .mo').forEach(b => { const i = +b.dataset.mo; b.classList.toggle('on', i >= k && i < k + 3); });
@@ -158,16 +161,16 @@ function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
   const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
     return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s">${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
-  return `<div class="mstrip eq" style="--n:${OUT_N}"><button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time" data-tip="${timeOn() ? 'Hold' : 'Play'}">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button><div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
+  return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
 /* a month's readout: as a stereo's display would show it */
 function readout(k, top) {
   const Mo = outMonth(k); const m = Mo.m; const ws = OUT.windows.filter(w => inWin(w, m));
   const gs = [top, ...ws.flatMap(w => w.g)].filter((g, i, a) => g && a.indexOf(g) === i).slice(0, 7);
-  return `<div class="eq-read" role="status"><p class="mono"><b>${MON[m]} ${Mo.y}</b><span class="dg d${Mo.lv}">${DEG[Mo.lv]}</span>${ws.map(w => `<span>${esc(w.w)}</span>`).join('')}<span class="hz">${HORIZON[Mo.h]}</span></p>`
+  return `<div class="eq-read" role="status"><p class="mono"><b>${MON[m]} ${Mo.y}</b><span>${DEG[Mo.lv]}</span>${ws.map(w => `<span>${esc(w.w)}</span>`).join('')}<span class="hz">${HORIZON[Mo.h]}</span></p>`
     /* a window's reason is a relationship to look into, and says so; the outlook's own words are its summary */
-    + (ws.length ? `<p class="why"><i class="hy mono">HYPOTHESIS</i>${esc(ws[0].why)}</p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
+    + (ws.length ? `<p class="why">${esc(ws[0].why)} <span class="hz mono">HYPOTHESIS</span></p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
     + `<p class="eq-k">${gs.map(g => `<i class="${g === 'human' ? 'us' : ''}" data-tip="${esc(M.KINDS[g] || '')}">${glyphSVG(g)}</i>`).join('')}</p></div>`;
 }
 function bindOutlook() {
@@ -224,23 +227,22 @@ const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
 function viewRadio() {
-  const alarms = alarmsNow();
-  const events = [...S.community, ...S.user].filter(o => o.isEvent && liveEvent(o)).sort((a, b) => (isGig(b) - isGig(a)) || (a.start || 0) - (b.start || 0));
-  const ex = extremeAhead();
-  /* the headline is the act; under it, the time left to act before extreme heat, ticking; the months as time; the tracks.
-     Until something is noticed today, the one question */
+  const alarms = alarmsNow(); const ex = extremeAhead(); const m = MOODS[moodOf()];
+  /* the radio is its instructions: where are you; turn it on, and mix its live layers; El Niño, kept for later; share the
+     mix. No labels, no tags: the steps are the only words */
+  const step = (n, done, body) => `<li class="st${done ? ' done' : ''}" data-step="${n}"><b class="sn mono">${n}</b><div class="sb">${body}</div></li>`;
   return `<section class="band" id="sec-heat">
       <h2 class="b-head">DIRECT ACTION RADIO</h2>
-      ${DAY[0] ? '' : '<p class="b-ask">what do you notice today? what feels important? select something.</p>'}
       ${ex ? `<div class="b-count${ex.now ? ' now' : ''}" data-tip="${esc(ex.tip)}"><i class="sun d4">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</div>` : ''}
-      ${monthStrip()}
-      <p class="b-span mono">${spanText(S.mo)}</p>
-      ${tracksKeys()}
-      <a class="b-off mono" href="https://emergency.vic.gov.au" target="_blank" rel="noopener">VICEMERGENCY ${icon('out', 'sm')}</a>
+      <ol class="steps">
+        ${step(1, placed(), `<p class="sw">Where are you?</p>`)}
+        ${step(2, S.radio, `<p class="sw">Turn on the radio</p><div class="radio-row"><button type="button" class="radio-b${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio"${placed() ? '' : ' disabled'}>${icon(S.radio ? 'pause' : 'play')}</button><button type="button" class="mood-b" data-mood-next aria-label="Mood: ${m.w}">${icon(m.ic, 'sm')}<span>${m.w}</span></button></div>${layersHTML()}`)}
+        ${step(3, false, `<p class="sw">El Niño</p>${monthStrip()}`)}
+        ${step(4, false, `<p class="sw">Share the mix</p><button type="button" class="share-b" data-share-mix${placed() ? '' : ' disabled'}>${icon('share', 'sm')}<span>SIGNALS</span></button>`)}
+      </ol>
     </section>`
-    + (S.heroes.length ? `<section class="sec five" id="sec-five"><h3 class="lab" data-tip="${esc(FIVE_WHY)}">Five in greatest need</h3><ol class="hero-list">${fiveHere().map(({ o, deg, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b><span class="chips">${degChip(deg)}${w ? `<i class="wn${w.now ? ' now' : ''}">${w.now ? 'NOW' : `${daysTo(w.start)} D`}</i>` : ''}</span></span></button></li>`).join('')}</ol></section>` : '')
-    + (alarms.length ? `<section class="sec alarms" id="sec-alarms">${lab('Now', 'red')}<ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '')
-    + `<section class="sec" id="sec-gigs">${lab('Gigs')}${events.length ? `<ol class="rows">${events.map(eventRow).join('')}</ol>` : ''}<p class="gigs mono">${Object.values(GIGS).map(g => `<a href="${esc(g.url)}" target="_blank" rel="noopener" data-tip="${esc(g.n)}">${icon('hug', 'sm')}<span>${esc(g.w)}</span>${icon('out', 'sm')}</a>`).join('')}</p></section>`;
+    + (S.heroes.length ? `<section class="sec five" id="sec-five" data-tip="${esc(FIVE_WHY)}"><ol class="hero-list">${fiveHere().map(({ o, w }) => `<li><button type="button" class="hero-row" data-id="${esc(o.id)}" data-tip="${esc(whyOf(o, w))}">${heroPic(o)}<span class="nm"><b>${esc(nameOf(o))}</b></span></button></li>`).join('')}</ol></section>` : '')
+    + (alarms.length ? `<section class="sec alarms" id="sec-alarms"><ol class="rows">${alarms.map(alarmRow).join('')}</ol></section>` : '');
 }
 
 /* ───────── constellations: every string figure, newest first, as it forms; the knots it shares with others ───────── */
@@ -288,12 +290,14 @@ function boardOrder(sigs) {
 /* ───────── SIGNALS: the work of a response. The figures tied around a life, the W.I.S.H. issued from them, and the groups
    already caring for the ground. The writing itself happens on the life's card, beside the map it came from ───────── */
 const mineOf = () => S.signals.filter(s => !s.ex && !s.shared);
+/* a mix shared from the radio: where, its layers lit as they were, its constellations; pressed, it plays again */
+const mixRow = m => `<li><button type="button" class="mix-row" data-mix="${esc(m.id)}" aria-label="Play this mix">${icon('play', 'sm')}<span class="nm"><b>${esc(m.where.place || '')}</b><small class="mono">${metres(m.where.r)} · ${ago(m.at)}</small></span><span class="mx-l">${LAYERS.map(L => `<i class="${(m.layers[L.k] || {}).on ? 'on' : ''}">${icon(L.ic, 'sm')}</i>`).join('')}${m.figs.length ? `<i class="on">${icon('string', 'sm')}${m.figs.length}</i>` : ''}</span></button></li>`;
 const wishRow = s => { const p = s.pin || {}; const L = linesOf(s); const st = sentWord(s);
   return `<li><button type="button" class="wish-row" data-sig="${esc(s.key)}"><span class="w-chart">${(s.nodes || []).length > 1 ? chartSVG(s, 40) : glyphSVG(p.g || 'paw')}</span><span class="nm"><b>${esc(NAME_UP(s))}</b><small class="mono">${esc(s.code)} · ${L.length}/4${st ? ` · ${esc(st)}` : ''}</small></span></button></li>`; };
 function viewSignals() {
   const cs = strings.list(); const mine = mineOf();
-  const empty = !cs.length && !mine.length;
-  return (empty ? `<section class="sec quiet" id="sec-start"><button type="button" class="to-radar" data-to-radar aria-label="The radar">${icon('radar')}</button></section>` : '')
+  const empty = !cs.length && !mine.length && !MIXES.length;
+  return (MIXES.length ? `<section class="sec" id="sec-mixes"><ol class="mixes">${MIXES.slice(0, 20).map(mixRow).join('')}</ol></section>` : '') + (empty ? `<section class="sec quiet" id="sec-start"><button type="button" class="to-radar" data-to-radar aria-label="The radar">${icon('radar')}</button></section>` : '')
     + consSection()
     + (mine.length ? `<section class="sec" id="sec-wish">${lab(`W.I.S.H. · ${mine.length}`)}<ol class="wishes">${mine.slice(0, 40).map(wishRow).join('')}</ol></section>` : '')
     /* the groups already caring for ground here: small, each opens its patch and its site */

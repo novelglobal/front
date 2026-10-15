@@ -1009,3 +1009,44 @@ html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 
 .slip.conn>.sl-hero,.slip.conn>.sl-fig,.slip.conn>.sl-head,.slip.conn .sl-body>:not(.sl-conn):not(.sl-qr):not(.sl-foot){display:none}
 #press .sl-conn{font-size:7pt}
 a.sig-line{text-decoration:none;color:inherit}
+
+/* ───────── the radio as instructions: four steps; live layers to mix; the mix shared on ───────── */
+.steps{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:14px}
+.st{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start}
+.st .sn{display:grid;place-items:center;width:20px;height:20px;border:1px solid currentColor;border-radius:50%;font:400 14px/1 'VT323',ui-monospace,monospace;color:var(--ink);opacity:.75}
+.st.done .sn{background:var(--clay);border-color:var(--clay);color:#FCFBF7;opacity:1}
+.st .sw{margin:1px 0 8px;font:400 20px/1 'VT323',ui-monospace,monospace;letter-spacing:.02em;color:var(--ink)}
+.st.done[data-step="1"] .sw{opacity:.6}
+.radio-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.radio-b{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;border:1.5px solid var(--ink);color:var(--ink)}
+.radio-b .i{width:18px;height:18px}
+.radio-b.on{background:var(--clay);border-color:var(--clay);color:#FCFBF7;animation:onair 2.4s ease-in-out infinite}
+.radio-b:disabled{opacity:.3}
+@keyframes onair{50%{box-shadow:0 0 0 6px rgba(140,116,105,.18)}}
+.mood-b{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);color:var(--ink);font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em}
+.mood-b .i{width:13px;height:13px}
+.lyrs{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.lyr{display:grid;grid-template-columns:118px 1fr 30px 70px;gap:8px;align-items:center;opacity:.55;transition:opacity .2s}
+.lyr.on{opacity:1}
+.lyr-k{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);color:var(--ink);font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;text-align:left}
+.lyr-k .i{width:13px;height:13px;flex:none}
+.lyr.on .lyr-k{background:var(--ink);color:var(--slip);border-color:var(--ink)}
+.lyr .lv{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;height:12px}
+.lyr .lv i{background:color-mix(in srgb,var(--ink) 14%,transparent);transition:background .35s}
+.lyr .lv i.hit{background:var(--clay);transition:none}
+.lyr .n{font:400 15px/1 'VT323',ui-monospace,monospace;color:var(--ink);text-align:right}
+.lyr-lvl{width:100%;accent-color:var(--clay)}
+.share-b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--ink);color:var(--ink);font:400 16px/1 'VT323',ui-monospace,monospace;letter-spacing:.08em}
+.share-b:disabled{opacity:.3}
+.share-b .i{width:13px;height:13px}
+.st .mstrip{margin-top:2px}
+.mixes li{border-top:1px solid var(--paper)}
+.mixes li:first-child{border-top:0}
+.mix-row{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;width:100%;padding:9px 0;text-align:left}
+.mix-row .nm{display:flex;flex-direction:column;gap:2px}
+.mix-row small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+.mx-l{display:flex;gap:4px;color:var(--grey-text)}
+.mx-l i{display:inline-flex;align-items:center;gap:2px;opacity:.3;font:500 9px var(--mono)}
+.mx-l i.on{opacity:1;color:var(--navy)}
+.mx-l .i{width:13px;height:13px}
+#sec-five .hero-row .nm b{font-size:11px}
