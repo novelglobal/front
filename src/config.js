@@ -1,6 +1,6 @@
 /* Direct Action · settings */
 window.DA_CONFIG = {
-  NAME: 'DIRECT ACTION',
+  NAME: 'novel.global',
   BY: 'novel.global',
   BBOX: { s: -37.823, w: 144.925, n: -37.748, e: 145.000 },      // Brunswick to the city
   TERRAIN_EXAGGERATION: 3,

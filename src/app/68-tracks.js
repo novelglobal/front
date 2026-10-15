@@ -6,7 +6,9 @@
    places in their own small real sounds when their station is on; and under the trail, a drone that swells only over clusters
    of life. Nature is always seen (unless unlocked on the approval page) and on from the first touch, and can be muted.
    ════════════════════════════════════════════════════════════════════ */
-const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' } };
+/* the moods, turned round on each layer's key: the first three, then the muse, a buried voice, a haunted one, the swamp, bubbles,
+   and a tone blown out. Each sounds a cell its own way (snd.ping) and shades the drone */
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' } };
 const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
 const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
@@ -107,11 +109,8 @@ function setTrack4(k, on) {
   life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200); buzz(4);
 }
 /* the radio on: the sound woken inside the touch, and every layer that is on played by the sweep. Off: quiet, and still */
-/* the arcade's call over the ground: PRESS PLAY, START STORY. Big, blinking, no box; a touch anywhere answers it */
-let arcadeGo = null;
-function arcade(word, go) { const el = $('#arcade'); el.querySelector('.arc-t').textContent = word; el.hidden = false; arcadeGo = go; snd.tick(900); }
-function arcadeOff() { $('#arcade').hidden = true; arcadeGo = null; }
-$('#arcade').addEventListener('click', e => { const go = arcadeGo; arcadeOff(); buzz([6, 20, 6]); if (go) go(e); });
+/* the first clue over the ground, find yourself, until the radar is put down */
+function arcadeOff() { $('#arcade').hidden = true; }
 /* started: the radar stands where it was last, or where the touch was, or where the map is looking */
 function startRadio(play = true, at) {
   arcadeOff();
@@ -185,10 +184,10 @@ function mixNow() {
   return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), r: S.scan.r, place: suburbAt(S.scan.lat, S.scan.lng) },
     layers: Object.fromEntries(LAYERS.map(L => [L.k, { on: trackOn(L.k), lvl: +layerLvl(L.k).toFixed(2), mood: moodOfLayer(L.k), n: trackCount(L.k), cells: layerCells(L.k) }])), figs };
 }
-/* the mix shared: the radio stops, and the mix goes onto the board in SIGNALS, a page in the field book */
+/* the mix shared: it goes onto the board in the WISH MAKER, a page in the field book; the radio plays on */
 function shareMix() {
   if (!placed()) { toast('WHERE ARE YOU?'); return null; }
-  const m = mixNow(); MIXES.unshift(m); MIXES.splice(30); store.set('da.mixes.v1', MIXES); if (S.radio) setRadio(false); tie(1); snd.tick(2100); buzz([10, 40, 10]);
+  const m = mixNow(); MIXES.unshift(m); MIXES.splice(30); store.set('da.mixes.v1', MIXES); tie(1); snd.tick(2100); buzz([10, 40, 10]);
   setView(1); placeMix(m); return m;
 }
 /* a mix played again: the radar where it was, its layers, levels and mood, on air */

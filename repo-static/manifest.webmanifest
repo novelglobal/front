@@ -1,13 +1,13 @@
 {
-  "name": "Direct Action",
-  "short_name": "Direct Action",
-  "description": "Live sightings of the other species we live among, a heat forecast, and a four-line response that becomes a poster.",
+  "name": "novel.global",
+  "short_name": "novel.global",
+  "description": "Research and development for direct action. Listen to the lives around you, make a W.I.S.H., print it.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#8C7469",
-  "theme_color": "#1B2726",
+  "background_color": "#06090B",
+  "theme_color": "#06090B",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },

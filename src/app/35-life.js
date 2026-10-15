@@ -404,14 +404,17 @@ const life = (() => {
   }
   /* the posters made here, small and pinned up, where their stories are */
   const PIM = new Map();
+  /* each poster as a card from an old handheld's tarot: four tones, a pixel frame, its number at the head. A touch turns it over */
   function posters(ctx) {
+    for (const p of POSTERS2) p._hit = null;
     if (!POSTERS2.length || S.mode === 'place') return;
     POSTERS2.slice(0, 12).forEach((p, i) => {
-      let im = PIM.get(p.id); if (!im) { im = new Image(); im.onload = () => { fxDirty = true; }; im.src = p.img; PIM.set(p.id, im); }
-      if (!im.complete || !im.naturalWidth) return; const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) return;
-      const w = 30, h = Math.min(64, w * im.naturalHeight / im.naturalWidth);
-      ctx.save(); ctx.translate(q.x + 20, q.y - 26); ctx.rotate(((i % 3) - 1) * 0.12); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 6; ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6); ctx.shadowBlur = 0; ctx.drawImage(im, -w / 2, -h / 2, w, h);
-      ctx.fillStyle = 'rgba(255,210,63,.85)'; ctx.fillRect(-7, -h / 2 - 7, 14, 6); ctx.restore();
+      let card = PIM.get(p.id); if (!card) { card = { c: null }; PIM.set(p.id, card); tarotOf(p, POSTERS2.length - 1 - POSTERS2.indexOf(p), 3).then(c => { card.c = c; fxDirty = true; }).catch(() => {}); }
+      if (!card.c) return; const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) return;
+      const w = 40, h = 66, cx = q.x + 26 + (i % 3) * 6, cy = q.y - 40 - (i % 2) * 6, rot = ((i % 3) - 1) * 0.1;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4; ctx.imageSmoothingEnabled = false; ctx.drawImage(card.c, -w / 2, -h / 2, w, h); ctx.restore();
+      ctx.save(); ctx.strokeStyle = 'rgba(228,242,234,.5)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(cx - 8, cy + h / 2 - 4); ctx.stroke(); ctx.restore();
+      p._hit = { x: cx, y: cy, w: w + 6, h: h + 6 };
     });
   }
   function places(ctx) {
@@ -560,6 +563,7 @@ const life = (() => {
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
     if (S.mode === 'ping') { const n = strings.hit(x, y, slack); if (n) return n; }
     for (const s of sigs) if (Math.hypot(s.x - x, s.y - y) < 14) return { kind: 'signal', lat: s.lat, lng: s.lng, d: 0 };
+    if (S.mode !== 'ping' && S.mode !== 'place') for (const p of POSTERS2) if (p._hit && Math.abs(p._hit.x - x) < p._hit.w / 2 && Math.abs(p._hit.y - y) < p._hit.h / 2) return { kind: 'poster', id: p.id, d: 0 };
     if (seeTrack('places') && S.mode !== 'ping') placesL.forEach((p, i) => { if (p._x != null) consider(Math.hypot(p._x - x, p._y - y) - 5, { kind: 'place', id: i }); });
     const pd = printerSize() / 2 + 4; for (const p of PARTNERS) if (p.printer && p._x != null && Math.abs(p._x - x) < pd && y - p._y < pd && p._y - y < pd + 6) return { kind: 'partner', id: p.id, d: 0 };
     for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }

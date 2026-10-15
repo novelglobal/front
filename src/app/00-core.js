@@ -13,7 +13,7 @@ const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector(
 /* four destinations. The first three are one journey, tied along a thread: notice on the radio, respond in signals, act in
    signs. The portfolio stands apart. Behind the scenes: make it right, make it work, make it beautiful */
 const VIEWS = [
-  { k: 'radio', icon: 'now', label: 'Direct Action Radio', w: 'RADIO', was: 'now' },
+  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', was: 'now' },
   { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER' },
   { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP' },
   { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', was: 'stories' },
@@ -101,8 +101,9 @@ const prefs = Object.assign({ sound: true, motion: true, areas: false, printers:
 const savePrefs = () => store.set('da.prefs', prefs);
 /* the radar stands only once the radio is started, each visit: PRESS PLAY, or a tap on the map. Where it stood is kept */
 const placed = () => !!S.started;
-/* the tracks on the map besides the lives: off until a key lights them */
-const T4 = Object.assign({ water: false, pollution: false, community: false }, prefs.t4 || {});
+/* the tracks on the map besides the lives: every one on, until a key turns it off (a visit before this kept them off: on again once) */
+if (prefs.t4v !== 2) { prefs.t4 = { water: true, pollution: true, community: true }; prefs.mute = false; prefs.t4v = 2; savePrefs(); }
+const T4 = Object.assign({ water: true, pollution: true, community: true }, prefs.t4 || {});
 /* the day's thread: noticed, responded, acted. It starts again each day */
 const DAY = (() => { const t = store.get('da.day.v1', {}); const d = new Date(); const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; return t.d === today ? t : { d: today }; })();
 /* night is the default, until turned off in Settings. The page darkens and the ground dims; a slip stays paper */
@@ -127,7 +128,7 @@ const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: redu
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
 const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   function ready() {
     if (!prefs.sound || !active()) return null;
@@ -141,6 +142,8 @@ const snd = (() => {
         wet.connect(d1); wet.connect(d2); d1.connect(lp); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(bus);
         /* and a long, dark hall behind it: every sound that goes into the room also drifts into it */
         hall = ctx.createConvolver(); hall.buffer = hallBuffer(3.8); const hg = ctx.createGain(); hg.gain.value = 0.6; wet.connect(hall); hall.connect(hg); hg.connect(bus);
+        /* the Moog ladder (ladder.js), once it has loaded; a plain low-pass until then */
+        try { if (ctx.audioWorklet) ctx.audioWorklet.addModule('ladder.js').then(() => { hasLadder = true; }).catch(() => {}); } catch (e) { /* a plain low-pass */ }
       }
       if (ctx.state === 'suspended') ctx.resume();
       return ctx;
@@ -261,13 +264,68 @@ const snd = (() => {
     for (const m of danger ? [1, 1.06] : [1]) { const o = osc('sine', f * 2 * m, t, t + 1.3); o.frequency.exponentialRampToValueAtTime(f / 2 * m, t + 0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 900 : 380; const e = ctx.createGain(); o.connect(lp); lp.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.4), t + 0.012); e.gain.exponentialRampToValueAtTime(0.0001, t + 1.2); out(e, pan, 1.7); }
     burst(t, 0.2, 'lowpass', 260, 1, v * 0.9, pan, 1.3);
   }
+  /* ───────── the ladder: a Moog filter, its cutoff and resonance as params (a biquad stands in until it has loaded) ───────── */
+  function ladder(cut, res = 0.3, drive = 1) {
+    if (hasLadder) { try { const n = new AudioWorkletNode(ctx, 'ladder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] }); const c = n.parameters.get('cutoff'), r = n.parameters.get('resonance'), d = n.parameters.get('drive'); c.value = cut; r.value = res; d.value = drive; return { node: n, cut: c, res: r, drive: d }; } catch (e) { /* the biquad */ } }
+    const b = ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = cut; b.Q.value = 0.7 + res * 14; return { node: b, cut: b.frequency, res: b.Q, drive: null };
+  }
+  let blowCurve = null;
+  const blower = () => { if (!blowCurve) { blowCurve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; blowCurve[i] = Math.tanh(x * 9) * 0.9 + Math.sin(x * 23) * 0.06; } } const w = ctx.createWaveShaper(); w.curve = blowCurve; w.oversample = '2x'; return w; };
+  /* dust on a record: sparse clicks, high and dry */
+  function crackle(t, dur, v, pan) {
+    const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded('dust' + dur);
+    for (let i = 0; i < n; i++) if (r() < 0.0016) { const a = (r() * 2 - 1); for (let k = 0; k < 6 && i + k < n; k++) d[i + k] = a * Math.pow(0.5, k); }
+    const s0 = ctx.createBufferSource(); s0.buffer = b; const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400; const g = ctx.createGain(); g.gain.value = v;
+    s0.connect(hp); hp.connect(g); out(g, pan, 0.3); s0.start(t);
+  }
+  /* JELLY: a glass bell that opens and closes as a bell does in the water, slow, into the hall */
+  function jellyV(f, t, v, pan, bright) {
+    const L = 2.8; const e = ctx.createGain();
+    for (const [m, g] of [[1, 1], [2.003, 0.35], [3.01, 0.12]]) { const o = osc('sine', f * m * wob(), t, t + L); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
+    const lf = ladder(f * 0.9, 0.55, 1.2); e.connect(lf.node); lf.cut.setValueAtTime(f * 0.9, t); lf.cut.exponentialRampToValueAtTime(f * (bright ? 7 : 5), t + 0.55); lf.cut.exponentialRampToValueAtTime(f * 1.1, t + L);
+    const a = ctx.createGain(); lf.node.connect(a); env(a, t, 0.4, v * 2.2, 0.3, L - 0.8); out(a, pan, 2.8);
+  }
+  /* BURIAL: dust, a voice cut into two syllables a fourth apart and pitched down, and a sub that swells under them */
+  function burialV(f, t, v, pan, bright, danger, vi) {
+    crackle(t, 0.9, v * 0.9, -pan);
+    const chop = (ff, tt, L, vv, k) => { const o = osc('sawtooth', ff, tt, tt + L + 0.05); o.frequency.exponentialRampToValueAtTime(ff * (danger ? 0.8 : 0.94), tt + L); const [f1, f2] = VOW[k % VOW.length]; const e = ctx.createGain();
+      for (const [fq, g] of [[f1 * 0.8, 1], [f2 * 0.8, 0.4]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = 6; const gg = ctx.createGain(); gg.gain.value = g; o.connect(bp); bp.connect(gg); gg.connect(e); }
+      const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, tt); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, vv), tt + 0.012); a.gain.setValueAtTime(vv, tt + L * 0.7); a.gain.exponentialRampToValueAtTime(0.0001, tt + L); out(a, pan, 2.2); };
+    chop(f * 0.5, t, 0.17, v * 2.4, vi || 0); chop(f * 0.375, t + 0.24, 0.26, v * 1.8, (vi || 0) + 1);
+    const sb = osc('sine', f / 4, t, t + 1.6); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.5, v * 2, 0.2, 0.9); out(sg, 0, 0.4);
+  }
+  /* HAUNT: a wavering electric voice that rises into its note, doubled a hair apart, and stops as if cut from tape */
+  function hauntV(f, t, v, pan) {
+    const L = 0.95; const lf = ladder(f * 3, 0.35, 1); const a = ctx.createGain();
+    for (const dt of [-7, 7]) { const o = osc('triangle', semi(f, -1), t, t + L + 0.1); o.frequency.exponentialRampToValueAtTime(f, t + 0.28); o.detune.value = dt; vib(o, t, t + L, 5.4, f * 0.012, 0.2); o.connect(lf.node); }
+    lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.2), t + L); a.gain.linearRampToValueAtTime(0.0001, t + L + 0.05); out(a, pan, 2.4);
+  }
+  /* VOODOO: a low string through a ladder that squelches shut, the swamp under it */
+  function voodooV(f, t, v, pan, bright, danger) {
+    const o = osc('sawtooth', f / 2, t, t + 0.7); const lf = ladder(f * 8, danger ? 1.02 : 0.9, 1.6); o.connect(lf.node);
+    lf.cut.setValueAtTime(f * (bright ? 12 : 8), t); lf.cut.exponentialRampToValueAtTime(f * 0.7, t + 0.36);
+    const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.6), t + 0.006); a.gain.exponentialRampToValueAtTime(0.0001, t + 0.62); out(a, pan, 1.5);
+  }
+  /* CHEEKY: three bubbles rising, each a small sine that swoops up, left and right */
+  function cheekV(f, t, v, pan) {
+    for (let i = 0; i < 3; i++) { const tt = t + i * 0.075; const o = osc('sine', f * (1.6 + i * 0.3), tt, tt + 0.09); o.frequency.exponentialRampToValueAtTime(f * (2.6 + i * 0.5), tt + 0.06); const e = ctx.createGain(); o.connect(e);
+      e.gain.setValueAtTime(0.0001, tt); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 1.3), tt + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.08); out(e, clamp(pan + (i % 2 ? 0.4 : -0.4), -1, 1), 0.7); }
+  }
+  /* BLOWN: a deep tone driven through the ladder until it breaks up, then clipped again; low and ugly on purpose */
+  function blownV(f, t, v, pan, bright, danger) {
+    const L = 1.3; const e = ctx.createGain(); for (const [ty, m] of [['sine', 0.25], ['sawtooth', 0.5]]) { const o = osc(ty, f * m, t, t + L); o.frequency.exponentialRampToValueAtTime(f * m * (danger ? 0.86 : 0.97), t + L); o.connect(e); }
+    const lf = ladder(f * 1.4, 0.62, 6); e.connect(lf.node); const w = blower(); lf.node.connect(w); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 1800 : 900; w.connect(lp);
+    const a = ctx.createGain(); lp.connect(a); env(a, t, 0.03, v * 1.6, 0.4, L - 0.5); out(a, pan, 1.2);
+  }
   /* the drone: only where the trail crosses life, and only while nature is on. Three layers the mood sets: low reeds closed in a
      filter, a hiss like rain far off, a sub. Over empty ground, nothing */
   let dr = null;
   function droneOn() {
-    if (dr) return; dr = { m: ctx.createGain(), lp: ctx.createBiquadFilter(), hiss: ctx.createGain(), sub: ctx.createGain() }; dr.m.gain.value = 0;
-    dr.lp.type = 'lowpass'; dr.lp.frequency.value = 260; dr.lp.Q.value = 3;
+    if (dr) return; dr = { m: ctx.createGain(), lp: null, hiss: ctx.createGain(), sub: ctx.createGain() }; dr.m.gain.value = 0;
+    const lad = ladder(260, 0.45, 1.4); dr.lad = lad; dr.lp = lad.node;
     for (const [f, ty, g] of [[55, 'sawtooth', 0.35], [82.5, 'sawtooth', 0.22]]) { const o = ctx.createOscillator(); o.type = ty; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 12; const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(dr.lp); o.start(); }
+    /* a slow breath on the cutoff, about one every nine seconds */
+    const br = ctx.createOscillator(); br.frequency.value = 0.11; const bg = ctx.createGain(); bg.gain.value = 70; br.connect(bg); bg.connect(lad.cut); br.start();
     const so = ctx.createOscillator(); so.frequency.value = 27.5; so.connect(dr.sub); dr.sub.gain.value = 0.4; so.start(); dr.sub.connect(dr.m);
     const nb = ctx.createBufferSource(); nb.buffer = noise(2); nb.loop = true; const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.7; nb.connect(bp); bp.connect(dr.hiss); dr.hiss.gain.value = 0.05; nb.start(); dr.hiss.connect(dr.m);
     dr.lp.connect(dr.m); out(dr.m, 0, 1.4);
@@ -312,14 +370,16 @@ const snd = (() => {
     ping(spec, f, opt = {}) {
       if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
       const t = ctx.currentTime + 0.01; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
-      if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'rain') glitch(f, t, v, pan, opt.bright, opt.danger); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
+      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, blown: blownV }[md];
+      if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
       return true;
     },
     /* the drone: 0 to 1, how much life the trail is crossing now; and the mood it is in */
     drone(level, md = 'fog') {
       if (!ready()) return; droneOn(); const now = ctx.currentTime; const L = clamp(level, 0, 1);
-      dr.m.gain.setTargetAtTime(L * 0.045, now, L ? 0.7 : 0.4); dr.lp.frequency.setTargetAtTime(md === 'weight' ? 120 : md === 'rain' ? 520 : 280, now, 1.2);
-      dr.hiss.gain.setTargetAtTime(md === 'rain' ? 0.55 : 0.04, now, 1.2); dr.sub.gain.setTargetAtTime(md === 'weight' ? 0.9 : 0.25, now, 1.2);
+      const DR = { weight: [120, 0.3], rain: [520, 0.3], jelly: [340, 0.7], burial: [200, 0.4], haunt: [620, 0.5], voodoo: [180, 0.95], cheek: [420, 0.3], blown: [150, 0.8] }; const [cut, res] = DR[md] || [280, 0.45];
+      dr.m.gain.setTargetAtTime(L * 0.045, now, L ? 0.7 : 0.4); dr.lad.cut.setTargetAtTime(cut, now, 1.2); if (dr.lad.drive) { dr.lad.res.setTargetAtTime(res, now, 1.2); dr.lad.drive.setTargetAtTime(md === 'blown' ? 5 : 1.4, now, 1.2); }
+      dr.hiss.gain.setTargetAtTime(md === 'rain' ? 0.55 : md === 'burial' ? 0.22 : 0.04, now, 1.2); dr.sub.gain.setTargetAtTime(md === 'weight' || md === 'blown' ? 0.9 : 0.25, now, 1.2);
     },
     droneOff() { if (dr && ctx) dr.m.gain.setTargetAtTime(0, ctx.currentTime, 0.3); },
     /* a thermal head stepping: filtered noise in short strokes */
@@ -330,6 +390,17 @@ const snd = (() => {
       const g = ctx.createGain(); g.gain.value = 0; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
       lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
     },
+    /* a fog horn, far off over the water: for a poster put up. Two low reeds a little apart, the ladder opening and closing */
+    horn() {
+      buzz([40, 60, 120]); if (!ready()) return; const t = ctx.currentTime + 0.02;
+      const blast = (t0, L, v) => { const lf = ladder(160, 0.4, 2.2); const e = ctx.createGain();
+        for (const [ty, f, g] of [['sawtooth', 73.4, 0.5], ['sawtooth', 77.6, 0.4], ['square', 36.7, 0.35]]) { const o = osc(ty, f, t0, t0 + L + 1.4); o.frequency.setValueAtTime(f * 0.96, t0); o.frequency.exponentialRampToValueAtTime(f, t0 + 0.4); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
+        e.connect(lf.node); lf.cut.setValueAtTime(160, t0); lf.cut.exponentialRampToValueAtTime(620, t0 + 0.6); lf.cut.setValueAtTime(620, t0 + L); lf.cut.exponentialRampToValueAtTime(140, t0 + L + 1.2);
+        const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t0); a.gain.exponentialRampToValueAtTime(v, t0 + 0.45); a.gain.setValueAtTime(v, t0 + L); a.gain.exponentialRampToValueAtTime(0.0001, t0 + L + 1.3); out(a, 0, 2.2); };
+      blast(t, 1.8, 0.16); blast(t + 3.1, 0.7, 0.11);
+    },
+    /* the muse: a bell of glass that opens and closes */
+    jelly(pan = 0) { if (!ready()) return; jellyV(523.25, ctx.currentTime + 0.02, 0.05, pan, true); },
     /* paper torn off */
     tear() {
       buzz(12); if (!ready()) return; const t = ctx.currentTime; const s = ctx.createBufferSource(); s.buffer = noise(0.22);

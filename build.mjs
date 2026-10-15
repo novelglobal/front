@@ -24,25 +24,28 @@ copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.js'), path.join(out, 'vendor/ma
 copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.css'), path.join(out, 'vendor/maplibre-gl.css'));
 copy(path.join(nm, 'qrcode-generator/qrcode.js'), path.join(out, 'vendor/qrcode.js'));
 
-/* type: Poppins (display, labels, text), IBM Plex Mono (numbers, coordinates, codes), and VT323 for the teletype slip */
+/* type: Poppins (display, labels, text), IBM Plex Mono (numbers, coordinates, codes), VT323 for the teletype slip, and four faces for the press */
 const fonts = [['Poppins', 200, 'normal', 'poppins'], ['Poppins', 400, 'normal', 'poppins'], ['Poppins', 400, 'italic', 'poppins'],
   ['Poppins', 600, 'normal', 'poppins'], ['Poppins', 700, 'normal', 'poppins'],
   ['IBM Plex Mono', 400, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 500, 'normal', 'ibm-plex-mono'], ['IBM Plex Mono', 600, 'normal', 'ibm-plex-mono'],
-  ['VT323', 400, 'normal', 'vt323']];
+  ['VT323', 400, 'normal', 'vt323'],
+  /* for the press: a flourished serif, a blackletter as on a rider's arm, a spray can, and bubble letters */
+  ['Playfair Display', 400, 'italic', 'playfair-display'], ['Playfair Display', 700, 'italic', 'playfair-display'],
+  ['UnifrakturMaguntia', 400, 'normal', 'unifrakturmaguntia'], ['Sedgwick Ave Display', 400, 'normal', 'sedgwick-ave-display'], ['Rubik Bubbles', 400, 'normal', 'rubik-bubbles']];
 const faces = [], files = [];
 for (const [fam, w, st, pkg] of fonts) {
   const file = `${pkg}-latin-${w}-${st}.woff2`; files.push(`vendor/fonts/${file}`);
   copy(path.join(nm, `@fontsource/${pkg}/files/${file}`), path.join(out, 'vendor/fonts', file));
   faces.push(`@font-face{font-family:'${fam}';font-style:${st};font-weight:${w};font-display:swap;src:url(vendor/fonts/${file}) format('woff2')}`);
 }
-fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins, IBM Plex Mono and VT323, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + read(path.join(src, 'app.css')));
+fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins, IBM Plex Mono, VT323, Playfair Display, UnifrakturMaguntia, Sedgwick Ave Display and Rubik Bubbles, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + read(path.join(src, 'app.css')));
 /* the app: every file in src/app, in name order, as one script */
 fs.writeFileSync(path.join(out, 'app.js'), fs.readdirSync(path.join(src, 'app')).filter(f => f.endsWith('.js')).sort().map(f => read(path.join(src, 'app', f))).join('\n'));
 for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
 /* the guide reads the same marks and words as the app, in the same type */
 fs.writeFileSync(path.join(out, 'guide.html'), read(path.join(src, 'guide.html')).replace('/*FONTS*/', faces.join('\n')));
 fs.writeFileSync(path.join(out, 'portfolio.html'), read(path.join(src, 'portfolio.html')).replace('/*FONTS*/', faces.join('\n')));
-fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts â€” `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday) and VT323 (Peter Hull), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
+fs.appendFileSync(path.join(out, 'vendor/LICENSES.md'), '\n## Fonts, `fonts/`\n\nPoppins (Indian Type Foundry, Jonny Pinhorn), IBM Plex Mono (IBM, Mike Abbink, Bold Monday), VT323 (Peter Hull), Playfair Display (Claus Eggers Sorensen), UnifrakturMaguntia (j. "mach" wust), Sedgwick Ave Display (Kevin Burke, Pedro Vergani) and Rubik Bubbles (NaN, Luke Prowse), each under the SIL Open Font License 1.1: https://openfontlicense.org\n');
 const sw = read(path.join(out, 'sw.js')).replace("'vendor/qrcode.js', ", "'vendor/qrcode.js', " + files.map(f => `'${f}'`).join(', ') + ', ');
 fs.writeFileSync(path.join(out, 'sw.js'), sw);
 /* a preview is never indexed by search engines */
@@ -59,9 +62,9 @@ fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Direct Action</title>
-<meta name="description" content="A radar over Brunswick to the city: live iNaturalist sightings, the El NiÃ±o threat to each life, string figures between them and the places around them, and a four-line W.I.S.H. slip for small printers, mesh radios and pagers.">
-<meta name="theme-color" content="#1B2726">
+<title>novel.global</title>
+<meta name="description" content="novel.global: research and development for direct action. Listen to the lives around you, make a W.I.S.H., print it.">
+<meta name="theme-color" content="#06090B">
 <meta name="da-build" content="${sha}${preview ? ` ${branch}` : ''}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -91,4 +94,4 @@ ${body}
 `);
 const listing = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => (d.isDirectory() ? listing(path.join(dir, d.name), base) : [path.relative(base, path.join(dir, d.name))])).sort();
 const all = listing(out);
-console.log(`${all.length} files Â· ${Math.round(all.reduce((n, f) => n + fs.statSync(path.join(out, f)).size, 0) / 1024)} KB in dist/ Â· build ${sha}${preview ? ` Â· PREVIEW ${branch}` : ''}`);
+console.log(`${all.length} files, ${Math.round(all.reduce((n, f) => n + fs.statSync(path.join(out, f)).size, 0) / 1024)} KB in dist/, build ${sha}${preview ? `, PREVIEW ${branch}` : ''}`);

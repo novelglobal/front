@@ -61,7 +61,7 @@ new MutationObserver(() => { if (document.body.classList.contains('shut') && doc
 /* out of sight, the drone falls quiet; the sweep wakes it again */
 document.addEventListener('visibilitychange', () => { if (document.hidden) snd.droneOff(); });
 /* ───────── boot ───────── */
-document.title = CONFIG.NAME.replace(/\b(\w)(\w*)/g, (m, a, b) => a + b.toLowerCase());
+document.title = CONFIG.NAME;
 document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); document.documentElement.classList.toggle('still', !prefs.motion);
 /* a preview says so, so it is never mistaken for the live site */
 if (BUILD.branch) { const t = document.createElement('div'); t.className = 'preview mono'; t.setAttribute('aria-hidden', 'true'); t.textContent = `PREVIEW · ${BUILD.branch.toUpperCase()} · ${BUILD.sha.toUpperCase()}`; document.body.appendChild(t); }
@@ -80,7 +80,7 @@ const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEven
 if (T4.water) setTimeout(loadOverlays, 1500);
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
-/* the radar waits: PRESS PLAY over the ground. Touched, it starts; on a first visit, the radar stands where the touch was */
+/* the radar waits, and the first clue floats over the ground: find yourself. A touch on the map puts the radar down there */
 setTimeout(() => { if (!S.started) $('#arcade').hidden = false; }, 300);
 setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
@@ -88,5 +88,5 @@ placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
 window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
-  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, SPECIES, sendSpecies, POSTERS2, PROOFS, savePoster, takeProof, PRESS, zineObjects: () => (zc ? zc.getObjects() : []), tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcade, arcadeOff, markTweak, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
+  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, SPECIES, sendSpecies, radiusSpecies, boardOut, boardPicture, openTarot, tarotOf, zineTool, keyFace, MOODS, POSTERS2, PROOFS, savePoster, takeProof, PRESS, zineObjects: () => (zc ? zc.getObjects() : []), tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcadeOff, markTweak, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();
