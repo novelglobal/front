@@ -145,3 +145,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Moog ladder filter, `../ladder.js`
+
+The radio's ladder filter is a port to an audio worklet of Aaron Krajeski's model, as collected in https://github.com/ddiakopoulos/MoogLadders. The author placed it under no copyright: "That work is under no copyright. You may use it however you might like." The collection is released under the Unlicense.

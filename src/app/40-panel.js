@@ -59,7 +59,7 @@ function setView(i, keep, part) {
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
   if (was !== i) buzz(5);
-  if (i !== 0 && S.radio) setRadio(false);
+  /* once started, the radio plays on under every page */
   document.body.classList.toggle('off-map', i !== 0);
   renderView(); life.data();
   viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
@@ -242,7 +242,7 @@ function cluesHTML() {
   const s1 = placed(), s2 = s1 && S.tweaked;
   const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}<span class="ci">${ics}</span>${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
   return `<ol class="clues">`
-    + tile(1, s1 ? 'done' : 'now', icon('search'), '')
+    + tile(1, s1 ? 'done' : 'now', icon('search'), 'find yourself')
     + tile(2, !s1 ? 'locked' : s2 ? 'done' : 'now', CLUE_IC.chain, 'make a connection')
     + tile(3, s2 ? 'now' : 'locked', icon('share'), 'START', s2 ? 'data-share-mix' : 'disabled')
     + `</ol>`;
@@ -252,21 +252,25 @@ function cluesHTML() {
 const wishStarted = () => S.signals.some(x => !x.ex && !x.shared && linesOf(x).length >= 2) || WKEYS.filter(k => String(WDRAFT[k] || '').trim()).length >= 2;
 function checklistHTML() {
   const rows = [
-    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Discovered where you are', c: '#7FD1C2' },
-    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Started a wish', c: '#FFD23F', go: 1 },
-    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Made a poster', c: '#FF7EB0', go: 2 },
-    { ok: PROOFS.length > 0, ic: `${icon('receipt')}${icon('camera', 'sm')}`, w: 'Printed a receipt', c: '#FF8A1F', proof: true },
+    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Discovered where you are', c: 'var(--glow)' },
+    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Started a wish', c: 'var(--bone)', go: 1 },
+    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Made a poster', c: 'var(--acid)', go: 2 },
+    { ok: PROOFS.length > 0, ic: `${icon('receipt')}${icon('camera', 'sm')}`, w: 'Printed a receipt', c: 'var(--haz)', proof: true },
   ];
   return `<ol class="checks">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}" style="--cc:${r.c}">`
     + (r.proof && !r.ok ? `<label class="chk-b" data-tip="A photograph of the receipt, held up, while the printer is online"><input type="file" id="proof-in" accept="image/*" capture="environment" hidden>` : `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}>`)
     + `<span class="chk-ic">${r.ic}</span><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i>` + (r.proof && !r.ok ? '</label>' : '</button>') + `</li>`).join('')}</ol>`
     + (S.tweaked && placed() ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>START</span></button>` : '');
 }
+/* the lockup: the muse and the name. Tapped, the muse pulses and rings; tapped five times quickly, the water fills with them */
+const lockup = () => `<header class="lockup"><button type="button" class="lk-mark" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button><b class="lk-n">novel.global</b></header>`;
+let museN = 0, museT = 0;
+$('#view').addEventListener('click', e => { const b = e.target.closest('[data-muse]'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); snd.jelly(0); museN = Date.now() - museT < 900 ? museN + 1 : 1; museT = Date.now(); if (museN >= 5) { museN = 0; dispatchEvent(new CustomEvent('da:muse')); } });
 function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return `<section class="band" id="sec-heat">
+  return lockup() + `<section class="band" id="sec-heat">
       ${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in"><i class="sun">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>

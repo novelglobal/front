@@ -1,8 +1,8 @@
-/* Direct Action ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â offline cache.
+/* novel.global, the offline cache.
    The app itself: network first, so an edit to config.js or examples.js shows on the next load; the cached copy when there is no signal.
    Imagery, land and photos: kept once seen. Live data: network first, the last answer when offline. */
-const V = 'da-v32';
-const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'portfolio.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'vendor/fabric.min.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+const V = 'da-v33';
+const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'portfolio.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'vendor/fabric.min.js', 'ladder.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 const KEEP = /arcgisonline\.com|elevation-tiles-prod|inaturalist-open-data|static\.inaturalist\.org/;
 const LIVE = /api\.inaturalist\.org|open-meteo\.com|overpass|data\.melbourne\.vic\.gov\.au/;
 const MAX_KEPT = 3000;

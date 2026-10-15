@@ -29,7 +29,7 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['save', 'check', 'SAVE']];
+const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -45,6 +45,7 @@ async function showBoard(on) {
     cv = new f.Canvas('board-c', { width: W, height: H, selection: true, preserveObjectStacking: true, targetFindTolerance: 6, perPixelTargetFind: true });
     await loadBoard();
     cv.on('object:moving', () => follow()); cv.on('object:modified', saveSoon); cv.on('text:changed', saveSoon);
+    cv.on('path:created', e => { if (e.path) e.path.set({ daKind: 'pen', daId: uid('d') }); saveSoon(); });
     cv.on('mouse:down', e => { if (e.target && e.target.daKind === 'link' && !linkArmed) { unjoin(e.target); return; } linking(e.target); });
     addEventListener('resize', () => { if (!host.hidden) { cv.setWidth(host.clientWidth); cv.setHeight(host.clientHeight - 78); cv.renderAll(); } });
   } else { cv.setWidth(W); cv.setHeight(H); }
@@ -65,7 +66,7 @@ function joinCards(a, b) {
   const f = window.fabric; if (!a || !b || a === b || !a.daId || !b.daId) return;
   const was = linkOf2(a, b); if (was) { unjoin(was); return; }
   const ca = a.getCenterPoint(), cb = b.getCenterPoint();
-  const l = new f.Line([ca.x, ca.y, cb.x, cb.y], { stroke: '#7FD1C2', strokeWidth: 1.6, strokeDashArray: [5, 4], selectable: false, evented: true, hoverCursor: 'pointer', daFrom: a.daId, daTo: b.daId, daKind: 'link' });
+  const l = new f.Line([ca.x, ca.y, cb.x, cb.y], { stroke: '#FF5A1F', strokeWidth: 1.6, strokeDashArray: [5, 4], selectable: false, evented: true, hoverCursor: 'pointer', daFrom: a.daId, daTo: b.daId, daKind: 'link' });
   cv.add(l); cv.sendToBack(l); for (const o of cv.getObjects().filter(o => o.daKind === 'section')) cv.sendToBack(o); saveSoon();
 }
 /* a string let go: one click on it */
@@ -79,11 +80,11 @@ function linking(t) {
 }
 /* a card is one piece of editable text on its own clear plate: double-click to rewrite it */
 function textCard(f, id, kind, text, x, y, o = {}) {
-  const look = { mix: { fill: '#E9F2F0', backgroundColor: 'rgba(160,210,200,.16)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 250 }, note: { fill: '#141412', backgroundColor: '#E8F0B8', fontFamily: 'VT323, monospace', fontSize: 20, width: 180 },
-    fig: { fill: '#E9F2F0', backgroundColor: 'rgba(255,255,255,.08)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 10.5, width: 180 },
-    cell: { fill: '#E9F2F0', backgroundColor: 'rgba(138,111,209,.22)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 200 },
+  const look = { mix: { fill: '#0C0E0E', backgroundColor: '#F4F2EA', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 250 }, note: { fill: '#0C0E0E', backgroundColor: '#E6F84A', fontFamily: 'VT323, monospace', fontSize: 20, width: 180 },
+    fig: { fill: '#0C0E0E', backgroundColor: '#DCEFEE', fontFamily: '"IBM Plex Mono", monospace', fontSize: 10.5, width: 180 },
+    cell: { fill: '#0C0E0E', backgroundColor: '#FFFFFF', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 200 },
     slip: { fill: '#141412', backgroundColor: '#FFFFFF', fontFamily: 'VT323, monospace', fontSize: 19, width: 230 } }[kind] || {};
-  return new f.Textbox(text, { left: x, top: y, padding: 12, lineHeight: 1.25, daId: id, daKind: kind, editable: true, borderColor: '#7FD1C2', cornerColor: '#7FD1C2', ...look, ...o });
+  return new f.Textbox(text, { left: x, top: y, padding: 12, lineHeight: 1.25, daId: id, daKind: kind, editable: true, borderColor: '#FF5A1F', cornerColor: '#FF5A1F', cornerSize: 8, transparentCorners: false, ...look, ...o });
 }
 const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind !== 'link').length; return { x: 40 + (n % 4) * 270, y: 40 + Math.floor(n / 4) * 230 }; };
 const names = (cells, n = 6) => [...new Set((cells || []).map(c => c.n))].slice(0, n).join(', ');
@@ -99,15 +100,32 @@ async function placeMix(m) {
   if (byId(m.id)) { c.setActiveObject(byId(m.id)); c.renderAll(); return; }
   const p = free(); const mc = textCard(f, m.id, 'mix', mixText(m), p.x, p.y, { daMix: m.id }); c.add(mc);
   (m.figs || []).forEach((g, i) => { const fc = textCard(f, `${m.id}:${g.id}`, 'fig', [g.name, ...(g.knots || []).slice(0, 8).map(k => `· ${k.n}`)].join('\n'), p.x + 300, p.y + i * 150); c.add(fc); joinCards(mc, fc); });
+  radiusSpecies(6).forEach((sp, i) => photoCard(sp.ph, `${m.id}:sp:${sp.id}`, p.x + i * 84, p.y + mc.height + 60, 76, mc));
   c.setActiveObject(mc); c.renderAll(); saveBoard(false); refreshPanel();
+}
+/* a photograph pinned to the board, made smaller first, and strung to a card */
+function photoCard(url, id, x, y, w, to) {
+  if (!url || !cv) return; loadImage(url, true).then(im => { const t = document.createElement('canvas'); const k = Math.min(1, 400 / Math.max(im.width, im.height)); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
+    window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { if (byId(id)) return; img.set({ left: x, top: y, daId: id, daKind: 'image', stroke: '#FFFFFF', strokeWidth: 6 }); img.scaleToWidth(w); cv.add(img); if (to) joinCards(to, img); cv.renderAll(); saveSoon(); }); }).catch(() => {});
 }
 /* ───────── species cards: a life met on the radio, sent here. Its name, its Latin, where, what it needs ───────── */
 const SPECIES = store.get('da.species.v1', []);
-function sendSpecies(o) {
+function spOf(o) {
   const sub = subjectOf(o) || o; const g = glyphOf(o) || 'paw'; const ph = (sub.ph && licOpen(sub.ph.l) && sub.ph.u) || o.photo || '';
-  const sp = { id: String(o.id), n: nameOf(o), latin: (sub.tx && sub.tx.n) || '', g, place: placeOf(o), lat: +(+o.lat).toFixed(4), lng: +(+o.lng).toFixed(4), ph: ph && !/^data:/.test(ph) ? photoURL(ph, 'medium') : ph, st: STATEMENT[g] || '', at: Date.now() };
+  return { id: String(o.id), n: nameOf(o), latin: (sub.tx && sub.tx.n) || '', g, place: placeOf(o), lat: +(+o.lat).toFixed(4), lng: +(+o.lng).toFixed(4), ph: ph && !/^data:/.test(ph) ? photoURL(ph, 'medium') : ph, st: STATEMENT[g] || '', at: Date.now() };
+}
+function keepSpecies(sp) {
   const i = SPECIES.findIndex(x => x.id === sp.id); if (i >= 0) SPECIES.splice(i, 1); SPECIES.unshift(sp); SPECIES.splice(60);
-  while (!store.set('da.species.v1', SPECIES) && SPECIES.length > 1) SPECIES.pop();
+  while (!store.set('da.species.v1', SPECIES) && SPECIES.length > 1) SPECIES.pop(); return sp;
+}
+/* the lives in the radar now that have an open photograph: one of each, in the order the map holds them */
+function radiusSpecies(n = 12) {
+  const seen = new Set(), out = [];
+  for (const it of life.items) { if (!it.inS || it.o.story || it.o.pack || it.o.hist || it.o.hum || isCold(it.o)) continue; const sp = spOf(it.o); const k = sp.latin || sp.n; if (!sp.ph || seen.has(k)) continue; seen.add(k); out.push(sp); if (out.length >= n) break; }
+  return out;
+}
+function sendSpecies(o) {
+  const sp = keepSpecies(spOf(o)); const g = sp.g;
   markTweak(); flyToTab(1, $('#r-fig')); snd.knot({ g }, F0 * partialOf(g), 0, 0.7, 0); buzz([8, 30, 8]);
   return sp;
 }
@@ -132,6 +150,7 @@ function pickMenu(btn, items, onPick) {
 /* what can be added: the species sent, the constellations, the cells made, the signals */
 const addables = withSignals => [
   ...SPECIES.slice(0, 20).map(sp => ({ k: 'l', id: sp.id, n: sp.n, ic: glyphSVG(sp.g) })),
+  ...radiusSpecies(12).filter(sp => !SPECIES.some(x => x.id === sp.id)).map(sp => ({ k: 'L', id: sp.id, sp, n: sp.n, ic: icon('radar', 'sm') })),
   ...strings.list().slice(0, 20).map(g => ({ k: 'c', id: g.id, n: g.name, ic: icon('string', 'sm') })),
   ...myCells().slice(0, 20).map(o => ({ k: 'r', id: o.id, n: nameOf(o), ic: `<img src="${pinOf(o)}" alt="">` })),
   ...(withSignals ? MIXES.slice(0, 10).map(m => ({ k: 'm', id: m.id, n: `${m.where.place} · ${fmtStamp(m.at)}`, ic: icon('radar', 'sm') })) : []),
@@ -150,7 +169,7 @@ async function placeAsset(kind, id) {
     if (o.photo) f.Image.fromURL(o.photo, im => { im.set({ left: p.x, top: p.y + card.height + 30, daId: `${aid}:img`, daKind: 'image' }); im.scaleToWidth(200); c.add(im); joinCards(card, im); c.renderAll(); saveSoon(); }); }
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; c.add(textCard(f, aid, 'slip', assetText.s(x), p.x, p.y)); }
   if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (!sp) return; const card = textCard(f, aid, 'cell', speciesText(sp), p.x, p.y); c.add(card);
-    if (sp.ph) loadImage(sp.ph, true).then(im => { const t = document.createElement('canvas'); const k = Math.min(1, 400 / Math.max(im.width, im.height)); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height); f.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { img.set({ left: p.x, top: p.y + card.height + 30, daId: `${aid}:img`, daKind: 'image' }); img.scaleToWidth(200); c.add(img); joinCards(card, img); c.renderAll(); saveSoon(); }); }).catch(() => {}); }
+    photoCard(sp.ph, `${aid}:img`, p.x, p.y + card.height + 30, 200, card); }
   if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; c.add(textCard(f, aid, 'fig', assetText.c(g), p.x, p.y)); }
   c.setActiveObject(byId(aid)); c.renderAll(); saveBoard(false); snd.tick(1500);
 }
@@ -170,15 +189,52 @@ async function notesIn(md) {
 async function boardTool(k) {
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();
   if (k === 'note') { const n = textCard(f, uid('n'), 'note', 'A note', p.x, p.y); c.add(n); c.setActiveObject(n); n.enterEditing(); n.selectAll(); }
-  if (k === 'section') { const r = new f.Rect({ left: p.x - 20, top: p.y - 20, width: 560, height: 360, fill: 'rgba(127,209,194,.05)', stroke: 'rgba(127,209,194,.5)', strokeDashArray: [2, 4], rx: 6, ry: 6, daId: uid('s'), daKind: 'section' });
-    const t = textCard(f, uid('st'), 'note', 'SECTION', p.x - 10, p.y - 52, { backgroundColor: 'transparent', fill: '#B9E6DD', fontSize: 24, width: 300 }); c.add(r); c.sendToBack(r); c.add(t); c.setActiveObject(t); }
+  if (k === 'section') { const r = new f.Rect({ left: p.x - 20, top: p.y - 20, width: 560, height: 360, fill: 'rgba(143,169,196,.08)', stroke: '#8FA9C4', strokeDashArray: [2, 4], rx: 2, ry: 2, daId: uid('s'), daKind: 'section' });
+    const t = textCard(f, uid('st'), 'note', 'SECTION', p.x - 10, p.y - 52, { backgroundColor: 'transparent', fill: '#8FA9C4', fontSize: 24, width: 300 }); c.add(r); c.sendToBack(r); c.add(t); c.setActiveObject(t); }
   if (k === 'link') { linkArmed = !linkArmed; linkFrom = null; $('#board [data-bt="link"]').classList.toggle('on', linkArmed); if (linkArmed && sel && sel.daId) { linkFrom = sel; } return; }
   if (k === 'image') { $('#board-file').click(); return; }
-  if (k === 'add') { pickMenu($('#board [data-bt="add"]'), addables(true), it => (it.k === 'm' ? placeMix(MIXES.find(m => m.id === it.id)) : placeAsset(it.k, it.id))); return; }
+  if (k === 'pencil') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = darkNow() ? '#F2F6FF' : '#0C0E0E'; c.freeDrawingBrush.width = 2; $('#board [data-bt="pencil"]').classList.toggle('on', c.isDrawingMode); snd.tick(1500); return; }
+  if (k === 'out') { pickMenu($('#board [data-bt="out"]'), [{ k: 'png', n: 'PNG', ic: icon('camera', 'sm') }, { k: 'pdf', n: 'PDF', ic: icon('note', 'sm') }], it => boardOut(it.k)); return; }
+  if (k === 'add') { pickMenu($('#board [data-bt="add"]'), addables(true), it => (it.k === 'm' ? placeMix(MIXES.find(m => m.id === it.id)) : it.k === 'L' ? placeAsset('l', keepSpecies(it.sp).id) : placeAsset(it.k, it.id))); return; }
   if (k === 'delete') { const all = c.getActiveObjects(); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
   if (k === 'save') { saveBoard(true); return; }
   if (k === 'undo') { undoBoard(); return; }
   c.renderAll(); saveSoon(); snd.tick(1500);
+}
+/* ───────── the board out: everything on it, framed with a margin, on the drafting paper it lies on. A picture, or a PDF of one
+   page holding that picture ───────── */
+async function boardPicture() {
+  const c = await showBoard(true); if (!c) return null; c.discardActiveObject(); c.renderAll(); const objs = c.getObjects(); if (!objs.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
+  const pad = 48, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 4200 / Math.max(W, H));
+  const png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); const im = await loadImage(png, false);
+  const out = document.createElement('canvas'); out.width = Math.round(W * k); out.height = Math.round(H * k); const x = out.getContext('2d'); const dark = darkNow();
+  x.fillStyle = dark ? '#123A66' : '#F4F8F8'; x.fillRect(0, 0, out.width, out.height);
+  const step = 26 * k; for (let gx = 0, i = 0; gx < out.width; gx += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(gx, 0, 1, out.height); }
+  for (let gy = 0, i = 0; gy < out.height; gy += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(0, gy, out.width, 1); }
+  x.drawImage(im, 0, 0, out.width, out.height);
+  /* the muse, faint, in the corner: a watermark on everything that leaves */
+  M.jelly(x, out.width - 40 * k, out.height - 44 * k, 56 * k, dark ? 'rgba(242,246,255,.35)' : 'rgba(12,14,14,.25)', 'rgba(0,0,0,0)');
+  return out;
+}
+/* a PDF of one page, the picture filling it: written by hand, a JPEG inside */
+function pdfOf(jpeg, w, h) {
+  const enc = new TextEncoder(); const parts = []; const offs = []; let len = 0; const pw = Math.round(w * 0.75), ph = Math.round(h * 0.75);
+  const push = v => { const b = typeof v === 'string' ? enc.encode(v) : v; parts.push(b); len += b.length; };
+  const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n${body}\nendobj\n`); };
+  push('%PDF-1.4\n');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>'); obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+  offs[4] = len; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`); push(jpeg); push('\nendstream\nendobj\n');
+  const cs = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`; obj(5, `<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`);
+  const xref = len; push(`xref\n0 6\n0000000000 65535 f \n${[1, 2, 3, 4, 5].map(n => `${String(offs[n]).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+async function boardOut(kind) {
+  const pic = await boardPicture(); if (!pic) { tick(600); return null; } const b = BOARDS.find(x => x.id === boardId) || { n: 'board' }; const name = `${b.n.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${isoDay(new Date())}`;
+  if (kind === 'pdf') { const url = pic.toDataURL('image/jpeg', 0.9); const bin = atob(url.split(',')[1]); const jpeg = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) jpeg[i] = bin.charCodeAt(i); const blob = pdfOf(jpeg, pic.width, pic.height); download(`${name}.pdf`, blob); tick(1800); return blob; }
+  const a = document.createElement('a'); a.href = pic.toDataURL('image/png'); a.download = `${name}.png`; a.click(); tick(1800); return pic;
 }
 /* an image from this device, made smaller first */
 $('#board').addEventListener('change', e => {
@@ -190,30 +246,37 @@ $('#board').addEventListener('change', e => {
 $('#board').addEventListener('click', e => { const b = e.target.closest('[data-bt]'); if (b) boardTool(b.dataset.bt); });
 
 /* ───────── the W.I.S.H.: the master form. Four lines written for a signal, sent on as a story waiting to print ───────── */
+/* what a W.I.S.H. is for: a species (sent here, or in the radar now), the climate emergency, or the circular economy */
+const INTENT = { climate: ['Heat', 'El Niño', 'Drought', 'Water', 'Shade', 'Smoke', 'Flood', 'Fire'], circular: ['Repair', 'Reuse', 'Share', 'Refill', 'Compost', 'Swap', 'Mend', 'Grow'] };
+function intentOptions() {
+  const sps = [...new Map([...SPECIES, ...radiusSpecies(12)].map(sp => [sp.n, sp])).values()].slice(0, 24); const cur = WDRAFT.for || '';
+  const opt = (v, n) => `<option value="${esc(v)}"${cur === v ? ' selected' : ''}>${esc(n)}</option>`;
+  return `<option value="">…</option>` + (sps.length ? `<optgroup label="Species">${sps.map(sp => opt('l:' + sp.n, sp.n)).join('')}</optgroup>` : '')
+    + `<optgroup label="Climate emergency">${INTENT.climate.map(w => opt('c:' + w, w)).join('')}</optgroup><optgroup label="Circular economy">${INTENT.circular.map(w => opt('e:' + w, w)).join('')}</optgroup>`;
+}
 const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by: '' });
 /* each line's sign: what we know (looked for), it would be great (the sun), so let's create (made anew), here is how (by hand) */
 const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
-  const ms = MIXES; const sel = ms.some(m => m.id === WDRAFT.mix) ? WDRAFT.mix : (ms[0] || {}).id || '';
-  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span>`
-    + (ms.length ? `<select id="wf-mix" aria-label="The signal it answers">${ms.map(m => `<option value="${esc(m.id)}"${m.id === sel ? ' selected' : ''}>${esc(m.where.place)} · ${fmtStamp(m.at)}</option>`).join('')}</select>` : '')
+  return `<form class="wish-form" id="wish-form" autocomplete="off"><div class="wf-h"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><b class="rnd" aria-hidden="true">R&amp;D</b></div>`
+    + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><select id="wf-for" aria-label="What it is for">${intentOptions()}</select></label>`
     + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
     + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
     + `<button type="submit" class="send-b" aria-label="Send the signal" data-tip="Send the signal">${icon('share')}<i class="sb-arrow" aria-hidden="true"></i></button></form>`;
 }
-$('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const mx = $('#wf-mix'); if (mx) WDRAFT.mix = mx.value; store.set('da.wish.v1', WDRAFT); });
-$('#view').addEventListener('change', e => { if (e.target.id === 'wf-mix') { WDRAFT.mix = e.target.value; store.set('da.wish.v1', WDRAFT); } });
+$('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
+$('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
 $('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); sendSignal(); });
 /* the W.I.S.H. becomes a story: where the signal was, its four lines, its constellations; kept here, waiting to print */
 async function sendSignal() {
   const L = Object.fromEntries(WKEYS.map(k => [k, String(($('#wf-' + k) || {}).value || '').trim()]));
   if (!WKEYS.some(k => L[k])) { nudge($('#wf-w')); return null; }
-  const m = MIXES.find(x => x.id === (($('#wf-mix') || {}).value || WDRAFT.mix)) || MIXES[0];
+  const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || ''); const forN = fr.slice(2); const fsp = fr[0] === 'l' ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n === forN) : null;
   const where = m ? m.where : { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), place: suburbAt(S.scan.lat, S.scan.lng) };
   const lead = m && ((m.layers.life || {}).cells || [])[0];
   const at = Date.now(); const who = String(($('#wf-by') || {}).value || '').trim();
-  const pin = { id: null, lat: where.lat, lng: where.lng, n: '', cn: where.place, ic: '', g: (lead && lead.g) || 'paw', place: where.place };
-  const sig = { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who, ...(m ? { mix: m.id, note: (m.figs || []).map(g => g.name).join(' · ') } : {}) };
+  const pin = { id: null, lat: where.lat, lng: where.lng, n: fsp ? fsp.n : '', cn: where.place, ic: '', g: (fsp && fsp.g) || (lead && lead.g) || 'paw', place: where.place };
+  const sig = { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who, ...(fr ? { for: fr } : {}), ...(m ? { mix: m.id } : {}), note: [forN, ...((m && m.figs) || []).map(g => g.name)].filter(Boolean).join(' · ') };
   const ev = await ledgerAdd({ type: 'signal', lat: pin.lat, lng: pin.lng, who, data: sig });
   Object.assign(WDRAFT, { w: '', i: '', s: '', h: '' }); store.set('da.wish.v1', WDRAFT);
   tie(1); snd.printer(900); buzz([10, 40, 10]); toast('SENT · WAITING TO PRINT');
@@ -223,7 +286,7 @@ async function sendSignal() {
 const LAYER_W = Object.fromEntries(LAYERS.map(L => [L.k, L.w]));
 const mdEsc = t => String(t == null ? '' : t).replace(/([*_`#|[\]])/g, '\\$1');
 function bookMD() {
-  const out = ['# Field book', '', `DIRECT ACTION RADIO · novel.global · ${fmtStamp(Date.now())}`, ''];
+  const out = ['# Field book', '', `novel.global · ${fmtStamp(Date.now())}`, ''];
   for (const m of MIXES) {
     out.push(`## ${mdEsc(m.where.place)} · ${fmtStamp(m.at)}`, '', `- Where: ${m.where.lat}, ${m.where.lng} · ${metres(m.where.r)}`, `- Loop: one turn of the radar, ${m.loop || CONFIG.SCAN.turn || 8} s`, '');
     for (const [k, L] of Object.entries(m.layers)) {
