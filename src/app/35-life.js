@@ -146,7 +146,7 @@ const life = (() => {
   function sweep(now) {
     const dt = lastSweep ? Math.min(0.12, (now - lastSweep) / 1000) : 0; lastSweep = now;
     if (reduced()) { revealAll(); return; }
-    if (!running() || !dt) return;
+    if (!running() || !dt || !placed()) return;
     const b0 = sweepB, b1 = sweepB + 360 * dt / SC.turn; sweepB = b1 % 360;
     /* a whole turn: time moves on a month */
     if (b1 >= 360) turned();
@@ -159,6 +159,10 @@ const life = (() => {
     }
     /* the places' station: each place the sweep crosses sounds in its own small sound */
     if (TRK.on.places) for (const p of placesIn()) { if (p.sb == null) { p.sb = bearing(S.scan.lat, S.scan.lng, p.lat, p.lng); } let a = p.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingPlace(p)) pings.push({ lat: p.lat, lng: p.lng, t: now, c: '140,116,105' }); }
+    /* CLIMATE: each air temperature now, higher as it is hotter; drinking water, a drop */
+    if (TRK.on.climate) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
+    /* the constellations in the radar join the mix: each plays as the hand passes its life */
+    if (S.radio && prefs.sound) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '140,116,105' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
     /* the trail: as it crosses more life, the drone under it swells */
     if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }
@@ -251,16 +255,13 @@ const life = (() => {
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
     /* each track seen or not: a pack of cells is its own; every life is the lives' track */
     if (o.pack ? !seeTrack('p:' + o.pack) : !o.story && !o.partner && !seeTrack('life')) return false;
-    /* the stories page shows every story, wherever it is */
-    if (o.story && S.open && S.view === 1 && !S.mode) return true;
     if (it.capped && o.id !== S.sel) return false;
-    /* outside the radar nothing stands as a mark: what is new there, and the stories, are signals to bring the radar to */
-    if (!it.inS && o.id !== S.sel) return false;
+    /* every mark stands on the map, inside the radar or out: the radar plays what it passes, it does not reveal it */
     if (o.story) return true;
-    const found = it.inS && seen.has(o.id); const z = zoomNow();
-    if (it.b.tone === 'hist') return found && z >= 14;
-    if (it.b.tone === 'flora') return it.flag || (found && z >= PLANT_Z);   /* a plant from the last 24 hours shows before the sweep finds it, like any other */
-    return it.flag || found;
+    const z = zoomNow();
+    if (it.b.tone === 'hist') return z >= 14;
+    if (it.b.tone === 'flora') return it.flag || z >= PLANT_Z;
+    return true;
   }
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
   function cluster() {
@@ -304,7 +305,7 @@ const life = (() => {
        or an open cell looks */
     const lit = cellOpen ? cellPts : null;
     if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fill(); ctx.restore(); }
-    if (!cellOpen && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
+    if (placed() && !cellOpen && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
     /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
@@ -382,26 +383,15 @@ const life = (() => {
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
-  /* outside the radar: a quiet signal where something new is, or a story; a few faint rings, slow, to bring the radar there.
-     Red where an animal is in trouble or someone needs help; clay where there is a story */
+  /* every mark stands on the map now, so nothing outside the radar needs a signal to point to it */
   let sigs = [];
-  function signals(ctx, now, still) {
-    sigs = []; if (S.mode === 'ping' || S.mode === 'place') return;
-    const g = new Map(); const cell = 26 / Math.pow(2, zoomNow() - 13) / 111320 * 1600;
-    for (const it of items) {
-      const o = it.o; if (it.inS || it.capped || !(it.flag || (o.story && o.ex) || o.pack)) continue;
-      if (o.pack ? !seeTrack('p:' + o.pack) : !o.story && !seeTrack('life')) continue;
-      const k = `${Math.floor(o.lat / cell)}|${Math.floor(o.lng / cell)}`; let s = g.get(k); if (!s) g.set(k, s = { lat: 0, lng: 0, n: 0, red: false, clay: false });
-      s.lat += o.lat; s.lng += o.lng; s.n++; if (it.alarm || (o.hum && o.kind === 'need')) s.red = true; if (o.story) s.clay = true;
-    }
-    for (const s of g.values()) {
-      s.lat /= s.n; s.lng /= s.n; const q = map.project([s.lng, s.lat]); if (off(q.x, q.y, 40)) continue; s.x = q.x; s.y = q.y; sigs.push(s);
-      const col = s.red ? '232,69,60' : s.clay ? '140,116,105' : '255,255,255'; const ph = ((((now / 2600) + Math.abs(s.lat * 997 % 1)) % 1) + 1) % 1; const rings = Math.min(3, 1 + Math.floor(Math.log2(s.n + 1)));
-      ctx.save();
-      for (let i = 0; i < rings; i++) { const p = still ? 0.35 + i * 0.25 : (ph + i / rings) % 1; ctx.beginPath(); ctx.arc(q.x, q.y, 4 + p * 16, 0, TAU); ctx.strokeStyle = `rgba(${col},${(0.5 * (1 - p)).toFixed(3)})`; ctx.lineWidth = 1.2; ctx.stroke(); }
-      ctx.beginPath(); ctx.arc(q.x, q.y, 2.6, 0, TAU); ctx.fillStyle = `rgba(${col},.9)`; ctx.fill();
-      ctx.restore();
-    }
+  function signals() { sigs = []; }
+  /* the climate inside the radar: the air temperature sensors and the drinking fountains, where CLIMATE is on */
+  let climK = '', climL = [];
+  function climateIn() {
+    const k = `${S.scan.lat.toFixed(5)},${S.scan.lng.toFixed(5)},${S.scan.r},${S.sensors.length},${S.fountains.length}`; if (k === climK) return climL;
+    climK = k; climL = [...S.sensors.map(x => ({ ...x, k: 'temp' })), ...S.fountains.map(x => ({ ...x, k: 'water' }))].filter(x => inScan(x.lat, x.lng)).map(x => ({ ...x, sb: bearing(S.scan.lat, S.scan.lng, x.lat, x.lng) }));
+    return climL;
   }
   /* the places' track, when seen: the human ecology inside the radar, each place in its family's mark, as in an open cell */
   let placesK = '', placesL = [];
@@ -455,7 +445,7 @@ const life = (() => {
     const t = now / 1000, still = reduced(); const amp = clamp((zoomNow() - 12) / 3, 0.35, 1); const cellOpen = S.mode === 'ping';
     /* a lost animal's search area, when search areas are on */
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
-    if (!cellOpen && S.mode !== 'place' && !still) hand(ctx);
+    if (placed() && !cellOpen && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
     places(ctx); signals(ctx, now, still);
     /* where something sounded: a ring opening from it */
@@ -504,7 +494,7 @@ const life = (() => {
 
   /* ───────── the radar's two handles: the centre moves it, the rim resizes it ───────── */
   function placeKnobs() {
-    if (!S.mapReady || !knob) return; const hide = S.mode === 'ping' || S.mode === 'place';
+    if (!S.mapReady || !knob) return; const hide = S.mode === 'ping' || S.mode === 'place' || !placed();
     const c = map.project([S.scan.lng, S.scan.lat]); const [la, ln] = dest(S.scan.lat, S.scan.lng, S.scan.r, 90); const e = map.project([ln, la]);
     knob.hidden = hide || off(c.x, c.y, -6); ringK.hidden = hide || off(e.x, e.y, -6);
     knob.style.transform = `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px)`; ringK.style.transform = `translate(${Math.round(e.x)}px, ${Math.round(e.y)}px)`;

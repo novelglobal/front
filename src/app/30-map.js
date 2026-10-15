@@ -75,7 +75,6 @@ map.on('click', e => {
     if (h.kind === 'zoom') return;
     if (h.kind === 'node') { strings.tap(h.key); return; }
     if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
-    if (h.kind === 'tribe') { selectTribe(h.id); return; }
     if (h.kind === 'partner') { selectPartner(h.id); return; }
     if (h.kind === 'place') { life.hover(h); tick(1500); return; }
     if (h.kind === 'signal') { life.moveScan(h.lat, h.lng, true); tick(1700); return; }   /* a place on the places' track: its name, also on a phone */
@@ -84,8 +83,16 @@ map.on('click', e => {
   if (S.mode) { closeRecord(); return; }
   /* a click on open ground, inside the radar or out: the radar glides there. A new record is made only by holding the left
      button down (or pressing and holding on a phone) */
-  life.offer(null); life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
+  life.offer(null);
+  if (!placed()) { placeRadar(e.lngLat.lat, e.lngLat.lng); return; }
+  life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
 });
+/* where are you: the radar is put down where the first tap on the map lands, and stays there between visits */
+function placeRadar(lat, lng) {
+  if (!inBox(lat, lng)) { tick(600); return; }
+  prefs.placed = true; savePrefs(); life.setScan(lat, lng, null, true); snd.tick(1100); buzz([6, 30, 6]);
+  if (S.open && S.view === 0 && !S.mode) refreshPanel();
+}
 /* a double tap ties instead of zooming while a cell or a marker is open */
 map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') e.preventDefault(); });
 let hoverT = 0, hoverKey = null, hoverLast = null;

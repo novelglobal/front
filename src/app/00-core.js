@@ -99,6 +99,8 @@ const seeTrack = id => {
 const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
+/* the radar stands only where it was put: a first tap on the map puts it there, and it stays there between visits */
+const placed = () => !!prefs.placed;
 /* the tracks on the map besides the lives: off until a key lights them */
 const T4 = Object.assign({ climate: false, exposure: false, community: false }, prefs.t4 || {});
 /* the day's thread: noticed, responded, acted. It starts again each day */
@@ -111,7 +113,7 @@ const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));
 if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; store.set('da.me', me); }
 const S = {
   obs: [], byId: new Map(), user: [], community: [], hist: [],
-  view: 0, open: false, sel: null, mode: null, place: null, mo: 0, tribeSel: null, sig: null,
+  view: 0, open: false, radio: false, sel: null, mode: null, place: null, mo: 0, tribeSel: null, sig: null,
   wx: store.get('da.wx.v3', { t: 0, tmax: null, tmin: null, rain: null, days: [] }),
   lastVisit: store.get('da.lastVisit', 0), lastSignal: 0, stale: false, me,
   biz: null, bizLoading: null, radius: new Map(), orbit: { cell: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
