@@ -1358,3 +1358,55 @@ html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
 .hw-label{opacity:0;transition:opacity .4s}
 .hw-label:hover{opacity:.75;transition-delay:1s}
 @media (prefers-reduced-motion:reduce){.clue.now .clue-b,.clue-map,.sb-arrow{animation:none}}
+
+/* ═════════ species cards, the pixel menu, the checklist, the readings as strips, the posters ═════════ */
+/* the card's way on: a card and a string, a little arrow running between */
+.hw-card{display:inline-flex;align-items:center;gap:6px}
+.hw-card .i{width:20px;height:20px}
+.hw-arrow{width:22px;height:2px;background:currentColor;position:relative;animation:hwrun 1.4s ease-in-out infinite}
+.hw-arrow::after{content:"";position:absolute;right:-1px;top:-3px;border:4px solid transparent;border-left:6px solid currentColor;border-right:0}
+@keyframes hwrun{50%{transform:translateX(4px)}}
+.fly{position:fixed;z-index:30;width:72px;height:72px;border-radius:12px;background:var(--sun);box-shadow:0 0 0 3px #15122A,0 8px 20px rgba(0,0,0,.4);transition:transform .6s cubic-bezier(.5,0,.4,1),opacity .6s;pointer-events:none}
+.fly::after{content:"";position:absolute;inset:14px;border-radius:6px;background:repeating-linear-gradient(#15122A 0 3px,transparent 3px 9px)}
+.tab.got{animation:got .6s ease-out}
+@keyframes got{30%{transform:scale(1.18) rotate(-4deg)}}
+/* the pixel menu: a box of options, a row each, the one under the hand barred */
+.pick{position:fixed;z-index:40;width:260px;max-height:320px;overflow:auto;padding:6px;border-radius:10px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.4),0 14px 34px rgba(0,0,0,.5)}
+.pick ol{list-style:none;margin:0;padding:0}
+.pick li+li{border-top:1px dotted rgba(44,51,36,.4)}
+.pick button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;color:var(--lcd-ink);text-align:left;font:400 17px/1.1 "VT323",ui-monospace,monospace}
+.pick button:hover,.pick button:focus{background:var(--lcd-ink);color:var(--lcd)}
+.pick .i,.pick img{width:18px;height:18px;flex:none}
+/* the clues, trimmed */
+.clue[data-clue="1"] .cw{display:none}
+.clue[data-clue="3"] .cw{font-size:24px;letter-spacing:.12em}
+.clue-map{padding:12px}
+.clue-map .i{width:28px;height:28px}
+/* the checklist: a tile and its mark, the line, the box */
+.checks{list-style:none;margin:18px 0 0;padding:12px;display:grid;gap:8px;border-radius:12px;background:linear-gradient(180deg,rgba(107,79,192,.28),rgba(107,79,192,.12));box-shadow:inset 0 0 0 2px var(--edge)}
+.chk-b{display:grid;grid-template-columns:44px 1fr 24px;align-items:center;gap:10px;width:100%;text-align:left;color:var(--navy);cursor:pointer}
+.chk-ic{display:grid;place-items:center;grid-auto-flow:column;gap:1px;width:44px;height:44px;border-radius:10px;background:var(--cc);color:#15122A;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.chk-ic .i{width:22px;height:22px}.chk-ic .i.sm{width:13px;height:13px}
+.cl-wk{font:400 26px/1 "VT323",ui-monospace,monospace}
+.chk-w{font:400 19px/1.05 "VT323",ui-monospace,monospace;letter-spacing:.03em}
+.chk-box{display:grid;place-items:center;width:22px;height:22px;border-radius:5px;border:2px solid var(--edge);color:#15122A}
+.chk.ok .chk-box{background:var(--cc);border-color:var(--cc)}
+.chk.ok .chk-w{text-decoration:line-through;text-decoration-thickness:1px;opacity:.75}
+.chk-box .i{width:13px;height:13px}
+.chk.nope .chk-b{animation:nope .45s}
+@keyframes nope{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.start-k{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:12px;border-radius:12px;background:var(--sun);color:#15122A;font:400 22px/1 "VT323",ui-monospace,monospace;letter-spacing:.14em;box-shadow:0 4px 0 #15122A}
+.start-k:active{transform:translateY(3px);box-shadow:0 1px 0 #15122A}
+.start-k .i{width:18px;height:18px}
+/* the three readings, each a small strip of the story */
+.seg.thumbs .key{height:96px;padding:4px;align-items:flex-start;overflow:hidden}
+.thumb{display:block;width:56px;max-height:86px;object-fit:cover;object-position:top;background:#fff;image-rendering:pixelated;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.key.thumb-k[aria-pressed="true"]{background:var(--sun)}
+/* the posters made here, at the head of the portfolio */
+.posters-hero{display:grid;gap:10px}
+.ph-hero{margin:0;padding:10px;border-radius:14px;background:var(--acryl);box-shadow:inset 0 0 0 1px var(--edge)}
+.ph-hero img{display:block;width:100%;max-height:520px;object-fit:contain;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.ph-more{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ph-more img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;background:#fff}
+@media (prefers-reduced-motion:reduce){.hw-arrow{animation:none}}
+#board .tools,#zine .tools{overflow-x:auto;scrollbar-width:none}#board .tools .bt,#zine .tools .bt,.swatches{flex:none}

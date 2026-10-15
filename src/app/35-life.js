@@ -402,6 +402,18 @@ const life = (() => {
     placesK = k; placesL = bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? T4.pollution : T4.community)).slice(0, 400).map(b => ({ n: b.n, fam: b.fam, lat: b.lat, lng: b.lng, cur: !!b.cur, t: 'biz', on: !!(b.h || []).length, sb: bearing(S.scan.lat, S.scan.lng, b.lat, b.lng) }));
     return placesL;
   }
+  /* the posters made here, small and pinned up, where their stories are */
+  const PIM = new Map();
+  function posters(ctx) {
+    if (!POSTERS2.length || S.mode === 'place') return;
+    POSTERS2.slice(0, 12).forEach((p, i) => {
+      let im = PIM.get(p.id); if (!im) { im = new Image(); im.onload = () => { fxDirty = true; }; im.src = p.img; PIM.set(p.id, im); }
+      if (!im.complete || !im.naturalWidth) return; const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) return;
+      const w = 30, h = Math.min(64, w * im.naturalHeight / im.naturalWidth);
+      ctx.save(); ctx.translate(q.x + 20, q.y - 26); ctx.rotate(((i % 3) - 1) * 0.12); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 6; ctx.fillStyle = '#fff'; ctx.fillRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6); ctx.shadowBlur = 0; ctx.drawImage(im, -w / 2, -h / 2, w, h);
+      ctx.fillStyle = 'rgba(255,210,63,.85)'; ctx.fillRect(-7, -h / 2 - 7, 14, 6); ctx.restore();
+    });
+  }
   function places(ctx) {
     for (const p of placesL) p._x = null;
     if (!seeTrack('places') || S.mode === 'ping') return;
@@ -448,7 +460,7 @@ const life = (() => {
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
     if (placed() && S.radio && S.mode !== 'place' && !still) hand(ctx);
     strings.drawSaved(ctx, now);
-    places(ctx); signals(ctx, now, still);
+    places(ctx); signals(ctx, now, still); posters(ctx);
     /* where something sounded: a ring opening from it */
     for (const p of pings) { const q = (now - p.t) / 750; if (q < 0 || q > 1) continue; const pt = map.project([p.lng, p.lat]); ctx.save(); ctx.beginPath(); ctx.arc(pt.x, pt.y, 5 + q * 20, 0, TAU); ctx.strokeStyle = `rgba(${p.c},${(0.75 * (1 - q)).toFixed(3)})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); fxDirty = true; }
     for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
