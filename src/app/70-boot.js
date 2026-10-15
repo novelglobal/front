@@ -81,7 +81,6 @@ if (T4.water) setTimeout(loadOverlays, 1500);
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
 /* the radar waits, and the first clue floats over the ground: find yourself. A touch on the map puts the radar down there */
-setTimeout(() => { if (!S.started) $('#arcade').hidden = false; }, 300);
 setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);

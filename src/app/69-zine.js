@@ -5,7 +5,7 @@
    at novel.global's printer as the printer's own raster. Each paper is kept on this device (da.press.<format>)
    ════════════════════════════════════════════════════════════════════ */
 const FORMATS = { r80: { dots: 512, w: 320, ic: 'receipt', n: '80' }, r58: { dots: 384, w: 240, ic: 'receipt', n: '58' }, gb: { dots: 160, w: 160, levels: 4, ic: 'gb', n: '' }, zine: { w: 420, h: 595, ic: 'base', n: 'A5' } };
-const PRESS = { story: null, fmt: 'r80', pack: 'life' };   /* every visit opens on the 80 mm receipt */
+const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1 };   /* every visit opens on the 80 mm receipt */
 const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
@@ -15,7 +15,7 @@ const zKey = () => 'da.press.' + PRESS.fmt;
 const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 40) ZHIST.shift(); } zLast = str; store.set(zKey(), { json, h: zc.getHeight() }); }, 300);
 /* the tools: words, a headline, cut-out letters, a photocopy, a pen, shapes, a stamp, tape, ink, undo, remove. Icons only;
    their names come on a long hover */
-const ZTOOLS = [['add', 'plus', 'Add'], ['text', 'quote', 'Words: again for another face'], ['head', 'sign', 'Headline: again for another face'], ['cut', 'remix', 'Cut-out letters'], ['image', 'camera', 'Photocopy'], ['draw', 'pencil', 'Pen'], ['shape', 'base', 'Shapes: again for another'], ['stamp', 'check', 'Stamp'], ['tape', 'minus', 'Tape: again for bandana, wire'], ['rag', 'base', 'Bandana: again to turn it'], ['undo', 'undo', 'Undo'], ['delete', 'close', 'Remove']];
+const ZTOOLS = [['add', 'plus', 'Add'], ['text', 'quote', 'Words: again for another face'], ['head', 'sign', 'Headline: again for another face'], ['cut', 'remix', 'Cut-out letters'], ['image', 'camera', 'Photocopy'], ['draw', 'pencil', 'Pen'], ['shape', 'base', 'Shapes: again for another'], ['stamp', 'check', 'Stamp'], ['tape', 'minus', 'Tape: again for bandana, wire'], ['rag', 'base', 'Bandana: again to turn it'], ['undo', 'undo', 'Undo'], ['delete', 'close', 'Remove'], ['zoom', 'search', 'Closer: again for closer, then back']];
 const SWATCH = ['#0C0E0E', '#FFFFFF', '#A9F0EC', '#FF5A1F', '#E6F84A', '#7FB8D6', '#B9A58C', '#8A1C1C'];
 let ZCOL = store.get('da.zcol', '#0C0E0E');
 /* the faces, turned round on the words keys: typewriter, a flourished serif, blackletter, a spray can, bubbles, the terminal */
@@ -37,6 +37,7 @@ function keyFace(k) {
   if (k === 'text' || k === 'head') { const fc = FACES[ZFACE]; return `<b class="aa${k === 'head' ? ' big' : ''}" style="font-family:${fc.f.replace(/"/g, "'")};font-style:${fc.st || 'normal'}">Aa</b>`; }
   if (k === 'tape') return `<i class="tp tp-${TAPES[ZTAPE]}" style="${TAPES[ZTAPE] === 'rag' ? `background-image:url(${ragURL(false)})` : TAPES[ZTAPE] === 'barb' ? `background-image:url(${barbURL('#E6EEF0')})` : ''}"></i>`;
   if (k === 'rag') return `<i class="rg" style="background-image:url(${ragURL(RAGINV)})"></i>`;
+  if (k === 'zoom') return `<span class="zl">${icon('search')}<i class="zl-d">${[0, 1, 2].map(i => `<b${i <= PRESS.zl ? ' class="on"' : ''}></b>`).join('')}</i></span>`;
   return '';
 }
 const refaceKey = k => { const b = $(`#zine [data-zt="${k}"]`); if (b) b.innerHTML = keyFace(k); };
@@ -70,7 +71,7 @@ function barbURL(col = ZCOL, w = 360, h = 44) {
 /* the receipt shown larger than it prints, so the hand can work on it; the paper's own size stays the same underneath */
 function fitZ() {
   if (!zc) return; const host = $('#zine .desk'); const F = FORMATS[PRESS.fmt]; const room = (host && host.clientWidth ? host.clientWidth : 640) - 48;
-  const z = PRESS.fmt === 'zine' ? Math.min(1, room / F.w) : clamp(room / F.w, 1, PRESS.fmt === 'gb' ? 2.6 : 1.6); PRESS.z = z;
+  const L = PRESS.fmt === 'zine' ? [0.6, 0.85, 1.25] : PRESS.fmt === 'gb' ? [1.4, 2.2, 3] : [1, 1.6, 2.4]; const z = PRESS.zl === 0 ? Math.min(L[0], Math.max(0.5, room / F.w)) : L[PRESS.zl]; PRESS.z = z;
   zc.setDimensions({ width: `${Math.round(zc.getWidth() * z)}px`, height: `${Math.round(zc.getHeight() * z)}px` }, { cssOnly: true });
 }
 addEventListener('resize', () => { if (zc && !$('#zine').hidden) fitZ(); });
@@ -171,6 +172,7 @@ async function zineTool(k) {
   }
   if (k === 'cut') { const g = cutOut(f, words() || 'WISH', x, y); c.add(g); c.setActiveObject(g); }
   if (k === 'image') { $('#zine-file').click(); return; }
+  if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
   if (k === 'add') { pickMenu($('#zine [data-zt="add"]'), addables(false), it => pieceOn(it.k, it.id)); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
@@ -216,14 +218,32 @@ function cellSticker(o) {
     if (o.photo) { const im = new Image(); im.onload = () => { x.save(); x.beginPath(); x.arc(100, 100, 82, 0, Math.PI * 2); x.clip(); const k = Math.max(164 / im.width, 164 / im.height); x.drawImage(im, 100 - im.width * k / 2, 100 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }; im.onerror = done; im.src = o.photo; }
     else { M.glyph(x, glyphOf(o) || 'paw', 100, 100, 110, '#141412'); done(); } });
 }
-function speciesSticker(sp) {
-  return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); const done = () => res(c.toDataURL('image/png'));
-    x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.beginPath(); x.arc(100, 100, 92, 0, Math.PI * 2); x.fillStyle = '#FFFFFF'; x.fill(); x.restore();
-    const glyph = () => { M.glyph(x, sp.g || 'paw', 100, 100, 110, '#141412'); done(); };
-    if (!sp.ph) { glyph(); return; }
-    loadImage(sp.ph, true).then(im => { x.save(); x.beginPath(); x.arc(100, 100, 82, 0, Math.PI * 2); x.clip(); const k = Math.max(164 / im.width, 164 / im.height); x.drawImage(im, 100 - im.width * k / 2, 100 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }).catch(glyph); });
+const CUTS = ['circle', 'stamp', 'scallop', 'hex', 'arch', 'heart', 'ticket'];
+function cutPath(x, kind, c, R) {
+  x.beginPath();
+  if (kind === 'circle') x.arc(c, c, R, 0, TURN);
+  else if (kind === 'hex') { for (let i = 0; i < 6; i++) { const a = i / 6 * TURN + Math.PI / 6; x[i ? 'lineTo' : 'moveTo'](c + Math.cos(a) * R, c + Math.sin(a) * R); } x.closePath(); }
+  else if (kind === 'scallop') { const n = 14; for (let i = 0; i <= n * 8; i++) { const a = i / (n * 8) * TURN; const r = R * (0.9 + 0.1 * Math.cos(a * n)); x[i ? 'lineTo' : 'moveTo'](c + Math.cos(a) * r, c + Math.sin(a) * r); } x.closePath(); }
+  else if (kind === 'stamp') { const w = R * 0.86; x.rect(c - w, c - w, w * 2, w * 2); }
+  else if (kind === 'arch') { const w = R * 0.78; x.moveTo(c - w, c + R * 0.92); x.lineTo(c - w, c - R * 0.15); x.arc(c, c - R * 0.15, w, Math.PI, 0); x.lineTo(c + w, c + R * 0.92); x.closePath(); }
+  else if (kind === 'heart') { const k = R / 16; x.moveTo(c, c + 14 * k); x.bezierCurveTo(c - 22 * k, c - 2 * k, c - 12 * k, c - 18 * k, c, c - 7 * k); x.bezierCurveTo(c + 12 * k, c - 18 * k, c + 22 * k, c - 2 * k, c, c + 14 * k); x.closePath(); }
+  else { const w = R * 0.95, h = R * 0.62; x.moveTo(c - w, c - h); x.lineTo(c + w, c - h); x.arc(c + w, c, h * 0.28, -Math.PI / 2, Math.PI / 2, true); x.lineTo(c + w, c + h); x.lineTo(c - w, c + h); x.arc(c - w, c, h * 0.28, Math.PI / 2, -Math.PI / 2, true); x.closePath(); }
 }
-const figChart = g => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="10" fill="#fff"/><g transform="translate(10 10)">${strings.chartOf(g.id, 160)}</g></svg>`)}`;
+let cutN = 0;
+function speciesSticker(sp, kind) {
+  kind = kind || CUTS[(cutN++ + Math.floor(Math.random() * 3)) % CUTS.length];
+  return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 220; const x = c.getContext('2d'); const done = () => res(c.toDataURL('image/png'));
+    x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.shadowOffsetY = 3; cutPath(x, kind, 110, 100); x.fillStyle = '#FFFFFF'; x.fill(); x.restore();
+    /* a stamp's teeth, punched along its edges */
+    if (kind === 'stamp') { const w = 86, n = 10; x.save(); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i <= n; i++) { const t = -w + 2 * w * i / n; for (const [px, py] of [[110 + t, 110 - w], [110 + t, 110 + w], [110 - w, 110 + t], [110 + w, 110 + t]]) { x.beginPath(); x.arc(px, py, 5.5, 0, TURN); x.fill(); } } x.restore(); }
+    const glyph = () => { M.glyph(x, sp.g || 'paw', 110, 110, 110, '#141412'); done(); };
+    if (!sp.ph) { glyph(); return; }
+    loadImage(sp.ph, true).then(im => { x.save(); cutPath(x, kind, 110, 88); x.clip(); const k = Math.max(190 / im.width, 190 / im.height); x.drawImage(im, 110 - im.width * k / 2, 110 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }).catch(glyph); });
+}
+/* a kind of life as svg paths, for a constellation's ground */
+const glyphPaths = (g, col) => (M.GLYPHS[g] || M.GLYPHS.paw || []).map(p => (p.f ? `<path d="${p.d}" fill="${col}"${p.rule ? ` fill-rule="${p.rule}"` : ''}/>` : `<path d="${p.d}" fill="none" stroke="${col}" stroke-width="${p.w}" stroke-linecap="round" stroke-linejoin="round"/>`)).join('');
+const figChart = g => { const gl = (g.o && glyphOf(g.o)) || 'paw';
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" color="${ZCOL}"><g transform="translate(4 4) scale(12)" opacity=".16">${glyphPaths(gl, ZCOL)}</g><g transform="translate(20 20)">${strings.chartOf(g.id, 160).replace('<svg class="chart"', `<svg width="160" height="160" color="${ZCOL}"`)}</g></svg>`)}`; };
 async function pieceOn(kind, id) {
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; if (PRESS.fmt !== 'zine') { PRESS.story = id; await setBase(true); refreshPanel(); return; } const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 150); }
   if (kind === 'r') { const o = myCells().find(v => String(v.id) === String(id)); if (o) placeOnPage(await cellSticker(o), 'sticker', 86); }
@@ -298,7 +318,7 @@ async function pressOut(k) {
     const el = $('#p-slip'); el.innerHTML = `<img src="${url}" alt="" style="width:100%;display:block">`; el.className = 'slip print zine';
     let st = $('#page-size'); if (!st) { st = document.createElement('style'); st.id = 'page-size'; document.head.appendChild(st); }
     st.textContent = PRESS.fmt === 'zine' ? '@page{size:A5;margin:0}' : `@page{size:${F.n === '58' ? 58 : 80}mm ${Math.ceil(zc.getHeight() / F.w * (F.n === '58' ? 58 : 80)) + 6}mm;margin:0}`;
-    tie(2); setTimeout(() => window.print(), 300); return;
+    tie(2); store.set('da.printed.v1', Date.now()); setTimeout(() => window.print(), 300); return;
   }
   if (k === 'poster') { await savePoster(); return; }
   if (k === 'png') { const a = document.createElement('a'); a.href = url; a.download = `${s ? s.code : 'sign'}-${PRESS.fmt}.png`; a.click(); tick(1800); return; }
@@ -307,7 +327,7 @@ async function pressOut(k) {
   const bytesOf = async () => { const dots = (F.dots || 512) - ((F.dots || 512) % 8); const h = Math.round(zc.getHeight() * dots / zc.getWidth()); const cv = await bwCanvas(url, dots, h, 2); return new Uint8Array([0x1B, 0x40, ...rasterOf(cv), 0x0A, 0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00]); };
   if (k === 'escpos') { download(`${s.code}.bin`, new Blob([await bytesOf()], { type: 'application/octet-stream' })); tick(1800); return; }
   if (k === 'mesh') { const t = meshText(s); const ok = await copyText(t); toast(ok ? `${bytes(t)} B` : t.slice(0, 60)); return; }
-  if (k === 'send') { try { const v = await directAction(s, MASTER ? MASTER.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); snd.tear(); toast(v.status === 'outbox' ? '…' : '✓'); refreshPanel(); } catch (e) { toast('✕'); } }
+  if (k === 'send') { try { const v = await directAction(s, MASTER ? MASTER.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); toast(v.status === 'outbox' ? '…' : '✓'); refreshPanel(); } catch (e) { toast('✕'); } }
 }
 $('#zine').addEventListener('click', e => { const b = e.target.closest('[data-zt]'); if (b) { zineTool(b.dataset.zt); return; } const ink = e.target.closest('[data-ink]'); if (ink) { setInk(ink.dataset.ink); snd.tick(1300); } });
 $('#zine').addEventListener('change', e => {
@@ -336,9 +356,9 @@ function viewSigns() {
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`
     + `<section class="sec" id="sec-style"><div class="seg keys" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}</button>`).join('')}</div>`
-      + `<div class="seg keys outs" role="group" aria-label="Out">${[['print', 'print', 'Print here'], ['send', 'radar', 'To novel.global'], ['poster', 'stories', 'Keep as a poster'], ['png', 'download', 'Picture'], ['escpos', 'escpos', 'Printer bytes'], ['mesh', 'mesh', 'Mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
+      + `</section><section class="sec" id="sec-out"><h3 class="out-h"><span>PRINT</span></h3><div class="seg keys outs" role="group" aria-label="Print">${[['print', 'print', 'Print here'], ['send', 'radar', 'To novel.global'], ['poster', 'stories', 'Keep as a poster'], ['png', 'download', 'Picture'], ['escpos', 'escpos', 'Printer bytes'], ['mesh', 'mesh', 'Mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}<i class="out-go" aria-hidden="true"></i></button>`).join('')}</div></section>`
     + (sps.length ? `<section class="sec" id="sec-near"><ol class="near">${sps.map(sp => `<li><button type="button" class="nr-b" data-piece="L" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>` : '')
-    + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${icon('string')}</button></li>`).join('')}</ol></section>` : '')
+    + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol></section>` : '')
     + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-k" data-spack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${k}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
       + `<ol class="stickers${PRESS.pack === 'words' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own">${icon('plus')}<input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
     + `<section class="sec" id="sec-prn"><div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}</button></div></section>`;
