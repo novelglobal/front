@@ -113,7 +113,7 @@ const strings = (() => {
   /* a string to a place that sells or leaves what harms this life */
   const hotIn = nodeOf => e => e.some(k => { const n = k !== 'pin' && nodeOf(k); return !!n && n.t === 'biz' && (n.harm || []).length > 0; });
   /* the human ecology, drawn small: a diamond for a shop or a brand, filled by what it does; a room for a third space; three linked dots for a network */
-  const CHAR = { circular: '12,203,189', network: '0,103,184', artists: '230,248,74', third: '140,116,105' };
+  const CHAR = { circular: '12,203,189', network: '0,103,184', artists: '230,248,74', third: '127,209,194' };
   function placeMark(ctx, n, x, y, k, tied) {
     const harm = (n.harm || []).length > 0; const ch = CHAR[n.fam];
     /* the circular economy, community, the creative and third spaces carry more: larger, in a soft halo of their colour;
@@ -231,7 +231,7 @@ const strings = (() => {
     if (String(k).startsWith('x:')) { bringIn(idOf(k.slice(2)), true); return; }
     if (!nodes.has(k)) return;
     if (inFig(k)) { untie(k); if (peekKey === k) card(); return; }
-    tieTo(k, fig.end); if (peekKey && peekKey !== k) unpeek(); save(); changed(); tie(1); if (S.radio) setTimeout(() => { if (cell) playFig(cell.id); }, 420);
+    tieTo(k, fig.end); if (peekKey && peekKey !== k) unpeek(); save(); changed(); tie(1); markTweak(); if (S.radio) setTimeout(() => { if (cell) playFig(cell.id); }, 420);
   }
   let bornAt = 0;
   function tieTo(k, from, at = 0, quiet = false) {

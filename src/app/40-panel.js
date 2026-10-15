@@ -102,7 +102,7 @@ viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
   if (e.target.closest('[data-time]')) { setTime(!timeOn()); return; }
-  if (e.target.closest('[data-share-mix]')) { shareMix(); return; }
+  if (e.target.closest('[data-share-mix]')) { arcade('START STORY', () => shareMix()); return; }
   const pm = e.target.closest('[data-mix]'); if (pm) { playMix(pm.dataset.mix); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
@@ -239,7 +239,7 @@ function viewRadio() {
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="Turn on the radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
-      <button type="button" class="share-b" data-share-mix aria-label="Start a signal">${icon('share', 'sm')}<span>START A SIGNAL</span></button>
+      ${S.tweaked ? `<button type="button" class="share-b" data-share-mix aria-label="Start a signal">${icon('share', 'sm')}<span>START A SIGNAL</span></button>` : ''}
     </section>`;
 }
 

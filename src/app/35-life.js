@@ -159,11 +159,11 @@ const life = (() => {
       if (!it.o.hist && it.b.tone !== 'cold' && shown(it) && pingCell(it, first)) pings.push({ lat: it.lat, lng: it.lng, t: now, c: it.o.pack ? '12,203,189' : it.alarm ? '232,69,60' : '255,255,255' });
     }
     /* the places' station: each place the sweep crosses sounds in its own small sound */
-    if (TRK.on.places) for (const p of placesIn()) { if (p.sb == null) { p.sb = bearing(S.scan.lat, S.scan.lng, p.lat, p.lng); } let a = p.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingPlace(p)) pings.push({ lat: p.lat, lng: p.lng, t: now, c: '140,116,105' }); }
+    if (TRK.on.places) for (const p of placesIn()) { if (p.sb == null) { p.sb = bearing(S.scan.lat, S.scan.lng, p.lat, p.lng); } let a = p.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingPlace(p)) pings.push({ lat: p.lat, lng: p.lng, t: now, c: '127,209,194' }); }
     /* WATER: each drinking fountain and body of water the hand passes, a drop */
     if (TRK.on.water) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
     /* the constellations in the radar join the mix: each plays as the hand passes its life */
-    if (S.radio && prefs.sound) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '140,116,105' }); } }
+    if (S.radio && prefs.sound) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
     /* the trail: as it crosses more life, the drone under it swells */
     if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }

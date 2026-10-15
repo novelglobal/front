@@ -559,7 +559,7 @@ const speciesFrom = t => {
 };
 const nightNow = () => { const h = new Date().getHours(); return h >= 20 || h < 6; };
 /* what it is, by touch, when the words do not say: the kinds most often met here, and any other animal */
-const LIFE_CHIPS = [['paw', 'ANIMAL'], ['bird', 'BIRD'], ['possum', 'POSSUM'], ['bat', 'BAT'], ['bee', 'BEE'], ['butterfly', 'BUTTERFLY'], ['beetle', 'BEETLE'], ['spider', 'SPIDER'], ['lizard', 'LIZARD'], ['snake', 'SNAKE'], ['frog', 'FROG'], ['turtle', 'TURTLE'], ['dog', 'DOG'], ['cat', 'CAT'], ['plant', 'PLANT']];
+const LIFE_CHIPS = [['paw', 'ANIMAL'], ['bird', 'BIRD'], ['possum', 'POSSUM'], ['bat', 'BAT'], ['bee', 'BEE'], ['butterfly', 'BUTTERFLY'], ['moth', 'MOTH'], ['bug', 'INSECT'], ['beetle', 'BEETLE'], ['spider', 'SPIDER'], ['lizard', 'LIZARD'], ['snake', 'SNAKE'], ['frog', 'FROG'], ['turtle', 'TURTLE'], ['dog', 'DOG'], ['cat', 'CAT'], ['plant', 'PLANT']];
 const LIFE_KINDS = ['fauna', 'flora', 'injured', 'dead', 'lost'];
 /* a phone number or an email, nothing else */
 const contactOK = v => !v || /^[^@\s/]+@[^@\s/]+\.[a-z]{2,}$/i.test(v) || /^\+?[\d\s()-]{8,18}$/.test(v);
@@ -610,8 +610,8 @@ function fillPlace() {
   $('#pl-kinds').innerHTML = PLACE_KINDS.map((x, i) => `<button type="button" class="chip k-${x.f}${i === p.kind ? ' on' : ''}" data-k="${i}" aria-pressed="${i === p.kind}">${x.word}</button>`).join('');
   const lifeOn = LIFE_KINDS.includes(k.f); $('#pl-lives').hidden = !lifeOn;
   const autoG = !p.g && p.tx ? glyphOf(p) : null;
-  if (lifeOn) $('#pl-lives').innerHTML = LIFE_CHIPS.map(([g, w]) => `<button type="button" class="lchip${p.g === g ? ' on' : autoG === g ? ' auto' : ''}" data-g="${g}" aria-pressed="${p.g === g}" aria-label="${w}" data-tip="${w}">${glyphSVG(g)}</button>`).join('');
-  const chosen = p.g && p.g !== 'paw' ? (M.KINDS[p.g] || '') : '';
+  if (lifeOn) $('#pl-lives').innerHTML = LIFE_CHIPS.map(([g, w]) => `<button type="button" class="lchip${p.g === g ? ' on' : autoG === g ? ' auto' : ''}" data-g="${g}" aria-pressed="${p.g === g}" aria-label="${w}" data-tip="${w}">${glyphSVG(g)}</button>`).join('') + `<input type="text" class="lkind" id="pl-kind" maxlength="40" value="${esc(p.custom || '')}" placeholder="another kind" aria-label="Another kind of life">`;
+  const chosen = p.custom ? p.custom : p.g && p.g !== 'paw' ? (M.KINDS[p.g] || '') : '';
   const name = p.tx ? p.tx.cn : chosen ? (k.f === 'injured' ? `${chosen}, hurt` : k.f === 'dead' ? `${chosen}, dead` : k.f === 'lost' ? `${chosen}, lost` : chosen) : k.f === 'injured' ? 'An animal, hurt' : k.f === 'dead' ? 'An animal, dead' : k.f === 'lost' ? 'An animal, lost' : k.f === 'flora' ? 'A plant' : k.f === 'fauna' ? 'An animal' : text ? text.slice(0, 48) : cap(k.word.toLowerCase());
   $('#pl-name').textContent = name; $('#pl-latin').innerHTML = p.tx ? `<i>${esc(p.tx.n)}</i>` : '';
   const tags = []; const n = countFrom(text.toLowerCase()); if (n > 1) tags.push(`×${n}`);
@@ -631,6 +631,8 @@ const pop = () => { const d = $('#pl-disc'); d.classList.remove('pop'); void d.o
 $('#pl-text').addEventListener('input', debounce(() => { const p = S.place; if (!p) return; const was = p.kind; if (p.auto) p.kind = kindFrom($('#pl-text').value.toLowerCase()); const had = p.tx && p.tx.n; fillPlace(); if (p.kind !== was || (p.tx && p.tx.n) !== had) { tick(p.kind !== was ? 1200 : 2000); pop(); } }, 160));
 $('#pl-text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); placeIt(false); } });
 $('#pl-kinds').addEventListener('click', e => { const b = e.target.closest('[data-k]'); const p = S.place; if (!b || !p) return; p.kind = +b.dataset.k; p.auto = false; if (PLACE_KINDS[p.kind].f === 'flora' && p.g && !['plant', 'fungi'].includes(p.g)) p.g = null; if (PLACE_KINDS[p.kind].f !== 'flora' && ['plant', 'fungi'].includes(p.g)) p.g = null; fillPlace(); tick(1200); pop(); });
+/* a kind of life of one's own, typed: it names the record */
+$('#pl-lives').addEventListener('input', debounce(e => { if (e.target.id !== 'pl-kind' || !S.place) return; S.place.custom = e.target.value.trim(); const n = $('#pl-name'); if (n && S.place.custom) n.textContent = S.place.custom; }, 200));
 $('#pl-lives').addEventListener('click', e => {
   const b = e.target.closest('[data-g]'); const p = S.place; if (!b || !p) return; const g = b.dataset.g;
   p.g = p.g === g ? null : g;
@@ -661,7 +663,7 @@ async function placeIt(respond) {
   if (sign) { S.me.by = sign; store.set('da.me', S.me); }
   const dp = k.type === 'need' ? 3 : 4; const tx = p.tx || (text ? speciesFrom(text.toLowerCase()) : null); const n = countFrom(text.toLowerCase());
   const g = LIFE_KINDS.includes(k.f) ? (p.g || (tx ? null : life.badgeOf(p, 20).g)) : null;
-  const data = { text: text || (tx ? tx.cn : p.g && p.g !== 'paw' ? M.KINDS[p.g] : ''), ...(tx ? { tx } : {}), ...(g ? { g } : {}), ...(contact ? { contact } : {}), ...(n > 1 ? { n } : {}), ...(p.photo ? { photo: p.photo } : {}), ...(k.type === 'event' ? { start: new Date($('#pl-when').value).toISOString() } : {}) };
+  const data = { text: text || (tx ? tx.cn : p.custom ? p.custom : p.g && p.g !== 'paw' ? M.KINDS[p.g] : ''), ...(p.custom ? { kn: p.custom } : {}), ...(tx ? { tx } : {}), ...(g ? { g } : {}), ...(contact ? { contact } : {}), ...(n > 1 ? { n } : {}), ...(p.photo ? { photo: p.photo } : {}), ...(k.type === 'event' ? { start: new Date($('#pl-when').value).toISOString() } : {}) };
   const ev = { type: k.type, lat: +p.lat.toFixed(dp), lng: +p.lng.toFixed(dp), b: tx && k.type === 'noticed' ? null : k.b, who: sign, data };
   const saved = await ledgerAdd(ev); $('#pl-text').value = '';
   buzz([12, 40, 18]); snd.pluck(0.3, 0);
