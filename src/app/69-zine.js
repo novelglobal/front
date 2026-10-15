@@ -15,7 +15,7 @@ const zKey = () => 'da.press.' + PRESS.fmt;
 const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 40) ZHIST.shift(); } zLast = str; store.set(zKey(), { json, h: zc.getHeight() }); }, 300);
 /* the tools: words, a headline, cut-out letters, a photocopy, a pen, shapes, a stamp, tape, ink, undo, remove. Icons only;
    their names come on a long hover */
-const ZTOOLS = [['text', 'quote', 'Typewritten'], ['head', 'sign', 'Headline'], ['cut', 'remix', 'Cut-out letters'], ['image', 'camera', 'Photocopy'], ['draw', 'trace', 'Pen'], ['shape', 'base', 'Shapes'], ['stamp', 'check', 'Stamp'], ['tape', 'minus', 'Tape'], ['undo', 'undo', 'Undo'], ['delete', 'close', 'Remove']];
+const ZTOOLS = [['add', 'plus', 'Add'], ['text', 'quote', 'Typewritten'], ['head', 'sign', 'Headline'], ['cut', 'remix', 'Cut-out letters'], ['image', 'camera', 'Photocopy'], ['draw', 'trace', 'Pen'], ['shape', 'base', 'Shapes'], ['stamp', 'check', 'Stamp'], ['tape', 'minus', 'Tape'], ['undo', 'undo', 'Undo'], ['delete', 'close', 'Remove']];
 const SWATCH = ['#141412', '#E0218A', '#FF7EB0', '#FF8A1F', '#FFD23F', '#7FD1C2', '#3FA7D6', '#6B4FC0', '#FFFFFF'];
 let ZCOL = store.get('da.zcol', '#141412');
 function zineTools() {
@@ -87,6 +87,7 @@ async function zineTool(k) {
   if (k === 'head') { const t = new f.Textbox((words() || '★').toUpperCase(), { left: 12, top: y, width: W - 24, fontFamily: 'VT323, monospace', fontSize: Math.round(W / 7.5), lineHeight: 0.9, fill: ZCOL, daKind: 'head' }); c.add(t); c.setActiveObject(t); }
   if (k === 'cut') { const g = cutOut(f, words() || 'WISH', x, y); c.add(g); c.setActiveObject(g); }
   if (k === 'image') { $('#zine-file').click(); return; }
+  if (k === 'add') { pickMenu($('#zine [data-zt="add"]'), addables(false), it => pieceOn(it.k, it.id)); return; }
   if (k === 'tape') { const r = new f.Rect({ left: x, top: y, width: W * 0.38, height: 26, fill: 'rgba(255,210,63,.55)', angle: rnd(-25, 25), daKind: 'tape' }); c.add(r); c.setActiveObject(r); }
   if (k === 'delete') { for (const o of c.getActiveObjects()) if (o.daKind !== 'base') c.remove(o); c.discardActiveObject(); }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
@@ -118,11 +119,19 @@ function cellSticker(o) {
     if (o.photo) { const im = new Image(); im.onload = () => { x.save(); x.beginPath(); x.arc(100, 100, 82, 0, Math.PI * 2); x.clip(); const k = Math.max(164 / im.width, 164 / im.height); x.drawImage(im, 100 - im.width * k / 2, 100 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }; im.onerror = done; im.src = o.photo; }
     else { M.glyph(x, glyphOf(o) || 'paw', 100, 100, 110, '#141412'); done(); } });
 }
+function speciesSticker(sp) {
+  return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); const done = () => res(c.toDataURL('image/png'));
+    x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.beginPath(); x.arc(100, 100, 92, 0, Math.PI * 2); x.fillStyle = '#FFFFFF'; x.fill(); x.restore();
+    const glyph = () => { M.glyph(x, sp.g || 'paw', 100, 100, 110, '#141412'); done(); };
+    if (!sp.ph) { glyph(); return; }
+    loadImage(sp.ph, true).then(im => { x.save(); x.beginPath(); x.arc(100, 100, 82, 0, Math.PI * 2); x.clip(); const k = Math.max(164 / im.width, 164 / im.height); x.drawImage(im, 100 - im.width * k / 2, 100 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }).catch(glyph); });
+}
 const figChart = g => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="10" fill="#fff"/><g transform="translate(10 10)">${strings.chartOf(g.id, 160)}</g></svg>`)}`;
 async function pieceOn(kind, id) {
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; if (PRESS.fmt !== 'zine') { PRESS.story = id; await setBase(true); refreshPanel(); return; } const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 150); }
   if (kind === 'r') { const o = myCells().find(v => String(v.id) === String(id)); if (o) placeOnPage(await cellSticker(o), 'sticker', 86); }
   if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (g) placeOnPage(figChart(g), 'chart', 120); }
+  if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 90); }
 }
 function setFormat(k) { if (!FORMATS[k]) return; PRESS.fmt = k; $$('#view [data-pfmt]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pfmt === k))); showZine(true); tick(1500); buzz(4); }
 /* a print sent: a small clear printer, hand-drawn, the paper feeding out, then torn; no words */
@@ -130,6 +139,24 @@ function feedAnim(url) {
   const d = $('#zine .desk'); if (!d || reduced()) return;
   const el = document.createElement('div'); el.className = 'feed'; el.innerHTML = `<i class="fp-body"></i><i class="fp-slot"></i><i class="fp-led"></i><span class="fp-paper"><img src="${url}" alt=""></span>`;
   d.appendChild(el); snd.printer(1400); setTimeout(() => el.classList.add('torn'), 1500); setTimeout(() => el.remove(), 2600);
+}
+const POSTERS2 = store.get('da.posters2.v1', []);
+async function savePoster() {
+  const out = await stripOut(); if (!out) return; const s = pressStory(); const im = await loadImage(out.url, false);
+  const k = Math.min(1, 360 / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+  const where = s && s.pin ? { lat: +s.pin.lat, lng: +s.pin.lng } : { lat: S.scan.lat, lng: S.scan.lng };
+  POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.8), ...where }); POSTERS2.splice(12);
+  while (!store.set('da.posters2.v1', POSTERS2) && POSTERS2.length > 1) POSTERS2.pop();
+  snd.tear(); buzz([10, 40, 10]); toast('✓'); life.redraw(); return POSTERS2[0];
+}
+/* a receipt printed, proved: a photograph of it held up, taken while novel.global's printer is online */
+const PROOFS = store.get('da.proofs.v1', []);
+async function takeProof(file) {
+  await loadPartners(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
+  if (!st.ready) { const t = document.querySelector('[data-check="4"]'); if (t) { t.classList.remove('nope'); void t.offsetWidth; t.classList.add('nope'); } snd.tick(500); buzz([30, 40, 30]); return false; }
+  const url = await new Promise(res => { const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 640 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.8)); }; im.onerror = () => res(''); im.src = rd.result; }; rd.readAsDataURL(file); });
+  if (!url) return false; PROOFS.unshift({ at: Date.now(), img: url, printer: MASTER ? MASTER.id : '' }); PROOFS.splice(6); while (!store.set('da.proofs.v1', PROOFS) && PROOFS.length > 1) PROOFS.pop();
+  tie(2); snd.tear(); buzz([10, 40, 10]); refreshPanel(); return true;
 }
 /* what is on the strip, as the printer's head will lay it down */
 async function stripOut() { if (!zc) return null; zc.discardActiveObject(); zc.renderAll(); const F = FORMATS[PRESS.fmt]; const url = zc.toDataURL({ format: 'png', multiplier: F.dots ? F.dots / F.w : 3 }); return { url, F }; }
@@ -142,6 +169,7 @@ async function pressOut(k) {
     st.textContent = PRESS.fmt === 'zine' ? '@page{size:A5;margin:0}' : `@page{size:${F.n === '58' ? 58 : 80}mm ${Math.ceil(zc.getHeight() / F.w * (F.n === '58' ? 58 : 80)) + 6}mm;margin:0}`;
     tie(2); setTimeout(() => window.print(), 300); return;
   }
+  if (k === 'poster') { await savePoster(); return; }
   if (k === 'png') { const a = document.createElement('a'); a.href = url; a.download = `${s ? s.code : 'sign'}-${PRESS.fmt}.png`; a.click(); tick(1800); return; }
   if (!s) { tick(600); return; }
   /* the printer's own bytes: the strip as drawn, in two inks, banded as the TM-T88 takes it, then a cut */
@@ -157,6 +185,15 @@ $('#zine').addEventListener('change', e => {
     const c = await showZine(true); window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.85), img => { photocopy(img); img.set({ left: 10, top: 40, angle: rnd(-3, 3), daKind: 'image' }); img.scaleToWidth(c.getWidth() * 0.8); c.add(img); c.setActiveObject(img); c.renderAll(); saveZine(); }); }; im.src = rd.result; };
   rd.readAsDataURL(fl); e.target.value = '';
 });
+/* each reading's small strip, drawn from the story itself */
+const THUMBS = new Map();
+async function fillThumbs() {
+  const s = pressStory(); for (const img of $$('#view img[data-thumb]')) {
+    const st = img.dataset.thumb; if (!s) { img.replaceWith(Object.assign(document.createElement('i'), { innerHTML: icon(st === 'conn' ? 'string' : st === 'tty' ? 'trace' : 'note') })); continue; }
+    const key = `${s.key}|${st}`; if (!THUMBS.has(key)) { const cv = await slipCanvas(s, 96, 2, st === 'tty', st === 'conn').catch(() => null); if (!cv) continue; THUMBS.set(key, cv.toDataURL('image/png')); if (THUMBS.size > 60) THUMBS.delete(THUMBS.keys().next().value); }
+    if (img.isConnected) img.src = THUMBS.get(key);
+  }
+}
 /* ───────── the PRINT SHOP page: no words. A printer; the stories waiting; the paper; how it reads; where it goes; what to
    put on it ───────── */
 const PFMT_ICON = k => (k === 'gb' ? `${icon('gb')}` : k === 'zine' ? `${icon('base')}<b class="mono">A5</b>` : `${icon('receipt')}<b class="mono">${FORMATS[k].n}</b>`);
@@ -168,8 +205,8 @@ function viewSigns() {
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`
     + `<section class="sec" id="sec-style"><div class="seg keys" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}</button>`).join('')}</div>`
-      + `<div class="seg keys" role="group" aria-label="How it reads">${STYLES.map(t => `<button type="button" class="key${t.k === 'tty' ? ' tty-b' : ''}" data-style="${t.k}" aria-pressed="${styleNow() === t.k}" data-tip="${t.k === 'paper' ? 'Archive slip' : t.k === 'tty' ? 'Terminal' : 'Connection'}">${t.k === 'tty' ? '<b>&gt;_</b>' : icon(t.k === 'paper' ? 'note' : 'string')}</button>`).join('')}</div>`
-      + `<div class="seg keys outs" role="group" aria-label="Out">${[['print', 'print', 'Print here'], ['send', 'radar', 'To novel.global'], ['png', 'download', 'Picture'], ['escpos', 'escpos', 'Printer bytes'], ['mesh', 'mesh', 'Mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
+      + `<div class="seg keys thumbs" role="group" aria-label="How it reads">${STYLES.map(t => `<button type="button" class="key thumb-k" data-style="${t.k}" aria-pressed="${styleNow() === t.k}" data-tip="${t.k === 'paper' ? 'Archive slip: the photograph, the record, the relations' : t.k === 'tty' ? 'Terminal: the photograph and the four lines' : 'Connection: a group near the life to join, and the next step'}"><img class="thumb" data-thumb="${t.k}" alt=""></button>`).join('')}</div>`
+      + `<div class="seg keys outs" role="group" aria-label="Out">${[['print', 'print', 'Print here'], ['send', 'radar', 'To novel.global'], ['poster', 'stories', 'Keep as a poster'], ['png', 'download', 'Picture'], ['escpos', 'escpos', 'Printer bytes'], ['mesh', 'mesh', 'Mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
     + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${icon('string')}</button></li>`).join('')}</ol></section>` : '')
     + `<section class="sec" id="sec-stickers"><ol class="stickers">${PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('')}${STICK_ALL.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.g ? M.KINDS[st.g] || st.g : st.i)}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own">${icon('plus')}<input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
     + `<section class="sec" id="sec-prn"><div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}</button></div></section>`;
@@ -182,4 +219,4 @@ $('#view').addEventListener('click', e => {
   const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 80); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
 });
-$('#view').addEventListener('change', async e => { if (e.target.id !== 'pack-in') return; await addPack(e.target.files); e.target.value = ''; refreshPanel(); snd.tick(1900); });
+$('#view').addEventListener('change', async e => { if (e.target.id === 'proof-in') { const fl = e.target.files && e.target.files[0]; if (fl) await takeProof(fl); e.target.value = ''; return; } if (e.target.id !== 'pack-in') return; await addPack(e.target.files); e.target.value = ''; refreshPanel(); snd.tick(1900); });

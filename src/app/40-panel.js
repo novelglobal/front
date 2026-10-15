@@ -79,6 +79,7 @@ function renderView() {
   viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open);
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') bindPortfolio();
+  if (k === 'signs') fillThumbs();
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
@@ -103,6 +104,7 @@ viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
   if (e.target.closest('[data-time]')) { setTime(!timeOn()); return; }
+  const gv = e.target.closest('[data-go-view]'); if (gv) { setView(+gv.dataset.goView); return; }
   if (e.target.closest('[data-share-mix]')) { const t = e.target.closest('.clue'); if (t) t.classList.add('go'); snd.knot({ fam: 'people' }, F0 * 6, 0, 0.7, 0); setTimeout(() => shareMix(), reduced() ? 0 : 420); return; }
   const pm = e.target.closest('[data-mix]'); if (pm) { playMix(pm.dataset.mix); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
@@ -238,12 +240,27 @@ const CLUE_IC = {
 };
 function cluesHTML() {
   const s1 = placed(), s2 = s1 && S.tweaked;
-  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}<span class="ci">${ics}</span><span class="cw">${words}</span>${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
+  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}<span class="ci">${ics}</span>${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
   return `<ol class="clues">`
-    + tile(1, s1 ? 'done' : 'now', `${icon('search')}${CLUE_IC.compass}${CLUE_IC.q}`, 'where are you?')
-    + tile(2, !s1 ? 'locked' : s2 ? 'done' : 'now', `${glyphSVG('orb')}${CLUE_IC.chain}${icon('string')}`, 'tie one thing to another')
-    + tile(3, s2 ? 'now' : 'locked', `${icon('share')}`, 'START A SIGNAL', s2 ? 'data-share-mix' : 'disabled')
+    + tile(1, s1 ? 'done' : 'now', icon('search'), '')
+    + tile(2, !s1 ? 'locked' : s2 ? 'done' : 'now', CLUE_IC.chain, 'make a connection')
+    + tile(3, s2 ? 'now' : 'locked', icon('share'), 'START', s2 ? 'data-share-mix' : 'disabled')
     + `</ol>`;
+}
+/* once a signal is started: the checklist, as an old handheld's manual lists what it does. Each a coloured tile and its
+   mark, the line, and a box ticked when done */
+const wishStarted = () => S.signals.some(x => !x.ex && !x.shared && linesOf(x).length >= 2) || WKEYS.filter(k => String(WDRAFT[k] || '').trim()).length >= 2;
+function checklistHTML() {
+  const rows = [
+    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Discovered where you are', c: '#7FD1C2' },
+    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Started a wish', c: '#FFD23F', go: 1 },
+    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Made a poster', c: '#FF7EB0', go: 2 },
+    { ok: PROOFS.length > 0, ic: `${icon('receipt')}${icon('camera', 'sm')}`, w: 'Printed a receipt', c: '#FF8A1F', proof: true },
+  ];
+  return `<ol class="checks">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}" style="--cc:${r.c}">`
+    + (r.proof && !r.ok ? `<label class="chk-b" data-tip="A photograph of the receipt, held up, while the printer is online"><input type="file" id="proof-in" accept="image/*" capture="environment" hidden>` : `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}>`)
+    + `<span class="chk-ic">${r.ic}</span><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i>` + (r.proof && !r.ok ? '</label>' : '</button>') + `</li>`).join('')}</ol>`
+    + (S.tweaked && placed() ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>START</span></button>` : '');
 }
 function viewRadio() {
   const ex = extremeAhead();
@@ -254,7 +271,7 @@ function viewRadio() {
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
-      ${cluesHTML()}
+      ${MIXES.length ? checklistHTML() : cluesHTML()}
     </section>`;
 }
 
@@ -315,19 +332,20 @@ async function loadPosts() {
   try { const j = await apiJSON('/posts'); POSTS.splice(0, POSTS.length, ...((j && j.posts) || []).slice(0, 60)); store.set('da.posts.v1', POSTS); if (S.view === 3 && !S.mode) refreshPanel(); } catch (e) { /* as last heard */ }
 }
 const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${labI('out', 'Work', POSTS.length)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
+const postersHero = () => (POSTERS2.length ? `<section class="sec posters-hero" id="sec-posters"><figure class="ph-hero"><img src="${POSTERS2[0].img}" alt=""></figure>${POSTERS2.length > 1 ? `<ol class="ph-more">${POSTERS2.slice(1).map(p => `<li><img src="${p.img}" alt=""></li>`).join('')}</ol>` : ''}</section>` : '');
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return postersHero() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
       + `</section>`
     + `<details class="sec" id="sec-briefs"><summary>${labI('note', 'Briefs', BRIEFS.length)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
     + `<section class="sec tools" id="sec-tools">${labI('guide', 'Tools')}<div class="tool-pair">`
-      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><small class="mono" data-tip="Field list">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
-      + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true" data-tip="Guide"></span><i class="go">${icon('out')}</i></a>`
+      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
+      + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
       + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}" data-tip="${esc(w)} · ${esc(tip)}">${icon(ic)}</button>`).join('')}</div>`
       + packSection()
       + `</section>`

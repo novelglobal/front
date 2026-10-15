@@ -241,7 +241,7 @@ if (run('smoke')) try {
     window.__da.boardLink(a, b); bt('save'); await wait(300); const joined = da.boardJSON().objects.filter(o => o.daKind === 'link').length;
     window.__da.boardLink(a, b); bt('save'); await wait(300); const gone = da.boardJSON().objects.filter(o => o.daKind === 'link').length;
     return { tools: tools.join(), joined, let: gone, label: document.querySelector('#board-label').textContent }; });
-  check('WISH MAKER board: keys as marks, their names on a long hover, UNDO among them; a note joined to a signal, and let go', bd0.tools === 'NOTE,SECT,LINK,IMG,UNDO,DEL,SAVE' && bd0.joined === 1 && bd0.let === 0 && /MODEL DA-03/.test(bd0.label), JSON.stringify(bd0));
+  check('WISH MAKER board: keys as marks, their names on a long hover, UNDO among them; a note joined to a signal, and let go', bd0.tools === 'ADD,NOTE,SECT,LINK,IMG,UNDO,DEL,SAVE' && bd0.joined === 1 && bd0.let === 0 && /MODEL DA-03/.test(bd0.label), JSON.stringify(bd0));
   /* the W.I.S.H., written on the page and sent as a story waiting to print */
   const wf = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); for (const [k, v] of [['w', 'Moths fell 99.5% in three years'], ['i', 'Dark streets after ten'], ['s', 'Dark is a habitat'], ['h', 'Shopfronts off at close']]) { const el = document.querySelector('#wf-' + k); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
     const btn = document.querySelector('#wish-form .send-b').getAttribute('aria-label') + (document.querySelector('#wish-form .send-b').textContent.trim() ? '!' : ''); document.querySelector('#wish-form .send-b').click(); await wait(2500);
@@ -260,6 +260,8 @@ if (run('smoke')) try {
     const n0 = da.boardJSON().objects.length; document.querySelector('#sec-assets [data-asset="s"]').click(); await wait(700); const n1 = da.boardJSON().objects.length;
     document.querySelector('#board [data-bt="undo"]').click(); await wait(500); out.board = [n0, n1, da.boardJSON().objects.length]; return out; });
   check('what was made here is a piece: the W.I.S.H. sent is the receipt, stamped by hand, and onto the WISH MAKER board, where UNDO takes it back', pcs.shopPieces >= 1 && pcs.page === 'base,stamp' && pcs.assets >= 1 && pcs.board[1] === pcs.board[0] + 1 && pcs.board[2] === pcs.board[0], JSON.stringify(pcs));
+  const ck = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); da.setView(2); await wait(900); document.querySelector('#view [data-pout="poster"]').click(); await wait(1500); da.setView(0); await wait(700); return { rows: [...document.querySelectorAll('#sec-heat .chk')].map(r => r.classList.contains('ok')), words: [...document.querySelectorAll('#sec-heat .chk-w')].map(w => w.textContent), start: !!document.querySelector('#sec-heat .start-k'), posters: da.POSTERS2.length, clues: document.querySelectorAll('#sec-heat .clue').length }; });
+  check('once a signal is started, RADIO shows the checklist in place of the clues: found, a wish, a poster ticked; the receipt waits for its photograph; START for another', ck.clues === 0 && ck.rows.join() === 'true,true,true,false' && ck.words[3] === 'Printed a receipt' && ck.start && ck.posters === 1, JSON.stringify(ck));
   await page.evaluate(() => { const da = window.__da; da.setView(0); }); await sleep(500);
   const back = await page.evaluate(() => ({ cover: getComputedStyle(document.querySelector('#cover')).display, zine: document.querySelector('#zine').hidden, board: document.querySelector('#board').hidden }));
   check('only RADIO shows the ground', back.cover === 'none' && back.zine && back.board, JSON.stringify(back));
@@ -282,7 +284,7 @@ if (run('smoke')) try {
   const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
   check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
-  check('the stories are at the top of the portfolio, the settings and sources at its foot', order[0] === 'sec-board' && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
+  check('the posters made here head the portfolio, then the stories; the settings and sources at its foot', order[0] === 'sec-posters' && order[1] === 'sec-board' && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-portfolio.png');
   /* the day's thread: a life looked at ties the first knot */
   const th0 = await page.evaluate(() => document.querySelectorAll('#rail .tab.tied').length);
@@ -318,8 +320,8 @@ if (run('portfolio')) try {
 if (run('first')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'first');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
-  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade').hidden && document.querySelector('#arcade .cw').textContent }; });
-  check('a first visit: every mark on the map, no radar, and the first clue on the ground: where are you?', !f.placed && f.knob && f.shown > 20 && f.press === 'where are you?', JSON.stringify(f));
+  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade').hidden && !!document.querySelector('#arcade use[href="#g-search"]') && !document.querySelector('#arcade').innerText.trim() }; });
+  check('a first visit: every mark on the map, no radar, and the first clue on the ground: a magnifier, no words', !f.placed && f.knob && f.shown > 20 && f.press === true, JSON.stringify(f));
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(500);
   const m = await page.evaluate(() => { const r = window.__da.map.getContainer().getBoundingClientRect(); return [r.left + r.width * 0.42, r.top + r.height * 0.55]; });
   await page.mouse.click(m[0], m[1]); await sleep(700);
@@ -549,8 +551,8 @@ if (run('wish')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'wish');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
   await openNear(page);
-  const btn = await page.evaluate(() => { const b = document.querySelector('#r-act'); return { label: b.querySelector('.hw').textContent, go: b.classList.contains('go'), bg: getComputedStyle(b).backgroundColor }; });
-  check('the main button is NOTICED, in orange', btn.label === 'NOTICED' && btn.go && btn.bg === 'rgb(255, 122, 0)', JSON.stringify(btn));
+  const btn = await page.evaluate(async () => { const da = window.__da; const b = document.querySelector('#r-act'); const out = { label: b.getAttribute('aria-label'), words: (b.querySelector('.hw') || {}).textContent || '', go: b.classList.contains('go'), bg: getComputedStyle(b).backgroundColor }; const n0 = da.SPECIES.length; b.click(); await new Promise(r => setTimeout(r, 700)); out.sent = da.SPECIES.length - n0 === 1 || da.SPECIES[0].id === String(da.S.sel); out.face = da.face(); return out; });
+  check('the card leads on with no words: its species card goes to the WISH MAKER, in orange; the card stays open', btn.label === 'To the WISH maker' && !btn.words.trim() && btn.go && btn.bg === 'rgb(255, 122, 0)' && btn.sent && btn.face === 'front', JSON.stringify(btn));
   const ks = await page.evaluate(() => [...window.__da.strings.nodes.values()].filter(n => n.t === 'biz').slice(0, 3).map(n => n.key));
   await tieNodes(page, ks);
   const mini = await page.evaluate(() => { const c = document.querySelector('#st-print'); if (!c) return null; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let ink = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 100) ink++; return { w: c.width, h: c.height, ink }; });
@@ -559,7 +561,7 @@ if (run('wish')) try {
   await page.fill('#r-note', NOTE); await sleep(400);
   const nt = await page.evaluate(() => { const n = document.querySelector('#r-note'); return { last: document.querySelector('#r-front').lastElementChild === n, shown: !n.hidden && n.getBoundingClientRect().height > 30, kept: JSON.parse(localStorage.getItem('da.notes.v1') || '{}') }; });
   check('notes sit just above NOTICED, kept on this device', nt.last && nt.shown && Object.values(nt.kept).includes(NOTE), JSON.stringify(nt));
-  await tap(page, '#r-act'); await sleep(1400);
+  await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(1400);
   const w0 = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent, values: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), max: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).maxLength), ph: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).placeholder), letters: document.querySelectorAll('#w-slip .sl-wish label, #w-slip .sl-wish b').length, sug: document.querySelectorAll('#w-sug, [data-s], select').length, life: document.querySelector('#w-slip .sl-life b').textContent, site: document.querySelector('#w-slip .sl-meta dd').textContent, code: document.querySelector('#w-slip .sl-code').textContent }));
   check('it turns over to a blank slip: four empty lines of 48, each saying what it is for; RESPONSE issues it', w0.face === 'wish' && w0.main === 'RESPONSE' && w0.values.every(v => v === '') && w0.max.every(m => m === 48) && /^What we know/.test(w0.ph[0]) && /^It would be great/.test(w0.ph[1]) && /^So let's create/.test(w0.ph[2]) && /^Here is how it works/.test(w0.ph[3]) && !w0.letters && !w0.sug && w0.life.length > 5 && /-37\.\d{4} 144\.\d{4}/.test(w0.site) && w0.code === 'DA-····', JSON.stringify(w0));
   /* the photograph: black and white, changeable, or none */
@@ -628,7 +630,7 @@ if (run('outputs')) try {
   await tieNodes(page, ks);
   const cn = await page.evaluate(() => { const c = window.__da.strings.list()[0]; return c ? c.name : ''; });
   check('a constellation, once more than the life alone, is named for what it holds: the place, the life, its shape', /^The \S+ \S+ (Tie|Line|Kite|Crown|Net|Web)$/.test(cn), cn);
-  await tap(page, '#r-act'); await sleep(800); await fillAndIssue(page);
+  await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(800); await fillAndIssue(page);
   const code = await page.evaluate(() => window.__da.S.signals[0].code);
   await tap(page, '#s-out [data-out="mesh"]'); await sleep(400);
   const mesh = await page.evaluate(() => document.querySelector('#s-text').textContent); const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
@@ -733,7 +735,7 @@ if (run('share')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'share');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
   await openNear(page);
-  await tap(page, '#r-act'); await sleep(1200);
+  await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(1200);
   const w = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent }));
   await tap(page, '#r-act'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(700);
   const s0 = await page.evaluate(() => { const da = window.__da; const s = da.S.issued; return { code: s.code, lines: Object.values(s.lines).filter(Boolean).length, poem: !!document.querySelector('#s-slip .sl-wish'), main: document.querySelector('#r-act .hw').textContent, mesh: da.meshText(s), pager: da.pagerText(s) }; });
@@ -948,7 +950,7 @@ if (run('phone')) try {
       check('a long press on a knot joins it at once, and makes no record', lp.tied && lp.mode === 'ping' && !lp.place, JSON.stringify(lp));
     }
   } else check('on a phone a knot is looked at above the sheet', false, 'no knot above the sheet');
-  await page.tap('#r-act'); await sleep(900);
+  await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(900);
   const w = await page.evaluate(() => { const s = document.querySelector('#w-slip').getBoundingClientRect(); return { face: window.__da.face(), left: s.left, right: s.right, over: document.documentElement.scrollWidth - innerWidth }; });
   check('the slip fits the phone', w.face === 'wish' && w.left >= 0 && w.right <= 390 && w.over <= 0, JSON.stringify(w));
   await shot(page, 'p04-wish.png');

@@ -52,8 +52,12 @@ function showFace(f) {
   }
   paintFace(f, true);
 }
-const heroWord = (ic, w) => { heroBtn.innerHTML = `<span class="hw">${w}</span>${icon(ic)}`; heroBtn.setAttribute('aria-label', cap(w.toLowerCase())); };
+const heroWord = (ic, w) => { heroBtn.innerHTML = `<span class="hw">${w}</span>${icon(ic)}`; heroBtn.setAttribute('aria-label', cap(w.toLowerCase())); delete heroBtn.dataset.tip; };
 const altWord = (ic, w) => { altBtn.innerHTML = `<span class="mono">${w}</span>${icon(ic)}`; };
+/* the card's way on: its species card, sent to the WISH MAKER. A mark, no word; the word on a long hover */
+const CARD_IC = () => `<span class="hw hw-card" aria-hidden="true">${icon('note')}<i class="hw-arrow"></i>${icon('string')}</span>`;
+const heroCard = () => { heroBtn.innerHTML = CARD_IC(); heroBtn.setAttribute('aria-label', 'To the WISH maker'); heroBtn.dataset.tip = 'To the WISH maker'; };
+const altCard = () => { altBtn.innerHTML = CARD_IC(); altBtn.setAttribute('aria-label', 'To the WISH maker'); altBtn.dataset.tip = 'To the WISH maker'; };
 function paintFace(f, wipe) {
   face = f; for (const [k, id] of [['front', 'r-front'], ['wish', 'r-wish'], ['signal', 'r-signal'], ['place', 'r-place']]) { const el = $('#' + id); el.hidden = k !== f; if (k === f && wipe) { el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); } }
   rec.dataset.face = f; rScroll.scrollTop = 0; document.body.classList.toggle('placing', f === 'place');
@@ -65,9 +69,9 @@ function paintFace(f, wipe) {
   else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (S.mode === 'tribe') heroWord('out', 'JOIN');
   else if (S.mode === 'partner') heroWord('out', 'VISIT');
-  else if (tel) { heroWord('phone', o.kind === 'dead' ? 'REPORT' : 'CALL'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
-  else if (lost) { heroWord('lost', 'SEARCH'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
-  else { heroWord('next', 'NOTICED'); heroBtn.classList.add('go'); }
+  else if (tel) { heroWord('phone', o.kind === 'dead' ? 'REPORT' : 'CALL'); altCard(); altBtn.hidden = false; }
+  else if (lost) { heroWord('lost', 'SEARCH'); altCard(); altBtn.hidden = false; }
+  else { heroCard(); heroBtn.classList.add('go'); }
   if (f === 'wish' && !coarse()) setTimeout(() => { const t = WKEYS.map(k => $('#w-' + k)).find(x => !x.value); if (t) t.focus({ preventScroll: true }); }, 380);
   /* the way out is always the first thing in the bar */
   $('#r-back').classList.toggle('cancel', f === 'place'); $('#r-back').setAttribute('aria-label', f === 'place' ? 'Cancel' : 'Back');
@@ -510,11 +514,11 @@ heroBtn.addEventListener('click', async () => {
   if (face === 'front') {
     if (o.kind === 'injured' || o.kind === 'dead') { const tel = telOf(o); if (tel) { location.href = tel; return; } }
     if (o.kind === 'lost') { searchFor(o.id); return; }
-    toWish(o); return;
+    sendSpecies(o); return;
   }
   if (face === 'wish') issue(o);
 });
-altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (o) toWish(o); });
+altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (o) sendSpecies(o); });
 function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; showFace('wish'); buzz(6); snd.tick(1700); }
 /* issued: the slip feeds out of the printer and becomes a signal. The four lines are asked for, never required:
    a record can be issued and printed as it stands */
