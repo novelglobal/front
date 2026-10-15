@@ -18,7 +18,8 @@ new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'))
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
-  if (!on) { stopHeroes(); showBoard(false); if (S.mode) closeRecord('view'); }
+  if (!on) { stopHeroes(); showBoard(false); showZine(false); document.body.classList.remove('off-map'); if (S.mode) closeRecord('view'); }
+  else document.body.classList.toggle('off-map', S.view !== 0);
   /* on a phone the sheet covers the lower half: the radar moves up into the half left open */
   if (phone() && S.mapReady && !S.mode) map.easeTo({ center: [S.scan.lng, S.scan.lat], offset: on ? [0, -innerHeight * 0.27] : [0, 0], duration: reduced() ? 0 : 500 });
   life.moved();
@@ -57,6 +58,8 @@ function setView(i, keep, part) {
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
   if (was !== i) buzz(5);
+  if (i !== 0 && S.radio) setRadio(false);
+  document.body.classList.toggle('off-map', i !== 0);
   renderView(); life.data();
   viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
   if (part) goPart(part);
@@ -72,7 +75,7 @@ function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k;
   viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
-  viewEl.scrollTop = 0; showBoard(k === 'signals' && S.open);
+  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open);
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') bindPortfolio();
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
@@ -228,18 +231,15 @@ const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); retur
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
 function viewRadio() {
   const ex = extremeAhead();
-  /* the radio is its instructions: where are you; turn it on, and mix its live layers, each in its own mood; El Niño, kept
-     for later; share the mix. No labels, no tags, no lists: the five and anything in trouble stand on the map, opened there */
-  const step = (n, done, body) => `<li class="st${done ? ' done' : ''}" data-step="${n}"><b class="sn mono">${n}</b><div class="sb">${body}</div></li>`;
+  /* the radio, top to bottom: its name; how long until El Niño's emergency, in orange; the months as an equaliser; the one
+     button that turns it on (a first tap on the map does too); the layers to mix; the signal sent on. No headings */
   return `<section class="band" id="sec-heat">
       <h2 class="b-head">DIRECT ACTION RADIO</h2>
-      ${ex ? `<div class="b-count${ex.now ? ' now' : ''}" data-tip="${esc(ex.tip)}"><i class="sun d4">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</div>` : ''}
-      <ol class="steps">
-        ${step(1, placed(), `<p class="sw">Where are you?</p>`)}
-        ${step(2, S.radio, `<p class="sw">Turn on the radio</p><div class="radio-row"><button type="button" class="radio-b${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio"${placed() ? '' : ' disabled'}>${icon(S.radio ? 'pause' : 'play')}</button></div>${layersHTML()}`)}
-        ${step(3, false, `<p class="sw">El Niño</p>${monthStrip()}`)}
-        ${step(4, false, `<p class="sw">Share the mix</p><button type="button" class="share-b" data-share-mix${placed() ? '' : ' disabled'}>${icon('share', 'sm')}<span>SIGNALS</span></button>`)}
-      </ol>
+      ${ex ? `<p class="b-emerg mono" data-tip="${esc(ex.tip)}"><span>EL NIÑO EMERGENCY IN</span>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
+      ${monthStrip()}
+      <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="Turn on the radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
+      ${layersHTML()}
+      <button type="button" class="share-b" data-share-mix aria-label="Send the signal">${icon('share', 'sm')}<span>SIGNAL</span></button>
     </section>`;
 }
 
@@ -294,7 +294,8 @@ const STYLES = [{ k: 'paper', w: 'PAPER', ic: 'receipt' }, { k: 'tty', w: '>', i
 const styleNow = () => (isConn() ? 'conn' : isTty() ? 'tty' : 'paper');
 function viewSigns() {
   const mine = mineOf(); const prn = [MASTER, ...PARTNERS].filter(Boolean);
-  return `<section class="sec" id="sec-style"><div class="styles" role="group" aria-label="Style">${STYLES.map(t => `<button type="button" class="sty${t.k === 'tty' ? ' tty-b' : ''}" data-style="${t.k}" aria-pressed="${styleNow() === t.k}">${t.ic ? icon(t.ic, 'sm') : ''}<span>${t.w}</span></button>`).join('')}</div></section>`
+  return (POSTERS.length ? `<section class="sec" id="sec-posters"><ol class="posters">${POSTERS.map(p => `<li><button type="button" class="poster-b" data-poster="${esc(p.id)}" aria-label="On the page"><img src="${p.png}" alt=""></button></li>`).join('')}</ol></section>` : '')
+    + `<section class="sec" id="sec-style"><div class="styles" role="group" aria-label="Style">${STYLES.map(t => `<button type="button" class="sty${t.k === 'tty' ? ' tty-b' : ''}" data-style="${t.k}" aria-pressed="${styleNow() === t.k}">${t.ic ? icon(t.ic, 'sm') : ''}<span>${t.w}</span></button>`).join('')}</div></section>`
     + (mine.length ? `<section class="sec" id="sec-slips">${lab(`Slips · ${mine.length}`)}<ol class="slips-l">${mine.slice(0, 40).map(s => { const st = sentWord(s); return `<li><button type="button" class="slip-row" data-sig="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><small class="mono">${esc(st || fmtStamp(s.at))}</small></button></li>`; }).join('')}</ol></section>` : '')
     + `<section class="sec" id="sec-prn">${lab('Printers')}<ol class="prn-l">${prn.map(p => { const st = PSTATE[p.id] || {}; return `<li class="${st.ready ? 'on' : ''}"><img class="pm" src="${printerImg(p, st)}" alt=""><span class="nm"><b>${esc(p.n)}</b><small class="mono">${st.ready ? 'ONLINE' : 'NOT YET ONLINE'}${st.printed ? ` · ${st.printed} PRINTED` : ''}${st.queued ? ` · ${st.queued} IN QUEUE` : ''}</small></span></li>`; }).join('')}</ol>`
     + `<div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}<span>BLANK SLIP</span></button></div></section>`;

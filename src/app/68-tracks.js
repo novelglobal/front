@@ -75,10 +75,10 @@ function freshOf(id) {
    and the internal tracks it switches; nothing else needs to change
    ════════════════════════════════════════════════════════════════════ */
 const LAYERS = [
-  { k: 'water', w: 'WATER', ic: 'water', trk: () => ['water'] },
   { k: 'life', w: 'LIFE', ic: 'fauna', trk: () => ['life'] },
-  { k: 'pollution', w: 'POLLUTION', ic: 'harm', trk: () => ['places'] },
   { k: 'community', w: 'COMMUNITY', ic: 'people', trk: () => ['places', ...trackList().filter(t => t.id.startsWith('p:')).map(t => t.id)] },
+  { k: 'water', w: 'WATER', ic: 'water', trk: () => ['water'] },
+  { k: 'pollution', w: 'POLLUTION', ic: 'harm', trk: () => ['places'] },
 ];
 const TRACKS = LAYERS;   /* the name an earlier build used */
 const trackOn = k => (k === 'life' ? !prefs.mute : !!T4[k]);
@@ -108,12 +108,12 @@ function setTrack4(k, on) {
 }
 /* the radio on: the sound woken inside the touch, and every layer that is on played by the sweep. Off: quiet, and still */
 function setRadio(on) {
+  if (on && !placed() && S.mapReady) { const c = map.getCenter(); placeRadar(c.lat, c.lng); }
   S.radio = on;
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } }
   syncTracks(); if (on) life.replay(); else snd.droneOff();
-  document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); b.innerHTML = icon(on ? 'pause' : 'play'); });
+  document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); b.innerHTML = `<i class="hp-ring"></i>${icon(on ? 'pause' : 'play')}`; });
   document.body.classList.toggle('on-air', on); buzz(on ? [8, 30, 8] : 6); life.redraw(); life.moved();
-  const st = document.querySelector('#sec-heat [data-step="2"]'); if (st) st.classList.toggle('done', on);
 }
 /* a layer's meter moves as the sweep plays it */
 function flashLayer(k) {
@@ -125,18 +125,23 @@ function pingClimate(c) {
   if (!TRK.on.water || !prefs.sound) return false; flashLayer('water');
   return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: 0 });
 }
+/* a layer's volume, three steps: quiet, half, full */
+const VOLS = [0.35, 0.7, 1];
+const volStep = k => VOLS.reduce((best, v, i) => (Math.abs(v - layerLvl(k)) < Math.abs(VOLS[best] - layerLvl(k)) ? i : best), 0);
 function layersHTML() {
-  return `<ol class="lyrs" role="group" aria-label="Layers">${LAYERS.map((L, i) => { const on = trackOn(L.k); const lv = Math.round(layerLvl(L.k) * 100); const m = MOODS[moodOfLayer(L.k)];
+  return `<ol class="lyrs" role="group" aria-label="Layers">${LAYERS.map((L, i) => { const on = trackOn(L.k); const m = MOODS[moodOfLayer(L.k)]; const v = volStep(L.k);
     return `<li class="lyr${on ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="lyr-k" data-t4="${L.k}" aria-pressed="${on}" aria-keyshortcuts="${i + 1}" aria-label="${L.w}">${icon(L.ic, 'sm')}<span>${L.w}</span></button>`
       + `<button type="button" class="lyr-m" data-lmood="${L.k}" aria-label="${L.w} mood: ${m.w}">${icon(m.ic, 'sm')}</button>`
-      + `<span class="lv" aria-hidden="true">${'<i></i>'.repeat(8)}</span><b class="n mono">${trackCount(L.k)}</b>`
-      + `<input type="range" class="lyr-lvl" data-lvl="${L.k}" min="0" max="100" step="1" value="${lv}" aria-label="${L.w} level" style="--v:${lv}%"></li>`; }).join('')}</ol>`;
+      + `<span class="lv" aria-hidden="true">${'<i></i>'.repeat(8)}</span>`
+      + `<button type="button" class="lyr-v" data-vol="${L.k}" data-v="${v}" aria-label="${L.w} volume">${'<i></i>'.repeat(3)}</button></li>`; }).join('')}</ol>`;
 }
 $('#view').addEventListener('input', e => {
   const f = e.target.closest('[data-lvl]'); if (!f) return; prefs.lvl = { ...(prefs.lvl || {}), [f.dataset.lvl]: +f.value / 100 }; f.style.setProperty('--v', `${f.value}%`); savePrefs();
 });
 $('#view').addEventListener('click', e => {
   const r = e.target.closest('[data-radio]'); if (r) { setRadio(!S.radio); return; }
+  /* a layer's volume: quiet, half, full, round again */
+  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
   if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); snd.tick(1400); buzz(4); return; }
@@ -172,7 +177,7 @@ function shareMix() {
 }
 /* a mix played again: the radar where it was, its layers, levels and mood, on air */
 function playMix(id) {
-  const m = MIXES.find(x => x.id === id); if (!m) return;
+  const m = MIXES.find(x => x.id === id); if (!m) return; if (S.view !== 0) setView(0);
   prefs.placed = true; life.setScan(m.where.lat, m.where.lng, m.where.r, true); if (S.mapReady) map.easeTo({ center: [m.where.lng, m.where.lat], duration: reduced() ? 0 : 700 });
   prefs.lm = { ...(prefs.lm || {}), ...Object.fromEntries(Object.entries(m.layers).filter(([, v]) => v.mood).map(([k, v]) => [k, v.mood])) }; prefs.lvl = { ...(prefs.lvl || {}), ...Object.fromEntries(Object.entries(m.layers).map(([k, v]) => [k, v.lvl])) };
   for (const [k, v] of Object.entries(m.layers)) { if (k === 'life') prefs.mute = !v.on; else if (k in T4) T4[k] = !!v.on; }

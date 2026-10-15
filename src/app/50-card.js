@@ -11,7 +11,8 @@ const rec = $('#record'), rScroll = $('#r-scroll'), heroBtn = $('#r-act'), altBt
 const WISH = { w: ['What we know', 'The evidence: news, data, a theory'], i: ['It would be great', 'The belief: what should be true'], s: ["So let's create", 'The principle to work by'], h: ['Here is how it works', 'The tactic: what someone does'] };
 /* a record opened from the bare map closes back to the bare map; one opened from a page closes back to that page */
 function openRecord() {
-  showBoard(false);
+  /* a life opened from any page: the ground shows, to look at it there */
+  showBoard(false); showZine(false); document.body.classList.remove('off-map');
   if (!S.open) { S.from = 'map'; setOpen(true); } else if (rec.hidden) S.from = 'view';
   rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); stopHeroes();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', 'false'));
