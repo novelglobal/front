@@ -45,7 +45,7 @@ function showTip(el) {
   tipEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
 }
 function hideTip() { clearTimeout(tipT); tipFor = null; tipEl.hidden = true; }
-document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const el = e.target.closest('[data-tip]'); if (el === tipFor) return; clearTimeout(tipT); if (!el) { hideTip(); return; } tipT = setTimeout(() => showTip(el), 140); });
+document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const el = e.target.closest('[data-tip]'); if (el === tipFor) return; clearTimeout(tipT); if (!el) { hideTip(); return; } tipT = setTimeout(() => showTip(el), 1100); });
 document.addEventListener('pointerout', e => { if (e.pointerType !== 'mouse') return; const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) hideTip(); });
 document.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el && !coarse()) showTip(el); });
 document.addEventListener('focusout', () => hideTip());
@@ -81,12 +81,12 @@ if (T4.water) setTimeout(loadOverlays, 1500);
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
 if (isLocalHash(pendingHash)) handleHash();
 /* the radar waits: PRESS PLAY over the ground. Touched, it starts; on a first visit, the radar stands where the touch was */
-const pressPlay = () => { if (S.started) return; arcade('PRESS PLAY', e => { let at = null; if (!prefs.placed && S.mapReady && e) { const r = map.getContainer().getBoundingClientRect(); const ll = map.unproject([e.clientX - r.left, e.clientY - r.top]); if (inBox(ll.lat, ll.lng)) at = ll; } startRadio(true, at); }); };
-setTimeout(pressPlay, 300);
+setTimeout(() => { if (!S.started) $('#arcade').hidden = false; }, 300);
+setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
 window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
-  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, PRESS, tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcade, arcadeOff, markTweak, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
+  webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, PRESS, zineObjects: () => (zc ? zc.getObjects() : []), tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcade, arcadeOff, markTweak, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();

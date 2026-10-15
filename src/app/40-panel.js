@@ -38,6 +38,7 @@ const pinOf = o => badgeImg(life.badgeOf(o, 22));
 /* a partner's W.I.S.H. printer, small, for the page: its light on when the printer is listening */
 function printerImg(p, st = {}) { const key = `printer|${!!st.ready}`; if (imgCache.has(key)) return imgCache.get(key); const c = document.createElement('canvas'); c.width = c.height = 88; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 22, 25, 32, 0, !!st.ready); const u = c.toDataURL(); imgCache.set(key, u); return u; }
 const lab = (t, cls = '') => `<h3 class="lab ${cls}">${t}</h3>`;
+const labI = (ic, tip, n) => `<h3 class="lab labi" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ic, 'sm')}${n != null ? `<b class="mono">${n}</b>` : ''}</h3>`;
 /* a degree of danger, in orange; and how long until it lands */
 const degChip = (deg, word = '') => (deg ? `<i class="dg d${deg}">${DEG[deg]}${word ? ` · ${word}` : ''}</i>` : '');
 const whenChip = w => (w ? `<i class="wn${w.now ? ' now' : ''}" data-tip="${esc(w.why)}">${w.now ? 'NOW' : `${daysTo(w.start)} D`} · ${esc(w.w)}</i>` : '');
@@ -102,7 +103,7 @@ viewEl.addEventListener('click', e => {
   const sr = e.target.closest('[data-search]'); if (sr) { searchFor(sr.dataset.search); return; }
   const mo = e.target.closest('[data-mo]'); if (mo) { pickMonth(+mo.dataset.mo, true); return; }
   if (e.target.closest('[data-time]')) { setTime(!timeOn()); return; }
-  if (e.target.closest('[data-share-mix]')) { arcade('START STORY', () => shareMix()); return; }
+  if (e.target.closest('[data-share-mix]')) { const t = e.target.closest('.clue'); if (t) t.classList.add('go'); snd.knot({ fam: 'people' }, F0 * 6, 0, 0.7, 0); setTimeout(() => shareMix(), reduced() ? 0 : 420); return; }
   const pm = e.target.closest('[data-mix]'); if (pm) { playMix(pm.dataset.mix); return; }
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
@@ -229,17 +230,31 @@ function extremeAhead() {
 const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
+/* the clues: drawn marks, and the only words on the radio. Find yourself; tie something to something; then the signal */
+const CLUE_IC = {
+  compass: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.2l1.7 4.8L8 12.8 6.3 8z" fill="currentColor"/></svg>',
+  chain: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.2" y="5.4" width="7.6" height="5.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7.2" y="5.4" width="7.6" height="5.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  q: '<b class="cq" aria-hidden="true">?</b>',
+};
+function cluesHTML() {
+  const s1 = placed(), s2 = s1 && S.tweaked;
+  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}<span class="ci">${ics}</span><span class="cw">${words}</span>${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
+  return `<ol class="clues">`
+    + tile(1, s1 ? 'done' : 'now', `${icon('search')}${CLUE_IC.compass}${CLUE_IC.q}`, 'where are you?')
+    + tile(2, !s1 ? 'locked' : s2 ? 'done' : 'now', `${glyphSVG('orb')}${CLUE_IC.chain}${icon('string')}`, 'tie one thing to another')
+    + tile(3, s2 ? 'now' : 'locked', `${icon('share')}`, 'START A SIGNAL', s2 ? 'data-share-mix' : 'disabled')
+    + `</ol>`;
+}
 function viewRadio() {
   const ex = extremeAhead();
-  /* the radio, top to bottom: its name; how long until El Niño's emergency, in orange; the months as an equaliser; the one
-     button that turns it on (a first tap on the map does too); the layers to mix; the signal sent on. No headings */
+  /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
+     layers as marks; the three clues. Every name is there on a long hover */
   return `<section class="band" id="sec-heat">
-      <h2 class="b-head">DIRECT ACTION RADIO</h2>
-      ${ex ? `<p class="b-emerg mono" data-tip="${esc(ex.tip)}"><span>EL NIÑO EMERGENCY IN</span>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
+      ${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in"><i class="sun">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
-      <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="Turn on the radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
+      <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
-      ${S.tweaked ? `<button type="button" class="share-b" data-share-mix aria-label="Start a signal">${icon('share', 'sm')}<span>START A SIGNAL</span></button>` : ''}
+      ${cluesHTML()}
     </section>`;
 }
 
@@ -253,7 +268,7 @@ const conRow = c => {
 };
 function consSection() {
   const cs = strings.list(); if (!cs.length) return '';
-  return `<section class="sec cons" id="sec-cons"><div class="lab-row">${lab(`Constellations · ${cs.length}`)}<button type="button" class="ib" data-con-all aria-label="Play them all" data-tip="Play them all">${icon('play')}</button></div><ol class="cons-l">${cs.slice(0, 40).map(conRow).join('')}</ol></section>`;
+  return `<section class="sec cons" id="sec-cons"><div class="lab-row">${labI('string', 'Constellations', cs.length)}<button type="button" class="ib" data-con-all aria-label="Play them all" data-tip="Play them all">${icon('play')}</button></div><ol class="cons-l">${cs.slice(0, 40).map(conRow).join('')}</ol></section>`;
 }
 /* one after another, each its own tune */
 let conQ = 0;
@@ -299,25 +314,25 @@ async function loadPosts() {
   if (postsAsked) return; postsAsked = true;
   try { const j = await apiJSON('/posts'); POSTS.splice(0, POSTS.length, ...((j && j.posts) || []).slice(0, 60)); store.set('da.posts.v1', POSTS); if (S.view === 3 && !S.mode) refreshPanel(); } catch (e) { /* as last heard */ }
 }
-const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${lab(`Work · ${POSTS.length}`)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
+const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${labI('out', 'Work', POSTS.length)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${lab(`Stories · ${sigs.filter(s => !s.ex).length}`)}<button type="button" class="pill" id="rx-open" aria-expanded="false" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}RECEIVE</button></div>`
+  return postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
       + `</section>`
-    + `<details class="sec" id="sec-briefs"><summary>${lab(`Briefs · ${BRIEFS.length}`)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
-    + `<section class="sec tools" id="sec-tools">${lab('Tools')}<div class="tool-pair">`
-      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
-      + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
-      + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" data-tip="${esc(tip)}">${icon(ic)}<span>${w}</span></button>`).join('')}</div>`
+    + `<details class="sec" id="sec-briefs"><summary>${labI('note', 'Briefs', BRIEFS.length)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
+    + `<section class="sec tools" id="sec-tools">${labI('guide', 'Tools')}<div class="tool-pair">`
+      + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><small class="mono" data-tip="Field list">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
+      + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true" data-tip="Guide"></span><i class="go">${icon('out')}</i></a>`
+      + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}" data-tip="${esc(w)} · ${esc(tip)}">${icon(ic)}</button>`).join('')}</div>`
       + packSection()
       + `</section>`
-    + `<section class="sec" id="sec-set">${lab('Settings')}<div class="set"><button type="button" class="tog lb" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}<small>SOUND</small></button><button type="button" class="tog lb" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}<small>MOTION</small></button><button type="button" class="tog lb" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}<small>AREAS</small></button><button type="button" class="tog lb" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}<small>NIGHT</small></button><button type="button" class="tog lb" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}<small>PRINTERS</small></button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
-    + `<details class="sec" id="sec-src"><summary>${lab('Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
+    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label></div></section>`
+    + `<details class="sec" id="sec-src"><summary>${labI('quote', 'Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
 /* a story as a line, as a forum lists them: a small photograph, the headline, the code */
 const sigLine = s => { const p = s.pin || {}; const L = linesOf(s); const act = L[L.length - 1] || s.threat || p.cn || p.n || '';
