@@ -100,15 +100,31 @@ function syncTracks() {
 function setTrack4(k, on) {
   if (k === 'life') { prefs.mute = !on; if (!CFG.lifeLock) prefs.trk = { ...(prefs.trk || {}), life: on }; }
   else T4[k] = on;
-  prefs.t4 = { ...T4 }; savePrefs();
+  prefs.t4 = { ...T4 }; savePrefs(); markTweak();
   if (k === 'water' && on) loadOverlays();
   syncTracks();
   document.querySelectorAll(`[data-t4="${k}"]`).forEach(b => { b.setAttribute('aria-pressed', String(on)); const row = b.closest('.lyr'); if (row) row.classList.toggle('on', on); });
   life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200); buzz(4);
 }
 /* the radio on: the sound woken inside the touch, and every layer that is on played by the sweep. Off: quiet, and still */
+/* the arcade's call over the ground: PRESS PLAY, START STORY. Big, blinking, no box; a touch anywhere answers it */
+let arcadeGo = null;
+function arcade(word, go) { const el = $('#arcade'); el.querySelector('.arc-t').textContent = word; el.hidden = false; arcadeGo = go; snd.tick(900); }
+function arcadeOff() { $('#arcade').hidden = true; arcadeGo = null; }
+$('#arcade').addEventListener('click', e => { const go = arcadeGo; arcadeOff(); buzz([6, 20, 6]); if (go) go(e); });
+/* started: the radar stands where it was last, or where the touch was, or where the map is looking */
+function startRadio(play = true, at) {
+  arcadeOff();
+  if (!S.started) {
+    S.started = true; const c = at || (prefs.placed ? null : S.mapReady ? map.getCenter() : null);
+    if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, null, true); } else life.setScan(null, null, null, false);
+  }
+  life.redraw(); life.moved(); if (play) setRadio(true); else if (S.open && S.view === 0 && !S.mode) refreshPanel();
+}
+/* a song made: a layer changed, a mood, a volume, a string tied. Only then can a signal start */
+function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
-  if (on && !placed() && S.mapReady) { const c = map.getCenter(); placeRadar(c.lat, c.lng); }
+  if (on && !S.started) { startRadio(true); return; }
   S.radio = on;
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } }
   syncTracks(); if (on) life.replay(); else snd.droneOff();
@@ -141,10 +157,10 @@ $('#view').addEventListener('input', e => {
 $('#view').addEventListener('click', e => {
   const r = e.target.closest('[data-radio]'); if (r) { setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
-  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
+  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); markTweak(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); markTweak(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); snd.tick(1400); buzz(4); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */

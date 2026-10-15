@@ -90,7 +90,7 @@ map.on('click', e => {
 /* where are you: the radar is put down where the first tap on the map lands, and stays there between visits */
 function placeRadar(lat, lng) {
   if (!inBox(lat, lng)) { tick(600); return; }
-  const first = !placed(); prefs.placed = true; savePrefs(); life.setScan(lat, lng, null, true); snd.tick(1100); buzz([6, 30, 6]);
+  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, null, true); snd.tick(1100); buzz([6, 30, 6]); arcadeOff();
   if (first && !S.radio) setRadio(true);
 }
 /* a double tap ties instead of zooming while a cell or a marker is open */

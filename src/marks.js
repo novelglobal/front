@@ -11,7 +11,7 @@
   const C = {
     teal: '#0CCBBD', tealLift: '#7FE0D7', tealDeep: '#007A72',
     white: '#FFFFFF', grey: '#C8C8C8', greyText: '#6B6B6B', ink: '#1C1C1A',
-    cobalt: '#0067B8', cobaltDeep: '#004A87', navy: '#0B2545', clay: '#8C7469',
+    cobalt: '#0067B8', cobaltDeep: '#004A87', navy: '#0B2545', clay: '#5FC3B2',
     neon: '#E6F84A', red: '#E8453C', black: '#000000',
     orange: '#FF7A00', deg: ['#FFC27A', '#FF9A2E', '#FF6A00', '#D62E1F', '#141412'],
     /* each kind of animal in its own colour, clear of the orange, red and highlighter that carry danger, now and notice */

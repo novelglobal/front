@@ -102,6 +102,7 @@ const results = []; const check = (name, cond, info = '') => results.push(`${con
 const shot = async (page, file, opt = {}) => { try { await page.screenshot({ path: `${SHOTS}/${file}`, animations: 'disabled', timeout: 90000, ...opt }); } catch (e) { results.push(`WARN  screenshot ${file}: ${e.message.split('\n')[0]}`); } };
 /* loaded, with NOW closed again (the site lands on NOW), so each check starts from the bare radar; keep: leave it open */
 const ready = (page, extra = '', keep = false) => page.waitForFunction(new Function(`return !!(window.__da && window.__da.S.obs.length > 100 && window.__da.S.mapReady && window.__da.life.items.length > 100${extra})`), null, { timeout: 90000 })
+  .then(() => page.evaluate(() => { const da = window.__da; if (!window.__noStart && !da.S.started) da.startRadio(false); }))
   .then(() => (keep ? null : page.evaluate(() => { const da = window.__da; if (da.S.open && !da.S.mode) da.setOpen(false); })));
 const tap = async (page, sel, opt = {}) => { try { await page.click(sel, { timeout: 20000, ...opt }); } catch (e) { throw new Error(`click ${sel}: ${e.message.split('\n').find(l => /intercepts|Timeout|not/.test(l)) || e.message.split('\n')[0]}`); } };
 const xy = (page, id) => page.evaluate(id => { const da = window.__da; const o = da.S.byId.get(id); if (!o) return null; const p = da.map.project([o.lng, o.lat]); const r = da.map.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; }, id);
@@ -173,7 +174,7 @@ if (run('smoke')) try {
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
   const now = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const order = [...band.children].map(e => e.className.split(' ')[0]); return { open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, order, steps: band.querySelectorAll('.st, .sn').length, heads: band.querySelectorAll('h3, .lab').length, counts: band.querySelectorAll('.lyr .n').length, tags: document.querySelectorAll('#view .lab, #view .chips, #view .dg, #view .pill, #view .gigs').length }; });
-  check('RADIO, top to bottom: its name, El Niño’s countdown, the equaliser, one play button, the layers, the signal; no steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'b-head,b-emerg,mstrip,hero-play,lyrs,share-b' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
+  check('RADIO, top to bottom: its name, El Niño’s countdown, the equaliser, one play button, the layers; START A SIGNAL only once a song is made; no steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'b-head,b-emerg,mstrip,hero-play,lyrs' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
   const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
     return { five: rows.length, why: five ? five.dataset.tip : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.some(r => r.querySelector('.chips')), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText }; });
   const eq = await page.evaluate(async () => { const cols = [...document.querySelectorAll('#sec-heat .mo')]; const lit = cols.map(c => c.querySelectorAll('.eq-c i.l').length); const none = !document.querySelector('.eq-read');
@@ -223,12 +224,13 @@ if (run('smoke')) try {
   check('El Niño time is held back for now: no play, and a turn of the radar leaves the months as they are', tm.k1 === tm.k0 && !tm.play, JSON.stringify(tm));
   /* the mix: shared to SIGNALS, and played again from there */
   await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); }); await sleep(400);
-  await page.click('#sec-heat [data-share-mix]'); await sleep(700);
+  const story = await page.evaluate(() => !!document.querySelector('#sec-heat [data-share-mix]'));
+  await page.click('#sec-heat [data-share-mix]'); await sleep(300); const arc = await page.evaluate(() => document.querySelector('#arcade .arc-t').textContent); await page.click('#arcade'); await sleep(700);
   await page.waitForFunction(() => window.__da.S.view === 1 && !document.querySelector('#board').hidden && window.fabric, null, { timeout: 15000 }); await sleep(800);
   const mx = await page.evaluate(() => { const da = window.__da; const m = da.MIXES[0]; const kept = da.boardJSON(); return { view: da.S.view, radio: da.S.radio, v: m && m.v, where: m && !!m.where.place, layers: m && Object.keys(m.layers).join(), cells: m && Object.values(m.layers).every(L => Array.isArray(L.cells) && L.mood), life: m && m.layers.life.cells.length, sigs: document.querySelectorAll('#sec-book .g-sig').length, board: !document.querySelector('#board').hidden, cards: (kept.objects || []).filter(o => o.daKind === 'mix').length, kept: JSON.parse(localStorage.getItem('da.mixes.v1') || '[]').length }; });
   const md = await page.evaluate(() => window.__da.bookMD()); await page.click('#sec-book [data-mix]'); await sleep(500);
   const mp = await page.evaluate(() => ({ radio: window.__da.S.radio, view: window.__da.S.view }));
-  check('START A SIGNAL stops the radio and lays the whole mix on the active board in SIGNALS, under that board on the page; played again from there on RADIO', mx.view === 1 && !mx.radio && mx.v === 2 && mx.where && mx.layers === 'life,community,water,pollution' && mx.cells && mx.life > 0 && mx.sigs === 1 && mx.board && mx.cards === 1 && mx.kept === 1 && mp.radio && mp.view === 0, JSON.stringify({ mx, mp }));
+  check('START A SIGNAL, once a song is made, calls START STORY; then the radio stops and the whole mix lies on the active board in the WISH MAKER, under that board on the page; played again from there on RADIO', story && arc === 'START STORY' && mx.view === 1 && !mx.radio && mx.v === 2 && mx.where && mx.layers === 'life,community,water,pollution' && mx.cells && mx.life > 0 && mx.sigs === 1 && mx.board && mx.cards === 1 && mx.kept === 1 && mp.radio && mp.view === 0, JSON.stringify({ mx, mp }));
   check('the field notes download as Markdown, each signal with its layers and cells', /^# Field book/.test(md) && /### LIFE/.test(md) && /### WATER/.test(md) && /partial \d+/.test(md), md.slice(0, 300));
   /* the board: a note joined to the signal, and let go again with one click on the string */
   await page.evaluate(() => { const da = window.__da; da.setRadio(false); da.setView(1); }); await sleep(900);
@@ -239,7 +241,7 @@ if (run('smoke')) try {
     window.__da.boardLink(a, b); bt('save'); await wait(300); const joined = da.boardJSON().objects.filter(o => o.daKind === 'link').length;
     window.__da.boardLink(a, b); bt('save'); await wait(300); const gone = da.boardJSON().objects.filter(o => o.daKind === 'link').length;
     return { tools: tools.join(), joined, let: gone, label: document.querySelector('#board-label').textContent }; });
-  check('SIGNALS board: keys labelled like hardware; a note joined to a signal, and let go', bd0.tools === 'NOTE,SECT,LINK,IMG,DEL,SAVE' && bd0.joined === 1 && bd0.let === 0 && /MODEL DA-03/.test(bd0.label), JSON.stringify(bd0));
+  check('WISH MAKER board: keys labelled like hardware, UNDO among them; a note joined to a signal, and let go', bd0.tools === 'NOTE,SECT,LINK,IMG,UNDO,DEL,SAVE' && bd0.joined === 1 && bd0.let === 0 && /MODEL DA-03/.test(bd0.label), JSON.stringify(bd0));
   /* the W.I.S.H., written on the page and sent as a story waiting to print */
   const wf = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); for (const [k, v] of [['w', 'Moths fell 99.5% in three years'], ['i', 'Dark streets after ten'], ['s', 'Dark is a habitat'], ['h', 'Shopfronts off at close']]) { const el = document.querySelector('#wf-' + k); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }
     const btn = document.querySelector('#wish-form .send-b').textContent.trim(); document.querySelector('#wish-form .send-b').click(); await wait(2500);
@@ -250,6 +252,15 @@ if (run('smoke')) try {
     for (const k of ['head', 'cut', 'tape', 'text']) { document.querySelector(`#zine [data-zt="${k}"]`).click(); await wait(250); }
     await wait(400); const kept = JSON.parse(localStorage.getItem('da.zine.v1') || '{}'); return { changed: src0 !== src1, stk, paging: document.querySelector('#zine').classList.contains('paging'), map: getComputedStyle(document.querySelector('#cover')).display, kinds: ((kept.json || {}).objects || []).map(o => o.daKind).sort().join() }; });
   check('a style pressed changes the print at once; the signal gives its own stickers, cut out, onto an A5 zine page with a headline, cut-out letters, tape, typewritten words; the map covered', zn.changed && zn.stk >= 4 && zn.paging && zn.map === 'block' && zn.kinds === 'cut,head,sticker,tape,text', JSON.stringify(zn));
+  /* what was made here, as pieces: the W.I.S.H. sent onto the WISH MAKER board, undone; onto the PRINT SHOP page, stamped */
+  const pcs = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
+    out.shopPieces = document.querySelectorAll('#sec-pieces [data-piece]').length; document.querySelector('#sec-pieces [data-piece="s"]').click(); await wait(900);
+    document.querySelector('#zine-words').value = 'received'; document.querySelector('#zine [data-zt="stamp"]').click(); await wait(500);
+    out.page = JSON.parse(localStorage.getItem('da.zine.v1')).json.objects.map(o => o.daKind).filter(k => k === 'story' || k === 'stamp').sort().join();
+    da.setView(1); await wait(900); out.assets = document.querySelectorAll('#sec-assets [data-asset="s"]').length;
+    const n0 = da.boardJSON().objects.length; document.querySelector('#sec-assets [data-asset="s"]').click(); await wait(700); const n1 = da.boardJSON().objects.length;
+    document.querySelector('#board [data-bt="undo"]').click(); await wait(500); out.board = [n0, n1, da.boardJSON().objects.length]; return out; });
+  check('what was made here is a piece: the W.I.S.H. sent goes onto the print shop page beside a rubber stamp, and onto the WISH MAKER board, where UNDO takes it back', pcs.shopPieces >= 1 && pcs.page === 'stamp,story' && pcs.assets >= 1 && pcs.board[1] === pcs.board[0] + 1 && pcs.board[2] === pcs.board[0], JSON.stringify(pcs));
   await page.evaluate(() => { const da = window.__da; da.setView(0); }); await sleep(500);
   const back = await page.evaluate(() => ({ cover: getComputedStyle(document.querySelector('#cover')).display, zine: document.querySelector('#zine').hidden, board: document.querySelector('#board').hidden }));
   check('only RADIO shows the ground', back.cover === 'none' && back.zine && back.board, JSON.stringify(back));
@@ -264,7 +275,7 @@ if (run('smoke')) try {
   await tab(page, 2); await sleep(600);
   const sn = await page.evaluate(() => ({ styles: [...document.querySelectorAll('#view [data-style]')].map(b => b.dataset.style), pressed: (document.querySelector('#view [data-style][aria-pressed="true"]') || {}).dataset.style, prn: [...document.querySelectorAll('#sec-prn .prn-l b')].map(b => b.textContent), blank: !!document.querySelector('#view [data-doc="blank"]') }));
   await page.click('#view [data-style="conn"]'); await sleep(200); const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('da.prefs')).slip); await page.click('#view [data-style="paper"]');
-  check('SIGNS: PAPER, > and CONNECTION, the one chosen kept; the printers, novel.global first; a blank slip', sn.styles.join() === 'paper,tty,conn' && !!sn.pressed && sn.prn[0] === 'novel.global' && sn.prn.length === 4 && sn.blank && kept === 'conn', JSON.stringify({ sn, kept }));
+  check('PRINT SHOP: PAPER, > and CONNECTION, the one chosen kept; novel.global’s printer alone, no cafes; a blank slip', sn.styles.join() === 'paper,tty,conn' && !!sn.pressed && sn.prn[0] === 'novel.global' && sn.prn.length === 1 && sn.blank && kept === 'conn', JSON.stringify({ sn, kept }));
   /* PORTFOLIO: the board, eight as cards, the rest as a list; the briefs, the tools */
   await tab(page, 3); await sleep(600);
   const st = await page.evaluate(() => { const cards = [...document.querySelectorAll('#sec-board .sig-row')], lines = [...document.querySelectorAll('#sec-board .sig-line')]; return { cards: cards.length, lines: lines.length, ex: [...cards, ...lines].filter(r => r.classList.contains('ex')).length, codes: [...cards, ...lines].map(r => r.querySelector('.code').textContent), art: [...cards, ...lines].every(r => r.querySelector('.art')), docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
@@ -306,15 +317,15 @@ if (run('portfolio')) try {
 
 // ───────── a first visit: no radar until a tap says where you are ─────────
 if (run('first')) try {
-  const ctx = await newCtx(); await wire(ctx, { first: true }); const page = await ctx.newPage(); watch(page, 'first');
+  const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'first');
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
-  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length }; });
-  check('a first visit: every mark on the map, and no radar until a tap says where you are', !f.placed && f.knob && f.shown > 20, JSON.stringify(f));
+  const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade').hidden && document.querySelector('#arcade .arc-t').textContent }; });
+  check('a first visit: every mark on the map, no radar, and PRESS PLAY over it, blinking', !f.placed && f.knob && f.shown > 20 && f.press === 'PRESS PLAY', JSON.stringify(f));
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(500);
   const m = await page.evaluate(() => { const r = window.__da.map.getContainer().getBoundingClientRect(); return [r.left + r.width * 0.42, r.top + r.height * 0.55]; });
   await page.mouse.click(m[0], m[1]); await sleep(700);
   const g = await page.evaluate(([x, y]) => { const da = window.__da; const r = da.map.getContainer().getBoundingClientRect(); const ll = da.map.unproject([x - r.left, y - r.top]); return { placed: da.placed(), knob: !document.querySelector('#knob').hidden, off: Math.round(da.haversine(ll.lat, ll.lng, da.S.scan.lat, da.S.scan.lng)), kept: JSON.parse(localStorage.getItem('da.prefs') || '{}').placed === true }; }, m);
-  check('the radar is put down where the tap lands, and kept there', g.placed && g.knob && g.off < 20 && g.kept, JSON.stringify(g));
+  check('a touch on PRESS PLAY puts the radar down where it lands, and starts the radio', g.placed && g.knob && g.off < 20 && g.kept, JSON.stringify(g));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section first: ${e.message.split('\n')[0]}`); }
 
@@ -826,6 +837,8 @@ if (run('place')) try {
   await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.life.moveScan(-37.80, 144.95, false); }); await sleep(800);
   const fl = await page.evaluate(() => { const da = window.__da; const it = da.life.items.find(i => i.o.user && i.o.kind === 'injured'); return { flag: it.flag, inS: it.inS, shown: da.life.shown(it), pulse: it.pulse }; });
   check('an animal hurt stays on the map in red when the radar moves away', fl.flag && !fl.inS && fl.shown && fl.pulse === 3, JSON.stringify(fl));
+  const kinds = await page.evaluate(async () => { const da = window.__da; da.startPlace({ lat: -37.7712, lng: 144.9611 }); await new Promise(r => setTimeout(r, 700)); const chips = [...document.querySelectorAll('#pl-lives [data-g]')].map(b => b.dataset.tip); const k = document.querySelector('#pl-kind'); if (k) { k.value = 'Stick insect'; k.dispatchEvent(new Event('input', { bubbles: true })); } await new Promise(r => setTimeout(r, 500)); const out = { insect: chips.includes('INSECT'), moth: chips.includes('MOTH'), input: !!k, name: document.querySelector('#pl-name').textContent }; da.closeRecord(); return out; });
+  check('a sighting of one’s own: INSECT and MOTH among the kinds, and any kind typed names it', kinds.insect && kinds.moth && kinds.input && kinds.name === 'Stick insect', JSON.stringify(kinds));
   await page.evaluate(() => window.__da.startPlace({ lat: -37.7712, lng: 144.9611 })); await sleep(800);
   await page.fill('#pl-text', 'an orb weaver on the fence'); await sleep(500); await tap(page, '#r-alt'); await sleep(1800);
   const p3 = await page.evaluate(() => { const da = window.__da; const o = da.S.byId.get(da.S.sel); return { face: da.face(), name: o && o.tx && o.tx.cn, life: document.querySelector('#w-slip .sl-life b').textContent }; });

@@ -19,14 +19,21 @@ const BOARDS = (() => { const b = store.get('da.boards.v1', null); if (Array.isA
 let boardId = BOARDS.some(b => b.id === prefs.board) ? prefs.board : BOARDS[0].id;
 const boardOf = id => store.get('da.board.' + id, null);
 const boardJSON = () => { const k = boardOf(boardId); return (k && k.json) || { objects: [] }; };
-function saveBoard(say) { if (!cv) return; store.set('da.board.' + boardId, { v: BOARD_V, json: cv.toJSON(BOARD_PROPS) }); if (say) toast('SAVED'); }
+const HIST = []; let histLast = '';
+function saveBoard(say) {
+  if (!cv) return; const json = cv.toJSON(BOARD_PROPS); const str = JSON.stringify(json);
+  if (histLast && str !== histLast) { HIST.push(histLast); if (HIST.length > 40) HIST.shift(); } histLast = str;
+  store.set('da.board.' + boardId, { v: BOARD_V, json }); if (say) toast('SAVED');
+}
+/* one step back: the board as it was before the last change */
+async function undoBoard() { if (!cv || !HIST.length) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['image', 'camera', 'IMG'], ['delete', 'close', 'DEL'], ['save', 'check', 'SAVE']];
+const TOOLS = [['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['save', 'check', 'SAVE']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}">${icon(ic)}<small>${w}</small></button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
-  $('#board-label').textContent = 'SIGNAL BOARD · MODEL DA-03 · IN: SIGNALS FROM THE RADIO · OUT: STORIES TO PRINT · LINK JOINS, CLICK A STRING TO LET IT GO · CONTAINS LIVE DATA';
+  $('#board-label').textContent = 'WISH MAKER · MODEL DA-03 · IN: SIGNALS, CELLS, CONSTELLATIONS · OUT: STORIES TO PRINT · LINK JOINS, A CLICK ON A STRING LETS IT GO · CONTAINS LIVE DATA';
 }
 /* the board shows over the ground while SIGNALS is open */
 async function showBoard(on) {
@@ -43,7 +50,7 @@ async function showBoard(on) {
   } else { cv.setWidth(W); cv.setHeight(H); }
   cv.renderAll(); return cv;
 }
-async function loadBoard() { cv.clear(); const k = boardOf(boardId); if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); }
+async function loadBoard() { cv.clear(); HIST.length = 0; const k = boardOf(boardId); histLast = k && k.json ? JSON.stringify(k.json) : ''; if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); }
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
 function newBoard() { const id = uid('b'); BOARDS.push({ id, n: `BOARD ${pad2(BOARDS.length + 1)}`, at: Date.now() }); store.set('da.boards.v1', BOARDS); switchBoard(id); }
 const byId = id => cv.getObjects().find(o => o.daId === id);
@@ -73,7 +80,9 @@ function linking(t) {
 /* a card is one piece of editable text on its own clear plate: double-click to rewrite it */
 function textCard(f, id, kind, text, x, y, o = {}) {
   const look = { mix: { fill: '#E9F2F0', backgroundColor: 'rgba(160,210,200,.16)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 250 }, note: { fill: '#141412', backgroundColor: '#E8F0B8', fontFamily: 'VT323, monospace', fontSize: 20, width: 180 },
-    fig: { fill: '#E9F2F0', backgroundColor: 'rgba(255,255,255,.08)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 10.5, width: 180 } }[kind] || {};
+    fig: { fill: '#E9F2F0', backgroundColor: 'rgba(255,255,255,.08)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 10.5, width: 180 },
+    cell: { fill: '#E9F2F0', backgroundColor: 'rgba(138,111,209,.22)', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 200 },
+    slip: { fill: '#141412', backgroundColor: '#FFFFFF', fontFamily: 'VT323, monospace', fontSize: 19, width: 230 } }[kind] || {};
   return new f.Textbox(text, { left: x, top: y, padding: 12, lineHeight: 1.25, daId: id, daKind: kind, editable: true, borderColor: '#7FD1C2', cornerColor: '#7FD1C2', ...look, ...o });
 }
 const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind !== 'link').length; return { x: 40 + (n % 4) * 270, y: 40 + Math.floor(n / 4) * 230 }; };
@@ -92,6 +101,28 @@ async function placeMix(m) {
   (m.figs || []).forEach((g, i) => { const fc = textCard(f, `${m.id}:${g.id}`, 'fig', [g.name, ...(g.knots || []).slice(0, 8).map(k => `· ${k.n}`)].join('\n'), p.x + 300, p.y + i * 150); c.add(fc); joinCards(mc, fc); });
   c.setActiveObject(mc); c.renderAll(); saveBoard(false); refreshPanel();
 }
+/* what this device has made, ready to lay on the board: cells placed on the map, W.I.S.H. issued or sent, constellations */
+const myCells = () => S.user.filter(o => !o.story && (o.ev || o.title));
+const assetText = {
+  r: o => [nameOf(o), ((o.ev && o.ev.data) || {}).text || o.title || '', `${placeOf(o)} · ${fmtStamp(o.at || Date.now())}`].filter(Boolean).join('\n'),
+  s: x => [`${x.code} · ${NAME_UP(x)}`, '', ...linesOf(x).map(l => `> ${l}`), ...(x.who ? ['', `— ${x.who}`] : [])].join('\n'),
+  c: c => [c.name, ...c.keys.slice(0, 10).map(k => `· ${((c.f.n || {})[k] || (c.f.c || {})[k] || {}).n || k}`)].join('\n'),
+};
+async function placeAsset(kind, id) {
+  const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const aid = `${kind}:${id}`;
+  if (byId(aid)) { c.setActiveObject(byId(aid)); c.renderAll(); return; }
+  if (kind === 'r') { const o = myCells().find(x => String(x.id) === String(id)); if (!o) return; const card = textCard(f, aid, 'cell', assetText.r(o), p.x, p.y); c.add(card);
+    if (o.photo) f.Image.fromURL(o.photo, im => { im.set({ left: p.x, top: p.y + card.height + 30, daId: `${aid}:img`, daKind: 'image' }); im.scaleToWidth(200); c.add(im); joinCards(card, im); c.renderAll(); saveSoon(); }); }
+  if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; c.add(textCard(f, aid, 'slip', assetText.s(x), p.x, p.y)); }
+  if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; c.add(textCard(f, aid, 'fig', assetText.c(g), p.x, p.y)); }
+  c.setActiveObject(byId(aid)); c.renderAll(); saveBoard(false); snd.tick(1500);
+}
+const assetRow = (kind, id, ic, word) => `<li><button type="button" class="as-b" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="On the board">${ic}<span class="mono">${esc(word)}</span>${icon('plus', 'sm')}</button></li>`;
+function assetsHTML() {
+  const cells = myCells().slice(0, 20), slips = S.signals.filter(x => !x.ex && !x.shared).slice(0, 20), figs = strings.list().slice(0, 20);
+  if (!cells.length && !slips.length && !figs.length) return '';
+  return `<section class="sec assets" id="sec-assets"><ol class="as-l">${cells.map(o => assetRow('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => assetRow('s', x.key, icon('receipt', 'sm'), `${x.code} · ${NAME_UP(x)}`)).join('')}${figs.map(g => assetRow('c', g.id, icon('string', 'sm'), g.name)).join('')}</ol></section>`;
+}
 /* a note, or several, from field notes in Markdown: each heading and what is under it */
 async function notesIn(md) {
   const c = await showBoard(true); if (!c) return 0; const f = window.fabric;
@@ -108,6 +139,7 @@ async function boardTool(k) {
   if (k === 'image') { $('#board-file').click(); return; }
   if (k === 'delete') { const all = c.getActiveObjects(); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
   if (k === 'save') { saveBoard(true); return; }
+  if (k === 'undo') { undoBoard(); return; }
   c.renderAll(); saveSoon(); snd.tick(1500);
 }
 /* an image from this device, made smaller first */
@@ -170,9 +202,9 @@ const sigRow2 = m => `<li class="g-sig"><span class="mono">${esc(m.where.place)}
   + `<span class="pg-a"><button type="button" class="ib" data-mix="${esc(m.id)}" aria-label="Play on the radio">${icon('play', 'sm')}</button><button type="button" class="ib" data-board-mix="${esc(m.id)}" aria-label="On this board">${icon('plus', 'sm')}</button></span></li>`;
 function viewSignals() {
   const groups = BOARDS.map(b => { const on = b.id === boardId; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === b.id); const figs = ms.flatMap(m => m.figs || []);
-    return `<li class="bgroup${on ? ' on' : ''}"><button type="button" class="bg-h" data-board="${esc(b.id)}" aria-pressed="${on}"><b class="mono">${esc(b.n)}</b><small class="mono">${ms.length} · ${figs.length}</small></button>`
+    return `<li class="bgroup${on ? ' on' : ''}">${on ? `<div class="bg-h"><input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name"><small class="mono">${ms.length} · ${figs.length}</small></div>` : `<button type="button" class="bg-h" data-board="${esc(b.id)}" aria-pressed="false"><b class="mono">${esc(b.n)}</b><small class="mono">${ms.length} · ${figs.length}</small></button>`}`
       + (ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : '') + (figs.length ? `<ol class="g-figs">${figs.map(g => `<li class="mono">${icon('string', 'sm')}${esc(g.name)}</li>`).join('')}</ol>` : '') + (on ? consSection() : '') + `</li>`; }).join('');
-  return `<section class="sec" id="sec-wish">${wishForm()}</section>`
+  return `<section class="sec" id="sec-wish">${wishForm()}</section>` + assetsHTML()
     + `<section class="sec book" id="sec-book"><div class="bk-h"><b class="b-head bk-t">BOARDS</b><span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes">${icon('download')}</button><label class="ib" aria-label="Bring field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<ol class="bgroups">${groups}</ol></section>`;
 }
@@ -180,8 +212,11 @@ $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-book-md]')) { download(`field-notes-${isoDay(new Date())}.md`, bookMD(), 'text/markdown;charset=utf-8'); tick(1800); return; }
   if (e.target.closest('[data-new-board]')) { newBoard(); return; }
   const bd = e.target.closest('[data-board]'); if (bd) { switchBoard(bd.dataset.board); return; }
-  const bm = e.target.closest('[data-board-mix]'); if (bm) { const m = MIXES.find(x => x.id === bm.dataset.boardMix); if (m) placeMix(m); tick(1500); }
+  const bm = e.target.closest('[data-board-mix]'); if (bm) { const m = MIXES.find(x => x.id === bm.dataset.boardMix); if (m) placeMix(m); tick(1500); return; }
+  const as = e.target.closest('[data-asset]'); if (as) placeAsset(as.dataset.asset, as.dataset.aid);
 });
+/* a board's name, rewritten where it stands */
+$('#view').addEventListener('input', debounce(e => { const n = e.target.closest('[data-board-name]'); if (!n) return; const b = BOARDS.find(x => x.id === n.dataset.boardName); if (b) { b.n = n.value.trim().slice(0, 32) || b.n; store.set('da.boards.v1', BOARDS); } }, 300));
 $('#view').addEventListener('change', async e => {
   if (e.target.id !== 'md-in') return; const fl = e.target.files && e.target.files[0]; if (!fl) return;
   const n = await notesIn(await fl.text()); toast(`${n} NOTES IN`); e.target.value = '';
