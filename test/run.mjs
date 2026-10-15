@@ -659,7 +659,7 @@ if (run('share')) try {
   check('ESC/POS for 58 mm and for 80 mm paper, with no FIG. or NORTH UP', bin.w58 && bin.w80 && !bin.fig, JSON.stringify(bin));
   await tap(page, '#r-act'); await sleep(900);
   const dl = await page.evaluate(() => [...document.querySelectorAll('#s-send [data-dest]')].map(b => ({ d: b.dataset.dest, t: b.querySelector('b').textContent })));
-  check('DIRECT ACTION lists the partner places that print, the local mesh, and the board', dl.length === 5 && ['pickles', 'kines', 'elsie', 'mesh', ''].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
+  check('DIRECT ACTION lists the novel.global printer first, then the partner places and the local mesh', dl.length === 5 && dl[0].d === 'novelglobal' && dl[0].t === 'novel.global' && ['pickles', 'kines', 'elsie', 'mesh'].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
   await page.click('#s-send [data-dest="pickles"]'); await page.waitForFunction(() => /WAITING FOR APPROVAL/.test(document.querySelector('#s-status').textContent), null, { timeout: 20000 });
   const st0 = await page.evaluate(() => document.querySelector('#s-status').textContent);
   const waiting = await admin('stories?status=waiting'); const mine = waiting.stories.find(x => x.code === s0.code);

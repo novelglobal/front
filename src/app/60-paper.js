@@ -270,12 +270,13 @@ function openSend(s) {
   if (s.ex) { toast('AN EXAMPLE'); return; }
   const draw = () => {
     const p0 = s.pin || {}; const list = [...PARTNERS].sort((a, b) => haversine(p0.lat, p0.lng, a.lat, a.lng) - haversine(p0.lat, p0.lng, b.lat, b.lng));
-    el.innerHTML = `<ol>${list.map(p => { const st = PSTATE[p.id] || {}; const d = Number.isFinite(+p0.lat) ? metres(haversine(p0.lat, p0.lng, p.lat, p.lng)) : '';
+    const mst = MASTER ? PSTATE[MASTER.id] || {} : {};
+    el.innerHTML = `<ol><li><button type="button" class="dest${MASTER ? ' on' : ''}" data-dest="${MASTER ? esc(MASTER.id) : ''}">${MASTER ? `<img class="pm" src="${printerImg(MASTER, mst)}" alt="">` : `<span class="pm board">${icon('stories')}</span>`}<span class="nm"><b>novel.global</b>${mst.queued ? `<small class="mono">${mst.queued} IN QUEUE</small>` : ''}</span></button></li>${list.map(p => { const st = PSTATE[p.id] || {}; const d = Number.isFinite(+p0.lat) ? metres(haversine(p0.lat, p0.lng, p.lat, p.lng)) : '';
         return `<li><button type="button" class="dest${p.printer ? ' on' : ''}" data-dest="${esc(p.id)}"><img class="pm" src="${printerImg(p, st)}" alt=""><span class="nm"><b>${esc(p.n)}</b><small class="mono">${esc(p.sub.toUpperCase())}${d ? ` · ${d}` : ''}${st.queued ? ` · ${st.queued} IN QUEUE` : ''}</small></span></button></li>`; }).join('')}`
       /* the local mesh: every partner's radio that is on carries the pledge's short line, node to node; nothing printed */
       + (() => { const on = PARTNERS.filter(p => (PSTATE[p.id] || {}).mesh); const air = on.filter(p => (PSTATE[p.id] || {}).ready).length;
         return `<li><button type="button" class="dest mesh" data-dest="mesh"><span class="pm board">${icon('mesh')}</span><span class="nm"><b>Local mesh nodes</b><small class="mono">${bytes(meshText(s))} B${on.length ? ` · ${air}/${on.length}` : ''}</small></span></button></li>`; })()
-      + `<li><button type="button" class="dest" data-dest=""><span class="pm board">${icon('stories')}</span><span class="nm"><b>novel.global</b></span></button></li></ol>`;
+      + `</ol>`;
   };
   draw(); el.hidden = false; tick(1700); el.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
   loadPartners().then(() => { if (!el.hidden) draw(); });

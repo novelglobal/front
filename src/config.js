@@ -368,6 +368,9 @@ window.DA_PRINTERS = {
    address and site are its entry in places.js. printer: a W.I.S.H. receipt printer is, or will be, there, and the place is
    marked on the map. It shows NOT YET ONLINE, a ghost, until its Raspberry Pi has asked for work in the last two minutes;
    slips sent before then wait in its queue. Settings → PRINTERS hides them all. paper: its printer's paper, above. */
+/* the master printer: novel.global's own receiver, not a place on the map. The send list's novel.global prints here */
+window.DA_MASTER = { id: 'novelglobal', n: 'novel.global', paper: 80 };
+
 window.DA_PARTNERS = [
   { id: 'pickles', printer: true, paper: 80 },
   { id: 'kines', printer: true, paper: 80 },

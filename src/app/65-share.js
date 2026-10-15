@@ -7,7 +7,8 @@
 const API = '/api';
 /* the partner places, each with its entry in places.js: where DIRECT ACTION can send a slip to print */
 const PARTNERS = (window.DA_PARTNERS || []).map(p => { const pl = PLACES.find(x => x.partner === p.id) || {}; return { ...p, n: pl.n || p.id, sub: pl.sub || '', addr: pl.addr || '', url: pl.url || '', what: pl.what || '', lat: +pl.lat, lng: +pl.lng, paper: String(p.paper || 58) }; }).filter(p => Number.isFinite(p.lat));
-const partnerOf = id => PARTNERS.find(p => p.id === id) || null;
+const MASTER = window.DA_MASTER ? { id: window.DA_MASTER.id, n: window.DA_MASTER.n, sub: '', paper: String(window.DA_MASTER.paper || 80), printer: true } : null;   /* novel.global's own printer */
+const partnerOf = id => PARTNERS.find(p => p.id === id) || (MASTER && MASTER.id === id ? MASTER : null);
 const SHARED = store.get('da.shared.v1', { t: 0, list: [] });   /* the stories shown to everyone, as last fetched */
 const SENT = store.get('da.sent.v1', {});                       /* what this device sent: code → where, and how far it has got */
 const OUTBOX = store.get('da.outbox.v1', []);                   /* what could not be sent yet */
