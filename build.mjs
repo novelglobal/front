@@ -50,6 +50,7 @@ if (preview) fs.appendFileSync(path.join(out, '_headers'), '\n/*\n  X-Robots-Tag
    from the same settings the app reads. Written here, never by hand, never committed */
 const win = {}; vm.runInNewContext(read(path.join(src, 'config.js')) + '\n' + read(path.join(src, 'places.js')), { window: win });
 const partners = (win.DA_PARTNERS || []).map(p => { const pl = (win.DA_PLACES || []).find(x => x.partner === p.id) || {}; return { id: p.id, n: pl.n || p.id, sub: pl.sub || '', paper: String(p.paper || 58), printer: !!p.printer }; });
+if (win.DA_MASTER) partners.unshift({ id: win.DA_MASTER.id, n: win.DA_MASTER.n, sub: '', paper: String(win.DA_MASTER.paper || 80), printer: true });
 fs.writeFileSync(path.join(src, 'worker', 'stamp.js'), `/* written by build.mjs: never edited by hand, never committed */\nexport const BUILD = ${JSON.stringify(sha)};\nexport const PREVIEW = ${preview};\nexport const PARTNERS = ${JSON.stringify(partners)};\n`);
 const body = read(path.join(src, 'body.html'));
 fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
