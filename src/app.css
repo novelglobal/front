@@ -1058,10 +1058,10 @@ body.on-air .eq-c{animation:lift 1.8s ease-in-out var(--d, 0s) infinite;transfor
 @media (prefers-reduced-motion:reduce){body.on-air .eq-c{animation:none}}
 
 /* ───────── SIGNALS: the board over the map, and the field book beside it ───────── */
-.board{position:fixed;z-index:6;top:0;left:0;bottom:0;right:calc(var(--page) + 64px);background:#141412 radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px) 0 0/22px 22px}
-body.shut .board{display:none}
-.board canvas{display:block}
-@media (max-width:760px){.board{right:0;bottom:50vh}}
+#board{position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);background:#141412 radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px) 0 0/22px 22px}
+body.shut #board{display:none}
+#board canvas{display:block}
+@media (max-width:760px){#board{right:0;bottom:50vh}}
 .book .bk-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
 .book .bk-t{margin:0;font-size:28px}
 .pages{list-style:none;margin:0;padding:0}
@@ -1076,3 +1076,42 @@ body.shut .board{display:none}
 .pg-l li.on{opacity:1}
 .pg-l .i{width:13px;height:13px}
 .pg-l span{font:400 14px/1 'VT323',ui-monospace,monospace}
+
+/* ───────── only RADIO shows the ground; SIGNALS and SIGNS are their own surfaces ───────── */
+.cover{display:none;position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);background:#141412}
+body.off-map:not(.shut) .cover{display:block}
+#board,#zine{z-index:6}
+#board .tools,#zine .tools{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.12);background:#101010}
+.tools .bt{min-width:36px;height:34px;display:grid;place-items:center;padding:0 8px;color:#EDEDED;border:1px solid rgba(255,255,255,.18);font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em}
+.tools .bt:hover{border-color:#EDEDED}
+.tools .bt.on{background:#8C7469;border-color:#8C7469}
+.tools .bt .i{width:16px;height:16px}
+#board .canvas-container{position:absolute!important;top:52px;left:0}
+#zine{position:fixed;top:0;left:0;bottom:0;right:var(--page);background:#1A1A18}
+#zine .desk{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;display:grid;place-items:start center;padding:28px 0}
+#zine .desk .canvas-container{box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
+#zine-words{height:34px;width:150px;padding:0 8px;margin-right:6px;background:#1E1E1C;color:#EDEDED;border:1px solid rgba(255,255,255,.18);font:400 16px 'VT323',ui-monospace,monospace}
+.zt-page{margin-left:auto;display:flex;gap:4px}
+@media (max-width:760px){.cover,#zine{right:0;bottom:50vh}}
+/* the radio: El Niño's countdown in orange; one analogue button; layers with a three-step volume */
+.b-emerg{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0 0 12px;color:var(--deg2)}
+.b-emerg span{font:500 10px var(--mono);letter-spacing:.14em}
+.b-emerg .cd{font:400 28px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--deg2)}
+.hero-play{position:relative;display:grid;place-items:center;width:84px;height:84px;margin:16px auto 14px;border-radius:50%;color:#FCFBF7;background:radial-gradient(circle at 35% 30%,#A68D80,#6E5A51 70%);box-shadow:0 6px 14px rgba(0,0,0,.35),inset 0 2px 3px rgba(255,255,255,.25),inset 0 -3px 6px rgba(0,0,0,.35)}
+.hero-play .i{width:26px;height:26px;position:relative}
+.hero-play .hp-ring{position:absolute;inset:-7px;border-radius:50%;border:1px dashed color-mix(in srgb,var(--ink) 40%,transparent)}
+.hero-play.on .hp-ring{animation:spin 8s linear infinite;border-style:solid;border-color:var(--clay)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hero-play:active{transform:translateY(1px)}
+.lyr{grid-template-columns:1fr 28px 1fr 34px}
+.lyr .n,.lyr-lvl{display:none}
+.lyr-v{display:flex;align-items:flex-end;gap:2px;height:28px;padding:0 6px;justify-content:center}
+.lyr-v i{width:4px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.lyr-v i:nth-child(1){height:6px}.lyr-v i:nth-child(2){height:11px}.lyr-v i:nth-child(3){height:16px}
+.lyr-v[data-v="0"] i:nth-child(1),.lyr-v[data-v="1"] i:nth-child(-n+2),.lyr-v[data-v="2"] i{background:var(--ink)}
+.band .share-b{display:flex;justify-content:center;width:100%;margin-top:14px;height:36px}
+.posters{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.poster-b{display:block;width:100%;background:#fff;padding:4px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.poster-b img{display:block;width:100%}
+#press .slip.zine{width:auto;padding:0}
+#board .tools,#zine .tools{padding-right:72px}
