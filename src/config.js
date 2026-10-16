@@ -34,6 +34,9 @@ window.DA_CONFIG = {
   SOVEREIGNTY: 'SOVEREIGNTY HAS NEVER BEEN CEDED',
   /* the Countries the site stands on, chosen at the head of the page: more are added here as other places join */
   COUNTRIES: [{ id: 'wurundjeri', n: 'Wurundjeri Woi-wurrung Country', s: 'Sovereignty has never been ceded' }],
+  /* the cities to come: listed in the choice, not yet chosen */
+  SOON: ['Sydney', 'Brisbane', 'Perth', 'Adelaide', 'Hobart', 'Darwin', 'Canberra', 'Tāmaki Makaurau Auckland', 'Te Whanganui-a-Tara Wellington', 'Ōtautahi Christchurch'],
+  SCAN_FIRST: 1000,
   REFRESH_MIN: 60,
   LIVE_MIN: 5,
 };

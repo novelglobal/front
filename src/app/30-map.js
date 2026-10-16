@@ -86,12 +86,15 @@ map.on('click', e => {
      button down (or pressing and holding on a phone) */
   life.offer(null);
   if (!placed()) { placeRadar(e.lngLat.lat, e.lngLat.lng); return; }
-  life.moveScan(e.lngLat.lat, e.lngLat.lng, true);
+  life.moveScan(e.lngLat.lat, e.lngLat.lng, true); tootOrTick(true);
 });
+/* the small horn when the radar is set down, no more than once in 45 seconds; otherwise the plain click */
+let lastToot = 0;
+function tootOrTick(quiet) { if (Date.now() - lastToot > 45000) { lastToot = Date.now(); snd.toot(); } else if (!quiet) snd.tick(1100); }
 /* where are you: the radar is put down where the first tap on the map lands, and stays there between visits */
 function placeRadar(lat, lng) {
   if (!inBox(lat, lng)) { tick(600); return; }
-  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, null, true); snd.tick(1100); buzz([6, 30, 6]); arcadeOff();
+  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, first ? 1000 : null, true); tootOrTick(); buzz([6, 30, 6]); arcadeOff();
   if (first && !S.radio) setRadio(true);
 }
 /* a double tap ties instead of zooming while a cell or a marker is open */

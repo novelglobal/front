@@ -474,16 +474,12 @@
        the body a touch clear so the ground shows through, a fine rim inside its edge and a highlight where the light falls */
     const lit = /^k-|^fauna$|^flora$|^night$/.test(b.tone || 'fauna');
     if (lit) {
-      ctx.save(); ctx.shadowColor = bg; ctx.shadowBlur = Math.max(6, r * 0.9); ctx.globalAlpha *= 0.55; ctx.fillStyle = bg; ctx.fill(); ctx.restore();
-      ctx.save(); ctx.globalAlpha *= 0.86; ctx.fillStyle = bg; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.fillStyle = bg; for (const [dr, a] of [[r * 0.75, 0.08], [r * 0.42, 0.14], [r * 0.18, 0.2]]) { ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(x, y, r + dr, 0, TAU); ctx.fill(); } ctx.restore();
+      shape(ctx, b.tone, x, y, r); ctx.save(); ctx.globalAlpha *= 0.92; ctx.fillStyle = bg; ctx.fill(); ctx.restore();
     } else { ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1.5; ctx.fillStyle = bg; ctx.fill(); ctx.shadowColor = 'transparent'; }
-    ctx.lineWidth = lit ? 1.2 : 1.6; ctx.strokeStyle = ['need', 'lost', 'story'].includes(b.tone) ? C.navy : b.tone === 'dead' ? C.red : lit ? 'rgba(255,255,255,.82)' : C.white;
+    ctx.lineWidth = lit ? 1 : 1.6; ctx.strokeStyle = ['need', 'lost', 'story'].includes(b.tone) ? C.navy : b.tone === 'dead' ? C.red : lit ? 'rgba(255,255,255,.6)' : C.white;
     if (b.tone === 'lost') ctx.setLineDash([2.6, 2.2]); ctx.stroke(); ctx.setLineDash([]);
-    if (lit && r >= 5) {
-      ctx.save(); ctx.beginPath(); ctx.arc(x, y, r - 2.2, 0, TAU); ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke();
-      ctx.beginPath(); ctx.arc(x - r * 0.1, y - r * 0.1, r * 0.64, Math.PI * 1.08, Math.PI * 1.46); ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, r * 0.13); ctx.strokeStyle = 'rgba(255,255,255,.62)'; ctx.stroke();
-      ctx.beginPath(); ctx.arc(x + r * 0.42, y + r * 0.44, Math.max(0.6, r * 0.07), 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fill(); ctx.restore();
-    }
+    if (lit && r >= 5) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r - 2, 0, TAU); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.stroke(); ctx.restore(); }
     /* a gathering: the rings of a calendar page */
     if (b.tone === 'event') { ctx.fillStyle = C.white; for (const sx of [-0.45, 0.45]) { ctx.beginPath(); ctx.arc(x + sx * r, y - r * 0.86, r * 0.13, 0, TAU); ctx.fill(); } }
     /* a signal: the slip's top band */

@@ -143,12 +143,15 @@ const life = (() => {
   /* the radar keeps playing while a life is looked at: only the radio being off, or the page hidden, stills it */
   const paused = () => !S.radio || S.mode === 'place' || document.hidden;
   const running = () => !reduced() && !paused();
+  /* a month ahead chosen on the outlook: the hand quickens with its danger, twice as fast at the extreme, and the glass heats */
+  const heatAhead = () => (S.mo !== nowK() ? (outMonth(S.mo).lv || 0) : 0);
+  const tempo = () => [1, 1.1, 1.3, 1.6, 2][heatAhead()];
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {
     const dt = lastSweep ? Math.min(0.12, (now - lastSweep) / 1000) : 0; lastSweep = now;
     if (reduced()) { revealAll(); return; }
     if (!running() || !dt || !placed()) return;
-    const b0 = sweepB, b1 = sweepB + 360 * dt / SC.turn; sweepB = b1 % 360;
+    const b0 = sweepB, b1 = sweepB + 360 * dt * tempo() / SC.turn; sweepB = b1 % 360;
     /* a whole turn: time moves on a month */
     if (b1 >= 360) turned();
     /* found the first time, rung softer on every pass after: the hand plays what it crosses, a tune of the ground */
@@ -267,16 +270,16 @@ const life = (() => {
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
   function cluster() {
     bins = []; if (!zoomQuiet()) { for (const it of items) it.binned = false; return; }
-    const G = curD + 10, m = new Map();
+    const z = zoomNow(); const G = (curD + 10) * (z < 12.5 ? 2.4 : z < 13.5 ? 1.8 : 1.25), m = new Map();
     for (const it of items) {
       it.binned = false; if (!shown(it) || it.flag || it.pulse || it.b.tone === 'hist' || it.o.hum || (S.mode === 'ping' && strings.lifeNode(it.o.id))) continue;
       const k = `${Math.floor(it.x / G)},${Math.floor(it.y / G)}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it);
     }
     for (const list of m.values()) {
-      if (list.length < 3) continue; let x = 0, y = 0; const count = new Map();
+      if (list.length < 2) continue; let x = 0, y = 0; const count = new Map();
       for (const it of list) { x += it.x; y += it.y; it.binned = true; const key = `${it.b.g}|${it.b.tone}`; count.set(key, (count.get(key) || 0) + 1); }
       const [g, tone] = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0].split('|');
-      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: curD + 2, n: 3 } });
+      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: Math.round(curD + 2 + Math.min(10, Math.log2(list.length) * 2.2)), n: 1 } });
     }
   }
 
@@ -315,13 +318,10 @@ const life = (() => {
     }
     /* a hero chosen: the ground it is known from */
     const h = S.mode === 'ping' && S.byId.get(S.sel); if (h && h.hero) patch(ctx, h.home.map(([a, b]) => [a, b, 170]), C.kind[M.GROUP[glyphOf(h)]] || C.kind.other, 0.3);
-    /* the radar's rim: a hairline with a tick every ten degrees, longer every thirty, a notch at north */
+    /* the radar's rim: a hairline and a notch at north */
     if (placed() && ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
       const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
-      ctx.beginPath();
-      for (let i = 0; i < 72; i += 2) { const [x, y] = ringPts[i]; const dx = cp.x - x, dy = cp.y - y, L = Math.hypot(dx, dy) || 1; const k = i % 6 === 0 ? 9 : 4; ctx.moveTo(x, y); ctx.lineTo(x + dx / L * k, y + dy / L * k); }
-      ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 1.2; ctx.stroke();
       const [nx, ny] = ringPts[0]; const ux = (nx - cp.x) / (Math.hypot(nx - cp.x, ny - cp.y) || 1), uy = (ny - cp.y) / (Math.hypot(nx - cp.x, ny - cp.y) || 1);
       ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
       ctx.restore();
@@ -341,17 +341,16 @@ const life = (() => {
   function glass(ctx) {
     const cp = map.project([S.scan.lng, S.scan.lat]); const R = Math.hypot(ringPts[0][0] - cp.x, ringPts[0][1] - cp.y); if (!(R > 8)) return;
     const ring = f => { ctx.beginPath(); ringPts.forEach(([x, y], i) => { const px = cp.x + (x - cp.x) * f, py = cp.y + (y - cp.y) * f; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); };
-    ctx.save(); ring(1); ctx.clip();
-    const g = ctx.createRadialGradient(cp.x - R * 0.32, cp.y - R * 0.38, R * 0.04, cp.x, cp.y, R * 1.02);
-    g.addColorStop(0, 'rgba(255,255,255,.17)'); g.addColorStop(0.5, 'rgba(255,255,255,.045)'); g.addColorStop(0.9, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(255,255,255,.2)');
-    ctx.fillStyle = g; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
-    ctx.lineWidth = 1; for (let i = 0, f = 0.24; f < 0.95; f += 0.048, i++) { ring(f); ctx.strokeStyle = i % 3 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.07)'; ctx.stroke(); }
-    ring(0.975); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.stroke();
+    const hot = heatAhead(); ctx.save(); ring(1); ctx.clip();
+    ctx.fillStyle = hot >= 2 ? `rgba(255,${hot >= 4 ? 70 : 110},30,${(0.05 + hot * 0.035).toFixed(3)})` : 'rgba(150,225,230,.075)'; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
+    /* the bell's ridges, faint, and a band of lighter water along its upper edge */
+    ctx.lineWidth = 1; for (const f of [0.34, 0.58, 0.8]) { ring(f); ctx.strokeStyle = hot >= 2 ? 'rgba(255,170,120,.07)' : 'rgba(200,245,245,.06)'; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(cp.x, cp.y, R * 0.93, Math.PI * 1.08, Math.PI * 1.62); ctx.lineWidth = Math.max(2, R * 0.03); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(235,252,252,.10)'; ctx.stroke();
+    ring(0.975); ctx.lineWidth = 1; ctx.strokeStyle = hot >= 2 ? `rgba(255,120,60,${(0.2 + hot * 0.08).toFixed(2)})` : 'rgba(210,245,245,.24)'; ctx.stroke();
     ctx.restore();
     /* the centre: clear glass, a lens to press, not a colour */
     const lr = Math.max(10, R * 0.07); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU);
-    const lg = ctx.createRadialGradient(cp.x - lr * 0.35, cp.y - lr * 0.4, 0, cp.x, cp.y, lr); lg.addColorStop(0, 'rgba(255,255,255,.22)'); lg.addColorStop(1, 'rgba(255,255,255,.03)');
-    ctx.fillStyle = lg; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.stroke(); ctx.restore();
+    ctx.fillStyle = 'rgba(220,250,250,.10)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.stroke(); ctx.restore();
   }
 
   /* ───────── the marks layer ───────── */
@@ -376,6 +375,7 @@ const life = (() => {
     }
     const tip = at(sweepB); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
     const Rp = Math.hypot(tip.x - c.x, tip.y - c.y);
+    if (Rp > 20) { const hot = heatAhead(); const per = 7000 / tempo(); for (let k = 0; k < 2; k++) { const f = ((performance.now() + k * per / 2) % per) / per; ctx.beginPath(); ctx.arc(c.x, c.y, Rp * (0.12 + f * 0.86), 0, TAU); ctx.lineWidth = 1 + (1 - f) * 2; ctx.strokeStyle = hot >= 2 ? `rgba(255,140,80,${(0.16 * (1 - f)).toFixed(3)})` : `rgba(200,245,245,${(0.12 * (1 - f)).toFixed(3)})`; ctx.stroke(); } }
     if (Rp > 8 && S.mode !== 'ping') for (const off of [62, 242]) {
       ctx.beginPath(); ctx.moveTo(c.x, c.y); for (let d = -24; d <= 24; d += 4) { const p = at(sweepB + off + d); ctx.lineTo(p.x, p.y); } ctx.closePath();
       const sh = ctx.createRadialGradient(c.x, c.y, Rp * 0.1, c.x, c.y, Rp); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(255,255,255,.06)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = sh; ctx.fill();

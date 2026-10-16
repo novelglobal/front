@@ -4,7 +4,7 @@
    and the gigs. STORIES: the signals people have issued, newest first, then the groups, the tools and the sources.
    ════════════════════════════════════════════════════════════════════ */
 const panel = $('#panel'), rail = $('#rail'), viewEl = $('#view');
-rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><span class="tab-w">${v.short || v.w}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
+rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><span class="tab-w">${v.long || v.w}</span><span class="tab-s">${v.short || v.w}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
 /* the day's thread: a knot tied at each destination as the journey reaches it, and the string drawn on to it */
 function drawThread() { const t = [0, 1, 2].filter(n => DAY[n]); $$('#rail .tab').forEach((b, i) => b.classList.toggle('tied', !!DAY[i])); rail.style.setProperty('--tp', `${t.length ? Math.max(...t) * 46 : 0}px`); }
 function tie(n) {
@@ -12,7 +12,11 @@ function tie(n) {
   if (prefs.sound) snd.knot({ fam: 'people' }, F0 * [4, 5, 6][n], 0.05, 0.6, 0.6);
 }
 drawThread();
-rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i); if (i === S.view && S.open && !S.mode) { setOpen(false); return; } setView(i); });
+rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i);
+  $$('#rail .tab.flash').forEach(t => t.classList.remove('flash')); b.classList.add('flash'); clearTimeout(rail.flashT); rail.flashT = setTimeout(() => b.classList.remove('flash'), 2000);
+  /* on a phone, the tab already open folds its page away and back */
+  if (phone() && i === S.view && S.open && !S.mode) { setPane(pane === 'page' ? 'main' : 'page'); return; }
+  if (i === S.view && S.open && !S.mode) { setOpen(false); return; } if (phone()) pane = 'page'; setView(i); });
 rail.addEventListener('keydown', e => { const b = e.target.closest('.tab'); if (!b) return; const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return; e.preventDefault(); const all = $$('#rail .tab'); all[(all.indexOf(b) + d + all.length) % all.length].focus(); });
 new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'));
 /* ───────── on a phone, one pane at a time: the dock holds the four pages and two keys, what the page works on (the map,
@@ -24,12 +28,14 @@ function syncDock() {
   const m = $('#dock [data-pane="main"]'), pg = $('#dock [data-pane="page"]'); if (!m) return; const shown = S.open ? pane : 'main';
   const k = VIEWS[S.view].k; m.innerHTML = `${icon(MAIN_IC[k] || 'radar', 'sm')}<span>${MAIN_W[k] || 'MAP'}</span>`; pg.innerHTML = `${icon('note', 'sm')}<span>PANEL</span>`;
   m.setAttribute('aria-pressed', String(shown === 'main')); pg.setAttribute('aria-pressed', String(shown === 'page'));
+  const sb = $('#sheetbar'); if (sb) { sb.querySelector('.sb-t').textContent = VIEWS[S.view].long || VIEWS[S.view].w; sb.setAttribute('aria-expanded', String(shown === 'page')); }
   document.body.classList.toggle('pane-main', shown === 'main'); document.body.classList.toggle('pane-page', shown === 'page');
 }
 function setPane(p) {
   pane = p; if (p === 'page' && !S.open) setOpen(true); else syncDock();
   setTimeout(() => { if (S.mapReady) map.resize(); if (p === 'main' && S.view === 2) fitZ(); }, 380);
 }
+$('#sheetbar').addEventListener('click', () => { setPane(pane === 'page' ? 'main' : 'page'); tick(pane === 'page' ? 1500 : 1200); });
 $('#dock').addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (!b) return; setPane(b.dataset.pane); tick(b.dataset.pane === 'main' ? 1200 : 1500); });
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5); syncDock();
@@ -255,7 +261,7 @@ const CLUE_IC = {
   q: '<b class="cq" aria-hidden="true">?</b>',
 };
 function cluesHTML() {
-  const s1 = placed(), s2 = s1 && S.tweaked;
+  const s1 = placed(), s2 = s1 && (S.connected || strings.list().length > 0);
   const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
   return `<ol class="clues">`
     + (!s1 ? tile(1, 'now', icon('search'), 'find yourself') : !s2 ? tile(2, 'now', CLUE_IC.chain, 'make a connection') : tile(3, 'now', icon('share'), 'start', 'data-share-mix'))
@@ -278,21 +284,38 @@ function checklistHTML() {
     + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(i + 1).padStart(2, '0')}</b><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i></button></li>`).join('')}</ol>`
     + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>start</span></button>` : '');
 }
+/* ───────── the invisible hand: each step met is answered once, a few notes of glass and a glow where it was met ───────── */
+const STEPS = () => [placed() || !!prefs.placed, !!(S.connected || strings.list().length), MIXES.length > 0, wishStarted(), mineOf().some(x => linesOf(x).length), POSTERS2.length > 0, printedAny()];
+const STEP_ROW = [1, null, null, 2, 3, 4, 5];
+let stepsWas = null;
+function stepsCheck() {
+  let now; try { now = STEPS(); } catch (e) { return; }
+  if (!stepsWas) stepsWas = Array.isArray(prefs.steps) && prefs.steps.length === now.length ? prefs.steps : now;
+  now.forEach((v, i) => { if (v && !stepsWas[i]) won(i); });
+  if (now.join() !== stepsWas.join()) { stepsWas = now; prefs.steps = now; savePrefs(); }
+}
+function won(i) {
+  snd.reward(i + 1); document.body.classList.remove('won'); void document.body.offsetWidth; document.body.classList.add('won'); setTimeout(() => document.body.classList.remove('won'), 1600);
+  const mk = $('.lk-mark'); if (mk) { mk.classList.remove('pulse'); void mk.offsetWidth; mk.classList.add('pulse'); }
+  if (S.open && S.view === 0 && !S.mode) { refreshPanel(); const r = STEP_ROW[i] && document.querySelector(`.chk[data-check="${STEP_ROW[i]}"]`); if (r) r.classList.add('won'); }
+  if (i === STEPS().length - 1) dispatchEvent(new CustomEvent('da:muse'));
+}
+setInterval(stepsCheck, 1500);
 /* the lockup: the muse and the name. Tapped, the muse pulses and rings; tapped five times quickly, the water fills with them */
 const lockup = () => `<header class="lockup"><button type="button" class="lk-mark" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button><b class="lk-n">novel.global</b></header>`;
 let museN = 0, museT = 0;
-document.addEventListener('click', e => { const b = e.target.closest('[data-muse]'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); snd.jelly(0); museN = Date.now() - museT < 900 ? museN + 1 : 1; museT = Date.now(); if (museN >= 5) { museN = 0; dispatchEvent(new CustomEvent('da:muse')); } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-muse]'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); if (Date.now() - (window.__shipT || 0) > 6000) { window.__shipT = Date.now(); snd.ship(); } else snd.jelly(0); museN = Date.now() - museT < 900 ? museN + 1 : 1; museT = Date.now(); if (museN >= 5) { museN = 0; dispatchEvent(new CustomEvent('da:muse')); } });
 /* the head of every page: the muse and the name, level with the first key of the rail; the Country on the right */
 const COUNTRIES = (CONFIG.COUNTRIES && CONFIG.COUNTRIES.length) ? CONFIG.COUNTRIES : [{ id: 'here', n: CONFIG.COUNTRY, s: CONFIG.SOVEREIGNTY || '' }];
 const countryNow = () => COUNTRIES.find(c => c.id === prefs.ctry) || COUNTRIES[0];
-const countryBar = () => { const c = countryNow(); return `<div class="ctry"><label class="ct-sel"><select id="ctry" aria-label="Country">${COUNTRIES.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}</select><span class="ct-n">${esc(c.n)}</span><span class="ct-s">${esc(c.s)}</span>${COUNTRIES.length > 1 ? icon('next', 'sm') : ''}</label></div>`; };
+const countryBar = () => { const c = countryNow(); return `<div class="ctry"><label class="ct-sel"><select id="ctry" aria-label="Country">${COUNTRIES.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}${(CONFIG.SOON || []).length ? `<optgroup label="Soon">${CONFIG.SOON.map(n => `<option disabled>${esc(n)} · soon</option>`).join('')}</optgroup>` : ''}</select><span class="ct-n">${esc(c.n)}</span><span class="ct-s">${esc(c.s)}</span>${COUNTRIES.length > 1 ? icon('next', 'sm') : ''}</label></div>`; };
 function headBar() { const h = $('#ph'); if (h) h.innerHTML = lockup() + countryBar(); }
 document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; prefs.ctry = e.target.value; savePrefs(); headBar(); });
 /* the printers online, as a pager would say it: its light, its name, a buzz when one comes on */
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
 function pagerHTML() {
   const on = printersOn();
-  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? 'PRINTER ONLINE' : 'PRINTER OFFLINE'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
+  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? 'PRINTER ONLINE' : 'PRINTER ONLINE SOON'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
 }
 function viewRadio() {
   const ex = extremeAhead();
@@ -303,7 +326,7 @@ function viewRadio() {
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
-      ${MIXES.length ? checklistHTML() : cluesHTML()}
+      ${MIXES.length || wishStarted() || mineOf().length || POSTERS2.length || printedAny() ? checklistHTML() : cluesHTML()}
     </section>`;
 }
 

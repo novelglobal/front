@@ -223,8 +223,10 @@ if (run('smoke')) try {
   /* time on the radar is kept for later: no play on the strip, and a turn leaves the outlook where it is */
   const tm = await page.evaluate(() => { const da = window.__da; const k0 = da.S.mo; da.turned(); return { k0, k1: da.S.mo, play: !!document.querySelector('#sec-heat [data-time]') }; });
   check('El Niño time is held back for now: no play, and a turn of the radar leaves the months as they are', tm.k1 === tm.k0 && !tm.play, JSON.stringify(tm));
-  /* the mix: shared to SIGNALS, and played again from there */
-  await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); }); await sleep(400);
+  /* the dials alone are not a connection: the clue waits; a string tied is, and START follows */
+  const cl0 = await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); return (document.querySelector('#sec-heat .clue .cw') || {}).textContent; });
+  await page.evaluate(() => { const da = window.__da; da.markConnect(); da.setView(0); }); await sleep(400);
+  check('turning the dials is not a connection; a string tied is, and then start', cl0 === 'make a connection' && await page.evaluate(() => (document.querySelector('#sec-heat .clue .cw') || {}).textContent === 'start'), cl0);
   const story = await page.evaluate(() => !!document.querySelector('#sec-heat [data-share-mix]'));
   await page.click('#sec-heat [data-share-mix]'); await sleep(900); const arc = 'START STORY';
   await page.waitForFunction(() => window.__da.S.view === 1 && !document.querySelector('#board').hidden && window.fabric, null, { timeout: 15000 }); await sleep(800);
@@ -318,6 +320,14 @@ if (run('smoke')) try {
     document.querySelector('#ix-reset').click(); await wait(200); out.warn = !document.querySelector('#rst-w').hidden; document.querySelector('#rst-no').click(); await wait(100); out.kept = document.querySelector('#rst-w').hidden && da.POSTERS2.length > 0;
     da.setView(0); await wait(300); return out; });
   check('a layer\'s mood names itself on the hover as it turns; the strip at three sizes; the posters on the wall beside the filed W.I.S.H.es; start again only after a warning', ng2.tip === 'WEIGHT' && ng2.mood === 'weight' && new Set(ng2.z).size === 3 && ng2.gallery && ng2.filed >= 1 && ng2.warn && ng2.kept, JSON.stringify(ng2));
+  const v5 = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
+    out.soon = document.querySelectorAll('#ctry option[disabled]').length; out.sounds = ['ship', 'toot', 'reward', 'bed'].every(k => typeof da.snd[k] === 'function');
+    da.setView(0); await wait(300); out.pager = (document.querySelector('#sec-heat .pg-lcd') || {}).textContent;
+    da.setView(2); await wait(1200); document.querySelector('[data-wild="any"]').click(); await wait(1500);
+    const ph = () => da.zineObjects().filter(o => o.daPhoto).map(o => Math.round(o.getScaledWidth())).join(); out.w0 = ph();
+    for (const m of ['dots', 'lines', 'atk']) { document.querySelector(`[data-photo="${m}"]`).click(); await wait(700); } out.w1 = ph();
+    da.setView(0); return out; });
+  check('the places to come in the Country list; PRINTER ONLINE SOON; the ship, the tug, the rewards and the deep water; a photograph keeps its size through every look', v5.soon >= 8 && v5.pager === 'PRINTER ONLINE SOON' && v5.sounds && v5.w0 && v5.w0 === v5.w1, JSON.stringify(v5));
   await ctx.close();
 } catch (e) { results.push(`FAIL  section smoke: ${e.message.split('\n').slice(0, process.env.DBG_STACK ? 8 : 1).join(' | ')}`); }
 
@@ -771,10 +781,11 @@ if (run('share')) try {
   check('the receipt issued as a story with nothing written; then DIRECT ACTION', w.face === 'wish' && w.main === 'TO THE BOARD' && s0.lines === 0 && !s0.poem && s0.main === 'DIRECT ACTION' && !/\n\n|\n$/.test(s0.mesh) && s0.pager.startsWith(s0.code), JSON.stringify({ w, s0 }));
   const bin = await page.evaluate(async () => { const da = window.__da; const b58 = await da.escpos(da.S.issued, '58'), b80 = await da.escpos(da.S.issued, '80'); const has = (b, w) => { for (let i = 0; i < b.length - 6; i++) if (b[i] === 0x1D && b[i + 1] === 0x76 && b[i + 2] === 0x30 && b[i + 4] === w) return true; return false; }; const txt = String.fromCharCode(...b80.slice(0, 4000)); return { w58: has(b58, 48), w80: has(b80, 64), fig: /FIG\.|NORTH UP/.test(String.fromCharCode(...b58)) }; });
   check('ESC/POS for 58 mm and for 80 mm paper, with no FIG. or NORTH UP', bin.w58 && bin.w80 && !bin.fig, JSON.stringify(bin));
-  await tap(page, '#r-act'); await sleep(900);
-  const dl = await page.evaluate(() => [...document.querySelectorAll('#s-send [data-dest]')].map(b => ({ d: b.dataset.dest, t: b.querySelector('b').textContent })));
-  check('DIRECT ACTION lists the novel.global printer first, then the partner places and the local mesh', dl.length === 5 && dl[0].d === 'novelglobal' && dl[0].t === 'novel.global' && ['pickles', 'kines', 'elsie', 'mesh'].every(d => dl.some(x => x.d === d)) && dl.some(x => /Pickles Milk Bar/.test(x.t)), JSON.stringify(dl));
-  await page.click('#s-send [data-dest="pickles"]'); await page.waitForFunction(() => /WAITING FOR APPROVAL/.test(document.querySelector('#s-status').textContent), null, { timeout: 20000 });
+  await tap(page, '#r-act'); await sleep(1600);
+  const dp = await page.evaluate(code => ({ view: window.__da.S.view, mode: window.__da.S.mode, story: window.__da.PRESS.story === window.__da.S.signals.find(x => x.code === code).key, base: window.__da.zineObjects().some(o => o.daKind === 'base') }), s0.code);
+  check('DIRECT ACTION takes the receipt to the ZINEMAKER, at the head of the strip, ready to print', dp.view === 2 && !dp.mode && dp.story && dp.base, JSON.stringify(dp));
+  /* the server's side of a print to a place: it waits for approval, its print with it */
+  await page.evaluate(async code => { const da = window.__da; const s = da.S.signals.find(x => x.code === code); await da.directAction(s, 'pickles'); da.openSignal(s.key); }, s0.code); await sleep(1200);
   const st0 = await page.evaluate(() => document.querySelector('#s-status').textContent);
   const waiting = await admin('stories?status=waiting'); const mine = waiting.stories.find(x => x.code === s0.code);
   check('sent to Pickles: it waits for approval, its print with it, and says so', /PICKLES MILK BAR/.test(st0) && mine && mine.dest === 'pickles' && mine.job === 'held', JSON.stringify({ st0, mine: mine && { code: mine.code, dest: mine.dest, job: mine.job } }));
@@ -796,7 +807,7 @@ if (run('share')) try {
   check('RECEIVE: the code printed on the slip brings the story up on any device', r3.code === s0.code && r3.face === 'signal' && r3.mode === 'ping', JSON.stringify(r3));
   await ctx3.close();
   /* the printer at Pickles: always on the map, its own card */
-  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.life.moveScan(-37.758, 144.952, false); }); await sleep(500);
+  await page.evaluate(() => { const da = window.__da; da.closeRecord(); da.setView(0); da.setOpen(false); da.life.moveScan(-37.758, 144.952, false); }); await sleep(500);
   const pk = await page.evaluate(() => { const da = window.__da; const p = da.PARTNERS.find(x => x.id === 'pickles'); da.map.jumpTo({ center: [p.lng, p.lat], zoom: 15.2 }); return { lat: p.lat, lng: p.lng }; }); await settle(page); await sleep(500);
   const pxy = await page.evaluate(({ lat, lng }) => { const da = window.__da; const q = da.map.project([lng, lat]); const r = da.map.getContainer().getBoundingClientRect(); return { x: q.x + r.left, y: q.y + r.top, hit: (da.life.hit(q.x, q.y) || {}).kind, inScan: da.life.inScan(lat, lng) }; }, pk);
   await page.mouse.click(pxy.x, pxy.y); await sleep(1400);
