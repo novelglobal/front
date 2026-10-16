@@ -9,7 +9,7 @@ const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1 };   /* every visit
 const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
-const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto'];
+const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode'];
 const ZHIST = []; let zLast = '';
 const zKey = () => 'da.press.' + PRESS.fmt;
 const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 40) ZHIST.shift(); } zLast = str; store.set(zKey(), { json, h: zc.getHeight() }); }, 300);
@@ -78,13 +78,29 @@ async function inkPhoto(src, wDots, mode = photoMode()) {
   x.putImageData(out, 0, 0); return c.toDataURL('image/png');
 }
 /* every photograph on the strip (photocopies, the photographs of lives) set again in the look chosen */
-async function inkAll() {
+async function inkAll(list, mode = photoMode()) {
   if (!zc) return; const F = FORMATS[PRESS.fmt]; const k = (F.dots || F.w * 2) / F.w;
-  for (const o of zc.getObjects().filter(o => o.daSrc)) {
-    const sw = o.getScaledWidth(); const url = await inkPhoto(o.daSrc, sw * k);
-    await new Promise(res => o.setSrc(url, () => { o.scaleToWidth(sw); res(); }));
+  for (const o of (list || zc.getObjects().filter(x => x.daSrc))) {
+    /* its size on the strip is kept exactly: the new picture takes the same width and height the old one had */
+    const sw = o.width * o.scaleX, sh = o.height * o.scaleY; const url = await inkPhoto(o.daSrc, sw * k, mode);
+    await new Promise(res => o.setSrc(url, () => { o.set({ scaleX: sw / o.width, scaleY: sh / o.height, daMode: mode }); o.setCoords(); res(); }));
   }
   zc.renderAll(); saveZine();
+}
+/* animals from further out, pulled in fresh each time: a random draw of open photographs from around the city, one of each kind
+   in turn so the mix is wide (birds, mammals, reptiles, frogs, fish, molluscs, spiders and insects) */
+const WILD = []; let wildBusy = false;
+async function pullWild() {
+  if (wildBusy) return; wildBusy = true; if (S.view === 2) refreshPanel();
+  try {
+    const q = new URLSearchParams({ nelat: -37.0, nelng: 146.0, swlat: -38.6, swlng: 144.2, iconic_taxa: 'Aves,Mammalia,Reptilia,Amphibia,Actinopterygii,Mollusca,Arachnida,Insecta', photos: 'true', photo_license: 'cc0,cc-by,cc-by-nc,cc-by-sa,cc-by-nc-sa', quality_grade: 'research', order_by: 'random', per_page: 80, locale: 'en', preferred_place_id: CONFIG.PLACE_PREF });
+    const r = await fetch(`${CONFIG.INAT_API}/observations?${q}`, { headers: { Accept: 'application/json' } }); const j = r.ok ? await r.json() : { results: [] };
+    const got = (j.results || []).map(compact).filter(Boolean).map(o => spOf(o)).filter(sp => sp.ph);
+    const byG = new Map(); for (const sp of got) { const k = M.GROUP[sp.g] || 'other'; if (!byG.has(k)) byG.set(k, []); byG.get(k).push(sp); }
+    const mix = []; while (mix.length < 12 && [...byG.values()].some(l => l.length)) for (const l of byG.values()) if (l.length && mix.length < 12) mix.push(l.shift());
+    if (mix.length) WILD.splice(0, WILD.length, ...mix);
+  } catch (e) { /* the ones here will do */ } finally { wildBusy = false; }
+  if (S.view === 2) refreshPanel();
 }
 /* an animal's photograph from anywhere on the map: any one, or the newest seen */
 const PLANTISH = new Set(['plant', 'fungi']);
@@ -98,7 +114,8 @@ const photoMode = () => (PHOTO_MODES.some(m => m.k === prefs.photo) ? prefs.phot
 /* the receipt shown larger than it prints, so the hand can work on it; the paper's own size stays the same underneath */
 function fitZ() {
   if (!zc) return; const host = $('#zine .desk'); const F = FORMATS[PRESS.fmt]; const room = (host && host.clientWidth ? host.clientWidth : 640) - 48;
-  const fit = Math.max(0.3, room / F.w); const L = phone() ? [fit * 0.6, fit, fit * 1.7] : PRESS.fmt === 'zine' ? [0.6, 0.85, 1.25] : PRESS.fmt === 'gb' ? [1.4, 2.2, 3] : [1, 1.6, 2.4]; const z = !phone() && PRESS.zl === 0 ? Math.min(L[0], Math.max(0.5, fit)) : L[PRESS.zl]; PRESS.z = z;
+  const fit = Math.max(0.3, room / F.w); const roomH = (host && host.clientHeight ? host.clientHeight : 700) - 64; const all = Math.max(0.12, Math.min(fit, roomH / zc.getHeight()));
+  const L = phone() ? [all, fit, fit * 1.7] : PRESS.fmt === 'zine' ? [all, 0.85, 1.25] : PRESS.fmt === 'gb' ? [all, 2.2, 3] : [all, 1.6, 2.4]; const z = L[PRESS.zl]; PRESS.z = z;
   zc.setDimensions({ width: `${Math.round(zc.getWidth() * z)}px`, height: `${Math.round(zc.getHeight() * z)}px` }, { cssOnly: true });
   zc.renderAll();   /* on a sharp screen the size set again clears the paper: it is drawn again at once */
 }
@@ -241,7 +258,8 @@ async function zineTool(k) {
   if (k === 'image') { $('#zine-file').click(); return; }
   if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
   if (k === 'len') { c.setHeight(c.getHeight() + Math.round(c.getWidth() * 0.75)); fitZ(); c.renderAll(); saveZine(); snd.printer(300); const d = $('#zine .desk'); if (d) d.scrollTo({ top: d.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' }); return; }
-  if (k === 'add') { pickMenu($('#zine [data-zt="add"]'), [...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
+  if (k === 'add') { const mine = S.signals.filter(x => !x.ex && !x.shared).slice(0, 12);
+    pickMenu($('#zine [data-zt="add"]'), [...POSTERS2.slice(0, 12).map((p, i) => ({ k: 'p', id: p.id, n: `Poster № ${String(POSTERS2.length - i).padStart(3, '0')}`, ic: `<img src="${p.img}" alt="">` })), ...mine.map(x => ({ k: 'S', id: x.key, n: `${x.code} · ${NAME_UP(x)}`, ic: icon('receipt', 'sm') })), ...mine.map(x => ({ k: 'q', id: x.key, n: `QR · ${x.code} · its song`, ic: icon('qr', 'sm') })), ...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
   if (k === 'tape') {
@@ -287,6 +305,7 @@ async function placeOnPage(url, kind, width, photo) {
   window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
 }
 function cellSticker(o) {
+  if (o.photo) return loadImage(o.photo, false).then(im => photoFrame(im, FRAMES[cutN++ % FRAMES.length])).catch(() => cellSticker({ ...o, photo: null }));
   return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d');
     const done = () => res(c.toDataURL('image/png')); x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.beginPath(); x.arc(100, 100, 92, 0, Math.PI * 2); x.fillStyle = '#FFFFFF'; x.fill(); x.restore();
     if (o.photo) { const im = new Image(); im.onload = () => { x.save(); x.beginPath(); x.arc(100, 100, 82, 0, Math.PI * 2); x.clip(); const k = Math.max(164 / im.width, 164 / im.height); x.drawImage(im, 100 - im.width * k / 2, 100 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }; im.onerror = done; im.src = o.photo; }
@@ -304,15 +323,26 @@ function cutPath(x, kind, c, R) {
   else { const w = R * 0.95, h = R * 0.62; x.moveTo(c - w, c - h); x.lineTo(c + w, c - h); x.arc(c + w, c, h * 0.28, -Math.PI / 2, Math.PI / 2, true); x.lineTo(c + w, c + h); x.lineTo(c - w, c + h); x.arc(c - w, c, h * 0.28, Math.PI / 2, -Math.PI / 2, true); x.closePath(); }
 }
 let cutN = 0;
+const FRAMES = ['plain', 'polaroid', 'stamp', 'round', 'deckle'];
+function photoFrame(im, kind) {
+  const maxW = 220, k = Math.min(maxW / im.width, maxW / im.height, 1.6); const w = Math.round(im.width * k), h = Math.round(im.height * k);
+  const pad = kind === 'polaroid' ? 10 : 8, foot = kind === 'polaroid' ? 30 : pad; const W = w + pad * 2, H = h + pad + foot;
+  const c = document.createElement('canvas'); c.width = W + 16; c.height = H + 16; const x = c.getContext('2d'); const ox = 8, oy = 6;
+  x.save(); x.shadowColor = 'rgba(0,0,0,.3)'; x.shadowBlur = 7; x.shadowOffsetY = 3; x.fillStyle = '#fff';
+  if (kind === 'round') { x.beginPath(); x.roundRect ? x.roundRect(ox, oy, W, H, 18) : x.rect(ox, oy, W, H); x.fill(); } else x.fillRect(ox, oy, W, H); x.restore();
+  if (kind === 'stamp') { x.save(); x.globalCompositeOperation = 'destination-out'; for (let t = 0; t <= W; t += 10) for (const yy of [oy, oy + H]) { x.beginPath(); x.arc(ox + t, yy, 3.6, 0, TURN); x.fill(); } for (let t = 0; t <= H; t += 10) for (const xx of [ox, ox + W]) { x.beginPath(); x.arc(xx, oy + t, 3.6, 0, TURN); x.fill(); } x.restore(); }
+  if (kind === 'deckle') { x.save(); x.globalCompositeOperation = 'destination-out'; const r = seeded('deckle' + W + H); for (let t = 0; t < W; t += 3) { x.fillRect(ox + t, oy - 1, 3, r() * 3); x.fillRect(ox + t, oy + H - r() * 3 + 1, 3, 4); } for (let t = 0; t < H; t += 3) { x.fillRect(ox - 1, oy + t, r() * 3, 3); x.fillRect(ox + W - r() * 3 + 1, oy + t, 4, 3); } x.restore(); }
+  if (kind === 'round') { x.save(); x.beginPath(); x.roundRect ? x.roundRect(ox + pad, oy + pad, w, h, 12) : x.rect(ox + pad, oy + pad, w, h); x.clip(); x.drawImage(im, ox + pad, oy + pad, w, h); x.restore(); }
+  else x.drawImage(im, ox + pad, oy + pad, w, h);
+  return c.toDataURL('image/png');
+}
 function speciesSticker(sp, kind) {
-  kind = kind || CUTS[(cutN++ + Math.floor(Math.random() * 3)) % CUTS.length];
-  return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 220; const x = c.getContext('2d'); const done = () => res(c.toDataURL('image/png'));
-    x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.shadowOffsetY = 3; cutPath(x, kind, 110, 100); x.fillStyle = '#FFFFFF'; x.fill(); x.restore();
-    /* a stamp's teeth, punched along its edges */
-    if (kind === 'stamp') { const w = 86, n = 10; x.save(); x.globalCompositeOperation = 'destination-out'; for (let i = 0; i <= n; i++) { const t = -w + 2 * w * i / n; for (const [px, py] of [[110 + t, 110 - w], [110 + t, 110 + w], [110 - w, 110 + t], [110 + w, 110 + t]]) { x.beginPath(); x.arc(px, py, 5.5, 0, TURN); x.fill(); } } x.restore(); }
-    const glyph = () => { M.glyph(x, sp.g || 'paw', 110, 110, 110, '#141412'); done(); };
+  kind = kind || FRAMES[(cutN++ + Math.floor(Math.random() * 2)) % FRAMES.length];
+  return new Promise(res => {
+    const glyph = () => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); x.save(); x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.beginPath(); x.arc(100, 100, 92, 0, TURN); x.fillStyle = '#FFFFFF'; x.fill(); x.restore(); M.glyph(x, sp.g || 'paw', 100, 100, 110, '#141412'); res(c.toDataURL('image/png')); };
     if (!sp.ph) { glyph(); return; }
-    loadImage(sp.ph, true).then(im => { x.save(); cutPath(x, kind, 110, 88); x.clip(); const k = Math.max(190 / im.width, 190 / im.height); x.drawImage(im, 110 - im.width * k / 2, 110 - im.height * k / 2, im.width * k, im.height * k); x.restore(); done(); }).catch(glyph); });
+    loadImage(sp.ph, true).then(im => res(photoFrame(im, kind))).catch(glyph);
+  });
 }
 /* a kind of life as svg paths, for a constellation's ground */
 const glyphPaths = (g, col) => (M.GLYPHS[g] || M.GLYPHS.paw || []).map(p => (p.f ? `<path d="${p.d}" fill="${col}"${p.rule ? ` fill-rule="${p.rule}"` : ''}/>` : `<path d="${p.d}" fill="none" stroke="${col}" stroke-width="${p.w}" stroke-linecap="round" stroke-linejoin="round"/>`)).join('');
@@ -323,7 +353,11 @@ async function pieceOn(kind, id) {
   if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (g) placeOnPage(figChart(g), 'chart', 120); }
   if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 90, !!sp.ph); }
   if (kind === 'L') { const sp = radiusSpecies(24).find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 90, !!sp.ph); }
+  if (kind === 'W') { const sp = WILD.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 96, true); }
   if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
+  if (kind === 'p') { const p = POSTERS2.find(v => v.id === id); if (p) placeOnPage(p.img, 'poster', 600); }
+  if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
+  if (kind === 'q') { const x = S.signals.find(v => v.key === id); const t = x ? qrText(x) : CONFIG.PORTAL_URL; const u = qrImage(t); if (u) placeOnPage(u, 'qr', 120); }
 }
 function setFormat(k) { if (!FORMATS[k]) return; PRESS.fmt = k; $$('#view [data-pfmt]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pfmt === k))); showZine(true); tick(1500); buzz(4); }
 /* a print sent: a small clear printer, hand-drawn, the paper feeding out, then torn; no words */
@@ -383,6 +417,11 @@ async function takeProof(file) {
   const url = await new Promise(res => { const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 640 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.8)); }; im.onerror = () => res(''); im.src = rd.result; }; rd.readAsDataURL(file); });
   if (!url) return false; PROOFS.unshift({ at: Date.now(), img: url, printer: MASTER ? MASTER.id : '' }); PROOFS.splice(6); while (!store.set('da.proofs.v1', PROOFS) && PROOFS.length > 1) PROOFS.pop();
   tie(2); snd.tear(); buzz([10, 40, 10]); refreshPanel(); return true;
+}
+/* a code to scan, black on white with its quiet margin */
+function qrImage(text) {
+  const qr = qrOf(text); if (!qr) return null; const n = qr.getModuleCount(), m = 6, q = 4; const c = document.createElement('canvas'); c.width = c.height = (n + q * 2) * m; const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000'; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) x.fillRect((k + q) * m, (r + q) * m, m, m); return c.toDataURL('image/png');
 }
 /* a strip with no story at its head goes as one of its own: a code, where the radar is, and nothing else */
 function stripSignal() {
@@ -447,7 +486,7 @@ function viewSigns() {
       + `<div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}" data-tip="${m.w}"><i class="ph-sw ph-${m.k}"></i></button>`).join('')}</div>`
       + `</section><section class="sec" id="sec-out"><h3 class="out-h"><span>PRINT</span></h3><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
       + `<div class="seg keys outs" role="group" aria-label="Other ways out">${[['print', 'print', 'Print here, from this device'], ['poster', 'stories', 'Save to the portfolio wall'], ['png', 'download', 'Save as a picture'], ['escpos', 'escpos', 'Printer bytes (.bin)'], ['mesh', 'mesh', 'Copy as a mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
-    + `<section class="sec" id="sec-near"><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any" data-tip="An animal's photograph, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen" data-tip="The newest animal seen">${icon('star5')}</button></li>${sps.map(sp => `<li><button type="button" class="nr-b" data-piece="L" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>`
+    + `<section class="sec" id="sec-near"><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any" data-tip="An animal's photograph, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen" data-tip="The newest animal seen">${icon('star5')}</button></li><li><button type="button" class="nr-b nr-k${wildBusy ? ' busy' : ''}" data-wild="more" aria-label="More animals, from further out" data-tip="More animals, from further out">${icon('receive')}</button></li>${[...WILD.map(sp => ({ sp, k: 'W' })), ...sps.map(sp => ({ sp, k: 'L' }))].slice(0, 15).map(({ sp, k }) => `<li><button type="button" class="nr-b" data-piece="${k}" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>`
     + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol></section>` : '')
     + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-k" data-spack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${k}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
       + `<ol class="stickers${PRESS.pack === 'words' || PRESS.pack === 'ideas' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.d ? `${st.w}: ${st.d}` : st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own: pictures from this device">${icon('plus')}<small class="mono">PNG JPG</small><input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
@@ -456,12 +495,13 @@ function viewSigns() {
 $('#view').addEventListener('click', e => {
   const ps = e.target.closest('[data-press]'); if (ps) { PRESS.story = ps.dataset.press; $$('#view [data-press]').forEach(b => b.classList.toggle('on', b === ps)); if (PRESS.fmt === 'zine') setFormat('r80'); else setBase(true); tick(1500); return; }
   const pf = e.target.closest('[data-pfmt]'); if (pf) { setFormat(pf.dataset.pfmt); return; }
-  const phm = e.target.closest('[data-photo]'); if (phm) { prefs.photo = phm.dataset.photo; savePrefs(); $$('#view [data-photo]').forEach(b => b.setAttribute('aria-pressed', String(b === phm))); THUMBS.clear(); setBase(true); inkAll(); tick(1300); return; }
+  const phm = e.target.closest('[data-photo]'); if (phm) { const sel = zc ? zc.getActiveObjects().filter(o => o.daSrc) : []; $$('#view [data-photo]').forEach(b => b.setAttribute('aria-pressed', String(b === phm)));
+    if (sel.length) inkAll(sel, phm.dataset.photo); else { prefs.photo = phm.dataset.photo; savePrefs(); THUMBS.clear(); setBase(true); } tick(1300); return; }
   const po = e.target.closest('[data-pout]'); if (po) { pressOut(po.dataset.pout); return; }
   const sk = e.target.closest('[data-stk]'); if (sk) { const st = stickNow()[+sk.dataset.stk]; if (st.w) faceReady(FACES[st.f || 0]).then(() => placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', 130)); else placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.j ? 90 : 70); if (st.j) snd.jelly(0.3); return; }
   const sp = e.target.closest('[data-spack]'); if (sp) { PRESS.pack = sp.dataset.spack; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(PRESS.pack) * 120); if (PRESS.pack === 'words' || PRESS.pack === 'ideas') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
-  const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 80); return; }
+  const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 90, true); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
-  const wd = e.target.closest('[data-wild]'); if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }
+  const wd = e.target.closest('[data-wild]'); if (wd && wd.dataset.wild === 'more') { pullWild(); tick(1500); return; } if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }
 });
 $('#view').addEventListener('change', async e => { if (e.target.id === 'proof-in') { const fl = e.target.files && e.target.files[0]; if (fl) await takeProof(fl); e.target.value = ''; return; } if (e.target.id !== 'pack-in') return; await addPack(e.target.files); e.target.value = ''; refreshPanel(); snd.tick(1900); });

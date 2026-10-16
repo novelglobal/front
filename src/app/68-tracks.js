@@ -102,7 +102,7 @@ function syncTracks() {
 function setTrack4(k, on) {
   if (k === 'life') { prefs.mute = !on; if (!CFG.lifeLock) prefs.trk = { ...(prefs.trk || {}), life: on }; }
   else T4[k] = on;
-  prefs.t4 = { ...T4 }; savePrefs(); markTweak();
+  prefs.t4 = { ...T4 }; savePrefs();
   if (k === 'water' && on) loadOverlays();
   syncTracks();
   document.querySelectorAll(`[data-t4="${k}"]`).forEach(b => { b.setAttribute('aria-pressed', String(on)); const row = b.closest('.lyr'); if (row) row.classList.toggle('on', on); });
@@ -116,16 +116,19 @@ function startRadio(play = true, at) {
   arcadeOff();
   if (!S.started) {
     S.started = true; const c = at || (prefs.placed ? null : S.mapReady ? map.getCenter() : null);
-    if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, null, true); } else life.setScan(null, null, null, false);
+    if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, 1000, true); tootOrTick(); } else life.setScan(null, null, null, false);
   }
   life.redraw(); life.moved(); if (play) setRadio(true); if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
 /* a song made: a layer changed, a mood, a volume, a string tied. Only then can a signal start */
+/* a connection made: a string tied, a constellation begun. Only then does the next clue wait */
+function markConnect() { if (S.connected) return; S.connected = true; markTweak(); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
   S.radio = on;
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } }
+  snd.bed(on);
   syncTracks(); if (on) life.replay(); else snd.droneOff();
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); b.innerHTML = `<i class="hp-ring"></i>${icon(on ? 'pause' : 'play')}`; });
   document.body.classList.toggle('on-air', on); buzz(on ? [8, 30, 8] : 6); life.redraw(); life.moved();
@@ -156,10 +159,10 @@ $('#view').addEventListener('input', e => {
 $('#view').addEventListener('click', e => {
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
-  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); markTweak(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
+  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); markTweak(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); lm.dataset.tip = MOODS[nx].w; if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); lm.dataset.tip = MOODS[nx].w; if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */

@@ -512,7 +512,7 @@ $('#r-wish').addEventListener('submit', e => e.preventDefault());
 /* ───────── the main button ───────── */
 heroBtn.addEventListener('click', async () => {
   if (face === 'place') { placeIt(false); return; }
-  if (face === 'signal') { const s = S.issued || S.signals.find(x => x.key === S.sig); if (s) openSend(s); return; }
+  if (face === 'signal') { const s = S.issued || S.signals.find(x => x.key === S.sig); if (s) toPress(s); return; }
   if (S.mode === 'tribe') { const t = S.byId.get(S.tribeSel); if (t) window.open(t.link, '_blank', 'noopener'); return; }
   if (S.mode === 'partner') { const p = partnerOf(S.partnerSel); if (p && p.url) window.open(p.url, '_blank', 'noopener'); return; }
   const o = S.byId.get(S.sel); if (!o) return;
@@ -534,6 +534,13 @@ async function toBoard(o) {
     const cv2 = await slipCanvas(s, 384, 2, false, false); await addToBoard(cv2.toDataURL('image/png'), 'receipt', 200);
     markTweak(); flyToTab(1, heroBtn); snd.printer(700); buzz([8, 30, 8]); heroBtn.classList.add('go'); setTimeout(() => heroBtn.classList.remove('go'), 900);
   } finally { heroBtn.classList.remove('busy'); }
+}
+/* DIRECT ACTION: the receipt goes to the ZINEMAKER, at the head of the strip, where PRINT RECEIPT sends it to the printer
+   online (through approval, as every print does), and anything can be added around it first */
+function toPress(s) {
+  if (s.ex) { toast('AN EXAMPLE'); return; }
+  PRESS.story = s.key; if (PRESS.fmt === 'zine') PRESS.fmt = 'r80'; flyToTab(2, heroBtn); snd.printer(500); buzz([10, 30, 10]);
+  closeRecord('view'); setView(2);
 }
 function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; showFace('wish'); buzz(6); snd.tick(1700); }
 /* issued: the slip feeds out of the printer and becomes a signal. The four lines are asked for, never required:

@@ -286,7 +286,14 @@ async function fetchSightings(force) {
       const j = await res.json(); all.push(...(j.results || []));
       if ((j.total_results || 0) <= page * 200) break;
     }
-    const obs = all.map(compact).filter(Boolean); const t = Date.now();
+    /* insects outnumber everything else seen: the rest of life is asked for apart (birds, mammals, reptiles, frogs, fish,
+       molluscs, spiders), two pages more, so the map holds a wider mix */
+    try {
+      const q2 = new URLSearchParams(q); q2.set('iconic_taxa', 'Aves,Mammalia,Reptilia,Amphibia,Actinopterygii,Mollusca,Arachnida');
+      for (let page = 1; page <= 2; page++) { const r2 = await fetch(`${CONFIG.INAT_API}/observations?${q2}&page=${page}`, { headers: { Accept: 'application/json' } }); if (!r2.ok) break; const j2 = await r2.json(); all.push(...(j2.results || [])); if ((j2.total_results || 0) <= page * 200) break; }
+    } catch (e) { /* the first list is enough */ }
+    const ids = new Set(); const uniq = all.filter(r => r && !ids.has(r.id) && ids.add(r.id));
+    const obs = uniq.map(compact).filter(Boolean); const t = Date.now();
     if (!store.set('da.obs.v3', { t, obs })) store.set('da.obs.v3', { t, obs: obs.slice(0, 250) });
     useSightings(obs, t, false);
   } catch (e) {

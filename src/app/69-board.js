@@ -199,12 +199,23 @@ async function placeAsset(kind, id) {
   c.setActiveObject(byId(aid)); c.renderAll(); saveBoard(false); snd.tick(1500);
 }
 const assetRow = (kind, id, ic, word) => `<li><button type="button" class="as-b" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="On the board">${ic}<span class="mono">${esc(word)}</span>${icon('plus', 'sm')}</button></li>`;
+function consStrip() {
+  const cs = strings.list().slice(0, 12);
+  if (!cs.length) return `<section class="sec figs-row" id="sec-figs"><button type="button" class="fig-make" data-make-fig>${icon('string')}<span>make a constellation</span></button></section>`;
+  return `<section class="sec figs-row" id="sec-figs"><ol class="figs-l">${cs.map(g => `<li><button type="button" class="fig-t" data-asset="c" data-aid="${esc(String(g.id))}" aria-label="${esc(g.name)} onto the board"><img src="${figArt(g, darkNow() ? '#DCE7EA' : '#0C0E0E')}" alt=""><span>${esc(g.name)}</span></button></li>`).join('')}<li><button type="button" class="fig-t fig-new" data-make-fig aria-label="Another constellation" data-tip="Another constellation">${icon('plus')}</button></li></ol></section>`;
+}
+/* a constellation begun from here: the radio, the nearest life in the radar opened, its strings in reach listed to tie */
+function makeConstellation() {
+  setView(0); const cand = life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist && !it.o.hum).sort((a, b) => haversine(a.lat, a.lng, S.scan.lat, S.scan.lng) - haversine(b.lat, b.lng, S.scan.lat, S.scan.lng));
+  if (!cand.length) { tick(600); return; } setTimeout(() => { select(cand[0].o.id); setTimeout(() => { const r = $('#r-strings'); if (r) r.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }, 700); }, 200);
+}
+$('#view').addEventListener('click', e => { if (e.target.closest('[data-make-fig]')) { makeConstellation(); tick(1500); } });
 function assetsHTML() {
   const cells = myCells().slice(0, 12), slips = S.signals.filter(x => !x.ex && !x.shared).slice(0, 8), figs = strings.list().slice(0, 12), sps = SPECIES.slice(0, 18);
-  if (!cells.length && !slips.length && !figs.length && !sps.length) return '';
+  if (!cells.length && !slips.length && !sps.length) return '';
   const tile = (kind, id, art, tip, cls = '') => `<li><button type="button" class="pc-t${cls}" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="${esc(tip)}" data-tip="${esc(tip)}">${art}</button></li>`;
   return `<section class="sec assets" id="sec-assets"><ol class="pcs">${sps.map(sp => tile('l', sp.id, sp.ph ? `<img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : glyphSVG(sp.g), sp.n, ' sp')).join('')}`
-    + `${figs.map(g => tile('c', g.id, strings.chartOf(g.id, 44), g.name, ' fig')).join('')}${cells.map(o => tile('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => tile('s', x.key, icon('receipt'), `${NAME_UP(x)} · ${x.code}`, ' slip')).join('')}</ol></section>`;
+    + `${cells.map(o => tile('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => tile('s', x.key, icon('receipt'), `${NAME_UP(x)} · ${x.code}`, ' slip')).join('')}</ol></section>`;
 }
 /* a note, or several, from field notes in Markdown: each heading and what is under it */
 async function notesIn(md) {
@@ -263,13 +274,22 @@ async function boardOut(kind) {
   if (kind === 'pdf') { const url = pic.toDataURL('image/jpeg', 0.9); const bin = atob(url.split(',')[1]); const jpeg = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) jpeg[i] = bin.charCodeAt(i); const blob = pdfOf(jpeg, pic.width, pic.height); download(`${name}.pdf`, blob); tick(1800); return blob; }
   const a = document.createElement('a'); a.href = pic.toDataURL('image/png'); a.download = `${name}.png`; a.click(); tick(1800); return pic;
 }
-/* an image from this device, made smaller first */
-$('#board').addEventListener('change', e => {
-  const fl = e.target.files && e.target.files[0]; if (!fl || e.target.id !== 'board-file') return;
+/* an image from this device, made smaller first: chosen, pasted (a screenshot, a picture copied anywhere) or dropped on */
+$('#board').addEventListener('change', e => { const fl = e.target.files && e.target.files[0]; if (!fl || e.target.id !== 'board-file') return; boardImageIn(fl); e.target.value = ''; });
+const typing = el => !!el && (/INPUT|TEXTAREA|SELECT/.test(el.tagName || '') || el.isContentEditable || (cv && cv.getActiveObject() && cv.getActiveObject().isEditing));
+document.addEventListener('paste', e => {
+  if (S.view !== 1 || !S.open || $('#board').hidden || typing(document.activeElement)) return;
+  const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(x => /^image\//.test(x.type)); if (!it) return;
+  e.preventDefault(); const fl = it.getAsFile(); if (fl) { boardImageIn(fl); snd.tick(1700); }
+});
+$('#board').addEventListener('dragover', e => { if ([...(e.dataTransfer.items || [])].some(x => /^image\//.test(x.type))) { e.preventDefault(); $('#board').classList.add('drop'); } });
+$('#board').addEventListener('dragleave', () => $('#board').classList.remove('drop'));
+$('#board').addEventListener('drop', e => { $('#board').classList.remove('drop'); const fl = [...(e.dataTransfer.files || [])].find(f => /^image\//.test(f.type)); if (!fl) return; e.preventDefault(); boardImageIn(fl); });
+function boardImageIn(fl) {
   const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = async () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const t = document.createElement('canvas'); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
     const c = await showBoard(true); const p = free(); window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { img.set({ left: p.x, top: p.y, daId: uid('i'), daKind: 'image' }); img.scaleToWidth(220); c.add(img); c.setActiveObject(img); c.renderAll(); saveSoon(); }); }; im.src = rd.result; };
-  rd.readAsDataURL(fl); e.target.value = '';
-});
+  rd.readAsDataURL(fl);
+}
 $('#board').addEventListener('click', e => { const b = e.target.closest('[data-bt]'); if (b) boardTool(b.dataset.bt); });
 
 /* ───────── the W.I.S.H.: the master form. Four lines written for a signal, sent on as a story waiting to print ───────── */
@@ -284,7 +304,7 @@ const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by
 const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
   const no = String(S.signals.filter(x => !x.ex && !x.shared).length + 1).padStart(3, '0');
-  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-no mono" aria-hidden="true">№ ${no}</span><i class="wf-seal" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 54)}</i><div class="wf-h"><span class="wf-head" data-tip="Praxis"><span class="wf-keys" aria-label="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><i class="wf-poem">a poem in four lines</i></span><b class="rnd" data-tip="Sustainable innovation" aria-label="R&amp;D: sustainable innovation">R&amp;D</b></div>`
+  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-no mono" aria-hidden="true">№ ${no}</span><i class="wf-seal" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 54)}</i><div class="wf-h"><span class="wf-head" data-tip="Praxis"><span class="wf-keys" aria-label="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><i class="wf-poem" aria-hidden="true">Praxis Poem</i></span><b class="rnd" data-tip="Sustainable innovation" aria-label="R&amp;D: sustainable innovation">R&amp;D</b></div>`
     + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
     + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
     + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
@@ -331,7 +351,7 @@ const sigRow2 = m => { const gs = [...new Set(((m.layers.life || {}).cells || []
   return `<li class="g-sig"><button type="button" class="g-play" data-mix="${esc(m.id)}" aria-label="Play on the radio" data-tip="${esc(`${m.where.place} · ${fmtStamp(m.at)}`)}">${icon('play', 'sm')}</button><span class="g-lives">${gs.map(g => glyphSVG(g)).join('')}</span><small class="mono">${fmtStamp(m.at).split(' ')[1] || ''}</small></li>`; };
 function viewSignals() {
   const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === on.id);
-  return `<section class="sec" id="sec-wish">${wishForm()}</section>` + assetsHTML()
+  return `<section class="sec" id="sec-wish">${wishForm()}</section>` + consStrip() + assetsHTML()
     + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
     + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();

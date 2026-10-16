@@ -13,10 +13,10 @@ const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector(
 /* four destinations. The first three are one journey, tied along a thread: notice on the radio, respond in signals, act in
    signs. The portfolio stands apart. Behind the scenes: make it right, make it work, make it beautiful */
 const VIEWS = [
-  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', was: 'now' },
-  { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER', short: 'WISH' },
-  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'PRINT' },
-  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'PORTFOLIO', was: 'stories' },
+  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', long: 'DIRECT ACTION RADIO', was: 'now' },
+  { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER', short: 'W.I.S.H.', long: 'W.I.S.H.MAKER' },
+  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'ZINE', long: 'ZINEMAKER' },
+  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'novel.global', long: 'novel.global', was: 'stories' },
 ];
 const viewIx = k => Math.max(0, VIEWS.findIndex(v => v.k === k || v.was === k));
 /* degrees of danger in the months ahead: orange, deeper as it rises. Red is kept for now. */
@@ -128,13 +128,13 @@ const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: redu
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
 const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, bedN = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   function ready() {
     if (!prefs.sound || !active()) return null;
     try {
       if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.42;
+        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.5;   /* a fifth louder than it was */
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; bus.connect(comp); comp.connect(ctx.destination);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
@@ -401,6 +401,37 @@ const snd = (() => {
     },
     /* the muse: a bell of glass that opens and closes */
     jelly(pan = 0) { if (!ready()) return; jellyV(523.25, ctx.currentTime + 0.02, 0.05, pan, true); },
+    /* a container ship's horn in fog, as deep as a speaker will carry: low reeds through the ladder, driven, a sub under it */
+    ship() {
+      buzz([60, 80, 200]); if (!ready()) return; const t = ctx.currentTime + 0.03, L = 2.6;
+      const lf = ladder(90, 0.5, 3.6); const e = ctx.createGain();
+      for (const [ty, f, g] of [['sawtooth', 46.25, 0.55], ['sawtooth', 46.9, 0.45], ['sawtooth', 92.5, 0.25], ['square', 23.1, 0.3]]) { const o = osc(ty, f * 0.97, t, t + L + 2.6); o.frequency.exponentialRampToValueAtTime(f, t + 0.7); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
+      e.connect(lf.node); lf.cut.setValueAtTime(90, t); lf.cut.exponentialRampToValueAtTime(520, t + 0.9); lf.cut.setValueAtTime(520, t + L); lf.cut.exponentialRampToValueAtTime(70, t + L + 2.2);
+      const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(0.24, t + 0.7); a.gain.setValueAtTime(0.24, t + L); a.gain.exponentialRampToValueAtTime(0.0001, t + L + 2.4); out(a, 0, 2.6);
+      const sb = osc('sine', 46.25, t, t + L + 2.4); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.8, 0.22, L - 0.6, 2); out(sg, 0, 0.3);
+    },
+    /* the same, small and kind: a tug's two notes, for the radar set down */
+    toot() {
+      buzz([20, 40, 20]); if (!ready()) return; const t = ctx.currentTime + 0.02;
+      const note = (t0, f, L) => { const lf = ladder(240, 0.45, 1.8); const e = ctx.createGain(); for (const [ty, m, g] of [['sawtooth', 1, 0.5], ['sawtooth', 1.007, 0.4], ['triangle', 0.5, 0.35]]) { const o = osc(ty, f * m, t0, t0 + L + 0.6); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
+        e.connect(lf.node); lf.cut.setValueAtTime(240, t0); lf.cut.exponentialRampToValueAtTime(900, t0 + 0.12); lf.cut.exponentialRampToValueAtTime(200, t0 + L + 0.4);
+        const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t0); a.gain.exponentialRampToValueAtTime(0.09, t0 + 0.06); a.gain.setValueAtTime(0.09, t0 + L); a.gain.exponentialRampToValueAtTime(0.0001, t0 + L + 0.5); out(a, 0, 1.8); };
+      note(t, 110, 0.32); note(t + 0.42, 98, 0.55);
+    },
+    /* a step met: a few notes of glass over a soft low swell, more of them the further along; never the same twice in a row */
+    reward(n = 1) {
+      buzz([10, 30, 10, 30, 40]); if (!ready()) return; const t = ctx.currentTime + 0.03; const base = [392, 440, 494, 523.25, 587.33][(n - 1) % 5];
+      [0, 7, 12, 16, 19].slice(0, 2 + Math.min(3, n)).forEach((st, i) => INST.chime(semi(base, st), t + i * 0.11, 0.3, 0.03, (i - 1.5) * 0.25));
+      jellyV(base / 2, t, 0.03, 0, true); const sb = osc('sine', base / 8, t, t + 2.2); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.4, 0.08, 0.4, 1.2); out(sg, 0, 0.6);
+    },
+    /* the deep water under the radio while it plays: a slow swell of dark noise and a low tone, fading in and out with it */
+    bed(on) {
+      if (!ready()) return; const now = ctx.currentTime;
+      if (!bedN) { bedN = { g: ctx.createGain() }; bedN.g.gain.value = 0; const nb = ctx.createBufferSource(); nb.buffer = noise(4); nb.loop = true; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; lp.Q.value = 0.6;
+        const sw = ctx.createGain(); sw.gain.value = 0.5; const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07; const lg = ctx.createGain(); lg.gain.value = 0.45; lfo.connect(lg); lg.connect(sw.gain); lfo.start();
+        nb.connect(lp); lp.connect(sw); sw.connect(bedN.g); nb.start(); const o = ctx.createOscillator(); o.frequency.value = 41.2; const og = ctx.createGain(); og.gain.value = 0.35; o.connect(og); og.connect(bedN.g); o.start(); out(bedN.g, 0, 1.6); }
+      bedN.g.gain.cancelScheduledValues(now); bedN.g.gain.setTargetAtTime(on ? 0.05 : 0, now, on ? 2.6 : 1.4);
+    },
     /* paper torn off */
     tear() {
       buzz(12); if (!ready()) return; const t = ctx.currentTime; const s = ctx.createBufferSource(); s.buffer = noise(0.22);
