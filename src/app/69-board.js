@@ -306,7 +306,7 @@ function wishForm() {
     + `<label class="wf-l wf-for" data-tip="What it is for"><b class="wf-m mono" aria-hidden="true">RE</b><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
     + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><b class="wf-m mono" aria-hidden="true">${k.toUpperCase()}</b><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
     + `<label class="wf-l by" data-tip="By"><b class="wf-m mono" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="Name" aria-label="By"></label>`
-    + `<button type="submit" class="send-b" aria-label="Send the signal" data-tip="Send the signal">${icon('share')}<i class="sb-arrow" aria-hidden="true"></i></button></form>`;
+    + `<button type="submit" class="send-b make-b" aria-label="Make the W.I.S.H."><b>make</b></button></form>`;
 }
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
@@ -323,7 +323,7 @@ async function sendSignal() {
   const sig = { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who, ...(fr ? { for: fr } : {}), ...(m ? { mix: m.id } : {}), note: [forN, ...((m && m.figs) || []).map(g => g.name)].filter(Boolean).join(' · ') };
   const ev = await ledgerAdd({ type: 'signal', lat: pin.lat, lng: pin.lng, who, data: sig });
   Object.assign(WDRAFT, { w: '', i: '', s: '', h: '' }); store.set('da.wish.v1', WDRAFT);
-  tie(1); snd.printer(900); buzz([10, 40, 10]); toast('SENT · WAITING TO PRINT');
+  tie(1); snd.printer(900); buzz([10, 40, 10]); toast('✓');
   PRESS.story = ev.key; setView(2); return sig;
 }
 /* ───────── the book: the boards, the signals and constellations under each, and the field notes ───────── */
