@@ -2226,3 +2226,14 @@ html.night .steps .st.done .st-d{background-color:#6FE3CF}
 .pl-link input::placeholder{color:color-mix(in srgb,var(--lcd-ink) 45%,transparent)}
 .pl-link .ib{width:44px;height:44px;display:grid;place-items:center;flex:none}
 .drawer .pieces{margin-top:10px}
+/* the steps, exact: three equal thirds with no gap between, each dot in the middle of its third, so the hairline from the
+   first dot to the last runs through every one */
+.steps{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:0!important;column-gap:0!important}
+.steps .st{display:flex!important;justify-content:center;margin:0!important;padding:0!important}
+.steps .st-b{width:18px!important;height:10px;margin:0;padding:0!important;display:flex;justify-content:center;align-items:flex-start}
+.steps .st-d{margin:0!important;flex:none}
+/* the printers' pager, small: a light and a printer mark, over the countdown; its words only on a long hover */
+#sec-heat .pager{display:flex;width:max-content;height:22px;gap:6px;margin:0 auto 6px;padding:0 8px;border-radius:999px;background:transparent;box-shadow:inset 0 0 0 1px var(--edge)}
+#sec-heat .pager .pg-led{width:6px;height:6px}
+#sec-heat .pager .pg-buzz .i{width:12px;height:12px;opacity:.7}
+#sec-heat .pager .pg-lcd{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

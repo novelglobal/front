@@ -15,7 +15,7 @@ const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector(
 const VIEWS = [
   { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', long: 'DIRECT ACTION RADIO', was: 'now' },
   { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER', short: 'W.I.S.H.', long: 'W.I.S.H.MAKER' },
-  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'ZINE', long: 'ZINEMAKER' },
+  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'ZINE', long: 'PRINT SHOP' },
   { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'novel.global', long: 'novel.global', was: 'stories' },
 ];
 const viewIx = k => Math.max(0, VIEWS.findIndex(v => v.k === k || v.was === k));
