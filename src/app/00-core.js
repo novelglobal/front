@@ -13,10 +13,10 @@ const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector(
 /* four destinations. The first three are one journey, tied along a thread: notice on the radio, respond in signals, act in
    signs. The portfolio stands apart. Behind the scenes: make it right, make it work, make it beautiful */
 const VIEWS = [
-  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', was: 'now' },
-  { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER' },
-  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP' },
-  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', was: 'stories' },
+  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', was: 'now' },
+  { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER', short: 'WISH' },
+  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'PRINT' },
+  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'PORTFOLIO', was: 'stories' },
 ];
 const viewIx = k => Math.max(0, VIEWS.findIndex(v => v.k === k || v.was === k));
 /* degrees of danger in the months ahead: orange, deeper as it rises. Red is kept for now. */

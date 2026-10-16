@@ -4,7 +4,7 @@
    and the gigs. STORIES: the signals people have issued, newest first, then the groups, the tools and the sources.
    ════════════════════════════════════════════════════════════════════ */
 const panel = $('#panel'), rail = $('#rail'), viewEl = $('#view');
-rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
+rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><span class="tab-w">${v.short || v.w}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
 /* the day's thread: a knot tied at each destination as the journey reaches it, and the string drawn on to it */
 function drawThread() { const t = [0, 1, 2].filter(n => DAY[n]); $$('#rail .tab').forEach((b, i) => b.classList.toggle('tied', !!DAY[i])); rail.style.setProperty('--tp', `${t.length ? Math.max(...t) * 46 : 0}px`); }
 function tie(n) {
@@ -18,10 +18,11 @@ new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'))
 /* ───────── on a phone, one pane at a time: the dock holds the four pages and two keys, what the page works on (the map,
    the board, the press, the wall) and the page itself ───────── */
 const MAIN_IC = { radio: 'radar', signals: 'base', signs: 'receipt', portfolio: 'stories' };
+const MAIN_W = { radio: 'MAP', signals: 'BOARD', signs: 'PAPER', portfolio: 'WALL' };
 let pane = 'page';
 function syncDock() {
   const m = $('#dock [data-pane="main"]'), pg = $('#dock [data-pane="page"]'); if (!m) return; const shown = S.open ? pane : 'main';
-  m.innerHTML = icon(MAIN_IC[VIEWS[S.view].k] || 'radar'); pg.innerHTML = icon('note');
+  const k = VIEWS[S.view].k; m.innerHTML = `${icon(MAIN_IC[k] || 'radar', 'sm')}<span>${MAIN_W[k] || 'MAP'}</span>`; pg.innerHTML = `${icon('note', 'sm')}<span>PANEL</span>`;
   m.setAttribute('aria-pressed', String(shown === 'main')); pg.setAttribute('aria-pressed', String(shown === 'page'));
   document.body.classList.toggle('pane-main', shown === 'main'); document.body.classList.toggle('pane-page', shown === 'page');
 }
@@ -69,7 +70,7 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
-  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock();
+  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock(); headBar();
   if (S.mode && !keep) closeRecord('view');
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
@@ -255,11 +256,9 @@ const CLUE_IC = {
 };
 function cluesHTML() {
   const s1 = placed(), s2 = s1 && S.tweaked;
-  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}<span class="ci">${ics}</span>${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
+  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
   return `<ol class="clues">`
-    + tile(1, s1 ? 'done' : 'now', icon('search'), 'find yourself')
-    + tile(2, !s1 ? 'locked' : s2 ? 'done' : 'now', CLUE_IC.chain, 'make a connection')
-    + tile(3, s2 ? 'now' : 'locked', icon('share'), 'START', s2 ? 'data-share-mix' : 'disabled')
+    + (!s1 ? tile(1, 'now', icon('search'), 'find yourself') : !s2 ? tile(2, 'now', CLUE_IC.chain, 'make a connection') : tile(3, 'now', icon('share'), 'start', 'data-share-mix'))
     + `</ol>`;
 }
 /* once a signal is started: the checklist, as an old handheld's manual lists what it does. Each a coloured tile and its
@@ -277,7 +276,7 @@ function checklistHTML() {
   const done = rows.filter(r => r.ok).length;
   return `<ol class="checks" aria-label="${done} of ${rows.length}">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}">`
     + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(i + 1).padStart(2, '0')}</b><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i></button></li>`).join('')}</ol>`
-    + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>START</span></button>` : '');
+    + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>start</span></button>` : '');
 }
 /* the lockup: the muse and the name. Tapped, the muse pulses and rings; tapped five times quickly, the water fills with them */
 const lockup = () => `<header class="lockup"><button type="button" class="lk-mark" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button><b class="lk-n">novel.global</b></header>`;
@@ -293,7 +292,7 @@ document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; p
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
 function pagerHTML() {
   const on = printersOn();
-  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : '— — —'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
+  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? 'PRINTER ONLINE' : 'PRINTER OFFLINE'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
 }
 function viewRadio() {
   const ex = extremeAhead();
@@ -374,9 +373,9 @@ function quickHTML() {
   const on = printersOn(); const p = on[0] || MASTER;
   return `<section class="sec quick" id="sec-quick"><div class="qp-paper">`
     + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
-    + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder="A note, a list, an idea">${esc(QP.t)}</textarea>`
+    + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder=" ">${esc(QP.t)}</textarea><i class="qp-caret" aria-hidden="true"></i>`
     + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
-    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>${esc(String(p ? p.n : 'PRINT').toUpperCase())}</b>${icon('print')}</button></section>`;
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>PRINT TO ${esc(String(p ? p.n : 'NOVEL.GLOBAL').toUpperCase())}</b></button></section>`;
 }
 /* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
 async function quickCanvas(W = 512) {

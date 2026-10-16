@@ -1829,3 +1829,73 @@ body.rec .ph{display:none}
 .ct-s{color:var(--grey-text);overflow:hidden;text-overflow:ellipsis}
 .ctry small{display:none}
 @media (max-width:759px){.ph{height:auto}.lockup{height:58px}}
+
+/* ═════════ v0.04: the last polish ═════════ */
+/* the head: the muse and the name in the middle, level with the rail's first key; the Country in the middle under them */
+.ph{justify-content:center}
+.lockup{justify-content:center;width:100%}
+.ctry{text-align:center}
+.ct-sel{justify-content:center}
+/* the muse breathes: the whole mark drifts and pulses as a bell does, its threads trailing */
+.lk-mark svg{animation:muse 5.2s ease-in-out infinite;transform-origin:50% 30%}
+@keyframes muse{0%,100%{transform:translateY(-1px) scale(1,1)}30%{transform:translateY(-5px) scale(1.06,.92)}55%{transform:translateY(-3px) scale(.97,1.04)}78%{transform:translateY(0) scale(1,1)}}
+.lk-mark .jb,.lk-mark .jt{animation:none}
+/* the watermark fades in and out, slowly: one on each page, in the page on RADIO, beside it elsewhere */
+#zine::after,.gallery::after,#board::after,.cover::after{animation:wmfade 18s ease-in-out infinite}
+body[data-view="radio"] .panel::after{content:""!important;position:absolute;right:-110px;bottom:-120px;width:420px;height:420px;background:var(--wm) center/contain no-repeat;transform:rotate(-9deg);pointer-events:none;z-index:0;animation:wmfade 18s ease-in-out infinite!important}
+body[data-view="radio"] .panel .leaf{position:relative;z-index:1}
+@keyframes wmfade{0%,100%{opacity:.12}45%,60%{opacity:.85}}
+/* the outlook: no grey between the tall blocks and the column; the extreme months red to the top at night */
+html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
+.eq-c i.up{background:#C42A17!important}
+/* the clue waiting, alone */
+.clue[data-clue="3"] .cw{text-transform:none;letter-spacing:.06em}
+.start-k span{text-transform:none;letter-spacing:.06em}
+/* the quick print: blank paper, a cursor blinking where the words will go */
+.qp-paper{position:relative}
+.qp-caret{position:absolute;left:16px;top:20px;width:2px;height:20px;background:#141412;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none}
+.qp-paper:has(.qp-ph) .qp-caret{display:none}
+.qp-paper textarea:focus ~ .qp-caret,.qp-paper textarea:not(:placeholder-shown) ~ .qp-caret{display:none}
+.qp-go b{letter-spacing:.14em}
+/* the W.I.S.H.: the letters, and under them what they are; R&D its own stamp */
+.wf-head{display:grid;gap:4px}
+.wf-poem{font:italic 400 14px/1 'Playfair Display',Georgia,serif;color:#5D594E;letter-spacing:.01em}
+/* the rail: each tab names itself. Beside the key on a wide screen; under it on a phone */
+.tab-w{position:absolute;right:calc(100% + 8px);top:50%;transform:translateY(-50%);padding:4px 7px;border-radius:4px;font:600 8.5px/1 var(--mono);letter-spacing:.12em;white-space:nowrap;color:var(--navy);background:var(--ac);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px var(--ac-edge);pointer-events:none;opacity:.8}
+.tab[aria-pressed="true"] .tab-w{opacity:1;box-shadow:inset 0 0 0 1px var(--glow)}
+.tab .sq{display:grid;place-items:center}
+/* the press: the longer paper key */
+.ln-k{position:relative;display:grid;place-items:center}.ln-k .i{width:16px;height:16px}
+.ln-d{position:absolute;bottom:-5px;left:50%;width:7px;height:7px;margin-left:-3.5px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg)}
+@media (max-width:759px){
+  /* the tab bar: four places, each with its name, across the foot of the screen */
+  :root{--dock:calc(66px + var(--bot))}
+  .rail{left:0!important;right:0!important;bottom:0!important;display:grid!important;grid-template-columns:repeat(4,1fr);gap:0;padding:6px 6px calc(var(--bot) + 6px);border-radius:0;box-shadow:inset 0 1px 0 var(--ac-edge),0 -8px 24px rgba(0,0,0,.25)}
+  html.night .rail{background:rgba(6,9,11,.86)}
+  html:not(.night) .rail{background:rgba(244,243,238,.92)}
+  .tab,.tab.apart{width:auto!important;height:54px!important;margin:0!important;display:grid!important;grid-template-rows:26px 14px;align-content:center;justify-items:center;gap:2px;background:transparent!important;box-shadow:none!important;border-radius:10px!important}
+  .tab .i{width:20px;height:20px}
+  .tab-w{position:static;transform:none;padding:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;font-size:8.5px;opacity:.6}
+  .tab[aria-pressed="true"]{background:var(--ac-on)!important;box-shadow:inset 0 0 0 1px var(--glow)!important}
+  .tab[aria-pressed="true"] .tab-w{opacity:1;box-shadow:none}
+  .tab[aria-pressed="true"]::after{display:none}
+  /* what to show: one switch, two named halves, floating just above the tab bar */
+  .dock{left:50%;right:auto!important;transform:translateX(-50%);bottom:calc(var(--dock) + 10px)!important;gap:0;padding:3px;border-radius:999px}
+  .dk{width:auto;height:34px;padding:0 14px;display:flex;align-items:center;gap:6px;border-radius:999px;font:600 9.5px/1 var(--mono);letter-spacing:.12em}
+  .dk .i{width:14px;height:14px}
+  body.rec .dock{display:none}
+  .hero{bottom:calc(var(--dock) + 12px)}
+  #board .canvas-container{max-width:100%}
+  #zine .desk{padding:16px 0 calc(64px + 16px)}
+  .gallery{padding-bottom:70px}
+}
+@media (prefers-reduced-motion:reduce){.lk-mark svg,#zine::after,.gallery::after,#board::after,.cover::after,body[data-view="radio"] .panel::after,.qp-caret{animation:none!important}}
+@media (max-width:759px){body .rail,body:not(.shut) .rail{left:0!important;right:0!important;width:auto}}
+.tab-w{right:calc(100% + 18px)}@media (max-width:759px){.tab-w{right:auto}}
+/* the rail clear of the toolbars of the board and the press */
+@media (min-width:760px){body.off-map:not(.shut) .rail{top:calc(var(--top) + 66px)}}
+/* the clue: its words alone */
+.clue-b{grid-template-columns:1fr auto}
+/* the keys for any animal, and the newest */
+.nr-k{display:grid;place-items:center;color:var(--navy);background:var(--ac)}.nr-k .i{width:22px;height:22px}
+.seg.packs{grid-template-columns:repeat(9,1fr)}
