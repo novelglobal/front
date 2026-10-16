@@ -319,7 +319,9 @@ document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; p
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
 function pagerHTML() {
   const on = printersOn();
-  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? 'PRINTER ONLINE' : 'PRINTER ONLINE SOON'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
+  /* small: a light and a printer; its words for a screen reader and on a long hover */
+  const w = on.length ? 'PRINTER ONLINE' : 'PRINTER ONLINE SOON';
+  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${w}"><i class="pg-led"></i><i class="pg-buzz">${icon('print', 'sm')}</i><span class="pg-lcd mono">${w}</span></div>`;
 }
 function viewRadio() {
   const ex = extremeAhead();
