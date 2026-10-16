@@ -5,7 +5,7 @@
    at novel.global's printer as the printer's own raster. Each paper is kept on this device (da.press.<format>)
    ════════════════════════════════════════════════════════════════════ */
 const FORMATS = { r80: { dots: 512, w: 320, ic: 'receipt', n: '80' }, r58: { dots: 384, w: 240, ic: 'receipt', n: '58' }, gb: { dots: 160, w: 160, levels: 4, ic: 'gb', n: '' }, zine: { w: 420, h: 595, ic: 'base', n: 'A5' } };
-const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1, packOpen: false };   /* every visit opens on the 80 mm receipt; the stickers in a drawer, shut */
+const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1, drawer: null };   /* every visit opens on the 80 mm receipt, the drawers shut */
 const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
@@ -368,7 +368,7 @@ async function pieceOn(kind, id) {
   if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
   if (kind === 'p') { const p = POSTERS2.find(v => v.id === id); if (p) placeOnPage(p.img, 'poster', 600); }
   if (kind === 'T') { const card = deck().find(c => c.id === id); if (card) placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200); }
-  if (kind === 'R') { const m = (id && LOOPS.find(l => l.id === id)) || (placed() ? mixNow() : null); if (m) placeOnPage(mixArt(m, mixURL(m)), 'art', 240); }
+  if (kind === 'R') { const m = (id && (LOOPS.find(l => l.id === id) || MIXES.find(l => l.id === id))) || (placed() ? mixNow() : null); if (m) placeOnPage(mixArt(m, mixURL(m)), 'art', 240); }
   if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
   if (kind === 'q') { const x = S.signals.find(v => v.key === id); const t = x ? qrText(x) : CONFIG.PORTAL_URL; const u = qrImage(t); if (u) placeOnPage(u, 'qr', 120); }
 }
@@ -536,6 +536,21 @@ const PFMT_W = { r80: 'receipt', r58: 'ticket', gb: '4 tones', zine: 'zine' };
 const PHOTO_FOR = { atk: ['soft', 'faces, fur'], dots: ['halftone', 'posters'], bayer: ['grid', 'pixel art'], lines: ['engraved', 'plants, bark'], hard: ['bold', 'type, marks'] };
 const OUTS = [['print', 'print', 'here', 'Print here, from this device'], ['poster', 'stories', 'wall', 'Save to the portfolio wall'], ['png', 'download', 'picture', 'Save as a picture'], ['escpos', 'escpos', 'printer file', 'Printer bytes (.bin), for a printer on a cable'], ['mesh', 'mesh', 'mesh', 'Copy as a mesh line, to send by radio']];
 const PACK_W = { life: 'life', jelly: 'jelly', zone: 'zone', goth: 'goth', witch: 'witch', ink: 'ink', turtle: 'turtles', words: 'words', ideas: 'ideas' };
+const DRAWERS = [['look', 'camera', 'The photograph'], ['life', 'fauna', 'Animals'], ['stick', 'star5', 'Stickers'], ['place', 'plus', 'What has been made here']];
+/* everything made here, to place on the strip: the stories, the posters, the sounds (now, the loops kept, the signals started),
+   the cards, the constellations, the boards, and each story's code */
+function placeOptions() {
+  const mine = S.signals.filter(x => !x.ex && !x.shared); const no = n => String(n).padStart(3, '0');
+  const grp = (label, items) => (items.length ? `<optgroup label="${label}">${items.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+  return '<option value="" selected disabled>…</option>'
+    + grp('Stories', mine.map(x => [`S|${x.key}`, `${x.code} · ${NAME_UP(x)}`]))
+    + grp('Posters', POSTERS2.map((p, i) => [`p|${p.id}`, `Poster № ${no(POSTERS2.length - i)} · ${fmtStamp(p.at)}`]))
+    + grp('Sound', [...(placed() ? [['R|', 'The radio, now']] : []), ...LOOPS.map(l => [`R|${l.id}`, `Loop · ${(l.where || {}).place || ''} · ${fmtStamp(l.at)}`]), ...MIXES.map(m => [`R|${m.id}`, `Signal · ${(m.where || {}).place || ''} · ${fmtStamp(m.at)}`])])
+    + grp('Cards', deck().slice(0, 24).map(c => [`T|${c.id}`, c.name || `Card № ${no(c.n + 1)}`]))
+    + grp('Constellations', strings.list().map(g => [`c|${g.id}`, g.name]))
+    + grp('Boards', BOARDS.map(b => [`b|${b.id}`, b.n]))
+    + grp('Codes', mine.map(x => [`q|${x.key}`, `QR · ${x.code}`]));
+}
 /* each look shown on the same small picture, a lit ball on a ramp, so the difference reads at once */
 const SWS = new Map();
 function swatchOf(mode) {
@@ -555,11 +570,17 @@ function viewSigns() {
     + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
       + `<section class="sec" id="sec-out"><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
       + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
-      + `<section class="sec" id="sec-photo"><div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k cap-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}: best for ${PHOTO_FOR[m.k][1]}" data-tip="${m.w} · best for ${PHOTO_FOR[m.k][1]}"><img class="ph-sw" src="${swatchOf(m.k)}" alt=""><small class="cap mono">${PHOTO_FOR[m.k][0]}</small><small class="cap2">${PHOTO_FOR[m.k][1]}</small></button>`).join('')}</div></section>`
-    + `<section class="sec" id="sec-near"><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any" data-tip="An animal's photograph, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen" data-tip="The newest animal seen">${icon('star5')}</button></li><li><button type="button" class="nr-b nr-k${wildBusy ? ' busy' : ''}" data-wild="more" aria-label="More animals, from further out" data-tip="More animals, from further out">${icon('receive')}</button></li>${[...WILD.map(sp => ({ sp, k: 'W' })), ...sps.map(sp => ({ sp, k: 'L' }))].slice(0, 15).map(({ sp, k }) => `<li><button type="button" class="nr-b" data-piece="${k}" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>`
-    + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol></section>` : '')
-    + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => { const open = PRESS.packOpen && PRESS.pack === k; return `<button type="button" class="pk-k cap-k" data-spack="${k}" aria-pressed="${open}" aria-expanded="${open}" aria-label="${PACK_W[k]}"><img src="${sticker({ ...PACK_FACE[k], col: open ? '#0C0E0E' : '#7F939B' })}" alt=""><small class="cap mono">${PACK_W[k]}</small></button>`; }).join('')}</div>`
-      + (!PRESS.packOpen ? '</section>' : `<ol class="stickers${PRESS.pack === 'words' || PRESS.pack === 'ideas' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.d ? `${st.w}: ${st.d}` : st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own: pictures from this device">${icon('plus')}<small class="mono">PNG JPG</small><input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`)
+      /* the rest in four drawers, one open at a time, each its mark: the looks, the animals, the stickers, and what has been
+         made here to place on the strip */
+      + `<section class="sec" id="sec-drawers"><div class="seg keys drawers" role="group" aria-label="Drawers">${DRAWERS.map(([k, ic, w]) => `<button type="button" class="key dr-k" data-drawer="${k}" aria-pressed="${PRESS.drawer === k}" aria-label="${w}">${k === 'look' ? `<img class="ph-sw" src="${swatchOf(photoMode())}" alt="">` : k === 'life' ? glyphSVG('bird') : icon(ic)}</button>`).join('')}</div>`
+      + `<div class="drawer" id="dr-look"${PRESS.drawer === 'look' ? '' : ' hidden'}><div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k cap-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}"><img class="ph-sw" src="${swatchOf(m.k)}" alt=""><small class="cap mono">${PHOTO_FOR[m.k][0]}</small></button>`).join('')}</div></div>`
+      + `<div class="drawer" id="dr-life"${PRESS.drawer === 'life' ? '' : ' hidden'}><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen">${icon('star5')}</button></li><li><button type="button" class="nr-b nr-k${wildBusy ? ' busy' : ''}" data-wild="more" aria-label="More animals, from further out">${icon('receive')}</button></li>${[...WILD.map(sp => ({ sp, k: 'W' })), ...sps.map(sp => ({ sp, k: 'L' }))].slice(0, 15).map(({ sp, k }) => `<li><button type="button" class="nr-b" data-piece="${k}" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></div>`
+      + `<div class="drawer" id="dr-stick"${PRESS.drawer === 'stick' ? '' : ' hidden'}><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-k" data-spack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${PACK_W[k]}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
+        + `<ol class="stickers${PRESS.pack === 'words' || PRESS.pack === 'ideas' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker"${st.d ? ` data-tip="${esc(`${st.w}: ${st.d}`)}"` : ''}><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" aria-label="Stickers of your own: pictures from this device">${icon('plus')}<input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></div>`
+      + `<div class="drawer" id="dr-place"${PRESS.drawer === 'place' ? '' : ' hidden'}><label class="pl-pick">${icon('plus')}<select id="pl-sel" aria-label="Place on the strip">${placeOptions()}</select></label>`
+        + `<form class="pl-link" id="pl-link"><input id="pl-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code on the strip"><button type="submit" class="ib" aria-label="The link as a code on the strip">${icon('qr')}</button></form>`
+        + (cells.length || figs.length ? `<ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol>` : '')
+        + `</div></section>`
     ;
 }
 $('#view').addEventListener('click', e => {
@@ -569,10 +590,19 @@ $('#view').addEventListener('click', e => {
     if (sel.length) inkAll(sel, phm.dataset.photo); else { prefs.photo = phm.dataset.photo; savePrefs(); THUMBS.clear(); setBase(true); } tick(1300); return; }
   const po = e.target.closest('[data-pout]'); if (po) { pressOut(po.dataset.pout); return; }
   const sk = e.target.closest('[data-stk]'); if (sk) { const st = stickNow()[+sk.dataset.stk]; if (st.w) faceReady(FACES[st.f || 0]).then(() => placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', 130)); else placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.j ? 90 : 70); if (st.j) snd.jelly(0.3); return; }
-  /* a drawer of stickers: pressed, it opens; pressed again, it shuts */
-  const sp = e.target.closest('[data-spack]'); if (sp) { const k = sp.dataset.spack; PRESS.packOpen = !(PRESS.packOpen && PRESS.pack === k); PRESS.pack = k; refreshPanel(); snd.tick((PRESS.packOpen ? 1300 : 1000) + Object.keys(PACKS_ALL).indexOf(k) * 120); if (PRESS.packOpen && (k === 'words' || k === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
+  /* a drawer: pressed, it opens (and any other shuts); pressed again, it shuts */
+  const dr = e.target.closest('[data-drawer]'); if (dr) { const k = dr.dataset.drawer; PRESS.drawer = PRESS.drawer === k ? null : k; $$('#view [data-drawer]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.drawer === PRESS.drawer))); $$('#view .drawer').forEach(d => { d.hidden = d.id !== 'dr-' + PRESS.drawer; }); snd.tick(PRESS.drawer ? 1400 : 1000); buzz(4); if (PRESS.drawer === 'stick' && (PRESS.pack === 'words' || PRESS.pack === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
+  const sp = e.target.closest('[data-spack]'); if (sp) { const k = sp.dataset.spack; PRESS.pack = k; PRESS.drawer = 'stick'; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(k) * 120); if (k === 'words' || k === 'ideas') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
   const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 90, true); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
   const wd = e.target.closest('[data-wild]'); if (wd && wd.dataset.wild === 'more') { pullWild(); tick(1500); return; } if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }
+});
+/* what has been made, chosen, goes onto the strip; on a phone the strip comes up to show it */
+$('#view').addEventListener('change', e => { if (e.target.id !== 'pl-sel') return; const [k, id] = e.target.value.split('|'); e.target.value = ''; if (!k) return; pieceOn(k, id); if (phone()) setPane('main'); tick(1500); });
+/* a link, any link, as a code to scan; a link to the radio as its picture */
+$('#view').addEventListener('submit', e => {
+  if (e.target.id !== 'pl-link') return; e.preventDefault(); const u = ($('#pl-url').value || '').trim(); if (!u) { nudge($('#pl-url')); return; }
+  const mx = (u.match(/#mix=([^&\s]+)/) || [])[1]; const m = mx ? mixOfCode(decodeURIComponent(mx)) : null;
+  const img = m ? mixArt(m, u) : qrImage(u); if (!img) { tick(600); return; } placeOnPage(img, m ? 'art' : 'qr', m ? 240 : 120); $('#pl-url').value = ''; if (phone()) setPane('main');
 });
 $('#view').addEventListener('change', async e => { if (e.target.id === 'proof-in') { const fl = e.target.files && e.target.files[0]; if (fl) await takeProof(fl); e.target.value = ''; return; } if (e.target.id !== 'pack-in') return; await addPack(e.target.files); e.target.value = ''; refreshPanel(); snd.tick(1900); });
