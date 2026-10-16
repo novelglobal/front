@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════
    CELL PACKS — people's own cells, many at once: fruit trees, mesh nodes, water, shade, gardens, places that help.
-   A pack is a .md, .csv or .json file (docs/cell-packs.md says how; another LLM can write one from a list or a map).
+   A pack is a .md, .csv or .json file (docs/cell-packs.md says how; an AI tool can write one from a list or a map).
    It is read on this device and shown before it is sent; it waits for approval like any story; once shown, its cells
    stand on the map for everyone, and age like everything else on it.
    ════════════════════════════════════════════════════════════════════ */

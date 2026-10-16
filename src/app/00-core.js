@@ -107,7 +107,7 @@ const T4 = Object.assign({ water: true, pollution: true, community: true }, pref
 /* the day's thread: noticed, responded, acted. It starts again each day */
 const DAY = (() => { const t = store.get('da.day.v1', {}); const d = new Date(); const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; return t.d === today ? t : { d: today }; })();
 /* night is the default, until turned off in Settings. The page darkens and the ground dims; a slip stays paper */
-const darkNow = () => (prefs.night != null ? !!prefs.night : true);
+const darkNow = () => (prefs.night != null ? !!prefs.night : false);
 const applyNight = () => document.documentElement.classList.toggle('night', darkNow());
 applyNight();
 const me = Object.assign({ by: '', dev: '' }, store.get('da.me', {}));

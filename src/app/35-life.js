@@ -404,14 +404,14 @@ const life = (() => {
   }
   /* the posters made here, small and pinned up, where their stories are */
   const PIM = new Map();
-  /* each poster as a card from an old handheld's tarot: four tones, a pixel frame, its number at the head. A touch turns it over */
+  /* each poster as a card from an old handheld's card: four tones, a pixel frame, its number at the head. A touch turns it over */
   function posters(ctx) {
     for (const p of POSTERS2) p._hit = null;
     if (!POSTERS2.length || S.mode === 'place') return;
     POSTERS2.slice(0, 12).forEach((p, i) => {
-      let card = PIM.get(p.id); if (!card) { card = { c: null }; PIM.set(p.id, card); tarotOf(p, POSTERS2.length - 1 - POSTERS2.indexOf(p), 3).then(c => { card.c = c; fxDirty = true; }).catch(() => {}); }
+      let card = PIM.get(p.id); if (!card) { card = { c: null }; PIM.set(p.id, card); cardArt(p, POSTERS2.length - 1 - POSTERS2.indexOf(p), 3).then(c => { card.c = c; fxDirty = true; }).catch(() => {}); }
       if (!card.c) return; const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) return;
-      const w = 40, h = 66, cx = q.x + 26 + (i % 3) * 6, cy = q.y - 40 - (i % 2) * 6, rot = ((i % 3) - 1) * 0.1;
+      const w = 58, h = 96, cx = q.x + 36 + (i % 3) * 8, cy = q.y - 56 - (i % 2) * 8, rot = ((i % 3) - 1) * 0.1;
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4; ctx.imageSmoothingEnabled = false; ctx.drawImage(card.c, -w / 2, -h / 2, w, h); ctx.restore();
       ctx.save(); ctx.strokeStyle = 'rgba(228,242,234,.5)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(cx - 8, cy + h / 2 - 4); ctx.stroke(); ctx.restore();
       p._hit = { x: cx, y: cy, w: w + 6, h: h + 6 };
