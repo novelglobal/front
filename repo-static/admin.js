@@ -108,7 +108,7 @@
       ...(rows.length ? rows : [el('p', { class: 'empty', text: 'NO POSTS YET' })]));
   }
   /* a cover chosen on this device: made smaller and re-encoded here, which also drops its location and camera details */
-  const shrink = file => new Promise((res, rej) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = 0.82, u = c.toDataURL('image/jpeg', q); while (u.length > 410e3 && q > 0.4) { q -= 0.08; u = c.toDataURL('image/jpeg', q); } URL.revokeObjectURL(im.src); res(u); }; im.onerror = rej; im.src = URL.createObjectURL(file); });
+  const shrink = file => new Promise((res, rej) => { const im = new Image(); im.onload = () => { const k = Math.min(1, 1400 / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = 0.82, u = c.toDataURL('image/jpeg', q); while (u.length > 400e3 && q > 0.4) { q -= 0.08; u = c.toDataURL('image/jpeg', q); } while (u.length > 400e3 && c.width > 320) { const t = document.createElement('canvas'); t.width = Math.round(c.width * 0.8); t.height = Math.round(c.height * 0.8); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); c.width = t.width; c.height = t.height; c.getContext('2d').drawImage(t, 0, 0); u = c.toDataURL('image/jpeg', 0.7); } URL.revokeObjectURL(im.src); res(u); }; im.onerror = rej; im.src = URL.createObjectURL(file); });
   async function editor(id) {
     const x = id ? (await (await api('posts/' + id)).json()).post : { title: '', summary: '', body: '', cat: '', links: [], day: new Date().toISOString().slice(0, 10), status: 'draft' };
     let cover; const cv = el('img', { class: 'cv', alt: '' }); if (id && x.cover) coverOf(id, cv);
@@ -123,8 +123,13 @@
     const note = el('span', { class: 'note' });
     const save = async status => {
       if (!title.value.trim()) { title.focus(); return; }
-      const r = await api('posts', { method: 'POST', body: JSON.stringify({ id: id || undefined, title: title.value, cat: cat.value, day: day.value, summary: sum.value, body: body.value, links: links.value.split('\n').map(s => s.trim()).filter(Boolean), status, ...(cover ? { cover } : {}) }) });
-      const j = await r.json(); id = j.id; note.textContent = status === 'published' ? `PUBLISHED · /portfolio.html#${j.slug}` : 'SAVED AS A DRAFT'; return j;
+      note.textContent = 'SAVING…';
+      let j; try { const r = await api('posts', { method: 'POST', body: JSON.stringify({ id: id || undefined, title: title.value, cat: cat.value, day: day.value, summary: sum.value, body: body.value, links: links.value.split('\n').map(s => s.trim()).filter(Boolean), status, ...(cover ? { cover } : {}) }) }); j = await r.json(); }
+      catch (e) { if (e.message !== 'locked') note.textContent = `NOT SAVED · ${e.message === '413' ? 'TOO LARGE: A SMALLER COVER' : e.message === '400' ? 'THE COVER COULD NOT BE READ: TRY ANOTHER' : `THE SERVER SAID ${e.message}`}`; return null; }
+      id = j.id; if (status !== 'published') { note.textContent = 'SAVED AS A DRAFT'; return j; }
+      /* published: checked against what everyone is served, so the word on the page is the truth */
+      const live = await fetch('/api/posts', { cache: 'no-store' }).then(r => r.json()).then(x => (x.posts || []).some(q => q.slug === j.slug)).catch(() => false);
+      note.textContent = live ? `PUBLISHED · LIVE AT /portfolio.html#${j.slug}` : 'SAVED, BUT NOT YET LISTED FOR EVERYONE: PRESS PUBLISH AGAIN'; return j;
     };
     main.replaceChildren(el('form', { class: 'ed', onsubmit: e => e.preventDefault() },
       el('label', {}, 'TITLE', title), el('div', { class: 'two' }, el('label', {}, 'CATEGORY', cat), el('label', {}, 'DATE', day)),
