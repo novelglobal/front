@@ -26,7 +26,7 @@ const admin = async (p, body) => { const r = await apiServer.fetch(new URL('/api
 async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false, dark = false } = {}) {
   /* the radar stays where it is pinned, unless a check is about a first visit */
   /* and by day (night is the default), unless a check is about the night */
-  if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, dark ? '{"found":true,"start2":true,"time":false,"placed":true}' : '{"found":true,"start2":true,"night":false,"time":false,"placed":true}');
+  if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, dark ? '{"found":true,"start2":true,"night":true,"time":false,"placed":true}' : '{"found":true,"start2":true,"night":false,"time":false,"placed":true}');
   await ctx.route('**/*', async route => {
     const url = route.request().url(); const u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -174,7 +174,7 @@ if (run('smoke')) try {
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
   const now = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const order = [...band.children].map(e => e.className.split(' ')[0]); return { open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, order, steps: band.querySelectorAll('.st, .sn').length, heads: band.querySelectorAll('h3, .lab').length, counts: band.querySelectorAll('.lyr .n').length, tags: document.querySelectorAll('#view .lab, #view .chips, #view .dg, #view .pill, #view .gigs').length }; });
-  check('RADIO, top to bottom: the printers’ pager, El Niño’s countdown, the equaliser, one play button, the layers, the clues; no headline, steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'pager,b-emerg,mstrip,hero-play,lyrs,clues' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
+  check('RADIO, top to bottom: the printers’ pager, El Niño’s countdown, the equaliser, one play button, the layers, the clues; no headline, steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'pager,b-emerg,mstrip,hero-play,lyrs,checks' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
   const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
     return { five: rows.length, why: five ? five.dataset.tip : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.some(r => r.querySelector('.chips')), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText }; });
   const eq = await page.evaluate(async () => { const cols = [...document.querySelectorAll('#sec-heat .mo')]; const lit = cols.map(c => c.querySelectorAll('.eq-c i.l:not(.up)').length); const none = !document.querySelector('.eq-read');
@@ -224,9 +224,9 @@ if (run('smoke')) try {
   const tm = await page.evaluate(() => { const da = window.__da; const k0 = da.S.mo; da.turned(); return { k0, k1: da.S.mo, play: !!document.querySelector('#sec-heat [data-time]') }; });
   check('El Niño time is held back for now: no play, and a turn of the radar leaves the months as they are', tm.k1 === tm.k0 && !tm.play, JSON.stringify(tm));
   /* the dials alone are not a connection: the clue waits; a string tied is, and START follows */
-  const cl0 = await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); return (document.querySelector('#sec-heat .clue .cw') || {}).textContent; });
+  const cl0 = await page.evaluate(() => { const da = window.__da; da.setOpen(true); da.setView(0); return (document.querySelector('#sec-heat .clue .chk-w') || {}).textContent; });
   await page.evaluate(() => { const da = window.__da; da.markConnect(); da.setView(0); }); await sleep(400);
-  check('turning the dials is not a connection; a string tied is, and then start', cl0 === 'make a connection' && await page.evaluate(() => (document.querySelector('#sec-heat .clue .cw') || {}).textContent === 'start'), cl0);
+  check('turning the dials is not a connection; a string tied is, and then start', cl0 === 'make a connection' && await page.evaluate(() => (document.querySelector('#sec-heat .clue .chk-w') || {}).textContent === 'start'), cl0);
   const story = await page.evaluate(() => !!document.querySelector('#sec-heat [data-share-mix]'));
   await page.click('#sec-heat [data-share-mix]'); await sleep(900); const arc = 'START STORY';
   await page.waitForFunction(() => window.__da.S.view === 1 && !document.querySelector('#board').hidden && window.fabric, null, { timeout: 15000 }); await sleep(800);
@@ -264,8 +264,8 @@ if (run('smoke')) try {
     const n0 = da.boardJSON().objects.length; document.querySelector('#sec-assets [data-asset="s"]').click(); await wait(700); const n1 = da.boardJSON().objects.length;
     document.querySelector('#board [data-bt="undo"]').click(); await wait(500); out.board = [n0, n1, da.boardJSON().objects.length]; return out; });
   check('what was made here is a piece: the W.I.S.H. sent is the receipt, stamped by hand, and onto the WISH MAKER board, where UNDO takes it back', pcs.shopPieces >= 1 && pcs.page === 'base,stamp' && pcs.assets >= 1 && pcs.board[1] === pcs.board[0] + 1 && pcs.board[2] === pcs.board[0], JSON.stringify(pcs));
-  const ck = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); da.setView(2); await wait(900); document.querySelector('#view [data-pout="poster"]').click(); await wait(1500); da.setView(0); await wait(700); return { rows: [...document.querySelectorAll('#sec-heat .chk')].map(r => r.classList.contains('ok')), words: [...document.querySelectorAll('#sec-heat .chk-w')].map(w => w.textContent), start: !!document.querySelector('#sec-heat .start-k'), posters: da.POSTERS2.length, clues: document.querySelectorAll('#sec-heat .clue').length }; });
-  check('once a signal is started, RADIO shows the checklist in place of the clues: where, start, finish, a poster, print; START hidden until the round is done', ck.clues === 0 && ck.rows.join() === 'true,true,true,true,false' && ck.words.join('|') === 'Where are you?|Start a W.I.S.H.|Finish a W.I.S.H.|Make a poster|Print' && !ck.start && ck.posters === 1, JSON.stringify(ck));
+  const ck = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); da.setView(2); await wait(900); document.querySelector('#view [data-pout="poster"]').click(); await wait(1500); da.setView(0); await wait(700); return { rows: [...document.querySelectorAll('#sec-heat .chk')].map(r => r.classList.contains('ok')), words: [...document.querySelectorAll('#sec-heat .chk-w')].map(w => w.textContent), start: !!document.querySelector('#sec-heat .start-k'), posters: da.POSTERS2.length, clues: document.querySelectorAll('#sec-heat .clue').length, lit: [...document.querySelectorAll('#sec-heat .chk .io')].map(i => i.classList.contains('on') ? 1 : 0).join() }; });
+  check('once a signal is started, RADIO shows the checklist in place of the clues: three steps, each lit going in and coming out; start hidden until the round is done', ck.clues === 0 && ck.rows.join() === 'true,true,false' && ck.words.join('|') === 'Where are you?|W.I.S.H.|Make · Print' && !ck.start && ck.posters === 1 && ck.lit === '1,1,1,1,1,0', JSON.stringify(ck));
   await page.evaluate(() => { const da = window.__da; da.setView(0); }); await sleep(500);
   const back = await page.evaluate(() => ({ cover: getComputedStyle(document.querySelector('#cover')).display, zine: document.querySelector('#zine').hidden, board: document.querySelector('#board').hidden }));
   check('only RADIO shows the ground', back.cover === 'none' && back.zine && back.board, JSON.stringify(back));
@@ -287,7 +287,7 @@ if (run('smoke')) try {
   const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
   check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
-  check('the quick print heads the portfolio, then the W.I.S.H.es finished here, then the stories; the settings and sources at its foot; the posters on the wall beside it', order[0] === 'sec-quick' && order[1] === 'sec-wishes' && order[2] === 'sec-board' && order.includes('sec-set') && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
+  check('the quick print heads the portfolio, then the W.I.S.H.es finished here, then the stories; the settings and sources at its foot; the posters on the wall beside it', order[0] === 'sec-quick' && order[1] === 'sec-wishes' && order.includes('sec-board') && order.indexOf('sec-board') < order.indexOf('sec-set') && order.includes('sec-set') && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-portfolio.png');
   /* the day's thread: a life looked at ties the first knot */
   const th0 = await page.evaluate(() => document.querySelectorAll('#rail .tab.tied').length);
@@ -298,7 +298,7 @@ if (run('smoke')) try {
   await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(3); }); await sleep(400);
   await tap(page, '#rail .tab[data-i="3"]'); await sleep(500);
   check('the same tab closes the page again', await page.evaluate(() => document.body.classList.contains('shut')));
-  /* novel.global: the name, the muse, the radio playing on; the press's keys, packs and faces; a poster as a tarot card; the board out */
+  /* novel.global: the name, the muse, the radio playing on; the press's keys, packs and faces; a poster as a cards; the board out */
   const ng = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
     da.setOpen(true); da.setView(0); await wait(400); out.title = document.title; out.lockup = (document.querySelector('.lockup .lk-n') || {}).textContent; out.muse = !!document.querySelector('.lockup svg circle');
     out.icon = document.querySelector('#rail .tab[data-i="0"] use').getAttribute('href'); da.setRadio(true); da.setView(1); await wait(600); out.playsOn = da.S.radio;
@@ -308,11 +308,11 @@ if (run('smoke')) try {
     zt('tape'); await wait(400); zt('tape'); await wait(900); const tp = da.zineObjects().filter(o => o.daKind === 'tape'); out.tape = (tp[tp.length - 1] || {}).type; zt('rag'); await wait(900); out.rag = da.zineObjects().some(o => o.daKind === 'rag');
     document.querySelector('[data-spack="goth"]').click(); await wait(400); out.goth = document.querySelectorAll('#sec-stickers .stk[data-stk]').length;
     const p = await da.savePoster(); da.setView(0); da.setOpen(false); da.map.jumpTo({ center: [p.lng, p.lat] }); da.life.redraw(); await wait(2500); const h = (() => { const q = da.POSTERS2.find(x => x.id === p.id)._hit; return q ? da.life.hit(q.x, q.y) : null; })(); out.hit = h && h.kind;
-    await da.openTarot(p.id); await wait(400); out.tarot = !!document.querySelector('.tarot-view canvas.tv-card'); document.querySelector('.tarot-view [data-tv="x"]').click();
+    await da.openPosterCard(p.id); await wait(400); out.card = !!document.querySelector('.card-view canvas.tv-card'); document.querySelector('.card-view [data-tv="x"]').click();
     da.setView(1); await wait(800); const pdf = await da.boardOut('pdf'); out.pdf = pdf ? await pdf.slice(0, 5).text() : null; return out; });
   check('novel.global: the name, the muse at the head of RADIO and on its tab; the radio plays on under the WISH MAKER', ng.title === 'novel.global' && ng.lockup === 'novel.global' && ng.muse && ng.icon === '#g-jelly' && ng.playsOn, JSON.stringify(ng));
   check('the PRINT SHOP: no readings row, the receipt larger than it prints, words again for another face, tape again for bandana, a bandana, nine packs', ng.styles === 0 && ng.z > 1 && ng.faces[0] !== ng.faces[1] && ng.texts === 1 && ng.tape === 'image' && ng.rag && ng.packs === 9 && ng.goth > 10, JSON.stringify(ng));
-  check('a poster on the map is a card that turns over; the board leaves as a PDF', ng.hit === 'poster' && ng.tarot && ng.pdf === '%PDF-', JSON.stringify(ng));
+  check('a poster on the map is a card that turns over; the board leaves as a PDF', ng.hit === 'poster' && ng.card && ng.pdf === '%PDF-', JSON.stringify(ng));
   const ng2 = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
     da.setOpen(true); da.setView(0); await wait(400); const m = document.querySelector('[data-lmood="water"]'); m.click(); m.click(); out.tip = m.dataset.tip; out.mood = (JSON.parse(localStorage.getItem('da.prefs')).lm || {}).water;
     da.setView(2); await wait(1200); const z = []; for (let i = 0; i < 3; i++) { document.querySelector('#zine [data-zt="zoom"]').click(); await wait(200); z.push(da.PRESS.z); } out.z = z;
@@ -355,6 +355,7 @@ if (run('first')) try {
   await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
   const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade') && (document.querySelector('#sec-heat .clue[data-clue="1"]') || {}).textContent }; });
   check('a first visit: every mark on the map, no radar, nothing over the ground; the first clue in the page: find yourself', !f.placed && f.knob && f.shown > 20 && /find yourself/.test(f.press || ''), JSON.stringify(f));
+  check('day is the default on a first visit', await page.evaluate(() => !document.documentElement.classList.contains('night')));
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(500);
   const m = await page.evaluate(() => { const r = window.__da.map.getContainer().getBoundingClientRect(); return [r.left + r.width * 0.42, r.top + r.height * 0.55]; });
   await page.mouse.click(m[0], m[1]); await sleep(700);
@@ -1028,7 +1029,7 @@ if (run('night')) try {
   const ctx = await newCtx(); await wire(ctx, { dark: true }); const page = await ctx.newPage(); watch(page, 'night');
   await page.goto('https://oan.test/index.html'); await ready(page, '', true); await settle(page);
   const n0 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), page: getComputedStyle(document.querySelector('#panel')).backgroundColor, ground: getComputedStyle(document.querySelector('.maplibregl-canvas')).filter }));
-  check('night is the default, whatever the device: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
+  check('night, chosen: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
   await tab(page, 3); await sleep(500); await tap(page, '#ix-night'); await sleep(300);
   const n1 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), kept: JSON.parse(localStorage.getItem('da.prefs')).night, pressed: document.querySelector('#ix-night').getAttribute('aria-pressed') }));
   check('and NIGHT in Settings turns it off, or on, and keeps it', !n1.night && n1.kept === false && n1.pressed === 'false', JSON.stringify(n1));

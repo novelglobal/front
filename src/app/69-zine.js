@@ -259,7 +259,7 @@ async function zineTool(k) {
   if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
   if (k === 'len') { c.setHeight(c.getHeight() + Math.round(c.getWidth() * 0.75)); fitZ(); c.renderAll(); saveZine(); snd.printer(300); const d = $('#zine .desk'); if (d) d.scrollTo({ top: d.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' }); return; }
   if (k === 'add') { const mine = S.signals.filter(x => !x.ex && !x.shared).slice(0, 12);
-    pickMenu($('#zine [data-zt="add"]'), [...POSTERS2.slice(0, 12).map((p, i) => ({ k: 'p', id: p.id, n: `Poster № ${String(POSTERS2.length - i).padStart(3, '0')}`, ic: `<img src="${p.img}" alt="">` })), ...mine.map(x => ({ k: 'S', id: x.key, n: `${x.code} · ${NAME_UP(x)}`, ic: icon('receipt', 'sm') })), ...mine.map(x => ({ k: 'q', id: x.key, n: `QR · ${x.code} · its song`, ic: icon('qr', 'sm') })), ...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
+    pickMenu($('#zine [data-zt="add"]'), [...POSTERS2.slice(0, 12).map((p, i) => ({ k: 'p', id: p.id, n: `Poster № ${String(POSTERS2.length - i).padStart(3, '0')}`, ic: `<img src="${p.img}" alt="">` })), ...mine.map(x => ({ k: 'S', id: x.key, n: `${x.code} · ${NAME_UP(x)}`, ic: icon('receipt', 'sm') })), ...mine.map(x => ({ k: 'q', id: x.key, n: `QR · ${x.code} · its song`, ic: icon('qr', 'sm') })), ...deck().slice(0, 24).map(c => ({ k: 'T', id: c.id, n: `Card · ${c.name || `№ ${String(c.n + 1).padStart(3, '0')}`}`, ic: icon('stories', 'sm') })), ...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
   if (k === 'tape') {
@@ -356,6 +356,7 @@ async function pieceOn(kind, id) {
   if (kind === 'W') { const sp = WILD.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 96, true); }
   if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
   if (kind === 'p') { const p = POSTERS2.find(v => v.id === id); if (p) placeOnPage(p.img, 'poster', 600); }
+  if (kind === 'T') { const card = deck().find(c => c.id === id); if (card) placeOnPage(await cardURL(card, 3), 'card', 120); }
   if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
   if (kind === 'q') { const x = S.signals.find(v => v.key === id); const t = x ? qrText(x) : CONFIG.PORTAL_URL; const u = qrImage(t); if (u) placeOnPage(u, 'qr', 120); }
 }
@@ -376,39 +377,64 @@ async function savePoster(quiet) {
   while (!store.set('da.posters2.v1', POSTERS2) && POSTERS2.length > 1) POSTERS2.pop();
   if (!quiet) { snd.horn(); toast('✓'); } life.redraw(); return POSTERS2[0];
 }
-/* ───────── a poster as a tarot card from an old handheld: four tones of the deep, a pixel frame with corner stars, its number
+/* ───────── a poster as a card from an old handheld: four tones of the deep, a pixel frame with corner stars, its number
    in Roman at the head, the poster in an arched window, dithered, and the muse on the plate at its foot ───────── */
-const TAROT_P = ['#0B1416', '#2E5552', '#8DBFB3', '#E4F2EA'];
+/* the deck's palettes, four tones each, as an old handheld had them: the deep, the sun, acid, leaf, the handheld's own green, ember */
+const CARD_PALS = { deep: ['#0B1416', '#2E5552', '#8DBFB3', '#E4F2EA'], sun: ['#2A0E00', '#B83A00', '#FF7A1A', '#FFE8BF'], acid: ['#1A2200', '#5B7600', '#C9F200', '#F7FFD6'], leaf: ['#0D2610', '#2C6A28', '#86D14B', '#EAF8CF'], gb: ['#0F380F', '#306230', '#8BAC0F', '#C4DE6A'], ember: ['#260A00', '#8A2B00', '#FFB000', '#FFF2B3'] };
+const CARD_P = CARD_PALS.deep;
+const palOf = id => { const ks = ['sun', 'acid', 'leaf', 'deep', 'gb', 'ember']; let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return CARD_PALS[ks[h % ks.length]]; };
 const roman = n => { let r = ''; for (const [v, s] of [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) while (n >= v) { r += s; n -= v; } return r || '0'; };
-async function tarotOf(p, n, scale = 3) {
-  const W = 60, H = 100; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; const [P0, P1, P2, P3] = TAROT_P;
+async function cardArt(p, n, scale = 3, pal) {
+  const W = 60, H = 100; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; const PAL = pal || palOf(p.id); const [P0, P1, P2, P3] = PAL;
   x.fillStyle = P0; x.fillRect(0, 0, W, H); x.fillStyle = P2; x.fillRect(2, 2, W - 4, 1); x.fillRect(2, H - 3, W - 4, 1); x.fillRect(2, 2, 1, H - 4); x.fillRect(W - 3, 2, 1, H - 4);
   x.fillStyle = P1; x.fillRect(4, 4, W - 8, 1); x.fillRect(4, H - 5, W - 8, 1); x.fillRect(4, 4, 1, H - 8); x.fillRect(W - 5, 4, 1, H - 8);
   for (const [sx, sy] of [[4, 4], [W - 5, 4], [4, H - 5], [W - 5, H - 5]]) { x.fillStyle = P3; x.fillRect(sx, sy - 1, 1, 3); x.fillRect(sx - 1, sy, 3, 1); }
   /* the window: the poster, small, in four tones by a 4 x 4 order */
-  const im = await loadImage(p.img, false); const ww = 44, wh = 58, wx = 8, wy = 14; const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
+  const im = await loadImage(p.img, !/^data:/.test(p.img)); const ww = 44, wh = 58, wx = 8, wy = 14; const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
   const k = Math.max(ww / im.width, wh / im.height); tx.drawImage(im, (ww - im.width * k) / 2, 0, im.width * k, im.height * k);
-  const d = tx.getImageData(0, 0, ww, wh); const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; const rgb = TAROT_P.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
+  const d = tx.getImageData(0, 0, ww, wh); const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; const rgb = PAL.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
   for (let y = 0; y < wh; y++) for (let xx = 0; xx < ww; xx++) { const i = (y * ww + xx) * 4; const l = (0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]) / 255; const v = clamp(Math.floor(l * 3 + (B[(y % 4) * 4 + (xx % 4)] / 16 - 0.5) * 0.9 + 0.5), 0, 3); const [r, g, b] = rgb[v]; d.data[i] = r; d.data[i + 1] = g; d.data[i + 2] = b; d.data[i + 3] = 255; }
   tx.putImageData(d, 0, 0);
   x.save(); x.beginPath(); x.moveTo(wx, wy + wh); x.lineTo(wx, wy + ww / 2); x.arc(wx + ww / 2, wy + ww / 2, ww / 2, Math.PI, 0); x.lineTo(wx + ww, wy + wh); x.closePath(); x.clip(); x.drawImage(t, wx, wy); x.restore();
   x.strokeStyle = P3; x.lineWidth = 1; x.beginPath(); x.moveTo(wx - 0.5, wy + wh + 0.5); x.lineTo(wx - 0.5, wy + ww / 2); x.arc(wx + ww / 2, wy + ww / 2, ww / 2 + 0.5, Math.PI, 0); x.lineTo(wx + ww + 0.5, wy + wh + 0.5); x.closePath(); x.stroke();
   /* its number, and the plate with the muse */
   x.fillStyle = P3; x.font = '400 10px VT323, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(roman(n + 1), W / 2, 9);
-  x.fillStyle = P2; x.fillRect(8, 76, W - 16, 15); x.fillStyle = P0; x.fillRect(9, 77, W - 18, 13); M.icon(x, 'jelly', W / 2, 83.5, 11, P3);
+  x.fillStyle = P2; x.fillRect(8, 76, W - 16, 15); x.fillStyle = P0; x.fillRect(9, 77, W - 18, 13); if (p.g) M.glyph(x, p.g, W / 2, 83.5, 11, P3); else M.icon(x, 'jelly', W / 2, 83.5, 11, P3);
   x.fillStyle = P1; for (let i = 0; i < 3; i++) { x.fillRect(14 + i * 3, 83, 1, 1); x.fillRect(W - 15 - i * 3, 83, 1, 1); }
   const out = document.createElement('canvas'); out.width = W * scale; out.height = H * scale; const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(c, 0, 0, out.width, out.height); return out;
 }
-/* a card turned over: large, in the middle, with the way to the press and the poster to keep */
-async function openTarot(id) {
-  const p = POSTERS2.find(x => x.id === id); if (!p) return; $$('.tarot-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
-  const el = document.createElement('div'); el.className = 'tarot-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Poster');
-  const c = await tarotOf(p, POSTERS2.length - 1 - POSTERS2.indexOf(p), 4); c.className = 'tv-card';
-  el.innerHTML = `<div class="tv-in"><div class="tv-acts"><button type="button" class="key" data-tv="press" aria-label="To the print shop" data-tip="To the print shop">${icon('receipt')}</button><button type="button" class="key" data-tv="png" aria-label="The poster" data-tip="The poster">${icon('download')}</button><button type="button" class="key" data-tv="x" aria-label="Close">${icon('close')}</button></div></div>`;
+/* ───────── the deck: every poster made, every life sent to the W.I.S.H.MAKER, every constellation, each a card of its own
+   in its own palette. Kept here as tokens; turned over large; shared, saved, or laid on the strip as a sticker ───────── */
+function deck() {
+  return [...POSTERS2.map((p, i) => ({ id: 'p:' + p.id, img: p.img, n: POSTERS2.length - 1 - i, kind: 'poster', ref: p.id })),
+    ...SPECIES.filter(sp => sp.ph).map((sp, i) => ({ id: 'l:' + sp.id, img: sp.ph, g: sp.g, n: i, kind: 'life', name: sp.n })),
+    ...strings.list().map((g, i) => ({ id: 'c:' + g.id, img: figArt(g, '#000000'), g: glyphOf(g.o) || null, n: i, kind: 'fig', name: g.name }))];
+}
+const CARDS = new Map();
+async function cardURL(card, scale = 2) { const k = `${card.id}|${scale}`; if (!CARDS.has(k)) { const c = await cardArt(card, card.n, scale); CARDS.set(k, c.toDataURL('image/png')); if (CARDS.size > 120) CARDS.delete(CARDS.keys().next().value); } return CARDS.get(k); }
+async function fillDeck() { for (const im of $$('#view img[data-card]')) { const card = deck().find(c => c.id === im.dataset.card); if (!card) continue; try { const u = await cardURL(card, 2); if (im.isConnected) im.src = u; } catch (e) { /* the card waits */ } } }
+const deckHTML = () => { const d = deck(); return d.length ? `<section class="sec deck" id="sec-deck"><ol class="deck-l">${d.slice(0, 48).map(c => `<li><button type="button" class="card-b" data-open-card="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><img data-card="${esc(c.id)}" alt=""></button></li>`).join('')}</ol></section>` : ''; };
+$('#view').addEventListener('click', e => { const b = e.target.closest('[data-open-card]'); if (b) { const card = deck().find(c => c.id === b.dataset.openCard); if (card) openCard(card); } });
+async function shareCard(card) {
+  const u = await cardURL(card, 6); const blob = await (await fetch(u)).blob(); const name = `novel-global-card-${card.id.replace(/[^a-z0-9]+/gi, '-')}.png`; const file = new File([blob], name, { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'novel.global' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = u; a.download = name; a.click(); tick(1800);
+}
+async function openCard(card) {
+  $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
+  const el = document.createElement('div'); el.className = 'card-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', card.name || 'A card');
+  const c = await cardArt(card, card.n, 4); c.className = 'tv-card';
+  el.innerHTML = `<div class="tv-in">${card.name ? `<p class="tv-name mono">${esc(card.name)}</p>` : ''}<div class="tv-acts"><button type="button" class="key" data-tv="share" aria-label="Share" data-tip="Share">${icon('share')}</button><button type="button" class="key" data-tv="strip" aria-label="Onto the strip" data-tip="Onto the strip">${icon('receipt')}</button>${card.kind === 'poster' ? `<button type="button" class="key" data-tv="png" aria-label="The poster" data-tip="The poster">${icon('download')}</button>` : ''}<button type="button" class="key" data-tv="x" aria-label="Close">${icon('close')}</button></div></div>`;
   el.querySelector('.tv-in').prepend(c); document.body.appendChild(el);
-  el.addEventListener('click', e => { const b = e.target.closest('[data-tv]'); if (b && b.dataset.tv === 'press') { el.remove(); setView(2); return; } if (b && b.dataset.tv === 'png') { const a = document.createElement('a'); a.href = p.img; a.download = `poster-${isoDay(new Date(p.at))}.jpg`; a.click(); return; } if (b || e.target === el) el.remove(); });
+  el.addEventListener('click', async e => { const b = e.target.closest('[data-tv]');
+    if (b && b.dataset.tv === 'share') { shareCard(card); return; }
+    if (b && b.dataset.tv === 'strip') { el.remove(); setView(2); setTimeout(async () => placeOnPage(await cardURL(card, 3), 'card', 120), 500); return; }
+    if (b && b.dataset.tv === 'png') { const a = document.createElement('a'); a.href = card.img; a.download = `poster-${isoDay(new Date())}.jpg`; a.click(); return; }
+    if (b || e.target === el) el.remove(); });
   const esc2 = e => { if (e.key === 'Escape') { el.remove(); removeEventListener('keydown', esc2); } }; addEventListener('keydown', esc2);
 }
+/* a poster's card, from the map */
+function openPosterCard(id) { const card = deck().find(c => c.id === 'p:' + id); if (card) return openCard(card); }
 /* a receipt printed, proved: a photograph of it held up, taken while novel.global's printer is online */
 const PROOFS = store.get('da.proofs.v1', []);
 async function takeProof(file) {

@@ -63,7 +63,7 @@ node,Library node,-37.7646,144.9606,solar,https://meshtastic.org
   "cells": [ { "kind": "shade", "name": "Arcade, cool all day", "lat": -37.7671, "lng": 144.9620 } ] }
 ```
 
-## With another LLM
+## With an AI tool
 
 Paste this, then your list, map links, or notes:
 

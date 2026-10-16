@@ -81,7 +81,7 @@ The browser's A4 and 58 mm print button goes. In its place, DIRECT ACTION lists 
 - **The local mesh:** DIRECT ACTION can send to the mesh alone. Once approved, the mesh line goes to every paired printer whose radio is on, and nothing is printed.
 - **Tracks:** above the constellations on NOW, two beats built from what is inside the radar: the lives (animals, insects, plants and us), each in its own call, and the human ecology (brands, businesses, third spaces, groups), each in its own small sound. Quiet rows, a dot, the voices lighting as they sound and a fine trace of the beat. A track of one's own is added under CELLS on STORIES and kept on the device.
 - **Hover:** a mark grows quickly into a larger photograph, and the words sit in a small tag beside it, the photograph shown once.
-- **Cell packs:** a .md, .csv or .json file of fruit trees, mesh nodes, water, shade, gardens or refuges. It is read on the device, previewed, sent for approval, and shown on the map once approved. `docs/cell-packs.md` has the format and a prompt for another LLM.
+- **Cell packs:** a .md, .csv or .json file of fruit trees, mesh nodes, water, shade, gardens or refuges. It is read on the device, previewed, sent for approval, and shown on the map once approved. `docs/cell-packs.md` has the format and a prompt for an AI tool.
 - **Examples:** twenty stories across modes and scales (creative, activist, caring, sensory, joy, skill sharing, partnerships and more). Each is tied to real places, with its sources shown on screen.
 
 ## Stage 3c — tracks, the calendar, night

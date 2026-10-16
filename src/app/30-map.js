@@ -76,7 +76,7 @@ map.on('click', e => {
     if (h.kind === 'node') { strings.tap(h.key); return; }
     if (h.kind === 'new') { life.offer(null); startPlace({ lat: h.lat, lng: h.lng }); return; }
     if (h.kind === 'partner') { selectPartner(h.id); return; }
-    if (h.kind === 'poster') { openTarot(h.id); return; }
+    if (h.kind === 'poster') { openPosterCard(h.id); return; }
     if (h.kind === 'place') { life.hover(h); tick(1500); return; }
     if (h.kind === 'signal') { life.moveScan(h.lat, h.lng, true); tick(1700); return; }   /* a place on the places' track: its name, also on a phone */
     select(h.id); return;

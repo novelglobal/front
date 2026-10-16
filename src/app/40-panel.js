@@ -4,7 +4,7 @@
    and the gigs. STORIES: the signals people have issued, newest first, then the groups, the tools and the sources.
    ════════════════════════════════════════════════════════════════════ */
 const panel = $('#panel'), rail = $('#rail'), viewEl = $('#view');
-rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.label}" data-tip="${v.w}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><span class="tab-w">${v.long || v.w}</span><span class="tab-s">${v.short || v.w}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
+rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? '' : ' apart'}" data-i="${i}" aria-label="${v.long || v.label}" aria-pressed="false"><span class="sq">${icon(v.icon)}</span><span class="tab-w">${v.long || v.w}</span><span class="tab-s">${v.short || v.w}</span>${i < 3 ? '<i class="knot" aria-hidden="true"></i>' : ''}<i class="flag" hidden></i></button>`).join('');
 /* the day's thread: a knot tied at each destination as the journey reaches it, and the string drawn on to it */
 function drawThread() { const t = [0, 1, 2].filter(n => DAY[n]); $$('#rail .tab').forEach((b, i) => b.classList.toggle('tied', !!DAY[i])); rail.style.setProperty('--tp', `${t.length ? Math.max(...t) * 46 : 0}px`); }
 function tie(n) {
@@ -100,7 +100,7 @@ function renderView() {
   viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
   viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
-  if (k === 'portfolio') bindPortfolio();
+  if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
   if (k === 'signs') fillThumbs();
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
 }
@@ -262,10 +262,9 @@ const CLUE_IC = {
 };
 function cluesHTML() {
   const s1 = placed(), s2 = s1 && (S.connected || strings.list().length > 0);
-  const tile = (n, state, ics, words, act = '') => `<li class="clue ${state}" data-clue="${n}">${act ? `<button type="button" class="clue-b" ${act}>` : '<div class="clue-b">'}${words ? `<span class="cw">${words}</span>` : '<span class="cw"></span>'}${state === 'done' ? `<i class="ck">${icon('check', 'sm')}</i>` : state === 'locked' ? '<i class="lk" aria-hidden="true"></i>' : ''}${act ? '</button>' : '</div>'}</li>`;
-  return `<ol class="clues">`
-    + (!s1 ? tile(1, 'now', icon('search'), 'find yourself') : !s2 ? tile(2, 'now', CLUE_IC.chain, 'make a connection') : tile(3, 'now', icon('share'), 'start', 'data-share-mix'))
-    + `</ol>`;
+  const n = !s1 ? 1 : !s2 ? 2 : 3; const w = ['find yourself', 'make a connection', 'start'][n - 1];
+  const inner = `<b class="chk-n mono">${String(n).padStart(2, '0')}</b><i class="io io-in${n > 1 ? ' on' : ''}"></i><span class="chk-w">${w}</span><i class="io io-out"></i>`;
+  return `<ol class="checks clues" aria-label="${n} of 3"><li class="chk clue now" data-clue="${n}">${n === 3 ? `<button type="button" class="chk-b clue-b" data-share-mix>${inner}</button>` : `<div class="chk-b clue-b">${inner}</div>`}</li></ol>`;
 }
 /* once a signal is started: the checklist, as an old handheld's manual lists what it does. Each a coloured tile and its
    mark, the line, and a box ticked when done */
@@ -273,20 +272,18 @@ const wishStarted = () => S.signals.some(x => !x.ex && !x.shared && linesOf(x).l
 const printedAny = () => !!store.get('da.printed.v1', 0) || PROOFS.length > 0 || S.signals.some(x => !x.ex && !x.shared && /PRINTED/.test(sentWord(x)));
 function checklistHTML() {
   const rows = [
-    { ok: placed() || !!prefs.placed, ic: CLUE_IC.compass, w: 'Where are you?' },
-    { ok: wishStarted(), ic: '<b class="cl-wk">W</b>', w: 'Start a W.I.S.H.', go: 1 },
-    { ok: mineOf().some(x => linesOf(x).length), ic: icon('sign'), w: 'Finish a W.I.S.H.', go: 1 },
-    { ok: POSTERS2.length > 0, ic: icon('stories'), w: 'Make a poster', go: 2 },
-    { ok: printedAny(), ic: icon('print'), w: 'Print', go: 3 },
+    { i: placed() || !!prefs.placed, o: placed() || !!prefs.placed, w: 'Where are you?' },
+    { i: wishStarted(), o: mineOf().some(x => linesOf(x).length), w: 'W.I.S.H.', go: 1 },
+    { i: POSTERS2.length > 0, o: printedAny(), w: 'Make · Print', go: 2 },
   ];
-  const done = rows.filter(r => r.ok).length;
-  return `<ol class="checks" aria-label="${done} of ${rows.length}">${rows.map((r, i) => `<li class="chk${r.ok ? ' ok' : ''}" data-check="${i + 1}">`
-    + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(i + 1).padStart(2, '0')}</b><span class="chk-w">${r.w}</span><i class="chk-box">${r.ok ? icon('check', 'sm') : ''}</i></button></li>`).join('')}</ol>`
+  const done = rows.filter(r => r.i && r.o).length;
+  return `<ol class="checks" aria-label="${done} of ${rows.length}">${rows.map((r, n) => `<li class="chk${r.i && r.o ? ' ok' : ''}" data-check="${n + 1}">`
+    + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(n + 1).padStart(2, '0')}</b><i class="io io-in${r.i ? ' on' : ''}" aria-label="${r.i ? 'begun' : 'not begun'}"></i><span class="chk-w">${r.w}</span><i class="io io-out${r.o ? ' on' : ''}" aria-label="${r.o ? 'out' : 'not out'}"></i></button></li>`).join('')}</ol>`
     + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>start</span></button>` : '');
 }
 /* ───────── the invisible hand: each step met is answered once, a few notes of glass and a glow where it was met ───────── */
 const STEPS = () => [placed() || !!prefs.placed, !!(S.connected || strings.list().length), MIXES.length > 0, wishStarted(), mineOf().some(x => linesOf(x).length), POSTERS2.length > 0, printedAny()];
-const STEP_ROW = [1, null, null, 2, 3, 4, 5];
+const STEP_ROW = [1, null, null, 2, 2, 3, 3];
 let stepsWas = null;
 function stepsCheck() {
   let now; try { now = STEPS(); } catch (e) { return; }
@@ -398,7 +395,7 @@ function quickHTML() {
     + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
     + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder=" ">${esc(QP.t)}</textarea><i class="qp-caret" aria-hidden="true"></i>`
     + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
-    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>PRINT TO ${esc(String(p ? p.n : 'NOVEL.GLOBAL').toUpperCase())}</b></button></section>`;
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>PRINT MESSAGE</b></button></section>`;
 }
 /* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
 async function quickCanvas(W = 512) {
@@ -449,21 +446,21 @@ function showGallery(on) {
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
   const p = ps[galleryAt];
   g.innerHTML = `<figure class="gl-hero"><img src="${p.img}" alt=""><figcaption class="mono">№ ${String(ps.length - galleryAt).padStart(3, '0')} · ${fmtStamp(p.at)}</figcaption></figure>`
-    + `<div class="gl-acts"><button type="button" class="key" data-gl="tarot" aria-label="As a card" data-tip="As a card">${icon('stories')}</button><button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
+    + `<div class="gl-acts"><button type="button" class="key" data-gl="card" aria-label="As a card" data-tip="As a card">${icon('stories')}</button><button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
     + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg"><img src="${x.img}" alt=""></button></li>`).join('')}</ol>` : '');
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
   const t = e.target.closest('[data-gl-i]'); if (t) { galleryAt = +t.dataset.glI; showGallery(true); tick(1500); return; }
   const a = e.target.closest('[data-gl]'); const p = POSTERS2[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
-  if (a.dataset.gl === 'tarot') openTarot(p.id);
+  if (a.dataset.gl === 'card') openPosterCard(p.id);
   if (a.dataset.gl === 'png') { const l = document.createElement('a'); l.href = p.img; l.download = `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return quickHTML() + wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return quickHTML() + wishesSection() + deckHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
