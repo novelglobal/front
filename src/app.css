@@ -2028,3 +2028,159 @@ html.night{--clear:rgba(214,236,236,.06);--clear-on:rgba(214,236,236,.12);--rim:
 html.night .eq-c i.t4,html.night .eq-c i.up{background:#2A0604!important;box-shadow:inset 0 0 0 1px rgba(255,90,31,.6)!important}
 /* the strip on a phone: the desk scrolls under a finger, with a margin either side to hold */
 @media (max-width:759px){#zine .desk{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y pan-x;padding-left:0;padding-right:0}#zine .upper-canvas{touch-action:pan-y pan-x!important}}
+
+/* ═════════ alpha 0.2: direct, single-minded, made by hand. The jellyfish's colour, never quite green and never quite blue, is
+   the one thing that moves: the steps met, the loop playing, the message key. Paper keys for the layers; the months read as a
+   short piece; the Country on the radio, fading; the steps a line of dots ═════════ */
+:root{--paper-k:#F8F6F0;--ink-k:#1B1D1C;--grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .08 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+html.night{--paper-k:#111819;--ink-k:#D7E2E2}
+@keyframes shim{0%,100%{color:#0E8F84}50%{color:#2462C2}}
+@keyframes shim-n{0%,100%{color:#6FE3CF}50%{color:#8DB8FF}}
+@keyframes shimbg{0%,100%{background-color:#0E8F84}50%{background-color:#2462C2}}
+@keyframes shimbg-n{0%,100%{background-color:#6FE3CF}50%{background-color:#8DB8FF}}
+
+/* the steps: one thin line, a dot for each, the words small under them. Not a box, not a feature: a quiet line at the foot */
+.steps{list-style:none;margin:22px 0 2px;padding:0;display:grid;grid-template-columns:repeat(3,1fr);color:var(--navy)}
+.st{position:relative;min-width:0}
+.st::before{content:"";position:absolute;top:6px;left:calc(-50% + 12px);right:calc(50% + 12px);height:1px;background:currentColor;opacity:.2}
+.st:first-child::before{display:none}
+.st.done::before,.st.now::before{opacity:.5}
+.st-b{display:grid;justify-items:center;gap:8px;width:100%;padding:0 4px;background:none;border:0;border-radius:0;box-shadow:none;color:inherit;font:inherit;text-align:center;cursor:default}
+button.st-b{cursor:pointer}
+.st-d{display:block;width:13px;height:13px;border-radius:50%;box-shadow:inset 0 0 0 1.5px currentColor;opacity:.35;transition:opacity .4s}
+.st-w{font:400 11px/1.3 var(--sans);letter-spacing:.01em;opacity:.5;text-transform:none}
+.st.part .st-d{opacity:.85;background:radial-gradient(circle,currentColor 0 2.2px,transparent 2.8px)}
+.st.now .st-d{opacity:1;animation:stbreathe 2.6s ease-in-out infinite}
+.st.now .st-w{opacity:1}
+.st.done .st-d{opacity:1;box-shadow:none;background-color:#0E8F84;animation:shimbg 9s ease-in-out infinite}
+html.night .st.done .st-d{background-color:#6FE3CF;animation-name:shimbg-n}
+.st.done .st-w{opacity:.42}
+button.st-b:hover .st-w{opacity:1;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.st.now button[data-share-mix] .st-w{color:var(--in);font-weight:600}
+@keyframes stbreathe{0%,100%{box-shadow:inset 0 0 0 1.5px currentColor,0 0 0 0 rgba(14,143,132,0)}50%{box-shadow:inset 0 0 0 1.5px currentColor,0 0 0 5px rgba(14,143,132,.16)}}
+.st.won .st-d{animation:stwon .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes stwon{0%{transform:scale(2.4)}100%{transform:scale(1)}}
+.st-go{display:block;margin:14px auto 0;padding:6px 14px;background:none;border:0;color:var(--in);font:600 12px/1 var(--sans);letter-spacing:.04em;cursor:pointer}
+.st-go:hover{text-decoration:underline;text-underline-offset:3px}
+@media (prefers-reduced-motion:reduce){.st.now .st-d,.st.done .st-d,.st.won .st-d{animation:none}.st.done .st-d{background:#0E8F84}}
+
+/* a month read: a short piece, set as a page of a magazine is, under a rule */
+.eq-read{margin:16px 0 6px!important;padding:14px 0 2px!important;background:none!important;color:var(--navy)!important;border:0!important;border-top:1px solid var(--navy)!important;border-radius:0!important;box-shadow:none!important}
+.eq-read.d3,.eq-read.d4{border-top-width:2px!important}
+.eq-read .eq-p{margin:0;font:400 15px/1.62 'Playfair Display',Georgia,'Times New Roman',serif;letter-spacing:.003em;color:var(--navy);text-wrap:pretty}
+
+/* the Country: on the radio only, fading slowly over a minute; it comes back under the pointer */
+.ctry{animation:ctryfade 60s ease-in forwards}
+.ctry:hover,.ctry:focus-within{animation:none;opacity:1}
+@keyframes ctryfade{0%,6%{opacity:1}100%{opacity:.12}}
+
+/* beside play: loop, and link. Paper keys, their names small under them; the loop shimmers while it plays */
+.hp-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;margin:4px 0 6px}
+.hp-row .hero-play{margin:16px 0 18px}
+.hp-k{position:relative;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background-color:var(--paper-k);background-image:var(--grain);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-k) 55%,transparent);color:var(--ink-k);cursor:pointer;transition:transform .15s}
+.hp-k:active{transform:scale(.94)}
+.hp-k .i{width:18px;height:18px}
+.hp-k small{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);font:500 9px/1 var(--mono);letter-spacing:.08em;color:var(--navy);opacity:.6;white-space:nowrap}
+.hp-k.on{color:#FFFFFF;box-shadow:none;background-color:#0E8F84;animation:shimbg 9s ease-in-out infinite}
+html.night .hp-k.on{color:#06090B;background-color:#6FE3CF;animation-name:shimbg-n}
+.hp-k.on small{opacity:1}
+.hero-play.cue{animation:cue 1.4s ease-in-out 5}
+@keyframes cue{50%{transform:scale(1.07)}}
+@media (prefers-reduced-motion:reduce){.hp-k.on{animation:none;background-color:#0E8F84}.hero-play.cue{animation:none}}
+
+/* the layers: keys as cut paper, matte and flat, an ink edge and the mark in ink; on, a chip of the layer's own colour. The
+   meter a row of printed ticks */
+.lyr[data-lyr="life"]{--lm:#A3D8CA}.lyr[data-lyr="community"]{--lm:#DED5C4}.lyr[data-lyr="water"]{--lm:#AECBE3}.lyr[data-lyr="pollution"]{--lm:#F2AD8A}
+html.night .lyr[data-lyr="life"]{--lm:#2E685F}html.night .lyr[data-lyr="community"]{--lm:#575143}html.night .lyr[data-lyr="water"]{--lm:#2D4F69}html.night .lyr[data-lyr="pollution"]{--lm:#7B391D}
+.lyrs .lyr .lyr-k,.lyrs .lyr.on .lyr-k{border:0!important;border-radius:3px!important;background-color:var(--paper-k)!important;background-image:var(--grain)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-k) 60%,transparent)!important;color:var(--ink-k)!important;animation:none!important}
+.lyrs .lyr .lyr-k .i{filter:none!important}
+.lyrs .lyr.on .lyr-k{background-color:var(--lm)!important;box-shadow:inset 0 0 0 1px var(--ink-k)!important}
+.lyrs .lyr:nth-child(1) .lyr-k{transform:rotate(-.5deg)}.lyrs .lyr:nth-child(2) .lyr-k{transform:rotate(.4deg)}.lyrs .lyr:nth-child(3) .lyr-k{transform:rotate(-.3deg)}.lyrs .lyr:nth-child(4) .lyr-k{transform:rotate(.5deg)}
+.lyrs .lyr .lyr-k:active{transform:translateY(1px)}
+.lyrs .lyr-m{border:0!important;border-radius:3px!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-k) 30%,transparent)!important;color:var(--ink-k)!important}
+.lyrs .lyr .lv{gap:4px}
+.lyrs .lyr .lv i{border-radius:0!important;background:color-mix(in srgb,var(--ink-k) 13%,transparent)!important;transform:none!important}
+.lyrs .lyr .lv i.hit{background:var(--ink-k)!important}
+.lyrs .lyr-v i{border-radius:0!important;background:color-mix(in srgb,var(--ink-k) 20%,transparent)!important}
+.lyrs .lyr-v[data-v="0"] i:nth-child(1),.lyrs .lyr-v[data-v="1"] i:nth-child(-n+2),.lyrs .lyr-v[data-v="2"] i{background:var(--ink-k)!important}
+
+/* the message key: its words lowercase, in the name's own type, in the jellyfish's colour */
+#sec-quick .qp-go b{font:600 16px/1 var(--sans)!important;letter-spacing:-.01em!important;text-transform:none!important;color:#0E8F84;animation:shim 9s ease-in-out infinite}
+html.night #sec-quick .qp-go b{color:#6FE3CF;animation-name:shim-n}
+#sec-quick .qp-go:hover{box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px #1C78A8,0 8px 22px rgba(0,0,0,.16)!important}
+@media (prefers-reduced-motion:reduce){#sec-quick .qp-go b{animation:none;color:#167E9A}}
+
+/* the print shop: every key says what it is for, small, under its mark; the looks shown on the same small picture; the
+   stickers in drawers, shut until pressed */
+.seg.keys .key.cap-k{flex-direction:column;gap:5px;height:auto!important;min-height:56px;padding:8px 2px 7px}
+.cap{display:block;font:500 8.5px/1 var(--mono);letter-spacing:.06em;text-transform:lowercase;opacity:.72;white-space:nowrap}
+.cap2{display:block;font:400 9px/1.15 var(--sans);opacity:.55;white-space:nowrap}
+.ph-k.cap-k .ph-sw{display:block;width:100%;max-width:60px;height:auto;aspect-ratio:84/48;background:none;image-rendering:pixelated;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.seg.outs .key.cap-k{height:auto!important;min-height:52px}
+.seg.outs .cap{white-space:normal;text-align:center;line-height:1.15}
+.seg.packs{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(46px,1fr))!important;gap:6px}
+.seg.packs .pk-k.cap-k{display:grid;justify-items:center;align-content:center;gap:4px;aspect-ratio:auto;padding:7px 0 6px}
+.seg.packs .pk-k img{width:28px;height:28px}
+#sec-photo{margin-top:14px}
+
+/* a card turned over: large, between the poster it came from and the constellation it belongs to; keys with their words */
+.card-view{overflow:auto;padding:24px 16px}
+.card-view .tv-in{gap:18px;max-width:min(94vw,1000px)}
+.tv-spread{display:flex;align-items:center;justify-content:center;gap:clamp(14px,3vw,40px)}
+.tv-side{margin:0;display:grid;justify-items:center;gap:10px}
+.tv-side img{display:block;max-height:min(46vh,380px);max-width:min(26vw,280px);object-fit:contain;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.tv-poster img{background:#FFFFFF}
+.tv-fig img{padding:12px;background:rgba(10,16,18,.7);box-shadow:inset 0 0 0 1px rgba(169,240,236,.22)}
+.tv-side figcaption{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#9FB3B8;max-width:240px;text-align:center}
+.tv-mid .tv-card{display:block}
+.tv-acts{gap:10px;flex-wrap:wrap;justify-content:center}
+.tv-k{display:grid;justify-items:center;gap:3px;min-width:104px;padding:10px 14px 9px;border:0;border-radius:4px;background:rgba(244,243,238,.08);box-shadow:inset 0 0 0 1px rgba(220,231,234,.22);color:#E6EEF0;cursor:pointer}
+.tv-k .i{width:18px;height:18px}
+.tv-k b{font:600 11.5px/1.15 var(--sans);letter-spacing:.01em}
+.tv-k small{font:400 9.5px/1.2 var(--sans);opacity:.6}
+.tv-k:hover{background:rgba(244,243,238,.16)}
+.link-view .lv-art{display:block;width:min(80vw,360px);height:auto;box-shadow:0 30px 60px rgba(0,0,0,.6)}
+@media (max-width:759px){.tv-spread{flex-wrap:wrap}.tv-mid{order:-1;flex-basis:100%;display:flex;justify-content:center}.tv-card{width:168px!important;height:280px!important}.tv-side img{max-width:40vw;max-height:24vh}.tv-k{min-width:88px;padding:9px 10px 8px}}
+
+/* the W.I.S.H.: an archival submission form. The letters in boxes, PRAXIS POEM, the stamp; then ruled lines, each with its
+   letter in a margin column. No marks, no numbers */
+.rec-form{gap:0!important}
+.rec-form .wf-h{margin-bottom:14px}
+.rec-form .wf-l{grid-template-columns:30px 1fr!important;gap:0!important;align-items:stretch!important;border-bottom:1px solid rgba(22,20,15,.38)}
+.rec-form .wf-m{display:grid;place-items:center;font:600 11px/1 var(--mono);letter-spacing:.06em;color:#16140F;border-right:1px solid rgba(22,20,15,.38)}
+.rec-form .wf-l input{height:38px;padding-left:12px!important;border-bottom:0!important}
+.rec-form .wf-for{border-bottom:0;margin-bottom:12px;align-items:center!important}
+.rec-form .wf-for .wf-m{border-right:0;justify-items:start}
+.rec-form .wl-w{border-top:1px solid rgba(22,20,15,.6)}
+.rec-form .by{margin-top:10px;border-top:0}
+.rec-form .send-b{margin-top:16px}
+
+/* a row that scrolls sideways fades where there is more of it */
+#board .tools.fade-r,#zine .tools.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
+#board .tools.fade-l,#zine .tools.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px);mask-image:linear-gradient(90deg,transparent,#000 48px)}
+#board .tools.fade-l.fade-r,#zine .tools.fade-l.fade-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,transparent,#000 48px,#000 calc(100% - 48px),transparent)}
+
+/* the strip in the press: centred while it fits, and when it is wider than the desk every part of it can be scrolled to */
+#zine .desk{display:block!important}
+#zine .desk .canvas-container{margin:0 auto!important}
+
+@media (max-width:759px){
+  /* the tab bar, smaller: still a full finger's width and height to each tab */
+  :root{--dock:calc(52px + var(--bot))}
+  .rail{padding:3px 8px calc(var(--bot) + 3px)!important}
+  .tab,.tab.apart{height:46px!important;grid-template-rows:22px 11px!important;gap:1px!important}
+  .tab .i{width:18px!important;height:18px!important}
+  .tab-s{font-size:8px!important;letter-spacing:.08em}
+  /* the information corner (sources, the build, the approval page): above the page's bar, never under it */
+  .maplibregl-ctrl-bottom-left{bottom:calc(var(--dock) + 44px)!important}
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0 0 8px 10px!important}
+  .maplibregl-ctrl-attrib.maplibregl-compact-show{max-width:calc(100vw - 20px)}
+  .eq-read .eq-p{font-size:15.5px}
+}
+/* the loops kept: four to a row, each its picture, its place and its day */
+.loops-l{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.loop-b{display:grid;gap:4px;width:100%;padding:0;background:none;border:0;color:var(--navy);text-align:left;cursor:pointer}
+.loop-b img{display:block;width:100%;aspect-ratio:600/820;background:#FFFFFF;box-shadow:0 4px 12px rgba(0,0,0,.18);transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+.loop-b:hover img{transform:translateY(-3px)}
+.loop-b span{font:500 10px/1.2 var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loop-b small{font-size:8.5px;opacity:.55}

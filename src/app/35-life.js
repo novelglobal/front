@@ -166,10 +166,10 @@ const life = (() => {
     /* WATER: each drinking fountain and body of water the hand passes, a drop */
     if (TRK.on.water) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
     /* the constellations in the radar join the mix: each plays as the hand passes its life */
-    if (S.radio && prefs.sound) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
+    if (S.radio && prefs.sound && !LOOP.on) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
     /* the trail: as it crosses more life, the drone under it swells */
-    if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }
+    if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 && !LOOP.on ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }
   }
   let droneT = 0, pings = [];
   let scanSave = 0, fiveT = 0;
@@ -321,7 +321,7 @@ const life = (() => {
     /* the radar's rim: a hairline and a notch at north */
     if (placed() && ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
-      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
+      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; if (!darkNow() && !quiet) { ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(4,34,40,.5)'; ctx.lineWidth = 3; ctx.stroke(); } ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
       const [nx, ny] = ringPts[0]; const ux = (nx - cp.x) / (Math.hypot(nx - cp.x, ny - cp.y) || 1), uy = (ny - cp.y) / (Math.hypot(nx - cp.x, ny - cp.y) || 1);
       ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
       ctx.restore();
@@ -341,12 +341,12 @@ const life = (() => {
   function glass(ctx) {
     const cp = map.project([S.scan.lng, S.scan.lat]); const R = Math.hypot(ringPts[0][0] - cp.x, ringPts[0][1] - cp.y); if (!(R > 8)) return;
     const ring = f => { ctx.beginPath(); ringPts.forEach(([x, y], i) => { const px = cp.x + (x - cp.x) * f, py = cp.y + (y - cp.y) * f; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); };
-    const hot = heatAhead(); ctx.save(); ring(1); ctx.clip();
-    ctx.fillStyle = hot >= 2 ? `rgba(255,${hot >= 4 ? 70 : 110},30,${(0.05 + hot * 0.035).toFixed(3)})` : 'rgba(150,225,230,.075)'; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
+    const hot = heatAhead(), day = !darkNow(); ctx.save(); ring(1); ctx.clip();
+    ctx.fillStyle = hot >= 2 ? `rgba(255,${hot >= 4 ? 70 : 110},30,${(0.05 + hot * 0.035).toFixed(3)})` : day ? 'rgba(8,74,84,.13)' : 'rgba(150,225,230,.075)'; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
     /* the bell's ridges, faint, and a band of lighter water along its upper edge */
     ctx.lineWidth = 1; for (const f of [0.34, 0.58, 0.8]) { ring(f); ctx.strokeStyle = hot >= 2 ? 'rgba(255,170,120,.07)' : 'rgba(200,245,245,.06)'; ctx.stroke(); }
     ctx.beginPath(); ctx.arc(cp.x, cp.y, R * 0.93, Math.PI * 1.08, Math.PI * 1.62); ctx.lineWidth = Math.max(2, R * 0.03); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(235,252,252,.10)'; ctx.stroke();
-    ring(0.975); ctx.lineWidth = 1; ctx.strokeStyle = hot >= 2 ? `rgba(255,120,60,${(0.2 + hot * 0.08).toFixed(2)})` : 'rgba(210,245,245,.24)'; ctx.stroke();
+    ring(0.975); ctx.lineWidth = 1; ctx.strokeStyle = hot >= 2 ? `rgba(255,120,60,${(0.2 + hot * 0.08).toFixed(2)})` : day ? 'rgba(4,40,48,.3)' : 'rgba(210,245,245,.24)'; ctx.stroke();
     ctx.restore();
     /* the centre: clear glass, a lens to press, not a colour */
     const lr = Math.max(10, R * 0.07); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU);
@@ -364,23 +364,36 @@ const life = (() => {
     else ctx.drawImage(sp.cv, x - sp.size / 2, y - sp.size / 2, sp.size, sp.size);
     ctx.globalAlpha = 1;
   }
-  /* the hand and its wake, drawn on the ground */
-  function hand(ctx) {
+  /* the jellyfish's own colour, never quite green and never quite blue: a slow drift between the two. Deep ink by day, light by night */
+  const SHIM = { day: [[0, 112, 104], [18, 78, 170]], night: [[150, 242, 222], [146, 196, 255]] };
+  const shim = (now, a) => { const [g, b] = SHIM[darkNow() ? 'night' : 'day']; const k = (Math.sin(now / 2600) + 1) / 2; return `rgba(${g.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')},${Math.max(0, a).toFixed(3)})`; };
+  /* the hand and its wake, drawn on the ground. With motion off it stands still where it is, so the radar still reads as one;
+     while a loop plays it is quiet, and fainter */
+  function hand(ctx, still) {
     const c = map.project([S.scan.lng, S.scan.lat]); const at = b => { const [la, ln] = dest(S.scan.lat, S.scan.lng, S.scan.r, b); return map.project([ln, la]); };
+    const now = performance.now(), day = !darkNow(), A = (day ? 0.3 : 0.19) * (LOOP.on ? 0.5 : 1);
     ctx.save();
     for (let i = 0; i < 14; i++) {
       const b1 = sweepB - i * 3, b0 = b1 - 3; const p0 = at(b0), p1 = at((b0 + b1) / 2), p2 = at(b1);
       ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.closePath();
-      ctx.fillStyle = `rgba(190,245,238,${(0.17 * Math.pow(1 - i / 14, 1.7)).toFixed(3)})`; ctx.fill();
+      ctx.fillStyle = shim(now, A * Math.pow(1 - i / 14, 1.7)); ctx.fill();
     }
-    const tip = at(sweepB); ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
+    const tip = at(sweepB);
+    if (day) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = shim(now, 0.85); ctx.lineWidth = 3.2; ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
     const Rp = Math.hypot(tip.x - c.x, tip.y - c.y);
-    if (Rp > 20) { const hot = heatAhead(); const per = 7000 / tempo(); for (let k = 0; k < 2; k++) { const f = ((performance.now() + k * per / 2) % per) / per; ctx.beginPath(); ctx.arc(c.x, c.y, Rp * (0.12 + f * 0.86), 0, TAU); ctx.lineWidth = 1 + (1 - f) * 2; ctx.strokeStyle = hot >= 2 ? `rgba(255,140,80,${(0.16 * (1 - f)).toFixed(3)})` : `rgba(200,245,245,${(0.12 * (1 - f)).toFixed(3)})`; ctx.stroke(); } }
+    if (Rp > 20 && !still) { const hot = heatAhead(); const per = 7000 / tempo(); for (let k = 0; k < 2; k++) { const f = ((now + k * per / 2) % per) / per; ctx.beginPath(); ctx.arc(c.x, c.y, Rp * (0.12 + f * 0.86), 0, TAU); ctx.lineWidth = 1 + (1 - f) * 2; ctx.strokeStyle = hot >= 2 ? `rgba(255,140,80,${(0.16 * (1 - f)).toFixed(3)})` : shim(now, (day ? 0.3 : 0.12) * (1 - f)); ctx.stroke(); } }
     if (Rp > 8 && S.mode !== 'ping') for (const off of [62, 242]) {
       ctx.beginPath(); ctx.moveTo(c.x, c.y); for (let d = -24; d <= 24; d += 4) { const p = at(sweepB + off + d); ctx.lineTo(p.x, p.y); } ctx.closePath();
       const sh = ctx.createRadialGradient(c.x, c.y, Rp * 0.1, c.x, c.y, Rp); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(255,255,255,.06)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = sh; ctx.fill();
     }
     ctx.restore();
+  }
+  function loopRing(ctx, now, still) {
+    const w = LOOP.m.where; const pts = ringOf(w.lat, w.lng, w.r, 64); const c = map.project([w.lng, w.lat]); const [la, ln] = dest(w.lat, w.lng, w.r, loopBearing()); const p = map.project([ln, la]);
+    ctx.save(); ctx.lineWidth = 1.6; ctx.strokeStyle = shim(now, 0.95); ctx.setLineDash([5, 6]); ctx.beginPath(); poly(ctx, pts); ctx.stroke(); ctx.setLineDash([]);
+    if (!still) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, TAU); ctx.fillStyle = shim(now, 1); ctx.fill(); ctx.restore();
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
@@ -461,7 +474,8 @@ const life = (() => {
     const t = now / 1000, still = reduced(); const amp = clamp((zoomNow() - 12) / 3, 0.35, 1); const cellOpen = S.mode === 'ping';
     /* a lost animal's search area, when search areas are on */
     if (prefs.areas && S.mode !== 'tribe') for (const it of movers) { if (!it.radar || !shown(it)) continue; const R = it.radar / metresPerPixel(it.lat); if (off(it.x, it.y, R)) continue; M.radar(ctx, it.x, it.y, R, still ? 0 : t, it.phase); }
-    if (placed() && S.radio && S.mode !== 'place' && !still) hand(ctx);
+    if (placed() && S.radio && S.mode !== 'place') hand(ctx, still);
+    if (LOOP.on && LOOP.m) loopRing(ctx, now, still);
     strings.drawSaved(ctx, now);
     places(ctx); signals(ctx, now, still); posters(ctx);
     /* where something sounded: a ring opening from it */
@@ -501,7 +515,7 @@ const life = (() => {
     if (dirty) { dirty = false; project(); drawBase(); fxDirty = true; }
     sweep(now);
     const selecting = !!selT && !reduced() && now - selT < 1400;
-    const animating = !reduced() && (running() || movers.length > 0 || selecting || S.mode === 'place' || !!ghost || strings.busy(now) || songFx.some(n => now - n.at < 800));
+    const animating = !reduced() && (running() || LOOP.on || movers.length > 0 || selecting || S.mode === 'place' || !!ghost || strings.busy(now) || songFx.some(n => now - n.at < 800));
     if (fxDirty || (animating && now - lastFx >= 1000 / 30 - 2)) { fxDirty = false; lastFx = now; drawFx(now); }
   }
   /* a touch on empty ground inside the radar offers a new record there */
