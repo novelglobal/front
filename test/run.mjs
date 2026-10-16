@@ -374,6 +374,15 @@ if (run('portfolio')) try {
   const one = await page.evaluate(() => ({ h1: document.querySelector('article h1').textContent, heads: [...document.querySelectorAll('article .body h3')].map(h => h.textContent), paras: document.querySelectorAll('article .body p').length, links: [...document.querySelectorAll('article .links a')].map(a => a.textContent), scripts: document.querySelectorAll('article script').length }));
   check('portfolio.html, novel.global: the work by category as a list with counts; a post on its own address, its body set as text', idx.home === 'novel.global' && idx.title === 'novel.global' && idx.cats.join() === 'CASE STUDY 1' && idx.rows === 1 && one.h1 === 'Fan night at Kines' && one.heads.join() === 'What worked' && one.paras === 2 && one.links.join() === 'example.org/fans' && !one.scripts, JSON.stringify({ idx, one }));
   await shot(page, '04-portfolio-post.png');
+  /* published by hand on the approval page, as it is done for real: PUBLISH, and the post is listed for everyone */
+  await page.goto('https://oan.test/admin.html'); await sleep(800);
+  await page.fill('#key', ADMIN_KEY); await page.click('#gate button[type="submit"]'); await sleep(900);
+  await page.click('#tabs [data-tab="posts"]'); await sleep(700);
+  await page.click('button:has-text("NEW POST")'); await sleep(500);
+  await page.fill('input[name="title"]', 'Published by hand'); await page.fill('textarea[name="body"]', 'One paragraph.');
+  await page.click('form.ed button.on'); await sleep(1200);
+  const byHand = await page.evaluate(async () => ({ note: (document.querySelector('.ed .note') || {}).textContent || '', list: ((await (await fetch('/api/posts', { cache: 'no-store' })).json()).posts || []).map(p => p.title) }));
+  check('a post written and published by hand on the approval page is listed for everyone, and the page says it is live', /LIVE AT/.test(byHand.note) && byHand.list.includes('Published by hand'), JSON.stringify(byHand));
   for (const x of (await admin('posts')).posts) await admin(`posts/${x.id}`, { action: 'delete' });
   await ctx.close();
 } catch (e) { results.push(`FAIL  section portfolio: ${e.message.split('\n')[0]}`); }
