@@ -2026,3 +2026,5 @@ html.night{--clear:rgba(214,236,236,.06);--clear-on:rgba(214,236,236,.12);--rim:
    deepest ember, its edge lit so it reads against the dark */
 .eq-c i.up{background:var(--deg4)!important;opacity:1!important;box-shadow:none!important}
 html.night .eq-c i.t4,html.night .eq-c i.up{background:#2A0604!important;box-shadow:inset 0 0 0 1px rgba(255,90,31,.6)!important}
+/* the strip on a phone: the desk scrolls under a finger, with a margin either side to hold */
+@media (max-width:759px){#zine .desk{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y pan-x;padding-left:0;padding-right:0}#zine .upper-canvas{touch-action:pan-y pan-x!important}}

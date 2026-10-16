@@ -125,7 +125,7 @@ async function showZine(on) {
   const host = $('#zine'); host.hidden = !on; if (!on) return null;
   zineTools(); const f = await loadFabric().catch(() => null); if (!f) return null;
   const F = FORMATS[PRESS.fmt]; host.dataset.fmt = PRESS.fmt;
-  if (!zc) { zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true }); zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); }); }
+  if (!zc) { zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true, allowTouchScrolling: true, selection: !phone() });   /* on a phone a drag on bare paper scrolls the strip; on a piece, it moves the piece */ zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); }); }
   if (zFmt !== PRESS.fmt) {
     zFmt = PRESS.fmt; zc.clear(); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); ZHIST.length = 0;
     const kept = store.get(zKey(), null); zc.setWidth(F.w); zc.setHeight((kept && kept.h) || F.h || 520);
