@@ -15,8 +15,23 @@ drawThread();
 rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i); if (i === S.view && S.open && !S.mode) { setOpen(false); return; } setView(i); });
 rail.addEventListener('keydown', e => { const b = e.target.closest('.tab'); if (!b) return; const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return; e.preventDefault(); const all = $$('#rail .tab'); all[(all.indexOf(b) + d + all.length) % all.length].focus(); });
 new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'));
+/* ───────── on a phone, one pane at a time: the dock holds the four pages and two keys, what the page works on (the map,
+   the board, the press, the wall) and the page itself ───────── */
+const MAIN_IC = { radio: 'radar', signals: 'base', signs: 'receipt', portfolio: 'stories' };
+let pane = 'page';
+function syncDock() {
+  const m = $('#dock [data-pane="main"]'), pg = $('#dock [data-pane="page"]'); if (!m) return; const shown = S.open ? pane : 'main';
+  m.innerHTML = icon(MAIN_IC[VIEWS[S.view].k] || 'radar'); pg.innerHTML = icon('note');
+  m.setAttribute('aria-pressed', String(shown === 'main')); pg.setAttribute('aria-pressed', String(shown === 'page'));
+  document.body.classList.toggle('pane-main', shown === 'main'); document.body.classList.toggle('pane-page', shown === 'page');
+}
+function setPane(p) {
+  pane = p; if (p === 'page' && !S.open) setOpen(true); else syncDock();
+  setTimeout(() => { if (S.mapReady) map.resize(); if (p === 'main' && S.view === 2) fitZ(); }, 380);
+}
+$('#dock').addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (!b) return; setPane(b.dataset.pane); tick(b.dataset.pane === 'main' ? 1200 : 1500); });
 function setOpen(on) {
-  S.open = on; document.body.classList.toggle('shut', !on); buzz(5);
+  S.open = on; document.body.classList.toggle('shut', !on); buzz(5); syncDock();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
   if (!on) { stopHeroes(); showBoard(false); showZine(false); showGallery(false); document.body.classList.remove('off-map'); if (S.mode) closeRecord('view'); }
   else document.body.classList.toggle('off-map', S.view !== 0);
@@ -54,7 +69,7 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
-  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k;
+  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock();
   if (S.mode && !keep) closeRecord('view');
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
@@ -165,7 +180,7 @@ const EQ_SEGS = 10, EQ_LIT = [2, 4, 6, 8, 10];
 const segTone = i => (i < 3 ? 0 : i < 5 ? 1 : i < 7 ? 2 : i < 9 ? 3 : 4);
 function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
-  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
+  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = Mo.lv >= 4 ? '<i class="l t4 up"></i>'.repeat(3) : ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
     return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s">${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
@@ -267,13 +282,25 @@ function checklistHTML() {
 /* the lockup: the muse and the name. Tapped, the muse pulses and rings; tapped five times quickly, the water fills with them */
 const lockup = () => `<header class="lockup"><button type="button" class="lk-mark" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button><b class="lk-n">novel.global</b></header>`;
 let museN = 0, museT = 0;
-$('#view').addEventListener('click', e => { const b = e.target.closest('[data-muse]'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); snd.jelly(0); museN = Date.now() - museT < 900 ? museN + 1 : 1; museT = Date.now(); if (museN >= 5) { museN = 0; dispatchEvent(new CustomEvent('da:muse')); } });
+document.addEventListener('click', e => { const b = e.target.closest('[data-muse]'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); snd.jelly(0); museN = Date.now() - museT < 900 ? museN + 1 : 1; museT = Date.now(); if (museN >= 5) { museN = 0; dispatchEvent(new CustomEvent('da:muse')); } });
+/* the head of every page: the muse and the name, level with the first key of the rail; the Country on the right */
+const COUNTRIES = (CONFIG.COUNTRIES && CONFIG.COUNTRIES.length) ? CONFIG.COUNTRIES : [{ id: 'here', n: CONFIG.COUNTRY, s: CONFIG.SOVEREIGNTY || '' }];
+const countryNow = () => COUNTRIES.find(c => c.id === prefs.ctry) || COUNTRIES[0];
+const countryBar = () => { const c = countryNow(); return `<div class="ctry"><label class="ct-sel"><select id="ctry" aria-label="Country">${COUNTRIES.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}</select><span class="ct-n">${esc(c.n)}</span><span class="ct-s">${esc(c.s)}</span>${COUNTRIES.length > 1 ? icon('next', 'sm') : ''}</label></div>`; };
+function headBar() { const h = $('#ph'); if (h) h.innerHTML = lockup() + countryBar(); }
+document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; prefs.ctry = e.target.value; savePrefs(); headBar(); });
+/* the printers online, as a pager would say it: its light, its name, a buzz when one comes on */
+const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
+function pagerHTML() {
+  const on = printersOn();
+  return `<div class="pager${on.length ? ' on' : ''}" role="status" data-tip="${on.length ? 'Printers online' : 'No printer online'}"><i class="pg-led"></i><span class="pg-lcd mono">${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : '— — —'}</span>${on.length ? `<i class="pg-buzz">${icon('print', 'sm')}</i>` : ''}</div>`;
+}
 function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return lockup() + `<section class="band" id="sec-heat">
-      ${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in"><i class="sun">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
+  return `<section class="band" id="sec-heat">
+      ${pagerHTML()}${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in"><i class="sun">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
       <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
       ${layersHTML()}
@@ -339,6 +366,56 @@ async function loadPosts() {
 }
 const postsSection = () => (POSTS.length ? `<section class="sec" id="sec-work"><div class="lab-row">${labI('out', 'Work', POSTS.length)}<a class="pill" href="portfolio.html" target="_blank" rel="noopener">${icon('out', 'sm')}NOVEL.GLOBAL</a></div><ol class="sigs list">${POSTS.slice(0, 12).map(x => `<li><a class="sig-line" href="portfolio.html#${encodeURIComponent(x.slug)}" target="_blank" rel="noopener">${x.cover ? `<img class="art" src="/api/posts/${encodeURIComponent(x.slug)}/cover" alt="" loading="lazy">` : `<span class="art mark">${icon('stories')}</span>`}<span class="hl">${esc(x.title)}</span><b class="mono code">${esc(x.cat || 'WORK')}</b></a></li>`).join('')}</ol></section>` : '');
 const postersHero = () => (POSTERS2.length ? `<section class="sec posters-hero" id="sec-posters"><figure class="ph-hero"><img src="${POSTERS2[0].img}" alt=""></figure>${POSTERS2.length > 1 ? `<ol class="ph-more">${POSTERS2.slice(1).map(p => `<li><img src="${p.img}" alt=""></li>`).join('')}</ol>` : ''}</section>` : '');
+/* ───────── the quick print: a blank 80 mm receipt to write on, a photograph if wanted, and one key, the printer. Kept as it is
+   typed (da.quick.v1). Sent as a story would be: it waits on the approval page, and novel.global's printer takes it ───────── */
+const QP = Object.assign({ t: '', img: '', w: 0.8 }, store.get('da.quick.v1', {}));
+const saveQP = debounce(() => store.set('da.quick.v1', QP), 300);
+function quickHTML() {
+  const on = printersOn(); const p = on[0] || MASTER;
+  return `<section class="sec quick" id="sec-quick"><div class="qp-paper">`
+    + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
+    + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder="A note, a list, an idea">${esc(QP.t)}</textarea>`
+    + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>${esc(String(p ? p.n : 'PRINT').toUpperCase())}</b>${icon('print')}</button></section>`;
+}
+/* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
+async function quickCanvas(W = 512) {
+  const k = W / 384, pad = Math.round(16 * k); try { await document.fonts.load('16px "IBM Plex Mono"'); } catch (e) { /* fallback type */ }
+  const T = document.createElement('canvas'); T.width = W; T.height = 5000; const x = T.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, T.height); x.fillStyle = '#000'; x.textBaseline = 'top';
+  let y = pad; if (QP.img) { const im = await loadImage(QP.img, false); const w = Math.round(W * QP.w) & ~7, h = Math.round(w * im.height / im.width); const ph = await bwCanvas(QP.img, w, h, 2); x.drawImage(ph, Math.round((W - w) / 2), y); y += h + pad; }
+  x.font = `500 ${Math.round(17 * k)}px "IBM Plex Mono", monospace`; const lh = Math.round(23 * k);
+  for (const para of String(QP.t || '').split('\n')) { let line = ''; const words = para.split(/(\s+)/); if (!para.trim()) { y += lh; continue; }
+    for (const w of words) { const next = line + w; if (line && x.measureText(next).width > W - pad * 2) { x.fillText(line.trimEnd(), pad, y); y += lh; line = w.trimStart(); } else line = next; } if (line) { x.fillText(line, pad, y); y += lh; } }
+  y += Math.round(8 * k); x.font = `500 ${Math.round(10 * k)}px "IBM Plex Mono", monospace`; x.fillText(fmtStamp(Date.now()), pad, y); y += Math.round(14 * k) + pad;
+  const out = document.createElement('canvas'); out.width = W; out.height = y; const o = out.getContext('2d'); o.drawImage(T, 0, 0);
+  const id = o.getImageData(0, 0, W, y); const d = id.data; for (let i = 0; i < d.length; i += 4) { const v = d[i] < 140 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } o.putImageData(id, 0, 0);
+  return out;
+}
+async function quickPrint(btn) {
+  if (!String(QP.t || '').trim() && !QP.img) { nudge($('#qp-t')); return null; }
+  btn.classList.add('busy');
+  try {
+    const cvs = await quickCanvas(512); const bytes = new Uint8Array([0x1B, 0x40, ...rasterOf(cvs), 0x0A, 0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00]);
+    const at = Date.now(); const first = String(QP.t || '').trim().split('\n')[0].slice(0, 40);
+    const s = { v: 1, code: codeFor(`${at}|note|${S.me.dev}`), at, pin: { id: null, lat: +S.scan.lat.toFixed(3), lng: +S.scan.lng.toFixed(3), n: '', cn: 'NOTE', g: 'paw', place: suburbAt(S.scan.lat, S.scan.lng) }, threat: '', when: '', deg: 0, lines: { w: first, i: '', s: '', h: '' }, nodes: [], edges: [], who: S.me.by || '', note: String(QP.t || '').slice(0, 280) };
+    const v = await directAction(s, MASTER ? MASTER.id : '', bytes); store.set('da.printed.v1', Date.now()); snd.printer(900); toast(v && v.status === 'outbox' ? '…' : '✓'); btn.classList.add('sent'); setTimeout(() => btn.classList.remove('sent'), 1600); return v;
+  } catch (e) { toast('✕'); return null; } finally { btn.classList.remove('busy'); }
+}
+$('#view').addEventListener('input', e => {
+  if (e.target.id === 'qp-t') { QP.t = e.target.value; saveQP(); }
+  if (e.target.id === 'qp-sz') { QP.w = +e.target.value / 100; const im = $('#sec-quick .qp-ph img'); if (im) im.style.width = `${e.target.value}%`; saveQP(); }
+});
+$('#view').addEventListener('change', e => {
+  if (e.target.id !== 'qp-f') return; const fl = e.target.files && e.target.files[0]; if (!fl) return;
+  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    QP.img = c.toDataURL('image/jpeg', 0.82); while (!store.set('da.quick.v1', QP) && QP.img.length > 40000) { QP.img = c.toDataURL('image/jpeg', 0.5); break; } refreshPanel(); tick(1700); }; im.src = rd.result; };
+  rd.readAsDataURL(fl); e.target.value = '';
+});
+$('#view').addEventListener('click', e => {
+  const q = e.target.closest('[data-qp]'); if (!q) return;
+  if (q.dataset.qp === 'rm') { QP.img = ''; store.set('da.quick.v1', QP); refreshPanel(); tick(1100); }
+  if (q.dataset.qp === 'go') quickPrint(q);
+});
 /* the W.I.S.H.es finished here, as filed: their number, the day, what each was for, and the four lines */
 const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length);
   return ws.length ? `<section class="sec wishes" id="sec-wishes"><ol class="filed">${ws.slice(0, 24).map((x, i) => `<li><button type="button" class="filed-b" data-sig="${esc(x.key)}"><span class="fl-h mono"><b>№ ${String(ws.length - i).padStart(3, '0')}</b><span>${esc(x.code)}</span><span>${fmtStamp(x.at)}</span></span>${x.note ? `<span class="fl-for">${esc(x.note.split(' · ')[0])}</span>` : ''}<ol class="fl-l">${WKEYS.map(k => (x.lines || {})[k] ? `<li><b>${k.toUpperCase()}</b>${esc(x.lines[k])}</li>` : '').join('')}</ol></button></li>`).join('')}</ol></section>`
@@ -364,7 +441,7 @@ function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return quickHTML() + wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
@@ -373,7 +450,7 @@ function viewPortfolio() {
     + `<section class="sec tools" id="sec-tools">${labI('guide', 'Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
-      + `</div><div class="docs">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV: the places listed by name']].map(([k, ic, w, tip]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}" data-tip="${esc(w)} · ${esc(tip)}">${icon(ic)}</button>`).join('')}</div>`
+      + `</div><div class="docs dl">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV'], ['blank', 'print', 'BLANK W.I.S.H.', 'PRINT']].map(([k, ic, w, f]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}">${icon(ic)}<span>${esc(w)}</span><small class="mono">${f}</small></button>`).join('')}</div>`
       + packSection()
       + `</section>`
     + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
