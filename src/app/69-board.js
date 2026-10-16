@@ -108,6 +108,31 @@ function photoCard(url, id, x, y, w, to) {
   if (!url || !cv) return; loadImage(url, true).then(im => { const t = document.createElement('canvas'); const k = Math.min(1, 400 / Math.max(im.width, im.height)); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
     window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { if (byId(id)) return; img.set({ left: x, top: y, daId: id, daKind: 'image', stroke: '#FFFFFF', strokeWidth: 6 }); img.scaleToWidth(w); cv.add(img); if (to) joinCards(to, img); cv.renderAll(); saveSoon(); }); }).catch(() => {});
 }
+/* a picture laid on the active board from anywhere: onto the canvas if it is drawn, else into the board as kept */
+async function addToBoard(url, kind = 'receipt', w = 220) {
+  const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
+  if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
+  const kept = boardOf(boardId) || {}; const json = kept.json || { version: '5.3.0', objects: [] }; json.objects = json.objects || [];
+  const n = json.objects.filter(o => o.daKind && o.daKind !== 'link').length;
+  json.objects.push({ type: 'image', version: '5.3.0', originX: 'left', originY: 'top', left: 40 + (n % 4) * 270, top: 40 + Math.floor(n / 4) * 230, width: im.width, height: im.height, scaleX: k, scaleY: k, src: url, crossOrigin: null, daId: id, daKind: kind });
+  store.set('da.board.' + boardId, { v: BOARD_V, json }); return id;
+}
+/* any board as a picture, drawn apart from the page, on white: for the press */
+async function boardImage(id) {
+  const f = await loadFabric().catch(() => null); if (id === boardId && cv) saveBoard(false); const kept = boardOf(id); if (!f || !kept || !kept.json || !(kept.json.objects || []).length) return null;
+  const sc = new f.StaticCanvas(null, { width: 10, height: 10 }); await new Promise(r => sc.loadFromJSON(kept.json, r)); const objs = sc.getObjects(); if (!objs.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
+  const pad = 24, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 1600 / Math.max(W, H)); sc.backgroundColor = '#FFFFFF';
+  const url = sc.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); sc.dispose(); return url;
+}
+/* a constellation as art: its chart over the faint shape of its life, its song as a row of bars, its name */
+function figArt(g, col = '#0C0E0E') {
+  const gl = (g.o && glyphOf(g.o)) || 'paw'; const ks = (g.keys || []).length ? g.keys : ['pin'];
+  const bars = Array.from({ length: 34 }, (_, i) => { const p = partialOf(`${ks[i % ks.length]}|${i}`); return Math.max(2, (3 + (p % 9) * 2.6) * Math.sin(Math.PI * (i + 0.5) / 34)); });
+  const chart = strings.chartOf(g.id, 150).replace('<svg class="chart"', `<svg width="150" height="150" color="${col}"`);
+  const name = String(g.name || '').replace(/[<&>]/g, '').toUpperCase().slice(0, 34);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="250" viewBox="0 0 240 250"><g transform="translate(36 2) scale(10.5)" opacity=".14">${glyphPaths(gl, col)}</g><g transform="translate(45 6)">${chart}</g><g transform="translate(10 188)" fill="${col}">${bars.map((h, i) => `<rect x="${i * 6.4}" y="${-h / 2}" width="3.6" height="${h}" rx="1.8"/>`).join('')}</g><text x="120" y="236" text-anchor="middle" font-family="monospace" font-size="11" letter-spacing="1.5" fill="${col}">${name}</text></svg>`)}`;
+}
 /* ───────── species cards: a life met on the radio, sent here. Its name, its Latin, where, what it needs ───────── */
 const SPECIES = store.get('da.species.v1', []);
 function spOf(o) {
@@ -170,7 +195,7 @@ async function placeAsset(kind, id) {
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; c.add(textCard(f, aid, 'slip', assetText.s(x), p.x, p.y)); }
   if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (!sp) return; const card = textCard(f, aid, 'cell', speciesText(sp), p.x, p.y); c.add(card);
     photoCard(sp.ph, `${aid}:img`, p.x, p.y + card.height + 30, 200, card); }
-  if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; c.add(textCard(f, aid, 'fig', assetText.c(g), p.x, p.y)); }
+  if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; await new Promise(res => f.Image.fromURL(figArt(g, darkNow() ? '#F2F6FF' : '#0C0E0E'), im => { im.set({ left: p.x, top: p.y, daId: aid, daKind: 'fig' }); im.scaleToWidth(220); c.add(im); res(); })); }
   c.setActiveObject(byId(aid)); c.renderAll(); saveBoard(false); snd.tick(1500);
 }
 const assetRow = (kind, id, ic, word) => `<li><button type="button" class="as-b" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="On the board">${ic}<span class="mono">${esc(word)}</span>${icon('plus', 'sm')}</button></li>`;
@@ -252,9 +277,7 @@ $('#board').addEventListener('click', e => { const b = e.target.closest('[data-b
 const INTENT = { climate: ['Heat', 'El Niño', 'Drought', 'Water', 'Shade', 'Smoke', 'Flood', 'Fire'], circular: ['Repair', 'Reuse', 'Share', 'Refill', 'Compost', 'Swap', 'Mend', 'Grow'] };
 function intentOptions() {
   const sps = [...new Map([...SPECIES, ...radiusSpecies(12)].map(sp => [sp.n, sp])).values()].slice(0, 24); const cur = WDRAFT.for || '';
-  const opt = (v, n) => `<option value="${esc(v)}"${cur === v ? ' selected' : ''}>${esc(n)}</option>`;
-  return `<option value="">…</option>` + (sps.length ? `<optgroup label="Species">${sps.map(sp => opt('l:' + sp.n, sp.n)).join('')}</optgroup>` : '')
-    + `<optgroup label="Climate emergency">${INTENT.climate.map(w => opt('c:' + w, w)).join('')}</optgroup><optgroup label="Circular economy">${INTENT.circular.map(w => opt('e:' + w, w)).join('')}</optgroup>`;
+  return [...sps.map(sp => sp.n), ...INTENT.climate, ...INTENT.circular].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by: '' });
 /* each line's sign: what we know (looked for), it would be great (the sun), so let's create (made anew), here is how (by hand) */
@@ -262,7 +285,7 @@ const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
   const no = String(S.signals.filter(x => !x.ex && !x.shared).length + 1).padStart(3, '0');
   return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-no mono" aria-hidden="true">№ ${no}</span><i class="wf-seal" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 54)}</i><div class="wf-h"><span class="wf-keys" aria-label="W.I.S.H." data-tip="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><b class="rnd" aria-hidden="true">R&amp;D</b></div>`
-    + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><select id="wf-for" aria-label="What it is for">${intentOptions()}</select></label>`
+    + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
     + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
     + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
     + `<button type="submit" class="send-b" aria-label="Send the signal" data-tip="Send the signal">${icon('share')}<i class="sb-arrow" aria-hidden="true"></i></button></form>`;
@@ -274,7 +297,7 @@ $('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') re
 async function sendSignal() {
   const L = Object.fromEntries(WKEYS.map(k => [k, String(($('#wf-' + k) || {}).value || '').trim()]));
   if (!WKEYS.some(k => L[k])) { nudge($('#wf-w')); return null; }
-  const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || ''); const forN = fr.slice(2); const fsp = fr[0] === 'l' ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n === forN) : null;
+  const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || '').trim(); const forN = fr.replace(/^[lce]:/, '').trim(); const fsp = forN ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n.toLowerCase() === forN.toLowerCase()) : null;
   const where = m ? m.where : { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), place: suburbAt(S.scan.lat, S.scan.lng) };
   const lead = m && ((m.layers.life || {}).cells || [])[0];
   const at = Date.now(); const who = String(($('#wf-by') || {}).value || '').trim();
@@ -310,7 +333,7 @@ function viewSignals() {
   const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === on.id);
   return `<section class="sec" id="sec-wish">${wishForm()}</section>` + assetsHTML()
     + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
-    + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib" data-book-md aria-label="Download the field notes" data-tip="Field notes out">${icon('download')}</button><label class="ib" aria-label="Bring field notes in" data-tip="Field notes in">${icon('receive')}<input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
+    + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();
 }
 $('#view').addEventListener('click', e => {

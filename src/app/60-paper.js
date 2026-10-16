@@ -72,7 +72,7 @@ const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } 
 const relPhrase = n => { const hs = harmsOfNode(n); return hs.length ? hs.slice(0, 2).map(r => plainN(r, 1)).join(', ') : relWord(n).toLowerCase(); };
 /* what each relation is, in a word */
 const relWord = n => n.t === 'biz' ? (ROLES[(n.h || [])[0]] || ROLES[n.role] || {}).w || '' : n.t === 'group' ? 'GROUP' : n.t === 'water' ? 'WATER' : n.t === 'custom' ? ({ place: 'PLACE', person: 'PERSON', idea: 'IDEA' })[n.kind] || '' : n.t === 'life' ? String(M.KINDS[n.g] || '').toUpperCase() : '';
-const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a ? im.a.replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, '') : '', im.oid ? `iNaturalist ${im.oid}` : 'iNaturalist'].filter(Boolean).join(' · ') : im.k === 'own' ? im.a || 'Photograph by the issuer' : ''; };
+const figCredit = s => { const im = s.img || {}; return im.k === 'inat' ? [im.a ? im.a.replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, '') : '', im.oid ? `iNaturalist ${im.oid}` : 'iNaturalist'].filter(Boolean).join(' · ') : im.k === 'own' ? im.a || '' : ''; };
 /* two styles for every slip, on screen, on paper and at the printer: the paper slip, and the terminal (prefs.slip 'tty'):
    the life's photograph as its hero, then its code, its name and the four lines, in VT323, and nothing more */
 const isTty = () => (prefs.slip ? prefs.slip === 'tty' : darkNow());   /* by night the terminal, unless a style was chosen */
@@ -128,6 +128,8 @@ function heroSrc(s, big) {
 }
 /* what prints at the head of a slip: its own photograph, else its kind's (unless none was chosen) */
 const printSrc = (s, big) => sigSrc(s, big) || (ownOrKind(s) ? heroSrc(s, big) : '');
+/* the receipt's data in one small line: where, when the danger is, the code, when it was issued */
+const dataLine = s => { const p = s.pin || {}; return [p.place, `${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`, s.when ? `${s.when}${s.deg >= 2 ? ` ${DEG[s.deg]}` : ''}` : '', s.code, fmtStamp(s.at)].filter(Boolean).join(' · '); };
 const printCredit = s => { if (s.img && s.img.k === 'none') return ''; if (s.img && s.img.k !== 'kind') return figCredit(s); const ph = kindPhoto(s); return ph ? [String(ph.a || '').replace(/^\(c\)\s*/i, '© ').replace(/,\s*some rights reserved/i, ''), 'iNaturalist'].filter(Boolean).join(' · ') : ''; };
 const SCRAMBLE = 'ABCDEFGHJKMNPQRSTVWXYZ0123456789#%&*/<>=+';
 function scramble(el, word, ms = 520) {
@@ -151,17 +153,16 @@ function slipText(s, cols = 32, tty = isTty()) {
   }
   out.push(...wrap(NAME_UP(s), cols)); if (p.n && p.n !== p.cn) out.push(...wrap(p.n, cols));
   if (printCredit(s)) out.push(...wrap(printCredit(s), cols, '  '));
-  out.push(rule, ...field('SITE', `${p.place || ''} ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`.trim()));
-  if (s.when) out.push(...field('WINDOW', s.when));
-  if (modeOf(s)) out.push(...field('MODE', modeOf(s)));
-  out.push(...field('CODE', s.code), ...field('ISSUED', fmtStamp(s.at)));
+  out.push(rule, ...wrap(dataLine(s), cols));
   if (s.threat) { out.push(rule); out.push(...wrap(s.threat, cols)); }
-  const L = linesOf(s); if (L.length) { out.push(rule); for (const l of L) out.push(...wrap(l, cols)); }
+  const L = linesOf(s);
   const rels = relOrder(s.nodes || []);
   /* RELATIONS: the line a printer's figure is set above (ESC/POS draws it there) */
   if (rels.length) { out.push(rule, 'RELATIONS'); let g0 = ''; rels.forEach((n, i) => { const g = relKind(n); if (g !== g0) { out.push(`${REL_G[g]} · ${rels.filter(x => relKind(x) === g).length}`); g0 = g; } out.push(...wrap(`${pad2(i + 1)} ${n.n}`, cols, '   ')); const u = hostOf(urlOf(n)); out.push(...wrap(`${relPhrase(n)}${u ? ` · ${u}` : ''}`, cols - 3).map(l => '   ' + l)); }); }
+  if (L.length) { out.push(rule); for (const l of L) out.push(...wrap(l.toUpperCase(), cols)); }
   if (s.note) { out.push(rule); out.push(...field('NOTE', s.note)); }
   if (s.who) out.push(rule, `- ${s.who}`);
+  out.push(rule, ...wrap(CONFIG.COUNTRY, cols), ...wrap(CONFIG.SOVEREIGNTY || '', cols));
   return ascii(out.join('\n'));
 }
 /* ───────── the QR code: the link when the app is hosted, else the mesh message itself ───────── */
@@ -205,12 +206,12 @@ function autolevel(id) {
 }
 const BW = new Map();
 /* a photograph cut to a frame and dithered: two inks for a thermal head, four greys for a Game Boy */
-async function bwCanvas(src, W, H, levels = 2) {
-  const key = `${src.slice(0, 120)}|${src.length}|${W}|${H}|${levels}`; if (BW.has(key)) return BW.get(key);
+async function bwCanvas(src, W, H, levels = 2, mode = photoMode()) {
+  const key = `${src.slice(0, 120)}|${src.length}|${W}|${H}|${levels}|${mode}`; if (BW.has(key)) return BW.get(key);
   const im = await loadImage(src, !/^data:/.test(src));
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d', { willReadFrequently: true }); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight); x.drawImage(im, (W - im.naturalWidth * sc) / 2, (H - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc);
-  x.putImageData(dither(autolevel(x.getImageData(0, 0, W, H)), levels), 0, 0);
+  x.putImageData(dither(autolevel(x.getImageData(0, 0, W, H)), levels, mode), 0, 0);
   if (BW.size > 48) BW.clear(); BW.set(key, cv); return cv;
 }
 /* the frame is as tall as everything under it: the photograph is half the slip */
@@ -278,7 +279,7 @@ function slipHTML(s, blank) {
     + (s.who ? `<p class="sl-who mono">— ${esc(s.who)}</p>` : '')
     /* where an example's lines come from: on screen only, never printed */
     + (src.length ? `<p class="sl-src mono"><b>SOURCES</b>${src.map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener">${pad2(i + 1)} ${esc(hostOf(u))}</a>`).join('')}</p>` : '')
-    + `<div class="sl-qr"></div><p class="sl-foot mono">${esc(CONFIG.COUNTRY)}</p></div>`;
+    + `<div class="sl-qr"></div><p class="sl-foot mono">${esc(CONFIG.COUNTRY)}<br>${esc(CONFIG.SOVEREIGNTY || '')}</p></div>`;
 }
 function fillSignal(s) {
   const host = $('#s-slip'); host.innerHTML = slipHTML(s); renderQR(host.querySelector('.sl-qr'), qrText(s)); fillFig(host, s, false); fillHero(host, s);
@@ -343,13 +344,20 @@ async function output(k, s, btn) {
 }
 /* ───────── images for small printers: 384 dots for a 58 mm thermal head, 160 for a Game Boy printer ───────── */
 const ATK = [[1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]];
-function dither(img, levels) {
+function dither(img, levels, mode = 'atk') {
   const d = img.data, w = img.width, h = img.height; const g = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) g[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255 * (d[i * 4 + 3] / 255) + (1 - d[i * 4 + 3] / 255);
   const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x; let v;
-    if (levels === 2) {   /* Atkinson: an eighth of the error to six neighbours, a quarter let go: crisp, bright */
+    if (levels === 2 && mode !== 'atk') {
+      const P = 6, T = Math.PI * 2; let t;
+      if (mode === 'dots') t = 0.5 + 0.5 * Math.cos(T * (x + y) / (P * 1.414)) * Math.cos(T * (x - y) / (P * 1.414));   /* a halftone screen at 45° */
+      else if (mode === 'lines') t = 0.5 + 0.5 * Math.sin(T * (y + Math.sin(x / 18) * 2.2) / 5);                     /* engraved lines, a little wavy */
+      else if (mode === 'bayer') t = (B4[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
+      else t = 0.5;
+      v = g[i] < t ? 0 : 1;
+    } else if (levels === 2) {   /* Atkinson: an eighth of the error to six neighbours, a quarter let go: crisp, bright */
       const o = g[i] < 0.5 ? 0 : 1; const err = (g[i] - o) / 8; v = o;
       for (let j = 0; j < 6; j++) { const xx = x + ATK[j][0], yy = y + ATK[j][1]; if (xx >= 0 && xx < w && yy < h) g[yy * w + xx] += err; }
     } else { const t = (B4[(y % 4) * 4 + (x % 4)] + 0.5) / 16 - 0.5; v = clamp(Math.round(g[i] * (levels - 1) + t), 0, levels - 1) / (levels - 1); }   /* ordered, as a Game Boy camera does */
@@ -361,7 +369,7 @@ function dither(img, levels) {
 async function slipCanvas(s, W, levels, tty = isTty(), conn = isConn()) {
   /* the teletype sets every word in VT323, a terminal's type, a third larger to read the same */
   const k = W / 384; const pad = Math.round(14 * k); const mono = (px, wt = 500) => (tty ? `400 ${Math.max(9, Math.round(px * 1.32 * k))}px VT323, monospace` : `${wt} ${Math.max(7, Math.round(px * k))}px "IBM Plex Mono", monospace`); const sans = (wt, px) => `${wt} ${Math.max(8, Math.round(px * k))}px Poppins, sans-serif`;
-  try { await document.fonts.ready; if (tty) await document.fonts.load('16px VT323'); } catch (e) { /* fallback type */ }
+  try { await document.fonts.ready; await document.fonts.load('700 19px Poppins'); if (tty) await document.fonts.load('16px VT323'); } catch (e) { /* fallback type */ }
   if (conn) return connCanvas(s, W, levels, k, pad);
   if (tty) return ttyCanvas(s, W, levels, k, pad, mono);
   const T = document.createElement('canvas'); T.width = W; T.height = 6000; const x = T.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, T.height); x.fillStyle = '#000'; x.textBaseline = 'top';
@@ -374,10 +382,9 @@ async function slipCanvas(s, W, levels, tty = isTty(), conn = isConn()) {
   const sansT = (wt, px) => (tty ? mono(px) : sans(wt, px));
   text(NAME_UP(s), sansT(700, 20), Math.round(24 * k)); if (p.n && p.n !== p.cn) text(p.n, sansT(400, 12), Math.round(16 * k));
   if (printCredit(s)) text(printCredit(s), mono(9), Math.round(13 * k));
-  rule(); field('SITE', `${p.place || ''} · ${(+p.lat).toFixed(4)} ${(+p.lng).toFixed(4)}`); if (s.when) field('WINDOW', `${s.when}${s.deg >= 2 ? ` · ${DEG[s.deg]}` : ''}`);
-  field('CODE', s.code); field('ISSUED', fmtStamp(s.at));
+  rule(); text(dataLine(s), mono(8.5), Math.round(12 * k));
   if (s.threat) { rule(); text(s.threat, sansT(500, 15), Math.round(20 * k)); }
-  const lines = linesOf(s); if (lines.length) { rule(); for (const l of lines) { text(l, mono(16, 600), Math.round(21 * k)); y += Math.round(7 * k); } }
+  const lines = linesOf(s);
   const rels = relOrder(s.nodes || []);
   if (rels.length) {
     rule();
@@ -391,11 +398,13 @@ async function slipCanvas(s, W, levels, tty = isTty(), conn = isConn()) {
       y += Math.round(4 * k);
     });
   }
+  /* the W.I.S.H., as a manifesto: heavy, in capitals, close set */
+  if (lines.length) { y += Math.round(4 * k); x.fillRect(pad, y, W - pad * 2, Math.max(2, Math.round(4 * k))); y += Math.round(14 * k); for (const l of lines) { text(l.toUpperCase(), sans(700, 19), Math.round(21 * k)); y += Math.round(9 * k); } }
   if (s.note) { rule(); field('NOTE', s.note); }
   if (s.who) { rule(); text(`— ${s.who}`, mono(13), Math.round(18 * k)); }
   /* the code: the link, or the mesh message; at a size a phone can read off thermal paper */
   const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(10 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(8 * k); } }
-  text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); y += pad;
+  text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); text(CONFIG.SOVEREIGNTY || '', mono(10, 600), Math.round(14 * k)); y += pad;
   const textH = y;
   /* the head of the slip, then the photograph: as tall as everything under it, between four fifths and eight fifths of its width */
   const headH = 0; const src = printSrc(s, false); let photo = null; let imgH = 0;
@@ -421,7 +430,7 @@ async function ttyCanvas(s, W, levels, k, pad, mono) {
   text(`${s.code} · ${fmtStamp(s.at)}`, mono(11), Math.round(16 * k));
   const lines = linesOf(s); if (lines.length) { y += Math.round(12 * k); for (const l of lines) { x.font = mono(17); x.fillText('>', pad, y); text(l, mono(17), Math.round(22 * k), pad + Math.round(16 * k)); y += Math.round(6 * k); } }
   const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(16 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(10 * k); } }
-  text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); y += pad;
+  text(CONFIG.COUNTRY, mono(10), Math.round(14 * k)); text(CONFIG.SOVEREIGNTY || '', mono(10, 600), Math.round(14 * k)); y += pad;
   const out = document.createElement('canvas'); out.width = W; out.height = W + y; const o2 = out.getContext('2d'); o2.fillStyle = '#fff'; o2.fillRect(0, 0, W, out.height);
   if (hero) o2.drawImage(hero, 0, 0); else M.glyph(o2, p.g || 'paw', W / 2, W / 2, W * 0.62, '#000');
   o2.drawImage(T, 0, 0, W, y, 0, W, W, y);
@@ -436,7 +445,7 @@ async function connCanvas(s, W, levels, k, pad) {
   let y = Math.round(12 * k);
   lines.forEach((l, i) => { x.font = `${i === 0 ? 700 : 500} ${px}px "IBM Plex Mono", monospace`; if (/^-+$/.test(l)) { x.fillRect(pad, y + lh / 2, W - pad * 2, Math.max(1, Math.round(1.5 * k))); } else x.fillText(l, pad, y); y += lh; });
   const qr = qrOf(qrText(s)); if (qr) { const n = qr.getModuleCount(); const m = Math.floor((W - pad * 2) / (n + 4)); if (m >= (levels === 2 ? 3 : 1) && n * m <= W) { y += Math.round(12 * k); const ox = Math.round((W - n * m) / 2); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) x.fillRect(ox + c * m, y + r * m, m, m); y += n * m + Math.round(10 * k); } }
-  x.font = `500 ${px}px "IBM Plex Mono", monospace`; x.fillText(ascii(CONFIG.COUNTRY), pad, y); y += lh + pad;
+  x.font = `500 ${px}px "IBM Plex Mono", monospace`; x.fillText(ascii(CONFIG.COUNTRY), pad, y); y += lh; x.fillText(ascii(CONFIG.SOVEREIGNTY || ''), pad, y); y += lh + pad;
   const out = document.createElement('canvas'); out.width = W; out.height = y; out.getContext('2d').drawImage(T, 0, 0, W, y, 0, 0, W, y);
   const o2 = out.getContext('2d'); const id = o2.getImageData(0, 0, W, y); const d = id.data; for (let i = 0; i < d.length; i += 4) { const v = d[i] / 255; const q = levels === 2 ? (v < 0.55 ? 0 : 1) : Math.round(v * 3) / 3; d[i] = d[i + 1] = d[i + 2] = Math.round(q * 255); d[i + 3] = 255; } o2.putImageData(id, 0, 0);
   return out;
@@ -489,7 +498,7 @@ async function escpos(s, paper = '58', tty = isTty(), conn = isConn()) {
     put(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30);                    /* print it */
     put(0x0A, 0x1B, 0x61, 0x00);
   }
-  txt(CONFIG.COUNTRY + '\n'); put(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00);   /* feed, cut */
+  if (tty || conn) txt(CONFIG.COUNTRY + '\n' + (CONFIG.SOVEREIGNTY || '') + '\n'); put(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00);   /* feed, cut */
   return new Uint8Array(b);
 }
 /* ───────── printed from the browser: a strip 58 mm wide, as long as the slip ───────── */

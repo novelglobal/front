@@ -68,10 +68,12 @@ function barbURL(col = ZCOL, w = 360, h = 44) {
   x.lineWidth = 2; for (let b = 22; b < w - 10; b += 46) { x.beginPath(); x.moveTo(b - 7, h / 2 - 11); x.lineTo(b + 7, h / 2 + 11); x.moveTo(b + 7, h / 2 - 11); x.lineTo(b - 7, h / 2 + 11); x.stroke(); x.beginPath(); x.arc(b, h / 2, 3, 0, TURN); x.stroke(); }
   const u = c.toDataURL('image/png'); RAGS.set(k, u); return u;
 }
+const PHOTO_MODES = [{ k: 'atk', w: 'Diffused' }, { k: 'dots', w: 'Halftone dots' }, { k: 'bayer', w: 'Ordered' }, { k: 'lines', w: 'Engraved lines' }, { k: 'hard', w: 'Hard' }];
+const photoMode = () => (PHOTO_MODES.some(m => m.k === prefs.photo) ? prefs.photo : 'atk');
 /* the receipt shown larger than it prints, so the hand can work on it; the paper's own size stays the same underneath */
 function fitZ() {
   if (!zc) return; const host = $('#zine .desk'); const F = FORMATS[PRESS.fmt]; const room = (host && host.clientWidth ? host.clientWidth : 640) - 48;
-  const L = PRESS.fmt === 'zine' ? [0.6, 0.85, 1.25] : PRESS.fmt === 'gb' ? [1.4, 2.2, 3] : [1, 1.6, 2.4]; const z = PRESS.zl === 0 ? Math.min(L[0], Math.max(0.5, room / F.w)) : L[PRESS.zl]; PRESS.z = z;
+  const fit = room / F.w; const L = phone() ? [fit * 0.6, fit, fit * 1.7] : PRESS.fmt === 'zine' ? [0.6, 0.85, 1.25] : PRESS.fmt === 'gb' ? [1.4, 2.2, 3] : [1, 1.6, 2.4]; const z = !phone() && PRESS.zl === 0 ? Math.min(L[0], Math.max(0.5, fit)) : L[PRESS.zl]; PRESS.z = z;
   zc.setDimensions({ width: `${Math.round(zc.getWidth() * z)}px`, height: `${Math.round(zc.getHeight() * z)}px` }, { cssOnly: true });
 }
 addEventListener('resize', () => { if (zc && !$('#zine').hidden) fitZ(); });
@@ -140,13 +142,13 @@ function wordSticker(st) {
 /* the packs: each opens on the muse. Life; the jellyfish; the zone; sweet gore; the witch's; ink; turtles; words */
 const J = [{ j: 1 }];
 const PACKS_ALL = {
-  life: [...J, ...Object.keys(M.KINDS).filter(g => g !== 'paw').map(g => ({ g })), ...['heat', 'rain', 'water', 'day', 'night', 'shade', 'refuge', 'plant', 'people', 'hug', 'give', 'harm', 'radar', 'receipt', 'string', 'mesh', 'note', 'sign'].map(i => ({ i }))],
+  life: [...Object.keys(M.KINDS).filter(g => g !== 'paw').map(g => ({ g })), ...['heat', 'rain', 'water', 'day', 'night', 'shade', 'refuge', 'plant', 'people', 'hug', 'give', 'harm', 'radar', 'receipt', 'string', 'mesh', 'note', 'sign'].map(i => ({ i }))],
   jelly: [{ j: 1 }, { j: 2 }, { i: 'jelly' }, { g: 'aquatic' }, { i: 'seaturtle' }, { i: 'drip' }, { i: 'zanom' }, { i: 'star5' }],
-  zone: [...J, ...['zanom', 'znut', 'zdial', 'zfence', 'zstake', 'zjar', 'zhatch', 'zmask', 'zhaz', 'zgrid', 'ztripod', 'zfile', 'zeye', 'zpylon', 'zwire'].map(i => ({ i }))],
-  goth: [...J, ...['skull', 'bheart', 'dagger', 'bones', 'coffin', 'eyeball', 'drip', 'stitch', 'tooth', 'ghost', 'plaster'].map(i => ({ i })), { g: 'bat' }, { g: 'spider' }],
-  witch: [...J, ...['night', 'star5', 'candle', 'crystal', 'potion', 'hand', 'pent', 'skey'].map(i => ({ i })), { g: 'fungi' }, { g: 'moth' }, { g: 'snake' }, { g: 'orb' }],
-  ink: [...J, ...['flame', 'wings', 'anchor', 'die', 'spade', 'bolt', 'eight', 'dagger', 'skull', 'bheart'].map(i => ({ i })), { g: 'snake' }, { g: 'bird' }],
-  turtle: [...J, { g: 'turtle' }, { i: 'seaturtle' }, { i: 'tortoise' }, { i: 'shell' }],
+  zone: [...['zanom', 'znut', 'zdial', 'zfence', 'zstake', 'zjar', 'zhatch', 'zmask', 'zhaz', 'zgrid', 'ztripod', 'zfile', 'zeye', 'zpylon', 'zwire'].map(i => ({ i }))],
+  goth: [...['skull', 'bheart', 'dagger', 'bones', 'coffin', 'eyeball', 'drip', 'stitch', 'tooth', 'ghost', 'plaster'].map(i => ({ i })), { g: 'bat' }, { g: 'spider' }],
+  witch: [...['night', 'star5', 'candle', 'crystal', 'potion', 'hand', 'pent', 'skey'].map(i => ({ i })), { g: 'fungi' }, { g: 'moth' }, { g: 'snake' }, { g: 'orb' }],
+  ink: [...['flame', 'wings', 'anchor', 'die', 'spade', 'bolt', 'eight', 'dagger', 'skull', 'bheart'].map(i => ({ i })), { g: 'snake' }, { g: 'bird' }],
+  turtle: [{ g: 'turtle' }, { i: 'seaturtle' }, { i: 'tortoise' }, { i: 'shell' }],
   words: WORDS_STK.map(([w, f]) => ({ w, f })),
 };
 const PACK_FACE = { life: { g: 'bird' }, jelly: { j: 1 }, zone: { i: 'zanom' }, goth: { i: 'skull' }, witch: { i: 'night' }, ink: { i: 'flame' }, turtle: { i: 'seaturtle' }, words: { i: 'quote' } };
@@ -161,7 +163,7 @@ function addPack(files) {
     .then(urls => { for (const u of urls.filter(Boolean)) PACKS.unshift(u); PACKS.splice(48); while (!store.set('da.stk.v1', PACKS) && PACKS.length) PACKS.pop(); });
 }
 async function zineTool(k) {
-  const c = await showZine(true); if (!c) return; const f = window.fabric; const W = c.getWidth(); const x = rnd(16, W * 0.45), y = rnd(30, c.getHeight() * 0.7);
+  const c = await showZine(true); if (!c) return; const f = window.fabric; const W = c.getWidth(); const at = viewSpot(); const x = clamp(at.x - W * 0.2, 8, W * 0.55), y = Math.max(20, at.y);
   /* words: placed in the face shown on the key; pressed again while they are chosen, the next face */
   if (k === 'text' || k === 'head') {
     const sel = c.getActiveObject(); const again = sel && sel.daKind === k; if (again) ZFACE = (ZFACE + 1) % FACES.length; const fc = FACES[ZFACE]; await faceReady(fc); refaceKey('text'); refaceKey('head');
@@ -173,7 +175,7 @@ async function zineTool(k) {
   if (k === 'cut') { const g = cutOut(f, words() || 'WISH', x, y); c.add(g); c.setActiveObject(g); }
   if (k === 'image') { $('#zine-file').click(); return; }
   if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
-  if (k === 'add') { pickMenu($('#zine [data-zt="add"]'), addables(false), it => pieceOn(it.k, it.id)); return; }
+  if (k === 'add') { pickMenu($('#zine [data-zt="add"]'), [...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
   if (k === 'tape') {
@@ -208,9 +210,14 @@ function setInk(col) {
   redrawSheet();
 }
 $('#zine').addEventListener('input', e => { if (e.target.id === 'zine-col') setInk(e.target.value); });
+/* the middle of the part of the strip in view, in the strip's own units */
+function viewSpot() {
+  const desk = $('#zine .desk'), el = zc && zc.upperCanvasEl; if (!desk || !el) return { x: 40, y: 60 }; const d = desk.getBoundingClientRect(), r = el.getBoundingClientRect(); const z = r.width / zc.getWidth() || 1;
+  const cx = (clamp((d.left + d.right) / 2, r.left, r.right) - r.left) / z, cy = (clamp((d.top + d.bottom) / 2, r.top, r.bottom) - r.top) / z; return { x: cx + rnd(-30, 30), y: cy + rnd(-30, 30) };
+}
 async function placeOnPage(url, kind, width) {
-  const c = await showZine(true); if (!c) return;
-  window.fabric.Image.fromURL(url, im => { im.set({ left: rnd(10, c.getWidth() * 0.5), top: rnd(20, c.getHeight() * 0.7), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(Math.min(width, c.getWidth() * 0.6)); c.add(im); c.setActiveObject(im); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
+  const c = await showZine(true); if (!c) return; const at = viewSpot();
+  window.fabric.Image.fromURL(url, im => { const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
 }
 function cellSticker(o) {
   return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d');
@@ -242,14 +249,14 @@ function speciesSticker(sp, kind) {
 }
 /* a kind of life as svg paths, for a constellation's ground */
 const glyphPaths = (g, col) => (M.GLYPHS[g] || M.GLYPHS.paw || []).map(p => (p.f ? `<path d="${p.d}" fill="${col}"${p.rule ? ` fill-rule="${p.rule}"` : ''}/>` : `<path d="${p.d}" fill="none" stroke="${col}" stroke-width="${p.w}" stroke-linecap="round" stroke-linejoin="round"/>`)).join('');
-const figChart = g => { const gl = (g.o && glyphOf(g.o)) || 'paw';
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" color="${ZCOL}"><g transform="translate(4 4) scale(12)" opacity=".16">${glyphPaths(gl, ZCOL)}</g><g transform="translate(20 20)">${strings.chartOf(g.id, 160).replace('<svg class="chart"', `<svg width="160" height="160" color="${ZCOL}"`)}</g></svg>`)}`; };
+const figChart = g => figArt(g, ZCOL);
 async function pieceOn(kind, id) {
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; if (PRESS.fmt !== 'zine') { PRESS.story = id; await setBase(true); refreshPanel(); return; } const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 150); }
   if (kind === 'r') { const o = myCells().find(v => String(v.id) === String(id)); if (o) placeOnPage(await cellSticker(o), 'sticker', 86); }
   if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (g) placeOnPage(figChart(g), 'chart', 120); }
   if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 90); }
   if (kind === 'L') { const sp = radiusSpecies(24).find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 90); }
+  if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
 }
 function setFormat(k) { if (!FORMATS[k]) return; PRESS.fmt = k; $$('#view [data-pfmt]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pfmt === k))); showZine(true); tick(1500); buzz(4); }
 /* a print sent: a small clear printer, hand-drawn, the paper feeding out, then torn; no words */
@@ -351,21 +358,25 @@ const PFMT_ICON = k => (k === 'gb' ? `${icon('gb')}` : k === 'zine' ? `${icon('b
 function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
-  return `<header class="ps-h" data-tip="Print shop"><span class="ps-printer${st.ready ? ' on' : ''}"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></span><i class="ps-sun" aria-hidden="true"></i></header>`
+  const on = printersOn();
+  return `<header class="ps-h${on.length ? ' on' : ''}"><span class="ps-printer${st.ready ? ' on' : ''}"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></span><span class="ps-hl"><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
     + `<section class="sec lcd" id="sec-slips" data-tip="Stories waiting to print"><i class="lcd-ic">${icon('receipt')}<b class="mono">${ws.length}</b></i>`
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`
     + `<section class="sec" id="sec-style"><div class="seg keys" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}</button>`).join('')}</div>`
-      + `</section><section class="sec" id="sec-out"><h3 class="out-h"><span>PRINT</span></h3><div class="seg keys outs" role="group" aria-label="Print">${[['print', 'print', 'Print here'], ['send', 'radar', 'To novel.global'], ['poster', 'stories', 'Keep as a poster'], ['png', 'download', 'Picture'], ['escpos', 'escpos', 'Printer bytes'], ['mesh', 'mesh', 'Mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}<i class="out-go" aria-hidden="true"></i></button>`).join('')}</div></section>`
+      + `<div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}" data-tip="${m.w}"><i class="ph-sw ph-${m.k}"></i></button>`).join('')}</div>`
+      + `</section><section class="sec" id="sec-out"><h3 class="out-h"><span>PRINT</span></h3><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
+      + `<div class="seg keys outs" role="group" aria-label="Other ways out">${[['print', 'print', 'Print here, from this device'], ['poster', 'stories', 'Keep as a poster'], ['png', 'download', 'Save as a picture'], ['escpos', 'escpos', 'Printer bytes (.bin)'], ['mesh', 'mesh', 'Copy as a mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
     + (sps.length ? `<section class="sec" id="sec-near"><ol class="near">${sps.map(sp => `<li><button type="button" class="nr-b" data-piece="L" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>` : '')
     + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol></section>` : '')
     + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-k" data-spack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${k}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
-      + `<ol class="stickers${PRESS.pack === 'words' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own">${icon('plus')}<input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
-    + `<section class="sec" id="sec-prn"><div class="docs"><button type="button" data-doc="blank" data-tip="A blank W.I.S.H. slip to fill by hand">${icon('print')}</button></div></section>`;
+      + `<ol class="stickers${PRESS.pack === 'words' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own: pictures from this device">${icon('plus')}<small class="mono">PNG JPG</small><input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
+    ;
 }
 $('#view').addEventListener('click', e => {
   const ps = e.target.closest('[data-press]'); if (ps) { PRESS.story = ps.dataset.press; $$('#view [data-press]').forEach(b => b.classList.toggle('on', b === ps)); if (PRESS.fmt === 'zine') setFormat('r80'); else setBase(true); tick(1500); return; }
   const pf = e.target.closest('[data-pfmt]'); if (pf) { setFormat(pf.dataset.pfmt); return; }
+  const phm = e.target.closest('[data-photo]'); if (phm) { prefs.photo = phm.dataset.photo; savePrefs(); $$('#view [data-photo]').forEach(b => b.setAttribute('aria-pressed', String(b === phm))); THUMBS.clear(); setBase(true); tick(1300); return; }
   const po = e.target.closest('[data-pout]'); if (po) { pressOut(po.dataset.pout); return; }
   const sk = e.target.closest('[data-stk]'); if (sk) { const st = stickNow()[+sk.dataset.stk]; if (st.w) faceReady(FACES[st.f || 0]).then(() => placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', 130)); else placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.j ? 90 : 70); if (st.j) snd.jelly(0.3); return; }
   const sp = e.target.closest('[data-spack]'); if (sp) { PRESS.pack = sp.dataset.spack; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(PRESS.pack) * 120); if (PRESS.pack === 'words') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }

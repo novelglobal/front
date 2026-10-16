@@ -174,12 +174,12 @@ if (run('smoke')) try {
   await settle(page); await shot(page, '01-radar.png');
   await tab(page, 0); await sleep(600);
   const now = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const order = [...band.children].map(e => e.className.split(' ')[0]); return { open: !document.body.classList.contains('shut'), five: document.querySelectorAll('#sec-five .hero-row').length, months: document.querySelectorAll('#sec-heat .mo').length, order, steps: band.querySelectorAll('.st, .sn').length, heads: band.querySelectorAll('h3, .lab').length, counts: band.querySelectorAll('.lyr .n').length, tags: document.querySelectorAll('#view .lab, #view .chips, #view .dg, #view .pill, #view .gigs').length }; });
-  check('RADIO, top to bottom: El Niño’s countdown, the equaliser, one play button, the layers, the clues; no headline, steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'b-emerg,mstrip,hero-play,lyrs,clues' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
+  check('RADIO, top to bottom: the printers’ pager, El Niño’s countdown, the equaliser, one play button, the layers, the clues; no headline, steps, numbers, headings or tags', now.open && now.five === 0 && now.months === 12 && now.order.join() === 'pager,b-emerg,mstrip,hero-play,lyrs,clues' && now.steps === 0 && now.heads === 0 && now.counts === 0 && now.tags === 0, JSON.stringify(now));
   const nw = await page.evaluate(() => { const band = document.querySelector('#sec-heat'); const five = document.querySelector('#sec-five'); const rows = five ? [...five.querySelectorAll('.hero-row')] : [];
     return { five: rows.length, why: five ? five.dataset.tip : '', names: rows.map(r => (r.querySelector('.nm b') || {}).textContent), chips: rows.some(r => r.querySelector('.chips')), pics: rows.filter(r => r.querySelector('.h-pic img, .h-pic canvas')).length, words: band.innerText }; });
-  const eq = await page.evaluate(async () => { const cols = [...document.querySelectorAll('#sec-heat .mo')]; const lit = cols.map(c => c.querySelectorAll('.eq-c i.l').length); const none = !document.querySelector('.eq-read');
+  const eq = await page.evaluate(async () => { const cols = [...document.querySelectorAll('#sec-heat .mo')]; const lit = cols.map(c => c.querySelectorAll('.eq-c i.l:not(.up)').length); const none = !document.querySelector('.eq-read');
     cols[3].click(); await new Promise(r => setTimeout(r, 400)); const rd = document.querySelector('.eq-read');
-    const out = { cols: cols.length, segs: cols[0].querySelectorAll('.eq-c i').length, lit, none, read: rd ? rd.innerText : '', icons: rd ? rd.querySelectorAll('.eq-k use[href^="#k-"]').length : 0 };
+    const out = { cols: cols.length, segs: cols[0].querySelectorAll('.eq-c i:not(.up)').length, lit, none, read: rd ? rd.innerText : '', icons: rd ? rd.querySelectorAll('.eq-k use[href^="#k-"]').length : 0 };
     document.querySelectorAll('#sec-heat .mo')[3].click(); await new Promise(r => setTimeout(r, 300)); out.closed = !document.querySelector('.eq-read'); return out; });
   check('the outlook is an equaliser; pressed, a month shows its lives, what it rests on, and its reason as a hypothesis', eq.cols === 12 && eq.segs === 10 && Math.max(...eq.lit) === 10 && Math.min(...eq.lit) >= 2 && eq.none && /JAN 2027/.test(eq.read) && /EXTREME/.test(eq.read) && /SCENARIO/.test(eq.read) && /HYPOTHESIS/.test(eq.read) && eq.icons >= 3 && eq.closed, JSON.stringify(eq));
   const fv = await page.evaluate(() => { const da = window.__da; return da.life.items.filter(it => it.hero && da.life.shown(it)).length; });
@@ -187,11 +187,11 @@ if (run('smoke')) try {
   check('no watch chip, no stage names in the outlook', !/WATCH|EARLY HEAT|DRY FLOWERING|HOT NIGHTS|DROUGHT/.test(nw.words), nw.words.replace(/\s+/g, ' '));
   const hd = await page.evaluate(async () => { const ids = [...document.querySelectorAll('#view > section')].map(x => x.id).filter(Boolean); const d4 = [...document.querySelectorAll('#sec-heat .mo.d4 .eq-c i.l')]; const band = document.querySelector('#sec-heat'); const clues = [...band.querySelectorAll('.clues')].map(c => c.innerText).join(' '); const cd = document.querySelector('#sec-heat .b-emerg .cd');
     const c0 = cd ? cd.textContent : ''; await new Promise(r => setTimeout(r, 2300)); const c1 = cd ? document.querySelector('#sec-heat .b-emerg .cd').textContent : '';
-    return { words: band.innerText.replace(clues, '').replace(/[\d:]+D?|NOW/g, '').replace(/\b[JFMASOND]\b/g, '').trim(), sun: !!document.querySelector('#sec-heat .b-emerg .sun use[href="#g-heat"]'), orange: getComputedStyle(document.querySelector('#sec-heat .b-emerg .cd')).color, c0, c1, tip: (document.querySelector('#sec-heat .b-emerg') || {}).dataset ? document.querySelector('#sec-heat .b-emerg').dataset.tip : '',
-      ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], mark: (() => { const pk = document.querySelector('#sec-heat .mo.d4 .eq-c i.pk'); return pk ? getComputedStyle(pk, '::after').content : ''; })(), tel: document.querySelectorAll('#view a[href^="tel:"]').length, stations: !!document.querySelector('#sec-tracks, .tk-lvl') }; });
+    return { words: band.innerText.replace(clues, '').replace((document.querySelector('#sec-heat .pager') || {}).innerText || '\u0000', '').replace(/[\d:]+D?|NOW/g, '').replace(/\b[JFMASOND]\b/g, '').trim(), sun: !!document.querySelector('#sec-heat .b-emerg .sun use[href="#g-heat"]'), orange: getComputedStyle(document.querySelector('#sec-heat .b-emerg .cd')).color, c0, c1, tip: (document.querySelector('#sec-heat .b-emerg') || {}).dataset ? document.querySelector('#sec-heat .b-emerg').dataset.tip : '',
+      ids, d4: d4.length, d4bg: [...new Set(d4.map(i => getComputedStyle(i).backgroundColor))], up: document.querySelectorAll('#sec-heat .mo.d4 .eq-c i.up').length, tel: document.querySelectorAll('#view a[href^="tel:"]').length, stations: !!document.querySelector('#sec-tracks, .tk-lvl') }; });
   check('no words on the radio but the clues: the countdown and the months are marks and numbers', hd.words === '', JSON.stringify({ words: hd.words }));
   check('El Niño’s emergency counting down in orange beside its sun, ticking; its name on a long hover', hd.sun && hd.orange !== 'rgb(237, 237, 237)' && /^\d+D \d\d:\d\d:\d\d$/.test(hd.c0) && hd.c0 !== hd.c1 && hd.tip === 'El Niño emergency in', JSON.stringify({ c0: hd.c0, c1: hd.c1, tip: hd.tip }));
-  check('extreme months reach black, with a heat mark above them', hd.d4 >= 1 && hd.d4bg.includes('rgb(20, 20, 18)') && /▲/.test(hd.mark), JSON.stringify({ d4bg: hd.d4bg, mark: hd.mark }));
+  check('extreme months reach black, and stand taller than the rest, blocks of their own above the column', hd.d4 >= 1 && hd.d4bg.includes('rgb(20, 20, 18)') && hd.up >= 3, JSON.stringify({ d4bg: hd.d4bg, up: hd.up }));
   check('no stations panel, no numbers to ring, nothing under the radio', !hd.stations && hd.tel === 0 && hd.ids.join() === 'sec-heat', JSON.stringify(hd.ids));
   /* the layers: four live data layers to mix, every one on; each with its meter, what it holds, and its level */
   const tk = await page.evaluate(() => { const ks = [...document.querySelectorAll('#sec-heat [data-t4]')]; return { keys: ks.map(k => k.dataset.t4), words: ks.map(k => k.getAttribute('aria-label') + (k.innerText.trim() ? '!' : '')), on: ks.map(k => k.getAttribute('aria-pressed')), meters: document.querySelectorAll('#sec-heat .lyr .lv').length, counts: document.querySelectorAll('#sec-heat .lyr .n').length, vols: document.querySelectorAll('#sec-heat .lyr [data-vol]').length, mood: document.querySelectorAll('#sec-heat [data-lmood]').length, radio: !!document.querySelector('#sec-heat .hero-play[data-radio]') }; });
@@ -276,16 +276,16 @@ if (run('smoke')) try {
   check('SIGNALS: the W.I.S.H. first, then the boards, the active one with its signal; the field notes to download; the board beside it', sg.first === 'sec-wish' && sg.pages === 1 && sg.md && sg.board && sg.hash === '#signals', JSON.stringify(sg));
   /* PRINT SHOP: no readings row (the style stays as set elsewhere), novel.global's printer alone, a blank slip */
   await tab(page, 2); await sleep(600);
-  const sn = await page.evaluate(() => ({ styles: document.querySelectorAll('#view [data-style]').length, prn: document.querySelectorAll('.ps-printer').length, cafes: /Pickles|Kines|Elsie/.test(document.querySelector('#view').innerHTML), blank: !!document.querySelector('#view [data-doc="blank"]') }));
-  check('PRINT SHOP: no readings row; novel.global’s printer alone, no cafes; a blank slip', sn.styles === 0 && sn.prn === 1 && !sn.cafes && sn.blank, JSON.stringify(sn));
+  const sn = await page.evaluate(() => ({ styles: document.querySelectorAll('#view [data-style]').length, prn: document.querySelectorAll('.ps-printer').length, cafes: /Pickles|Kines|Elsie/.test(document.querySelector('#view').innerHTML), blank: !!document.querySelector('#view [data-doc="blank"]'), head: (document.querySelector('.ps-hl b') || {}).textContent, main: (document.querySelector('.print-k b') || {}).textContent }));
+  check('PRINT SHOP: no readings row; novel.global’s printer alone, named at its head; PRINT RECEIPT the one plain key; the blank slip gone to the portfolio', sn.styles === 0 && sn.prn === 1 && !sn.cafes && !sn.blank && /NOVEL/.test(sn.head || '') && sn.main === 'PRINT RECEIPT', JSON.stringify(sn));
   /* PORTFOLIO: the board, eight as cards, the rest as a list; the briefs, the tools */
   await tab(page, 3); await sleep(600);
   const st = await page.evaluate(() => { const cards = [...document.querySelectorAll('#sec-board .sig-row')], lines = [...document.querySelectorAll('#sec-board .sig-line')]; return { cards: cards.length, lines: lines.length, ex: [...cards, ...lines].filter(r => r.classList.contains('ex')).length, codes: [...cards, ...lines].map(r => r.querySelector('.code').textContent), art: [...cards, ...lines].every(r => r.querySelector('.art')), docs: document.querySelectorAll('#sec-tools [data-doc]').length, briefsShut: !document.querySelector('#sec-briefs').open, votes: document.querySelectorAll('.vote, [data-vote]').length, signup: /sign[- ]up/i.test(document.querySelector('#view').innerText) }; });
-  check('PORTFOLIO: the W.I.S.H. sent here, and the orangutan, marked EX, each a card with its picture; the tools; no votes, no sign-up', st.cards === 2 && st.lines === 0 && st.ex === 1 && st.codes[1] === 'DA-0RNG' && st.art && st.docs === 4 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
+  check('PORTFOLIO: the W.I.S.H. sent here, and the orangutan, marked EX, each a card with its picture; the tools; no votes, no sign-up', st.cards === 2 && st.lines === 0 && st.ex === 1 && st.codes[1] === 'DA-0RNG' && st.art && st.docs === 5 && st.briefsShut && !st.votes && !st.signup, JSON.stringify(st));
   const tabc = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const b = t.getBoundingClientRect(), i = t.querySelector('svg').getBoundingClientRect(); return Math.round(Math.abs((i.left + i.width / 2) - (b.left + b.width / 2)) + Math.abs((i.top + i.height / 2) - (b.top + b.height / 2))); }));
   check('the tab icons sit at their centres', tabc.every(d => d <= 1), JSON.stringify(tabc));
   const order = await page.evaluate(() => [...document.querySelectorAll('#view > .sec, #view > details.sec')].map(x => x.id));
-  check('the W.I.S.H.es finished here head the portfolio, then the stories; the settings and sources at its foot; the posters on the wall beside it', order[0] === 'sec-wishes' && order[1] === 'sec-board' && order.includes('sec-set') && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
+  check('the quick print heads the portfolio, then the W.I.S.H.es finished here, then the stories; the settings and sources at its foot; the posters on the wall beside it', order[0] === 'sec-quick' && order[1] === 'sec-wishes' && order[2] === 'sec-board' && order.includes('sec-set') && order.indexOf('sec-set') > order.indexOf('sec-tools'), order.join(' '));
   await shot(page, '03-portfolio.png');
   /* the day's thread: a life looked at ties the first knot */
   const th0 = await page.evaluate(() => document.querySelectorAll('#rail .tab.tied').length);
@@ -562,9 +562,11 @@ if (run('places')) try {
 } catch (e) { results.push(`FAIL  section places: ${e.message.split('\n')[0]}`); }
 
 /* the four lines filled by hand, then issued */
+/* the four lines on the receipt are off unless asked for */
+const wishLinesOn = page => page.evaluate(() => { const b = document.querySelector('#w-wtog'); if (b && b.getAttribute('aria-pressed') !== 'true') b.click(); });
 const fillAndIssue = async page => {
-  for (const k of ['w', 'i', 's', 'h']) await page.fill('#w-' + k, `A line for ${k}`);
-  await tap(page, '#r-act'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(600);
+  await wishLinesOn(page); for (const k of ['w', 'i', 's', 'h']) await page.fill('#w-' + k, `A line for ${k}`);
+  await tap(page, '#r-alt'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(600);
 };
 /* each knot looked at, then tied */
 const tieNodes = async (page, keys) => { for (const k of keys) { await clickNode(page, k); await clickNode(page, k); } };
@@ -585,8 +587,8 @@ if (run('wish')) try {
   const nt = await page.evaluate(() => { const n = document.querySelector('#r-note'); return { last: document.querySelector('#r-front').lastElementChild === n, shown: !n.hidden && n.getBoundingClientRect().height > 30, kept: JSON.parse(localStorage.getItem('da.notes.v1') || '{}') }; });
   check('notes sit just above NOTICED, kept on this device', nt.last && nt.shown && Object.values(nt.kept).includes(NOTE), JSON.stringify(nt));
   await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(1400);
-  const w0 = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent, values: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), max: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).maxLength), ph: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).placeholder), letters: document.querySelectorAll('#w-slip .sl-wish label, #w-slip .sl-wish b').length, sug: document.querySelectorAll('#w-sug, [data-s], select').length, life: document.querySelector('#w-slip .sl-life b').textContent, site: document.querySelector('#w-slip .sl-meta dd').textContent, code: document.querySelector('#w-slip .sl-code').textContent }));
-  check('it turns over to a blank slip: four empty lines of 48, each saying what it is for; RESPONSE issues it', w0.face === 'wish' && w0.main === 'RESPONSE' && w0.values.every(v => v === '') && w0.max.every(m => m === 48) && /^What we know/.test(w0.ph[0]) && /^It would be great/.test(w0.ph[1]) && /^So let's create/.test(w0.ph[2]) && /^Here is how it works/.test(w0.ph[3]) && !w0.letters && !w0.sug && w0.life.length > 5 && /-37\.\d{4} 144\.\d{4}/.test(w0.site) && w0.code === 'DA-····', JSON.stringify(w0));
+  const w0 = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent, values: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).value), max: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).maxLength), ph: ['w', 'i', 's', 'h'].map(k => document.querySelector('#w-' + k).placeholder), letters: document.querySelectorAll('#w-slip .sl-wish label, #w-slip .sl-wish b').length, sug: document.querySelectorAll('#w-sug, #r-wish [data-s], #r-wish select').length, life: document.querySelector('#w-slip .sl-life b').textContent, site: document.querySelector('#w-slip .sl-meta dd').textContent, code: document.querySelector('#w-slip .sl-code').textContent, off: document.querySelector('#w-slip').classList.contains('wish-off'), alt: (document.querySelector('#r-alt .mono') || {}).textContent }));
+  check('it turns over to the receipt: the four lines of 48 there but off until asked for; TO THE BOARD lays it on the board, STORY issues it', w0.face === 'wish' && w0.main === 'TO THE BOARD' && w0.off && w0.alt === 'STORY' && w0.values.every(v => v === '') && w0.max.every(m => m === 48) && /^What we know/.test(w0.ph[0]) && /^It would be great/.test(w0.ph[1]) && /^So let's create/.test(w0.ph[2]) && /^Here is how it works/.test(w0.ph[3]) && !w0.letters && !w0.sug && w0.life.length > 5 && /-37\.\d{4} 144\.\d{4}/.test(w0.site) && w0.code === 'DA-····', JSON.stringify(w0));
   /* the photograph: black and white, changeable, or none */
   const im0 = await page.evaluate(() => { const c = document.querySelector('#w-img'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; const vals = new Set(); for (let i = 0; i < d.length; i += 4 * 97) vals.add(d[i] === d[i + 1] && d[i + 1] === d[i + 2] ? d[i] : -1); return { w: c.width, h: c.height, vals: [...vals].sort((a, b) => a - b), n: document.querySelector('#w-imgn').textContent, cap: document.querySelector('#w-cap').textContent, ratio: c.getBoundingClientRect().height / c.getBoundingClientRect().width }; });
   check('the slip opens with the photograph in black and white, credited, with no figure number', im0.w > 100 && im0.vals.length <= 2 && !im0.vals.includes(-1) && !/FIG/.test(im0.cap) && /iNaturalist/i.test(im0.cap) && im0.ratio > 0.7, JSON.stringify(im0));
@@ -615,7 +617,7 @@ if (run('wish')) try {
   await page.uncheck('#w-knots li:nth-child(2) [data-inc]'); await page.fill('#w-knots li:nth-child(1) [data-lb]', 'The corner shop'); await sleep(400);
   const nn = await page.evaluate(() => ({ note: document.querySelector('#w-note-t').value, on: document.querySelector('#w-note-on').checked }));
   check('the note comes across, ticked to print', nn.note === NOTE && nn.on, JSON.stringify(nn));
-  await page.fill('#w-h', ''); await page.type('#w-h', 'x'.repeat(60));
+  await wishLinesOn(page); await page.fill('#w-h', ''); await page.type('#w-h', 'x'.repeat(60));
   check('a line stops at 48 characters', (await page.evaluate(() => document.querySelector('#w-h').value.length)) === 48);
   await page.evaluate(() => { document.querySelector('#r-scroll').scrollTop = 0; });
   await shot(page, '20-wish.png');
@@ -681,7 +683,7 @@ if (run('outputs')) try {
   /* two styles: the paper slip as it was, and the terminal, chosen with > beside PIN: the hero, the code, the name, the lines */
   const t0 = await page.evaluate(async () => { const da = window.__da; const s = da.S.signals[0]; const acts = [...document.querySelectorAll('#s-acts [data-sa]')].map(x => x.dataset.sa);
     return { tty: da.isTty(), acts, cls: document.querySelector('#s-slip').classList.contains('tty'), hero: getComputedStyle(document.querySelector('#s-slip .sl-hero')).display, text: da.slipText(s, 32).split('\n'), btn: document.querySelector('#s-acts [data-sa="style"]').textContent }; });
-  check('the paper slip stays as it was until > is chosen, beside PIN', !t0.tty && !t0.cls && t0.hero === 'none' && t0.text[0] === t0.text[0].toUpperCase() && !/^DIRECT|^DA-/.test(t0.text[0]) && t0.text.some(l => /^CODE\s+DA-/.test(l)) && t0.btn === '>' && t0.acts.indexOf('style') === t0.acts.indexOf('pin') + 1, JSON.stringify(t0));
+  check('the paper slip stays as it was until > is chosen, beside PIN', !t0.tty && !t0.cls && t0.hero === 'none' && t0.text[0] === t0.text[0].toUpperCase() && !/^DIRECT|^DA-/.test(t0.text[0]) && t0.text.some(l => /DA-\w{4}/.test(l)) && !t0.text.some(l => /^(CODE|SITE|ISSUED)\b/.test(l)) && t0.text.some(l => /SOVEREIGNTY HAS NEVER BEEN CEDED/.test(l)) && t0.btn === '>' && t0.acts.indexOf('style') === t0.acts.indexOf('pin') + 1, JSON.stringify(t0));
   await tap(page, '#s-acts [data-sa="style"]'); await sleep(1500);
   const t1 = await page.evaluate(async () => { const da = window.__da; const s = da.S.signals[0]; const b58 = await da.escpos(s, '58'); const str = new TextDecoder('latin1').decode(b58); const btn = document.querySelector('#s-acts [data-sa="style"]'); const q = sel => document.querySelector('#s-slip ' + sel); const shown = sel => !!q(sel) && getComputedStyle(q(sel)).display !== 'none';
     const hero = q('.sl-hero').getBoundingClientRect(); const slip = document.querySelector('#s-slip').getBoundingClientRect(); const hi = q('.sl-hi');
@@ -760,9 +762,13 @@ if (run('share')) try {
   await openNear(page);
   await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(1200);
   const w = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent }));
-  await tap(page, '#r-act'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(700);
+  const n0 = await page.evaluate(() => (window.__da.boardJSON().objects || []).filter(o => o.daKind === 'receipt').length);
+  await tap(page, '#r-act'); await sleep(2500);
+  const tb = await page.evaluate(() => ({ face: window.__da.face(), n: (window.__da.boardJSON().objects || []).filter(o => o.daKind === 'receipt').length }));
+  check('TO THE BOARD lays the receipt, as an image, on the board open in the WISH MAKER; the card stays', tb.n === n0 + 1 && tb.face === 'wish', JSON.stringify({ n0, tb }));
+  await tap(page, '#r-alt'); await page.waitForFunction(() => window.__da.face() === 'signal', null, { timeout: 15000 }); await sleep(700);
   const s0 = await page.evaluate(() => { const da = window.__da; const s = da.S.issued; return { code: s.code, lines: Object.values(s.lines).filter(Boolean).length, poem: !!document.querySelector('#s-slip .sl-wish'), main: document.querySelector('#r-act .hw').textContent, mesh: da.meshText(s), pager: da.pagerText(s) }; });
-  check('three steps, three words: NOTICED, RESPONSE, DIRECT ACTION; RESPONSE issues a slip with nothing written', w.face === 'wish' && w.main === 'RESPONSE' && s0.lines === 0 && !s0.poem && s0.main === 'DIRECT ACTION' && !/\n\n|\n$/.test(s0.mesh) && s0.pager.startsWith(s0.code), JSON.stringify({ w, s0 }));
+  check('the receipt issued as a story with nothing written; then DIRECT ACTION', w.face === 'wish' && w.main === 'TO THE BOARD' && s0.lines === 0 && !s0.poem && s0.main === 'DIRECT ACTION' && !/\n\n|\n$/.test(s0.mesh) && s0.pager.startsWith(s0.code), JSON.stringify({ w, s0 }));
   const bin = await page.evaluate(async () => { const da = window.__da; const b58 = await da.escpos(da.S.issued, '58'), b80 = await da.escpos(da.S.issued, '80'); const has = (b, w) => { for (let i = 0; i < b.length - 6; i++) if (b[i] === 0x1D && b[i + 1] === 0x76 && b[i + 2] === 0x30 && b[i + 4] === w) return true; return false; }; const txt = String.fromCharCode(...b80.slice(0, 4000)); return { w58: has(b58, 48), w80: has(b80, 64), fig: /FIG\.|NORTH UP/.test(String.fromCharCode(...b58)) }; });
   check('ESC/POS for 58 mm and for 80 mm paper, with no FIG. or NORTH UP', bin.w58 && bin.w80 && !bin.fig, JSON.stringify(bin));
   await tap(page, '#r-act'); await sleep(900);
@@ -950,7 +956,7 @@ if (run('phone')) try {
   await shot(page, 'p01-radar.png');
   await page.tap('#rail .tab[data-i="0"]'); await sleep(700);
   const s = await page.evaluate(() => { const p = document.querySelector('#panel').getBoundingClientRect(); return { top: Math.round(p.top), h: Math.round(p.height), over: document.documentElement.scrollWidth - innerWidth }; });
-  check('NOW comes up as a sheet over the lower half', s.top > 300 && s.top < 420 && s.over <= 0, JSON.stringify(s));
+  check('on a phone the page comes up whole, above the dock, and nothing spills sideways', s.top === 0 && s.h > 600 && s.over <= 0, JSON.stringify(s));
   await shot(page, 'p02-now.png');
   const id = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const it = da.life.items.find(i => i.inS && typeof i.o.id === 'number' && !i.o.hist && !i.o.hum && i.b.tone !== 'flora' && i.b.tone !== 'cold'); return it.o.id; });
   await page.evaluate(() => window.__da.setOpen(false)); await sleep(500);
@@ -1019,7 +1025,7 @@ if (run('night')) try {
   const n2 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), slip: getComputedStyle(document.querySelector('#s-slip')).backgroundColor, tty: document.querySelector('#s-slip').classList.contains('tty') }));
   check('a slip stays paper at night, set as the terminal', n2.night && n2.slip === 'rgb(252, 251, 247)' && n2.tty, JSON.stringify(n2));
   /* every tab's icon stands out from its tab at night, pressed or not */
-  const tn = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const c = s => (s.match(/\d+/g) || []).slice(0, 3).reduce((a, b) => a + +b, 0); return Math.abs(c(getComputedStyle(t).color) - c(getComputedStyle(t).backgroundColor)); }));
+  const tn = await page.evaluate(() => [...document.querySelectorAll('#rail .tab')].map(t => { const rgb = s => { const m = (s.match(/[\d.]+/g) || []).map(Number); const a = m.length > 3 ? m[3] : 1; return m.slice(0, 3).map(v => v * a + 8 * (1 - a)); }; const c = s => rgb(s).reduce((a, b) => a + b, 0); return Math.round(Math.abs(c(getComputedStyle(t).color) - c(getComputedStyle(t).backgroundColor))); }));
   check('at night every tab icon stands out from its tab', tn.every(d => d > 300), JSON.stringify(tn));
   await shot(page, '70-night.png');
   await ctx.close();

@@ -64,7 +64,7 @@ function paintFace(f, wipe) {
   const o = S.mode === 'ping' ? S.byId.get(S.sel) : null; const tel = f === 'front' && o && (o.kind === 'injured' || o.kind === 'dead') ? telOf(o) : '';
   const lost = f === 'front' && o && o.kind === 'lost';
   altBtn.hidden = true; heroBtn.hidden = false; rec.classList.toggle('alarm', !!tel || lost); heroBtn.classList.remove('go'); altBtn.classList.add('go');
-  if (f === 'wish') heroWord('receipt', 'RESPONSE');
+  if (f === 'wish') { heroWord('base', 'TO THE BOARD'); altWord('print', 'STORY'); altBtn.hidden = false; }
   else if (f === 'signal') heroWord('print', 'DIRECT ACTION');
   else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (S.mode === 'tribe') heroWord('out', 'JOIN');
@@ -72,7 +72,7 @@ function paintFace(f, wipe) {
   else if (tel) { heroWord('phone', o.kind === 'dead' ? 'REPORT' : 'CALL'); altCard(); altBtn.hidden = false; }
   else if (lost) { heroWord('lost', 'SEARCH'); altCard(); altBtn.hidden = false; }
   else { heroCard(); heroBtn.classList.add('go'); }
-  if (f === 'wish' && !coarse()) setTimeout(() => { const t = WKEYS.map(k => $('#w-' + k)).find(x => !x.value); if (t) t.focus({ preventScroll: true }); }, 380);
+  if (f === 'wish' && wishOn && !coarse()) setTimeout(() => { const t = WKEYS.map(k => $('#w-' + k)).find(x => !x.value); if (t) t.focus({ preventScroll: true }); }, 380);
   /* the way out is always the first thing in the bar */
   $('#r-back').classList.toggle('cancel', f === 'place'); $('#r-back').setAttribute('aria-label', f === 'place' ? 'Cancel' : 'Back');
   const o2 = S.mode === 'ping' ? S.byId.get(S.sel) : null; $('#r-hide').hidden = !(f === 'front' && o2 && !o2.hero);
@@ -423,7 +423,12 @@ function setStatement(o, t) { if (!o) return; if (t.trim() === stDefault(o).trim
 const autoH = t => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight + 2}px`; };
 /* the statement and its window go on the slip together, or neither does */
 function stOn() { const on = $('#w-threat-on').checked && !!$('#w-st').value.trim(); $('#w-threat').classList.toggle('off', !on); $$('#w-slip .sl-win').forEach(e => e.classList.toggle('off', !on)); }
+/* the four lines on the receipt, or not: off unless asked for, or carried in by a remix */
+let wishOn = false;
+function setWishOn(on) { wishOn = !!on; $('#w-slip').classList.toggle('wish-off', !wishOn); $('#w-wtog').setAttribute('aria-pressed', String(wishOn)); }
+$('#w-wtog').addEventListener('click', () => { setWishOn(!wishOn); prefs.wishOn = wishOn; savePrefs(); tick(wishOn ? 1700 : 1100); if (wishOn) { const t = WKEYS.map(k => $('#w-' + k)).find(x => !x.value); if (t) t.focus({ preventScroll: true }); } });
 function fillWish(o, from) {
+  setWishOn(!!from || !!prefs.wishOn || WKEYS.some(k => ((store.get(draftKey(o), null) || {})[k] || '').trim()));
   const slip = $('#w-slip'); const d = { pin: pinData(o), when: whenWord(o), deg: degOf(o), at: Date.now() };
   fillSlipHead(slip, d); $('#r-no').textContent = `No. ${codeOf(o)}`;
   const ta = $('#w-st'); ta.value = statementOf(o); ta.placeholder = 'A statement: what is happening to this life here'; $('#w-st-reset').hidden = ta.value === stDefault(o);
@@ -516,15 +521,26 @@ heroBtn.addEventListener('click', async () => {
     if (o.kind === 'lost') { searchFor(o.id); return; }
     sendSpecies(o); return;
   }
-  if (face === 'wish') issue(o);
+  if (face === 'wish') toBoard(o);
 });
-altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (o) sendSpecies(o); });
+altBtn.addEventListener('click', () => { if (face === 'place') { placeIt(true); return; } const o = S.byId.get(S.sel); if (!o) return; if (face === 'wish') { issue(o); return; } sendSpecies(o); });
+/* the receipt as it stands, the life, its photograph and its constellation (and the four lines if they are on), laid on the
+   board that is open in the WISH MAKER */
+async function toBoard(o) {
+  heroBtn.classList.add('busy'); try {
+    const L = Object.fromEntries(WKEYS.map(k => [k, wishOn ? $('#w-' + k).value.trim() : '']));
+    const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o); const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;
+    const s = makeSignal(o, L, $('#w-sign').value.trim(), { statement: st, note: $('#w-note-on').checked ? $('#w-note-t').value.trim() : '', img });
+    const cv2 = await slipCanvas(s, 384, 2, false, false); await addToBoard(cv2.toDataURL('image/png'), 'receipt', 200);
+    markTweak(); flyToTab(1, heroBtn); snd.printer(700); buzz([8, 30, 8]); heroBtn.classList.add('go'); setTimeout(() => heroBtn.classList.remove('go'), 900);
+  } finally { heroBtn.classList.remove('busy'); }
+}
 function toWish(o, from) { fillWish(o, from || remixLines); remixLines = null; showFace('wish'); buzz(6); snd.tick(1700); }
 /* issued: the slip feeds out of the printer and becomes a signal. The four lines are asked for, never required:
    a record can be issued and printed as it stands */
 async function issue(o) {
   tie(1);
-  const L = Object.fromEntries(WKEYS.map(k => [k, $('#w-' + k).value.trim()]));
+  const L = Object.fromEntries(WKEYS.map(k => [k, wishOn ? $('#w-' + k).value.trim() : '']));
   const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o);
   const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;
   const sig = makeSignal(o, L, $('#w-sign').value.trim(), { statement: st, note: $('#w-note-on').checked ? $('#w-note-t').value.trim() : '', img });

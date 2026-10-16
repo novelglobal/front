@@ -31,6 +31,9 @@ window.DA_CONFIG = {
   EVENTS_URL: '',                                                   // a sheet of gatherings published as CSV: title, start, venue, lat, lng, tags, link
   ELNINO: 'EL NIÑO 2026–27',
   COUNTRY: 'WURUNDJERI WOI-WURRUNG COUNTRY',
+  SOVEREIGNTY: 'SOVEREIGNTY HAS NEVER BEEN CEDED',
+  /* the Countries the site stands on, chosen at the head of the page: more are added here as other places join */
+  COUNTRIES: [{ id: 'wurundjeri', n: 'Wurundjeri Woi-wurrung Country', s: 'Sovereignty has never been ceded' }],
   REFRESH_MIN: 60,
   LIVE_MIN: 5,
 };

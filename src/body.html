@@ -13,9 +13,11 @@
 <button type="button" class="knob ring" id="ring" aria-label="The radar's reach" hidden></button>
 <div class="hold" id="hold" aria-hidden="true"></div>
 <nav class="rail" id="rail" aria-label="Pages"></nav>
+<nav class="dock" id="dock" aria-label="What to show"><button type="button" class="dk" data-pane="main" aria-pressed="false" aria-label="What the page works on"></button><button type="button" class="dk" data-pane="page" aria-pressed="true" aria-label="The page"></button></nav>
 
 <aside class="panel" id="panel"><button type="button" class="grip" id="grip" aria-label="Fold the page away" aria-pressed="false"><i></i></button>
   <div class="leaf">
+    <header class="ph" id="ph"></header>
     <div class="view" id="view"></div>
 
     <section class="record" id="record" hidden>
@@ -59,6 +61,7 @@
             </figure>
             <div class="sl-life"></div>
             <div class="sl-opt sl-st" id="w-threat"><label class="ck" data-tip="On the slip"><input type="checkbox" id="w-threat-on" checked aria-label="The statement on the slip"><i></i></label><span class="st-box"><textarea id="w-st" rows="3" maxlength="320" aria-label="The statement" spellcheck="true"></textarea><button type="button" class="st-reset" id="w-st-reset" aria-label="As it was" data-tip="As it was" hidden><svg class="i sm" aria-hidden="true"><use href="#g-undo"/></svg></button></span></div>
+            <button type="button" class="sl-wtog" id="w-wtog" aria-pressed="false" aria-label="The W.I.S.H. on the receipt" data-tip="The W.I.S.H. on the receipt"><b>W</b><b>I</b><b>S</b><b>H</b></button>
             <ol class="sl-wish">
               <li data-hint="What we know: the theory"><input id="w-w" type="text" aria-label="What we know" placeholder="What we know: the theory" spellcheck="true"></li>
               <li data-hint="It would be great: the belief"><input id="w-i" type="text" aria-label="It would be great" placeholder="It would be great: the belief" spellcheck="true"></li>
