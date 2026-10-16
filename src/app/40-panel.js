@@ -19,6 +19,18 @@ rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b
   if (i === S.view && S.open && !S.mode) { setOpen(false); return; } if (phone()) pane = 'page'; setView(i); });
 rail.addEventListener('keydown', e => { const b = e.target.closest('.tab'); if (!b) return; const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0; if (!d) return; e.preventDefault(); const all = $$('#rail .tab'); all[(all.indexOf(b) + d + all.length) % all.length].focus(); });
 new ResizeObserver(() => { if (S.mapReady) map.resize(); }).observe($('#world'));
+/* a row that scrolls sideways says so: its edges fade where there is more of it, and the first time it shows on a phone it leans
+   a little way along and back */
+function edgeFade(el) {
+  if (!el || el.dataset.fade) return; el.dataset.fade = '1';
+  const f = () => { const room = el.scrollWidth - el.clientWidth; el.classList.toggle('fade-l', room > 4 && el.scrollLeft > 2); el.classList.toggle('fade-r', room > 4 && el.scrollLeft < room - 2); };
+  el.addEventListener('scroll', f, { passive: true }); new ResizeObserver(f).observe(el); f();
+}
+function leanOnce(el, key) {
+  if (!el || !phone() || reduced()) return; const room = el.scrollWidth - el.clientWidth; if (room < 24) return;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (e) { return; }
+  setTimeout(() => { el.scrollTo({ left: Math.min(80, room), behavior: 'smooth' }); setTimeout(() => el.scrollTo({ left: 0, behavior: 'smooth' }), 700); }, 600);
+}
 /* ───────── on a phone, one pane at a time: the dock holds the four pages and two keys, what the page works on (the map,
    the board, the press, the wall) and the page itself ───────── */
 const MAIN_IC = { radio: 'radar', signals: 'base', signs: 'receipt', portfolio: 'stories' };
@@ -192,14 +204,11 @@ function monthStrip() {
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
-/* a month's readout: as a stereo's display would show it */
-function readout(k, top) {
-  const Mo = outMonth(k); const m = Mo.m; const ws = OUT.windows.filter(w => inWin(w, m));
-  const gs = [top, ...ws.flatMap(w => w.g)].filter((g, i, a) => g && a.indexOf(g) === i).slice(0, 7);
-  return `<div class="eq-read" role="status"><p class="mono"><b>${MON[m]} ${Mo.y}</b><span>${DEG[Mo.lv]}</span>${ws.map(w => `<span>${esc(w.w)}</span>`).join('')}<span class="hz">${HORIZON[Mo.h]}</span></p>`
-    /* a window's reason is a relationship to look into, and says so; the outlook's own words are its summary */
-    + (ws.length ? `<p class="why">${esc(ws[0].why)} <span class="hz mono">HYPOTHESIS</span></p>` : `<p class="why">${esc(OUT.say[Mo.h] || '')}</p>`)
-    + `<p class="eq-k">${gs.map(g => `<i class="${g === 'human' ? 'us' : ''}" data-tip="${esc(M.KINDS[g] || '')}">${glyphSVG(g)}</i>`).join('')}</p></div>`;
+/* a month pressed: a short piece on one life, what makes it itself, where it is hurt, how it is helped, and what to do, more
+   urgent as the heat comes (the outlook's read, in config.js). No tags: the month is lit on the strip above it */
+function readout(k) {
+  const Mo = outMonth(k); const t = (OUT.read || {})[Mo.m] || OUT.say[Mo.h] || '';
+  return `<div class="eq-read d${Mo.lv}" role="status"><p class="eq-p">${esc(t)}</p></div>`;
 }
 function bindOutlook() {
   const st = $('#sec-heat .ms-m'); if (!st) return;
@@ -254,32 +263,29 @@ function extremeAhead() {
 const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
 setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
-/* the clues: drawn marks, and the only words on the radio. Find yourself; tie something to something; then the signal */
-const CLUE_IC = {
-  compass: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.2l1.7 4.8L8 12.8 6.3 8z" fill="currentColor"/></svg>',
-  chain: '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.2" y="5.4" width="7.6" height="5.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="7.2" y="5.4" width="7.6" height="5.2" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
-  q: '<b class="cq" aria-hidden="true">?</b>',
-};
-function cluesHTML() {
-  const s1 = placed(), s2 = s1 && (S.connected || strings.list().length > 0);
-  const n = !s1 ? 1 : !s2 ? 2 : 3; const w = ['find yourself', 'make a connection', 'start'][n - 1];
-  const inner = `<b class="chk-n mono">${String(n).padStart(2, '0')}</b><i class="io io-in${n > 1 ? ' on' : ''}"></i><span class="chk-w">${w}</span><i class="io io-out"></i>`;
-  return `<ol class="checks clues" aria-label="${n} of 3"><li class="chk clue now" data-clue="${n}">${n === 3 ? `<button type="button" class="chk-b clue-b" data-share-mix>${inner}</button>` : `<div class="chk-b clue-b">${inner}</div>`}</li></ol>`;
+/* the clues, the only words on the radio: find yourself; tie something to something; then the signal */
+/* the steps: one thin line, a dot for each, the words small under it. Done, the dot is filled; the one waiting is a ring that
+   breathes; begun, a point inside the ring; to come, faint. The clues first, then the checklist, the same way */
+function stepsHTML(rows, now, cls = '') {
+  const done = rows.filter(r => r.done).length;
+  return `<ol class="steps${cls}" aria-label="${done} of ${rows.length}">${rows.map((r, i) => {
+    const inner = `<i class="st-d" aria-hidden="true"></i><span class="st-w">${r.w}</span>`;
+    const tag = r.share ? `<button type="button" class="st-b" data-share-mix>${inner}</button>` : r.go != null ? `<button type="button" class="st-b" data-go-view="${r.go}">${inner}</button>` : `<span class="st-b">${inner}</span>`;
+    return `<li class="st${r.done ? ' done' : `${i === now ? ' now' : ''}${r.part ? ' part' : ''}`}" data-step="${i + 1}">${tag}</li>`; }).join('')}</ol>`;
 }
-/* once a signal is started: the checklist, as an old handheld's manual lists what it does. Each a coloured tile and its
-   mark, the line, and a box ticked when done */
+function cluesHTML() {
+  const s1 = placed(), s2 = s1 && (S.connected || strings.list().length > 0); const n = !s1 ? 0 : !s2 ? 1 : 2;
+  return stepsHTML([{ w: 'find yourself', done: s1 }, { w: 'make a connection', done: s2 }, { w: 'start', share: n === 2 }], n, ' clues');
+}
+/* once a signal is started: the checklist, on the same line of dots. Where; the W.I.S.H., begun and sent; a poster made and
+   printed. All three met, start comes after them */
 const wishStarted = () => S.signals.some(x => !x.ex && !x.shared && linesOf(x).length >= 2) || WKEYS.filter(k => String(WDRAFT[k] || '').trim()).length >= 2;
 const printedAny = () => !!store.get('da.printed.v1', 0) || PROOFS.length > 0 || S.signals.some(x => !x.ex && !x.shared && /PRINTED/.test(sentWord(x)));
 function checklistHTML() {
-  const rows = [
-    { i: placed() || !!prefs.placed, o: placed() || !!prefs.placed, w: 'Where are you?' },
-    { i: wishStarted(), o: mineOf().some(x => linesOf(x).length), w: 'W.I.S.H.', go: 1 },
-    { i: POSTERS2.length > 0, o: printedAny(), w: 'Make · Print', go: 2 },
-  ];
-  const done = rows.filter(r => r.i && r.o).length;
-  return `<ol class="checks" aria-label="${done} of ${rows.length}">${rows.map((r, n) => `<li class="chk${r.i && r.o ? ' ok' : ''}" data-check="${n + 1}">`
-    + `<button type="button" class="chk-b"${r.go != null ? ` data-go-view="${r.go}"` : ''}><b class="chk-n mono">${String(n + 1).padStart(2, '0')}</b><i class="io io-in${r.i ? ' on' : ''}" aria-label="${r.i ? 'begun' : 'not begun'}"></i><span class="chk-w">${r.w}</span><i class="io io-out${r.o ? ' on' : ''}" aria-label="${r.o ? 'out' : 'not out'}"></i></button></li>`).join('')}</ol>`
-    + (done === rows.length ? `<button type="button" class="start-k" data-share-mix data-tip="Start another signal">${icon('share')}<span>start</span></button>` : '');
+  const p = placed() || !!prefs.placed, wi = wishStarted(), wo = mineOf().some(x => linesOf(x).length), mi = POSTERS2.length > 0, mo = printedAny();
+  const rows = [{ w: 'Where are you?', done: p }, { w: 'W.I.S.H.', done: wi && wo, part: wi || wo, go: 1 }, { w: 'Make · Print', done: mi && mo, part: mi || mo, go: 2 }];
+  const now = rows.findIndex(r => !r.done);
+  return stepsHTML(rows, now) + (now < 0 ? `<button type="button" class="st-go" data-share-mix>start</button>` : '');
 }
 /* ───────── the invisible hand: each step met is answered once, a few notes of glass and a glow where it was met ───────── */
 const STEPS = () => [placed() || !!prefs.placed, !!(S.connected || strings.list().length), MIXES.length > 0, wishStarted(), mineOf().some(x => linesOf(x).length), POSTERS2.length > 0, printedAny()];
@@ -294,7 +300,7 @@ function stepsCheck() {
 function won(i) {
   snd.reward(i + 1); document.body.classList.remove('won'); void document.body.offsetWidth; document.body.classList.add('won'); setTimeout(() => document.body.classList.remove('won'), 1600);
   const mk = $('.lk-mark'); if (mk) { mk.classList.remove('pulse'); void mk.offsetWidth; mk.classList.add('pulse'); }
-  if (S.open && S.view === 0 && !S.mode) { refreshPanel(); const r = STEP_ROW[i] && document.querySelector(`.chk[data-check="${STEP_ROW[i]}"]`); if (r) r.classList.add('won'); }
+  if (S.open && S.view === 0 && !S.mode) { refreshPanel(); const r = STEP_ROW[i] && document.querySelector(`.st[data-step="${STEP_ROW[i]}"]`); if (r) r.classList.add('won'); }
   if (i === STEPS().length - 1) dispatchEvent(new CustomEvent('da:muse'));
 }
 setInterval(stepsCheck, 1500);
@@ -306,7 +312,8 @@ document.addEventListener('click', e => { const b = e.target.closest('[data-muse
 const COUNTRIES = (CONFIG.COUNTRIES && CONFIG.COUNTRIES.length) ? CONFIG.COUNTRIES : [{ id: 'here', n: CONFIG.COUNTRY, s: CONFIG.SOVEREIGNTY || '' }];
 const countryNow = () => COUNTRIES.find(c => c.id === prefs.ctry) || COUNTRIES[0];
 const countryBar = () => { const c = countryNow(); return `<div class="ctry"><label class="ct-sel"><select id="ctry" aria-label="Country">${COUNTRIES.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}${(CONFIG.SOON || []).length ? `<optgroup label="Soon">${CONFIG.SOON.map(n => `<option disabled>${esc(n)} · soon</option>`).join('')}</optgroup>` : ''}</select><span class="ct-n">${esc(c.n)}</span><span class="ct-s">${esc(c.s)}</span>${COUNTRIES.length > 1 ? icon('next', 'sm') : ''}</label></div>`; };
-function headBar() { const h = $('#ph'); if (h) h.innerHTML = lockup() + countryBar(); }
+/* the Country stands at the head of the radio only, and fades slowly over a minute (it comes back under the pointer) */
+function headBar() { const h = $('#ph'); if (h) h.innerHTML = lockup() + (S.view === 0 ? countryBar() : ''); }
 document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; prefs.ctry = e.target.value; savePrefs(); headBar(); });
 /* the printers online, as a pager would say it: its light, its name, a buzz when one comes on */
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
@@ -321,7 +328,9 @@ function viewRadio() {
   return `<section class="band" id="sec-heat">
       ${pagerHTML()}${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in"><i class="sun">${icon('heat')}</i>${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
-      <button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>
+      <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
+     + `<button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>`
+     + `<button type="button" class="hp-k" data-link aria-label="This sound as a link, a code and a picture">${icon('qr')}<small>link</small></button></div>
       ${layersHTML()}
       ${MIXES.length || wishStarted() || mineOf().length || POSTERS2.length || printedAny() ? checklistHTML() : cluesHTML()}
     </section>`;
@@ -395,7 +404,7 @@ function quickHTML() {
     + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
     + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder=" ">${esc(QP.t)}</textarea><i class="qp-caret" aria-hidden="true"></i>`
     + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
-    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Print on ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>PRINT MESSAGE</b></button></section>`;
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Send a message to ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>send message</b></button></section>`;
 }
 /* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
 async function quickCanvas(W = 512) {
@@ -460,7 +469,7 @@ function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return quickHTML() + wishesSection() + deckHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return quickHTML() + wishesSection() + deckHTML() + loopsHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()

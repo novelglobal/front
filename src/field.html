@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Field List · Direct Action</title>
+<title>Field list · novel.global</title>
 <meta name="description" content="Kinds of life between Brunswick and the city: months, heat, water, and what to do.">
 <meta name="theme-color" content="#0CCBBD">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -23,7 +23,10 @@ button,input{font:inherit;color:inherit}
 .sprite{position:absolute;width:0;height:0;overflow:hidden}
 .i{width:16px;height:16px;display:inline-block;vertical-align:-3px;flex:none}
 .mono{font-family:var(--mono)}
-header{position:sticky;top:0;z-index:2;background:var(--navy);color:var(--white);padding:18px 24px 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:6px 22px}
+/* the jellyfish's colour, never quite green and never quite blue, drifting slowly across the head of the page */
+@keyframes headshim{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+@media (prefers-reduced-motion:reduce){.mast,#hd{animation:none!important}}
+header{position:sticky;top:0;z-index:2;background:linear-gradient(100deg,#0A6E66,#1D4C9E 50%,#0A6E66) 0 0/300% 100%;animation:headshim 18s ease-in-out infinite;color:var(--white);padding:18px 24px 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:end;gap:6px 22px}
 header .n{font-weight:200;font-size:72px;line-height:.8;letter-spacing:-.04em}
 header .t{font-weight:600;font-size:11px;letter-spacing:.24em;padding-bottom:4px}
 header .m{font:500 11px var(--mono);letter-spacing:.06em;padding-bottom:4px;text-align:right}
@@ -101,7 +104,7 @@ footer{padding:16px 24px 40px;border-top:1px solid var(--navy);font:400 10.5px/1
 <body>
 <svg class="sprite" aria-hidden="true" focusable="false"></svg>
 <header id="hd">
-  <span class="n" id="count"></span><span class="t">DIRECT ACTION · FIELD LIST</span><span class="m" id="month"></span>
+  <span class="n" id="count"></span><span class="t">novel.global · FIELD LIST</span><span class="m" id="month"></span>
   <div class="tools" id="tools"></div>
 </header>
 <main>

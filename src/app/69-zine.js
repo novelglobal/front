@@ -5,7 +5,7 @@
    at novel.global's printer as the printer's own raster. Each paper is kept on this device (da.press.<format>)
    ════════════════════════════════════════════════════════════════════ */
 const FORMATS = { r80: { dots: 512, w: 320, ic: 'receipt', n: '80' }, r58: { dots: 384, w: 240, ic: 'receipt', n: '58' }, gb: { dots: 160, w: 160, levels: 4, ic: 'gb', n: '' }, zine: { w: 420, h: 595, ic: 'base', n: 'A5' } };
-const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1 };   /* every visit opens on the 80 mm receipt */
+const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1, packOpen: false };   /* every visit opens on the 80 mm receipt; the stickers in a drawer, shut */
 const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
@@ -31,6 +31,7 @@ function zineTools() {
     + `<span class="swatches" role="group" aria-label="Ink">${SWATCH.map(c => `<button type="button" class="sw${c === ZCOL ? ' on' : ''}" data-ink="${c}" style="--c:${c}" aria-label="Ink ${c}"></button>`).join('')}<label class="sw pick" aria-label="Any ink" data-tip="Any ink"><input type="color" id="zine-col" value="${ZCOL}"></label></span>`
     + '<input type="file" id="zine-file" accept="image/*" hidden>';
   $('#zine-label').textContent = 'PRINT SHOP · MODEL DA-04 · THERMAL 80 MM / 58 MM · A5 · RUNS ON WHAT IS LEFT OVER · HEAT-SENSITIVE PAPER: KEEP FROM SUN · PRINT WHAT YOU WILL DO';
+  edgeFade(t);
 }
 /* what a key shows: the words keys in the face they will set, tape as the tape it lays, the bandana as itself */
 function keyFace(k) {
@@ -125,27 +126,37 @@ async function showZine(on) {
   const host = $('#zine'); host.hidden = !on; if (!on) return null;
   zineTools(); const f = await loadFabric().catch(() => null); if (!f) return null;
   const F = FORMATS[PRESS.fmt]; host.dataset.fmt = PRESS.fmt;
-  if (!zc) { zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true, allowTouchScrolling: true, selection: !phone() });   /* on a phone a drag on bare paper scrolls the strip; on a piece, it moves the piece */ zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); }); }
+  if (!zc) {
+    zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true, allowTouchScrolling: true, selection: !phone() });
+    zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); });
+    /* the story at the head moves up and down only, and stays on the paper; let down past the end, the paper grows to hold it */
+    zc.on('object:moving', e => { const o = e.target; if (o && o.daKind === 'base') o.set({ left: 0, top: clamp(o.top, 60 - o.getScaledHeight(), zc.getHeight() - 60) }); });
+    zc.on('object:modified', e => { const o = e.target; if (!o || o.daKind !== 'base') return; const need = Math.ceil(o.top + o.getScaledHeight()) + 80; if (zc.getHeight() < need) { zc.setHeight(need); fitZ(); zc.renderAll(); saveZine(); } });
+    /* a finger on bare paper, or on the story before it is chosen, scrolls the strip: Fabric would keep every touch for itself.
+       A tap still chooses (the browser's own click follows it); a piece chosen, or any sticker, moves under the finger */
+    zc.wrapperEl.addEventListener('touchstart', e => { if (zc.isDrawingMode || e.touches.length !== 1) return; const t = zc.findTarget(e, false); if (!t || (t.daKind === 'base' && zc.getActiveObject() !== t)) e.stopPropagation(); }, { capture: true, passive: true });
+  }
   if (zFmt !== PRESS.fmt) {
     zFmt = PRESS.fmt; zc.clear(); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); ZHIST.length = 0;
     const kept = store.get(zKey(), null); zc.setWidth(F.w); zc.setHeight((kept && kept.h) || F.h || 520);
     if (kept && kept.json) { zLast = JSON.stringify(kept.json); await new Promise(r => zc.loadFromJSON(kept.json, r)); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); } else zLast = '';
   }
   if (PRESS.fmt !== 'zine') await setBase(false);
-  fitZ(); zc.renderAll(); return zc;
+  fitZ(); zc.renderAll(); leanOnce($('#zine-tools'), 'da.lean.zine'); return zc;
 }
 /* the story, as the printer's head draws it, at the head of the strip; set again when the story or its style changes */
 let baseN = 0;
+const lockBase = o => o.set({ left: 0, selectable: true, evented: true, lockMovementX: true, lockScalingX: true, lockScalingY: true, lockRotation: true, lockSkewingX: true, lockSkewingY: true, hasControls: false, borderColor: '#E8450F', borderScaleFactor: 2, hoverCursor: 'ns-resize', moveCursor: 'ns-resize' });
 async function setBase(force) {
   const s = pressStory(); const F = FORMATS[PRESS.fmt]; if (!zc || PRESS.fmt === 'zine') return;
   const was = zc.getObjects().find(o => o.daKind === 'base'); const style = `${isTty()}${isConn()}`;
   if (!s) { if (was) zc.remove(was); return; }
-  if (was && !force && was.daStory === `${s.key}|${style}`) return;
+  if (was && !force && was.daStory === `${s.key}|${style}`) { lockBase(was); return; }
   const my = ++baseN; const cvs = await slipCanvas(s, F.dots - (F.dots % 8), F.levels || 2, isTty(), isConn()).catch(() => null); if (!cvs || my !== baseN) return;
   await new Promise(res => window.fabric.Image.fromURL(cvs.toDataURL('image/png'), im => {
-    const old = zc.getObjects().find(o => o.daKind === 'base'); if (old) zc.remove(old);
-    im.set({ left: 0, top: 0, selectable: false, evented: false, daKind: 'base', daStory: `${s.key}|${style}` }); im.scaleToWidth(F.w);
-    zc.add(im); zc.sendToBack(im); const need = Math.ceil(im.getScaledHeight()) + 160; if (zc.getHeight() < need) { zc.setHeight(need); fitZ(); } zc.renderAll(); saveZine(); res();
+    const old = zc.getObjects().find(o => o.daKind === 'base'); const top0 = old ? old.top || 0 : 0; if (old) zc.remove(old);
+    im.set({ top: top0, daKind: 'base', daStory: `${s.key}|${style}` }); lockBase(im); im.scaleToWidth(F.w);
+    zc.add(im); zc.sendToBack(im); const need = Math.ceil(top0 + im.getScaledHeight()) + 160; if (zc.getHeight() < need) { zc.setHeight(need); fitZ(); } zc.renderAll(); saveZine(); res();
   }));
 }
 const words = () => ($('#zine-words').value || '').trim();
@@ -259,7 +270,7 @@ async function zineTool(k) {
   if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
   if (k === 'len') { c.setHeight(c.getHeight() + Math.round(c.getWidth() * 0.75)); fitZ(); c.renderAll(); saveZine(); snd.printer(300); const d = $('#zine .desk'); if (d) d.scrollTo({ top: d.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' }); return; }
   if (k === 'add') { const mine = S.signals.filter(x => !x.ex && !x.shared).slice(0, 12);
-    pickMenu($('#zine [data-zt="add"]'), [...POSTERS2.slice(0, 12).map((p, i) => ({ k: 'p', id: p.id, n: `Poster № ${String(POSTERS2.length - i).padStart(3, '0')}`, ic: `<img src="${p.img}" alt="">` })), ...mine.map(x => ({ k: 'S', id: x.key, n: `${x.code} · ${NAME_UP(x)}`, ic: icon('receipt', 'sm') })), ...mine.map(x => ({ k: 'q', id: x.key, n: `QR · ${x.code} · its song`, ic: icon('qr', 'sm') })), ...deck().slice(0, 24).map(c => ({ k: 'T', id: c.id, n: `Card · ${c.name || `№ ${String(c.n + 1).padStart(3, '0')}`}`, ic: icon('stories', 'sm') })), ...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
+    pickMenu($('#zine [data-zt="add"]'), [...POSTERS2.slice(0, 12).map((p, i) => ({ k: 'p', id: p.id, n: `Poster № ${String(POSTERS2.length - i).padStart(3, '0')}`, ic: `<img src="${p.img}" alt="">` })), ...mine.map(x => ({ k: 'S', id: x.key, n: `${x.code} · ${NAME_UP(x)}`, ic: icon('receipt', 'sm') })), ...mine.map(x => ({ k: 'q', id: x.key, n: `QR · ${x.code} · its song`, ic: icon('qr', 'sm') })), ...deck().slice(0, 24).map(c => ({ k: 'T', id: c.id, n: `Card · ${c.name || `№ ${String(c.n + 1).padStart(3, '0')}`}`, ic: icon('stories', 'sm') })), ...(placed() ? [{ k: 'R', id: '', n: 'Radio · this sound as a link', ic: icon('qr', 'sm') }] : []), ...LOOPS.slice(0, 6).map(l => ({ k: 'R', id: l.id, n: `Loop · ${l.where.place || ''} · ${fmtStamp(l.at)}`, ic: icon('loop', 'sm') })), ...BOARDS.map(b => ({ k: 'b', id: b.id, n: b.n, ic: icon('base', 'sm') })), ...addables(false)], it => pieceOn(it.k, it.id)); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
   if (k === 'tape') {
@@ -356,7 +367,8 @@ async function pieceOn(kind, id) {
   if (kind === 'W') { const sp = WILD.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 96, true); }
   if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
   if (kind === 'p') { const p = POSTERS2.find(v => v.id === id); if (p) placeOnPage(p.img, 'poster', 600); }
-  if (kind === 'T') { const card = deck().find(c => c.id === id); if (card) placeOnPage(await cardURL(card, 3), 'card', 120); }
+  if (kind === 'T') { const card = deck().find(c => c.id === id); if (card) placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200); }
+  if (kind === 'R') { const m = (id && LOOPS.find(l => l.id === id)) || (placed() ? mixNow() : null); if (m) placeOnPage(mixArt(m, mixURL(m)), 'art', 240); }
   if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
   if (kind === 'q') { const x = S.signals.find(v => v.key === id); const t = x ? qrText(x) : CONFIG.PORTAL_URL; const u = qrImage(t); if (u) placeOnPage(u, 'qr', 120); }
 }
@@ -373,7 +385,8 @@ async function savePoster(quiet) {
   const out = await stripOut(); if (!out) return; const sig = `${out.url.length}|${out.url.slice(-80)}`; if (quiet && sig === lastPoster) return POSTERS2[0]; lastPoster = sig; const s = pressStory(); const im = await loadImage(out.url, false);
   const k = Math.min(1, 360 / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
   const where = s && s.pin ? { lat: +s.pin.lat, lng: +s.pin.lng } : { lat: S.scan.lat, lng: S.scan.lng };
-  POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.8), ...where }); POSTERS2.splice(12);
+  const figs = strings.list().filter(g => g.o && life.inScan(g.o.lat, g.o.lng)).slice(0, 3).map(g => String(g.id));
+  POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.8), ...where, figs, ...(s ? { story: s.key } : {}) }); POSTERS2.splice(12);
   while (!store.set('da.posters2.v1', POSTERS2) && POSTERS2.length > 1) POSTERS2.pop();
   if (!quiet) { snd.horn(); toast('✓'); } life.redraw(); return POSTERS2[0];
 }
@@ -415,23 +428,41 @@ async function cardURL(card, scale = 2) { const k = `${card.id}|${scale}`; if (!
 async function fillDeck() { for (const im of $$('#view img[data-card]')) { const card = deck().find(c => c.id === im.dataset.card); if (!card) continue; try { const u = await cardURL(card, 2); if (im.isConnected) im.src = u; } catch (e) { /* the card waits */ } } }
 const deckHTML = () => { const d = deck(); return d.length ? `<section class="sec deck" id="sec-deck"><ol class="deck-l">${d.slice(0, 48).map(c => `<li><button type="button" class="card-b" data-open-card="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><img data-card="${esc(c.id)}" alt=""></button></li>`).join('')}</ol></section>` : ''; };
 $('#view').addEventListener('click', e => { const b = e.target.closest('[data-open-card]'); if (b) { const card = deck().find(c => c.id === b.dataset.openCard); if (card) openCard(card); } });
-async function shareCard(card) {
-  const u = await cardURL(card, 6); const blob = await (await fetch(u)).blob(); const name = `novel-global-card-${card.id.replace(/[^a-z0-9]+/gi, '-')}.png`; const file = new File([blob], name, { type: 'image/png' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'novel.global' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = u; a.download = name; a.click(); tick(1800);
+/* a card laid on the strip as a piece of art: square to the paper, on a white mount with a fine rule round it */
+async function mountArt(url, w = 360) {
+  const im = await loadImage(url, false); const k = w / im.width; const iw = Math.round(im.width * k), ih = Math.round(im.height * k); const pad = Math.round(w * 0.09);
+  const c = document.createElement('canvas'); c.width = iw + pad * 2; c.height = ih + Math.round(pad * 2.6); const x = c.getContext('2d');
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.strokeStyle = '#0C0E0E'; x.lineWidth = 2; x.strokeRect(1, 1, c.width - 2, c.height - 2);
+  x.imageSmoothingEnabled = false; x.drawImage(im, pad, pad, iw, ih); x.lineWidth = 1; x.strokeRect(pad - 0.5, pad - 0.5, iw + 1, ih + 1);
+  return c.toDataURL('image/png');
+}
+/* what a card is with: the constellation it belongs to, and the poster it came from (else the one made nearest it) */
+function cardKin(card) {
+  const figs = strings.list().filter(g => g.o); const byNear = (lat, lng, key) => (a, b) => haversine(lat, lng, ...key(a)) - haversine(lat, lng, ...key(b));
+  let poster = card.kind === 'poster' ? POSTERS2.find(p => 'p:' + p.id === card.id) || null : null;
+  let fig = card.kind === 'fig' ? strings.list().find(g => 'c:' + g.id === card.id) || null : card.kind === 'life' ? figs.find(g => nameOf(g.o) === card.name) || figs.find(g => card.g && glyphOf(g.o) === card.g) || null : null;
+  if (!fig && poster && (poster.figs || []).length) fig = figs.find(g => poster.figs.includes(String(g.id))) || null;
+  if (!fig && poster && figs.length) fig = [...figs].sort(byNear(poster.lat, poster.lng, g => [g.o.lat, g.o.lng]))[0];
+  if (!fig && figs.length) fig = figs[0];
+  if (!poster && POSTERS2.length) poster = fig ? [...POSTERS2].sort(byNear(fig.o.lat, fig.o.lng, p => [p.lat, p.lng]))[0] : POSTERS2[0];
+  return { fig, poster };
 }
 async function openCard(card) {
   $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
   const el = document.createElement('div'); el.className = 'card-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', card.name || 'A card');
-  const c = await cardArt(card, card.n, 4); c.className = 'tv-card';
-  el.innerHTML = `<div class="tv-in">${card.name ? `<p class="tv-name mono">${esc(card.name)}</p>` : ''}<div class="tv-acts"><button type="button" class="key" data-tv="share" aria-label="Share" data-tip="Share">${icon('share')}</button><button type="button" class="key" data-tv="strip" aria-label="Onto the strip" data-tip="Onto the strip">${icon('receipt')}</button>${card.kind === 'poster' ? `<button type="button" class="key" data-tv="png" aria-label="The poster" data-tip="The poster">${icon('download')}</button>` : ''}<button type="button" class="key" data-tv="x" aria-label="Close">${icon('close')}</button></div></div>`;
-  el.querySelector('.tv-in').prepend(c); document.body.appendChild(el);
+  const c = await cardArt(card, card.n, 4); c.className = 'tv-card'; const { fig, poster } = cardKin(card);
+  const acts = [['strip', 'receipt', 'onto the strip', 'placed as art, to print'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
+  el.innerHTML = `<div class="tv-in"><div class="tv-spread">`
+    + (poster ? `<figure class="tv-side tv-poster"><img src="${poster.img}" alt=""><figcaption class="mono">poster</figcaption></figure>` : '')
+    + `<div class="tv-mid"></div>`
+    + (fig ? `<figure class="tv-side tv-fig"><img src="${figArt(fig, '#DCE7EA')}" alt=""><figcaption class="mono">${esc(fig.name)}</figcaption></figure>` : '')
+    + `</div>${card.name ? `<p class="tv-name mono">${esc(card.name)}</p>` : ''}<div class="tv-acts">${acts.map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-tv="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
+  el.querySelector('.tv-mid').append(c); document.body.appendChild(el);
+  const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
   el.addEventListener('click', async e => { const b = e.target.closest('[data-tv]');
-    if (b && b.dataset.tv === 'share') { shareCard(card); return; }
-    if (b && b.dataset.tv === 'strip') { el.remove(); setView(2); setTimeout(async () => placeOnPage(await cardURL(card, 3), 'card', 120), 500); return; }
-    if (b && b.dataset.tv === 'png') { const a = document.createElement('a'); a.href = card.img; a.download = `poster-${isoDay(new Date())}.jpg`; a.click(); return; }
-    if (b || e.target === el) el.remove(); });
-  const esc2 = e => { if (e.key === 'Escape') { el.remove(); removeEventListener('keydown', esc2); } }; addEventListener('keydown', esc2);
+    if (b && b.dataset.tv === 'strip') { close(); setView(2); setTimeout(async () => placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200), 500); return; }
+    if (b && b.dataset.tv === 'png' && poster) { const a = document.createElement('a'); a.href = poster.img; a.download = `poster-${isoDay(new Date(poster.at || Date.now()))}.jpg`; a.click(); tick(1800); return; }
+    if (b || e.target === el) close(); });
 }
 /* a poster's card, from the map */
 function openPosterCard(id) { const card = deck().find(c => c.id === 'p:' + id); if (card) return openCard(card); }
@@ -500,6 +531,19 @@ async function fillThumbs() {
 /* ───────── the PRINT SHOP page: no words. A printer; the stories waiting; the paper; how it reads; where it goes; what to
    put on it ───────── */
 const PFMT_ICON = k => (k === 'gb' ? `${icon('gb')}` : k === 'zine' ? `${icon('base')}<b class="mono">A5</b>` : `${icon('receipt')}<b class="mono">${FORMATS[k].n}</b>`);
+/* each key says what it is for, small, under its mark: a sense check at a glance */
+const PFMT_W = { r80: 'receipt', r58: 'ticket', gb: '4 tones', zine: 'zine' };
+const PHOTO_FOR = { atk: ['soft', 'faces, fur'], dots: ['halftone', 'posters'], bayer: ['grid', 'pixel art'], lines: ['engraved', 'plants, bark'], hard: ['bold', 'type, marks'] };
+const OUTS = [['print', 'print', 'here', 'Print here, from this device'], ['poster', 'stories', 'wall', 'Save to the portfolio wall'], ['png', 'download', 'picture', 'Save as a picture'], ['escpos', 'escpos', 'printer file', 'Printer bytes (.bin), for a printer on a cable'], ['mesh', 'mesh', 'mesh', 'Copy as a mesh line, to send by radio']];
+const PACK_W = { life: 'life', jelly: 'jelly', zone: 'zone', goth: 'goth', witch: 'witch', ink: 'ink', turtle: 'turtles', words: 'words', ideas: 'ideas' };
+/* each look shown on the same small picture, a lit ball on a ramp, so the difference reads at once */
+const SWS = new Map();
+function swatchOf(mode) {
+  if (SWS.has(mode)) return SWS.get(mode); const w = 84, h = 48; const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', { willReadFrequently: true });
+  const lg = x.createLinearGradient(0, 0, w, 0); lg.addColorStop(0, '#141414'); lg.addColorStop(1, '#F4F4F4'); x.fillStyle = lg; x.fillRect(0, 0, w, h);
+  const rg = x.createRadialGradient(w * 0.44, h * 0.36, 1, w * 0.5, h * 0.52, h * 0.44); rg.addColorStop(0, '#FFFFFF'); rg.addColorStop(0.55, '#8C8C8C'); rg.addColorStop(1, '#161616'); x.fillStyle = rg; x.beginPath(); x.arc(w * 0.5, h * 0.52, h * 0.4, 0, TURN); x.fill();
+  x.putImageData(dither(x.getImageData(0, 0, w, h), 2, mode), 0, 0); const u = c.toDataURL('image/png'); SWS.set(mode, u); return u;
+}
 function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
@@ -508,14 +552,14 @@ function viewSigns() {
     + `<section class="sec lcd" id="sec-slips" data-tip="Stories waiting to print"><i class="lcd-ic">${icon('receipt')}<b class="mono">${ws.length}</b></i>`
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`
-    + `<section class="sec" id="sec-style"><div class="seg keys" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}</button>`).join('')}</div>`
-      + `<div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}" data-tip="${m.w}"><i class="ph-sw ph-${m.k}"></i></button>`).join('')}</div>`
-      + `</section><section class="sec" id="sec-out"><h3 class="out-h"><span>PRINT</span></h3><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
-      + `<div class="seg keys outs" role="group" aria-label="Other ways out">${[['print', 'print', 'Print here, from this device'], ['poster', 'stories', 'Save to the portfolio wall'], ['png', 'download', 'Save as a picture'], ['escpos', 'escpos', 'Printer bytes (.bin)'], ['mesh', 'mesh', 'Copy as a mesh line']].map(([k, ic, w]) => `<button type="button" class="key" data-pout="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('')}</div></section>`
+    + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
+      + `<section class="sec" id="sec-out"><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
+      + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
+      + `<section class="sec" id="sec-photo"><div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k cap-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}: best for ${PHOTO_FOR[m.k][1]}" data-tip="${m.w} · best for ${PHOTO_FOR[m.k][1]}"><img class="ph-sw" src="${swatchOf(m.k)}" alt=""><small class="cap mono">${PHOTO_FOR[m.k][0]}</small><small class="cap2">${PHOTO_FOR[m.k][1]}</small></button>`).join('')}</div></section>`
     + `<section class="sec" id="sec-near"><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any" data-tip="An animal's photograph, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen" data-tip="The newest animal seen">${icon('star5')}</button></li><li><button type="button" class="nr-b nr-k${wildBusy ? ' busy' : ''}" data-wild="more" aria-label="More animals, from further out" data-tip="More animals, from further out">${icon('receive')}</button></li>${[...WILD.map(sp => ({ sp, k: 'W' })), ...sps.map(sp => ({ sp, k: 'L' }))].slice(0, 15).map(({ sp, k }) => `<li><button type="button" class="nr-b" data-piece="${k}" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></section>`
     + (cells.length || figs.length ? `<section class="sec" id="sec-pieces"><ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol></section>` : '')
-    + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-k" data-spack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${k}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
-      + `<ol class="stickers${PRESS.pack === 'words' || PRESS.pack === 'ideas' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.d ? `${st.w}: ${st.d}` : st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own: pictures from this device">${icon('plus')}<small class="mono">PNG JPG</small><input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`
+    + `<section class="sec" id="sec-stickers"><div class="seg packs" role="group" aria-label="Sticker packs">${Object.keys(PACKS_ALL).map(k => { const open = PRESS.packOpen && PRESS.pack === k; return `<button type="button" class="pk-k cap-k" data-spack="${k}" aria-pressed="${open}" aria-expanded="${open}" aria-label="${PACK_W[k]}"><img src="${sticker({ ...PACK_FACE[k], col: open ? '#0C0E0E' : '#7F939B' })}" alt=""><small class="cap mono">${PACK_W[k]}</small></button>`; }).join('')}</div>`
+      + (!PRESS.packOpen ? '</section>' : `<ol class="stickers${PRESS.pack === 'words' || PRESS.pack === 'ideas' ? ' words' : ''}">${PRESS.pack === 'life' ? PACKS.map((u, i) => `<li><button type="button" class="stk own" data-pack="${i}" aria-label="Sticker"><img src="${u}" alt=""></button></li>`).join('') : ''}${pk.map((st, i) => `<li><button type="button" class="stk" data-stk="${i}" aria-label="Sticker" data-tip="${esc(st.d ? `${st.w}: ${st.d}` : st.w || (st.g ? M.KINDS[st.g] || st.g : st.i || ''))}"><img src="${sticker({ ...st, col: ZCOL })}" alt="" loading="lazy"></button></li>`).join('')}<li><label class="stk add" data-tip="Stickers of your own: pictures from this device">${icon('plus')}<small class="mono">PNG JPG</small><input type="file" id="pack-in" accept="image/*" multiple hidden></label></li></ol></section>`)
     ;
 }
 $('#view').addEventListener('click', e => {
@@ -525,7 +569,8 @@ $('#view').addEventListener('click', e => {
     if (sel.length) inkAll(sel, phm.dataset.photo); else { prefs.photo = phm.dataset.photo; savePrefs(); THUMBS.clear(); setBase(true); } tick(1300); return; }
   const po = e.target.closest('[data-pout]'); if (po) { pressOut(po.dataset.pout); return; }
   const sk = e.target.closest('[data-stk]'); if (sk) { const st = stickNow()[+sk.dataset.stk]; if (st.w) faceReady(FACES[st.f || 0]).then(() => placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', 130)); else placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.j ? 90 : 70); if (st.j) snd.jelly(0.3); return; }
-  const sp = e.target.closest('[data-spack]'); if (sp) { PRESS.pack = sp.dataset.spack; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(PRESS.pack) * 120); if (PRESS.pack === 'words' || PRESS.pack === 'ideas') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
+  /* a drawer of stickers: pressed, it opens; pressed again, it shuts */
+  const sp = e.target.closest('[data-spack]'); if (sp) { const k = sp.dataset.spack; PRESS.packOpen = !(PRESS.packOpen && PRESS.pack === k); PRESS.pack = k; refreshPanel(); snd.tick((PRESS.packOpen ? 1300 : 1000) + Object.keys(PACKS_ALL).indexOf(k) * 120); if (PRESS.packOpen && (k === 'words' || k === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
   const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 90, true); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
   const wd = e.target.closest('[data-wild]'); if (wd && wd.dataset.wild === 'more') { pullWild(); tick(1500); return; } if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }

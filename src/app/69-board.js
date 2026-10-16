@@ -34,13 +34,14 @@ function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
   $('#board-label').textContent = 'WISH MAKER · MODEL DA-03 · IN: SIGNALS, CELLS, CONSTELLATIONS · OUT: STORIES TO PRINT · LINK JOINS, A CLICK ON A STRING LETS IT GO · CONTAINS LIVE DATA';
+  edgeFade(t);
 }
 /* the board shows over the ground while SIGNALS is open */
 async function showBoard(on) {
   const host = $('#board'); host.hidden = !on; if (!on) return null;
   boardTools();
   const f = await loadFabric().catch(() => null); if (!f) return null;
-  const W = host.clientWidth, H = host.clientHeight - 52 - 26;
+  leanOnce($('#board-tools'), 'da.lean.board'); const W = host.clientWidth, H = host.clientHeight - 52 - 26;
   if (!cv) {
     cv = new f.Canvas('board-c', { width: W, height: H, selection: true, preserveObjectStacking: true, targetFindTolerance: 6, perPixelTargetFind: true });
     await loadBoard();
@@ -300,14 +301,11 @@ function intentOptions() {
   return [...sps.map(sp => sp.n), ...INTENT.climate, ...INTENT.circular].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by: '' });
-/* each line's sign: what we know (looked for), it would be great (the sun), so let's create (made anew), here is how (by hand) */
-const W_IC = { w: 'search', i: 'day', s: 'remix', h: 'hug' };
 function wishForm() {
-  const no = String(S.signals.filter(x => !x.ex && !x.shared).length + 1).padStart(3, '0');
-  return `<form class="wish-form" id="wish-form" autocomplete="off"><span class="wf-no mono" aria-hidden="true">№ ${no}</span><i class="wf-seal" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 54)}</i><div class="wf-h"><span class="wf-head" data-tip="Praxis"><span class="wf-keys" aria-label="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><i class="wf-poem" aria-hidden="true">PRAXIS POEM</i></span><b class="rnd" data-tip="Sustainable innovation" aria-label="R&amp;D: sustainable innovation">R&amp;D</b></div>`
-    + `<label class="wf-l wf-for" data-tip="What it is for"><i class="wf-i">${icon('zstake')}</i><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
-    + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><i class="wf-i">${icon(W_IC[k])}</i><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
-    + `<label class="wf-l by" data-tip="By"><i class="wf-i">${icon('sign')}</i><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="…" aria-label="By"></label>`
+  return `<form class="wish-form rec-form" id="wish-form" autocomplete="off"><div class="wf-h"><span class="wf-head" data-tip="Praxis"><span class="wf-keys" aria-label="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><i class="wf-poem" aria-hidden="true">PRAXIS POEM</i></span><b class="rnd" data-tip="Sustainable innovation" aria-label="R&amp;D: sustainable innovation">R&amp;D</b></div>`
+    + `<label class="wf-l wf-for" data-tip="What it is for"><b class="wf-m mono" aria-hidden="true">RE</b><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
+    + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><b class="wf-m mono" aria-hidden="true">${k.toUpperCase()}</b><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
+    + `<label class="wf-l by" data-tip="By"><b class="wf-m mono" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="Name" aria-label="By"></label>`
     + `<button type="submit" class="send-b" aria-label="Send the signal" data-tip="Send the signal">${icon('share')}<i class="sb-arrow" aria-hidden="true"></i></button></form>`;
 }
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });

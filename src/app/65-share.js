@@ -37,8 +37,11 @@ function sharedRecord(x) {
     return Number.isFinite(o.lat) && Number.isFinite(o.lng) ? o : null;
   } catch (e) { return null; }
 }
+/* a story approved before CONFIG.SHARED_SINCE was made while the site was being built: it is not shown, here or anywhere */
+const SHARED_SINCE = Date.parse(CONFIG.SHARED_SINCE || '') || 0;
+const sharedNow = x => x.kind !== 'story' || (+x.at || 0) > SHARED_SINCE;
 function applyShared() {
-  S.shared = SHARED.list.filter(x => x.kind === 'story').map(sharedSignal).filter(Boolean);
+  S.shared = SHARED.list.filter(x => x.kind === 'story' && sharedNow(x)).map(sharedSignal).filter(Boolean);
   const recs = [...SHARED.list.filter(x => x.kind === 'record').map(sharedRecord).filter(Boolean), ...SHARED.list.filter(x => x.kind === 'cells').flatMap(packRecords)];
   for (const o of S.community.filter(x => x.shared)) S.byId.delete(o.id);
   S.community = [...S.community.filter(x => !x.shared), ...recs]; for (const o of recs) S.byId.set(o.id, o);

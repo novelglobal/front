@@ -38,13 +38,13 @@ const tkSel = id => `[data-tk="${CSS.escape(id)}"]`;
 /* each kind keeps its own voice, from its name */
 const flashVoice = (id, key) => partialOf(key || 'x') % 8;
 function pingCell(it, first) {
-  const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
+  const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound || LOOP.on) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
   const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
   return snd.ping(o.pack ? (PACK_SPEC[o.pk] && PACK_SPEC[o.pk].fam ? PACK_SPEC[o.pk] : { g }) : { g }, F0 * partialOf(g || 'x') * (it.b.tone === 'flora' ? 2 : 1),
     { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: clamp((it.x / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi) });
 }
 function pingPlace(p) {
-  if (!TRK.on.places || !prefs.sound) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
+  if (!TRK.on.places || !prefs.sound || LOOP.on) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
   /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
   if (!p.cur && partialOf(p.n) % 3) return false; flashLayer(p.on ? 'pollution' : 'community');
   return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), v: 0.04 * L, pan: clamp(((p._x || 0) / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7 });
@@ -126,7 +126,7 @@ function markConnect() { if (S.connected) return; S.connected = true; markTweak(
 function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
-  S.radio = on;
+  S.radio = on; if (!on && LOOP.on) setLoop(false);
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } }
   snd.bed(on);
   syncTracks(); if (on) life.replay(); else snd.droneOff();
@@ -140,7 +140,7 @@ function flashLayer(k) {
 }
 /* water: a drop; a pond or wetland lower, a fountain higher */
 function pingClimate(c) {
-  if (!TRK.on.water || !prefs.sound) return false; flashLayer('water');
+  if (!TRK.on.water || !prefs.sound || LOOP.on) return false; flashLayer('water');
   return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: 0 });
 }
 /* a layer's volume, three steps: quiet, half, full */
@@ -157,6 +157,9 @@ $('#view').addEventListener('input', e => {
   const f = e.target.closest('[data-lvl]'); if (!f) return; prefs.lvl = { ...(prefs.lvl || {}), [f.dataset.lvl]: +f.value / 100 }; f.style.setProperty('--v', `${f.value}%`); savePrefs();
 });
 $('#view').addEventListener('click', e => {
+  if (e.target.closest('[data-loop]')) { setLoop(!LOOP.on); return; }
+  if (e.target.closest('[data-link]')) { openRadioLink(); return; }
+  const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
@@ -193,13 +196,112 @@ function shareMix() {
   const m = mixNow(); MIXES.unshift(m); MIXES.splice(30); store.set('da.mixes.v1', MIXES); tie(1); snd.tick(2100); buzz([10, 40, 10]);
   setView(1); placeMix(m); return m;
 }
-/* a mix played again: the radar where it was, its layers, levels and mood, on air */
-function playMix(id) {
-  const m = MIXES.find(x => x.id === id); if (!m) return; if (S.view !== 0) setView(0);
-  prefs.placed = true; life.setScan(m.where.lat, m.where.lng, m.where.r, true); if (S.mapReady) map.easeTo({ center: [m.where.lng, m.where.lat], duration: reduced() ? 0 : 700 });
+/* a mix tuned in: the radar where it was, its layers, levels and moods; on air when asked (a link waits for a touch) */
+function tuneMix(m, play) {
+  if (S.view !== 0) setView(0);
+  prefs.placed = true; life.setScan(m.where.lat, m.where.lng, m.where.r, true); if (S.mapReady) map.easeTo({ center: [m.where.lng, m.where.lat], zoom: scanZoom(m.where.r), offset: sheetOffset(), duration: reduced() ? 0 : 800 });
   prefs.lm = { ...(prefs.lm || {}), ...Object.fromEntries(Object.entries(m.layers).filter(([, v]) => v.mood).map(([k, v]) => [k, v.mood])) }; prefs.lvl = { ...(prefs.lvl || {}), ...Object.fromEntries(Object.entries(m.layers).map(([k, v]) => [k, v.lvl])) };
   for (const [k, v] of Object.entries(m.layers)) { if (k === 'life') prefs.mute = !v.on; else if (k in T4) T4[k] = !!v.on; }
-  prefs.t4 = { ...T4 }; savePrefs(); setRadio(true);
+  prefs.t4 = { ...T4 }; savePrefs(); syncTracks();
+  if (play) setRadio(true); else if (S.open && S.view === 0 && !S.mode) refreshPanel();
+}
+function playMix(id) { const m = MIXES.find(x => x.id === id) || LOOPS.find(x => x.id === id); if (m) tuneMix(m, true); }
+/* ───────── the loop: the radio as it sounds now, kept on this device (da.loops.v1) and played round and round from where it
+   was made. The radar can move on: it is quiet while the loop plays, and a dashed ring stays where the loop was grounded ───────── */
+const LOOPS = store.get('da.loops.v1', []);
+const LOOP = { on: false, m: null, t0: 0, last: 0, timer: 0 };
+const loopDur = m => Math.max(2, +((m && m.loop) || CONFIG.SCAN.turn || 8)) * 1000;
+const loopBearing = () => (LOOP.m ? ((performance.now() - LOOP.t0) % loopDur(LOOP.m)) / loopDur(LOOP.m) * 360 : 0);
+function loopTick() {
+  const now = performance.now(); if (!LOOP.on || !LOOP.m || document.hidden) { LOOP.last = now; return; }
+  const D = loopDur(LOOP.m); const a = ((LOOP.last - LOOP.t0) % D) / D * 360, b = ((now - LOOP.t0) % D) / D * 360; LOOP.last = now;
+  if (!prefs.sound || !S.radio) return;
+  const crossed = deg => (a <= b ? deg > a && deg <= b : deg > a || deg <= b);
+  for (const [k, L] of Object.entries(LOOP.m.layers || {})) {
+    if (!L.on || !(L.lvl > 0.02)) continue;
+    for (const c of L.cells || []) {
+      if (!crossed(c.b)) continue;
+      const spec = k === 'life' ? { g: c.g === 'human' ? 'ape' : c.g || 'paw' } : k === 'water' ? { g: 'aquatic' } : { fam: c.fam || 'service' };
+      if (snd.ping(spec, F0 * (c.p || 4), { mood: L.mood || moodOf(), v: (k === 'life' ? 0.05 : 0.04) * L.lvl, pan: Math.sin(c.b * Math.PI / 180) * 0.7 })) flashLayer(k);
+    }
+  }
+}
+function setLoop(on, kept) {
+  if (on && !kept && !placed()) { toast('WHERE ARE YOU?'); return; }
+  if (on) {
+    const m = kept || mixNow(); LOOP.m = m; LOOP.t0 = performance.now(); LOOP.last = LOOP.t0; LOOP.on = true;
+    if (!kept) { LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); }
+    clearInterval(LOOP.timer); LOOP.timer = setInterval(loopTick, 40); if (!S.radio) setRadio(true); snd.droneOff();
+  } else { LOOP.on = false; clearInterval(LOOP.timer); }
+  $$('[data-loop]').forEach(b => { b.setAttribute('aria-pressed', String(LOOP.on)); b.classList.toggle('on', LOOP.on); });
+  document.body.classList.toggle('looping', LOOP.on); snd.tick(on ? 1900 : 1100); buzz(on ? [6, 30, 6] : 5); life.redraw();
+}
+/* a loop kept, played again exactly as it was made, from where it was made */
+function playLoop(id) { const m = LOOPS.find(l => l.id === id); if (!m) return; tuneMix(m, false); setLoop(true, m); }
+/* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
+const LART = new Map();
+const loopArt = l => { if (!LART.has(l.id)) { LART.set(l.id, mixArt(l, mixURL(l))); if (LART.size > 16) LART.delete(LART.keys().next().value); } return LART.get(l.id); };
+const loopsHTML = () => (LOOPS.length ? `<section class="sec loops" id="sec-loops"><ol class="loops-l">${LOOPS.map(l => `<li><button type="button" class="loop-b" data-loop-play="${esc(l.id)}" aria-label="Play this loop again"><img src="${loopArt(l)}" alt=""><span>${esc((l.where || {}).place || '')}</span><small class="mono">${fmtStamp(l.at)}</small></button></li>`).join('')}</ol></section>` : '');
+/* ───────── the radio as a link: the place, its reach, and each layer's on, volume and mood, short enough for a code on a
+   receipt. Opened, it tunes the radio there; a touch on play and it sounds ───────── */
+const volIdx = v => VOLS.reduce((best, q, i) => (Math.abs(q - v) < Math.abs(VOLS[best] - v) ? i : best), 0);
+function mixCode(m) {
+  const ks = Object.keys(MOODS); const w = m.where;
+  return `${(+w.lat).toFixed(4)},${(+w.lng).toFixed(4)},${Math.round(w.r)},${LAYERS.map(L => { const x = (m.layers || {})[L.k] || {}; return `${x.on ? 1 : 0}${volIdx(x.lvl == null ? 0.7 : x.lvl)}${Math.max(0, ks.indexOf(x.mood))}`; }).join('')}`;
+}
+const mixURL = m => `${String(CONFIG.PORTAL_URL || location.origin + '/').replace(/#.*$/, '')}#mix=${mixCode(m)}`;
+function mixOfCode(code) {
+  const [lat, lng, r, L] = String(code || '').split(','); const ks = Object.keys(MOODS);
+  if (!Number.isFinite(+lat) || !Number.isFinite(+lng) || !/^\d{12}$/.test(L || '')) return null;
+  const layers = Object.fromEntries(LAYERS.map((Lr, i) => { const s = L.slice(i * 3, i * 3 + 3); return [Lr.k, { on: s[0] === '1', lvl: VOLS[+s[1]] || 0.7, mood: ks[+s[2]] || 'fog' }]; }));
+  return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: +lat, lng: +lng, r: clamp(+r || 500, CONFIG.SCAN.min || 250, CONFIG.SCAN.max || 1500), place: suburbAt(+lat, +lng) }, layers };
+}
+/* its sound as a picture: the circle it is played round, each cell where it lies (a life a dot, water a ring, a place a square,
+   harm a cross), the hand at north, and the code to scan. Black on white, so it prints as it shows */
+function mixArt(m, url) {
+  const TAU = Math.PI * 2;
+  const W = 600, H = 820, cx = 300, cy = 352, R = 236; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.fillStyle = '#0C0E0E'; x.strokeStyle = '#0C0E0E';
+  x.font = '600 22px Poppins, sans-serif'; x.textBaseline = 'alphabetic'; x.fillText(String(m.where.place || '').toUpperCase(), 36, 64);
+  x.font = '500 13px "IBM Plex Mono", monospace'; x.textAlign = 'right'; x.fillText(`${Math.round(m.where.r)} M · ${loopDur(m) / 1000} S`, W - 36, 64); x.textAlign = 'left';
+  x.lineWidth = 2.5; x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.stroke();
+  x.lineWidth = 1; x.globalAlpha = 0.35; for (const f of [0.33, 0.66]) { x.beginPath(); x.arc(cx, cy, R * f, 0, TAU); x.stroke(); } x.globalAlpha = 1;
+  x.beginPath(); x.moveTo(cx, cy - R - 16); x.lineTo(cx - 7, cy - R - 4); x.lineTo(cx + 7, cy - R - 4); x.closePath(); x.fill();
+  /* the wake behind the hand, then the hand */
+  for (let i = 0; i < 18; i++) { const a0 = -Math.PI / 2 - (i + 1) * 0.045, a1 = -Math.PI / 2 - i * 0.045; x.globalAlpha = 0.16 * (1 - i / 18); x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, R, a0, a1); x.closePath(); x.fill(); } x.globalAlpha = 1;
+  x.lineWidth = 2; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx, cy - R); x.stroke();
+  for (const [k, L] of Object.entries(m.layers || {})) {
+    if (!L.on) continue; const s = 0.6 + 0.6 * (L.lvl == null ? 0.7 : L.lvl);
+    for (const cl of L.cells || []) {
+      const a = (cl.b - 90) * Math.PI / 180, d = clamp(cl.d / (m.where.r || 500), 0, 1) * R; const px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d; const r = (2.4 + (cl.p || 4) % 4) * s;
+      x.beginPath();
+      if (k === 'life') { x.arc(px, py, r, 0, TAU); x.fill(); }
+      else if (k === 'water') { x.lineWidth = 1.6; x.arc(px, py, r + 1.5, 0, TAU); x.stroke(); }
+      else if (k === 'community') { x.rect(px - r, py - r, r * 2, r * 2); x.fill(); }
+      else { x.lineWidth = 2; x.moveTo(px - r, py - r); x.lineTo(px + r, py + r); x.moveTo(px + r, py - r); x.lineTo(px - r, py + r); x.stroke(); }
+    }
+  }
+  x.beginPath(); x.arc(cx, cy, 5, 0, TAU); x.fill();
+  /* the foot: the name, the layers on, the code */
+  const on = LAYERS.filter(L => (m.layers[L.k] || {}).on).map(L => `${L.w} ${((MOODS[(m.layers[L.k] || {}).mood] || {}).w || '')}`.trim());
+  x.font = '600 30px Poppins, sans-serif'; x.fillText('novel.global', 36, 668);
+  x.font = '500 12.5px "IBM Plex Mono", monospace'; on.forEach((t, i) => x.fillText(t, 36, 700 + i * 19));
+  const qr = qrOf(url, 'M'); if (qr) { const n = qr.getModuleCount(), S2 = 176, mm = S2 / n, ox = W - 36 - S2, oy = 612; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) x.fillRect(Math.floor(ox + k * mm), Math.floor(oy + r * mm), Math.ceil(mm), Math.ceil(mm)); }
+  return c.toDataURL('image/png');
+}
+function openRadioLink() {
+  if (!placed()) { toast('WHERE ARE YOU?'); return; }
+  const m = LOOP.on && LOOP.m ? LOOP.m : mixNow(); const url = mixURL(m); const art = mixArt(m, url);
+  $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
+  const el = document.createElement('div'); el.className = 'card-view link-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'This sound as a link');
+  el.innerHTML = `<div class="tv-in"><img class="lv-art" src="${art}" alt=""><div class="tv-acts">${[['copy', 'share', 'copy link', 'to send or keep'], ['strip', 'receipt', 'onto the strip', 'to print'], ['png', 'download', 'save', 'the picture'], ['x', 'close', 'close', '']].map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-lk="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
+  document.body.appendChild(el);
+  const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
+  el.addEventListener('click', async e => { const b = e.target.closest('[data-lk]');
+    if (b && b.dataset.lk === 'copy') { const ok = await copyText(url); toast(ok ? '✓' : url.slice(0, 60)); return; }
+    if (b && b.dataset.lk === 'strip') { close(); setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); return; }
+    if (b && b.dataset.lk === 'png') { const a = document.createElement('a'); a.href = art; a.download = `novel-global-radio-${isoDay(new Date())}.png`; a.click(); tick(1800); return; }
+    if (b || e.target === el) close(); });
 }
 /* an earlier build kept a track of one's own here; its store goes */
 try { indexedDB.deleteDatabase('da.tracks'); } catch (e) { /* none */ }
