@@ -8,7 +8,7 @@
    ════════════════════════════════════════════════════════════════════ */
 /* the moods, turned round on each layer's key: the first three, then the muse, a buried voice, a haunted one, the swamp, bubbles,
    and a tone blown out. Each sounds a cell its own way (snd.ping) and shades the drone */
-const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' } };
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' }, dub: { w: 'DUB', ic: 'sound' } };
 const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
 const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
@@ -41,13 +41,13 @@ function pingCell(it, first) {
   const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound || LOOP.on) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
   const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
   return snd.ping(o.pack ? (PACK_SPEC[o.pk] && PACK_SPEC[o.pk].fam ? PACK_SPEC[o.pk] : { g }) : { g }, F0 * partialOf(g || 'x') * (it.b.tone === 'flora' ? 2 : 1),
-    { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: clamp((it.x / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi) });
+    { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: Math.sin((it.sb || 0) * Math.PI / 180) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi) });
 }
 function pingPlace(p) {
   if (!TRK.on.places || !prefs.sound || LOOP.on) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
   /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
   if (!p.cur && partialOf(p.n) % 3) return false; flashLayer(p.on ? 'pollution' : 'community');
-  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), v: 0.04 * L, pan: clamp(((p._x || 0) / (innerWidth || 1)) * 2 - 1, -1, 1) * 0.7 });
+  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7 });
 }
 const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
@@ -85,7 +85,10 @@ const TRACKS = LAYERS;   /* the name an earlier build used */
 const trackOn = k => (k === 'life' ? !prefs.mute : !!T4[k]);
 const layerLvl = k => lvlOf(k);
 /* each layer has its own mood: FOG, RAIN or WEIGHT, changed on its row */
-const moodOfLayer = k => { const m = (prefs.lm || {})[k]; return MOODS[m] ? m : moodOf(); };
+/* the radio as it first sounds, before a mood is turned: deep and slow, dub and ambient. LIFE a deep note and an echoing
+   chord, WATER the low drop of WEIGHT, COMMUNITY the dust of BURIAL, POLLUTION the wavering HAUNT */
+const LM_DEF = { life: 'dub', community: 'burial', water: 'weight', pollution: 'haunt' };
+const moodOfLayer = k => { const m = (prefs.lm || {})[k]; return MOODS[m] ? m : MOODS[prefs.mood] ? prefs.mood : LM_DEF[k] || 'dub'; };
 /* what each layer holds inside the radar now: a count, nothing more */
 function trackCount(k) {
   if (k === 'life') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist).length;
@@ -139,7 +142,7 @@ function flashLayer(k) {
 /* water: a drop; a pond or wetland lower, a fountain higher */
 function pingClimate(c) {
   if (!TRK.on.water || !prefs.sound || LOOP.on) return false; flashLayer('water');
-  return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: 0 });
+  return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: Math.sin((c.sb || 0) * Math.PI / 180) * 0.7 });
 }
 /* a layer's volume, three steps: quiet, half, full */
 const VOLS = [0.35, 0.7, 1];
@@ -178,13 +181,13 @@ const MIXES = store.get('da.mixes.v1', []);
    pitch on the series. Played in order of bearing, one turn of the radar is the loop */
 function layerCells(k) {
   const rd = v => Math.round(v); const at = (lat, lng) => ({ b: rd(bearing(S.scan.lat, S.scan.lng, lat, lng)), d: rd(haversine(S.scan.lat, S.scan.lng, lat, lng)) });
-  if (k === 'life') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist && it.b.tone !== 'cold').slice(0, 60).map(it => { const g = it.o.hum ? 'human' : glyphOf(it.o); return { n: nameOf(it.o), g, ...at(it.lat, it.lng), p: partialOf(g || 'x') }; });
+  if (k === 'life') return life.items.filter(it => it.inS && !it.o.pack && !it.o.hist && it.b.tone !== 'cold' && life.shown(it)).slice(0, 160).map(it => { const g = it.o.hum ? 'human' : glyphOf(it.o); return { n: nameOf(it.o), g, ...at(it.lat, it.lng), p: partialOf(g || 'x'), fa: +(0.35 + 0.65 * (it.fade == null ? 1 : it.fade)).toFixed(2), ...(it.b.tone === 'flora' ? { fl: 1 } : {}), ...(it.flag ? { br: 1 } : {}), ...(it.alarm || it.b.dz >= 3 ? { dz: 1 } : {}) }; });
   if (k === 'water') return life.climateIn().slice(0, 40).map(c => ({ n: c.n || 'Drinking water', k: c.k, ...at(c.lat, c.lng), p: c.k === 'fountain' ? 12 : 6 }));
-  return bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? k === 'pollution' : k === 'community')).slice(0, 40).map(b => ({ n: b.n, fam: b.fam, ...at(b.lat, b.lng), p: partialOf(b.fam) }));
+  return bizNear(S.scan.lat, S.scan.lng, S.scan.r).filter(b => ((b.h || []).length ? k === 'pollution' : k === 'community')).slice(0, 120).map(b => ({ n: b.n, fam: b.fam, ...at(b.lat, b.lng), p: partialOf(b.fam), ...(b.cur ? { cur: 1 } : {}) }));
 }
 function mixNow() {
   const figs = strings.list().filter(c => c.o && life.inScan(c.o.lat, c.o.lng)).map(c => { const m = k => (c.f.n || {})[k] || (c.f.c || {})[k] || {}; const nm = k => (k === 'pin' ? nameOf(c.o) : m(k).n || k);
-    return { id: c.id, name: c.name, lives: c.lives, people: c.people, knots: c.keys.map(k => ({ n: nm(k), t: m(k).t || '' })), edges: (c.f.e || []).map(([a, b]) => [nm(a), nm(b)]) }; });
+    return { id: c.id, name: c.name, b: Math.round(bearing(S.scan.lat, S.scan.lng, c.o.lat, c.o.lng)), lives: c.lives, people: c.people, knots: c.keys.map(k => ({ n: nm(k), t: m(k).t || '' })), edges: (c.f.e || []).map(([a, b]) => [nm(a), nm(b)]) }; });
   return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), r: S.scan.r, place: suburbAt(S.scan.lat, S.scan.lng) },
     layers: Object.fromEntries(LAYERS.map(L => [L.k, { on: trackOn(L.k), lvl: +layerLvl(L.k).toFixed(2), mood: moodOfLayer(L.k), n: trackCount(L.k), cells: layerCells(L.k) }])), figs };
 }
@@ -208,21 +211,25 @@ function playMix(id) { const m = MIXES.find(x => x.id === id) || LOOPS.find(x =>
    was made. The radar can move on: it is quiet while the loop plays, and a dashed ring stays where the loop was grounded ───────── */
 const LOOPS = store.get('da.loops.v1', []);
 const LOOP = { on: false, m: null, t0: 0, last: 0, timer: 0 };
-const loopDur = m => Math.max(2, +((m && m.loop) || CONFIG.SCAN.turn || 8)) * 1000;
+const loopDur = m => Math.max(2, +((m && m.loop) || CONFIG.SCAN.turn || 8)) * 1000 / ((life.tempo && life.tempo()) || 1);
 const loopBearing = () => (LOOP.m ? ((performance.now() - LOOP.t0) % loopDur(LOOP.m)) / loopDur(LOOP.m) * 360 : 0);
 function loopTick() {
   const now = performance.now(); if (!LOOP.on || !LOOP.m || document.hidden) { LOOP.last = now; return; }
   const D = loopDur(LOOP.m); const a = ((LOOP.last - LOOP.t0) % D) / D * 360, b = ((now - LOOP.t0) % D) / D * 360; LOOP.last = now;
   if (!prefs.sound || !S.radio) return;
   const crossed = deg => (a <= b ? deg > a && deg <= b : deg > a || deg <= b);
+  /* each cell sounded exactly as the radar sounds it, so a loop kept is the radio as it was */
   for (const [k, L] of Object.entries(LOOP.m.layers || {})) {
-    const lvl = lvlOf(k); if (!trackOn(k) || lvl < 0.02) continue; const mood = (prefs.lm || {})[k] || L.mood || moodOf();
+    const lvl = lvlOf(k); if (!trackOn(k) || lvl < 0.02) continue; const mood = moodOfLayer(k);
     for (const c of L.cells || []) {
-      if (!crossed(c.b)) continue;
-      const spec = k === 'life' ? { g: c.g === 'human' ? 'ape' : c.g || 'paw' } : k === 'water' ? { g: 'aquatic' } : { fam: c.fam || 'service' };
-      if (snd.ping(spec, F0 * (c.p || 4), { mood, v: (k === 'life' ? 0.05 : 0.04) * lvl, pan: Math.sin(c.b * Math.PI / 180) * 0.7 })) flashLayer(k);
+      if (!crossed(c.b)) continue; const pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
+      if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8 }); }
+      else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * lvl, pan });
+      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, v: 0.04 * lvl, pan }); }
+      if (ok) flashLayer(k);
     }
   }
+  for (const f of LOOP.m.figs || []) if (f.b != null && crossed(f.b)) strings.playFig(f.id);
 }
 function setLoop(on, kept) {
   if (on && !kept && !placed()) { toast('WHERE ARE YOU?'); return; }
@@ -245,13 +252,13 @@ const loopsHTML = () => (LOOPS.length ? `<section class="sec loops" id="sec-loop
 const volIdx = v => VOLS.reduce((best, q, i) => (Math.abs(q - v) < Math.abs(VOLS[best] - v) ? i : best), 0);
 function mixCode(m) {
   const ks = Object.keys(MOODS); const w = m.where;
-  return `${(+w.lat).toFixed(4)},${(+w.lng).toFixed(4)},${Math.round(w.r)},${LAYERS.map(L => { const x = (m.layers || {})[L.k] || {}; return `${x.on ? 1 : 0}${volIdx(x.lvl == null ? 0.7 : x.lvl)}${Math.max(0, ks.indexOf(x.mood))}`; }).join('')}`;
+  return `${(+w.lat).toFixed(4)},${(+w.lng).toFixed(4)},${Math.round(w.r)},${LAYERS.map(L => { const x = (m.layers || {})[L.k] || {}; return `${x.on ? 1 : 0}${volIdx(x.lvl == null ? 0.7 : x.lvl)}${Math.max(0, ks.indexOf(x.mood)).toString(36)}`; }).join('')}`;
 }
 const mixURL = m => `${String(CONFIG.PORTAL_URL || location.origin + '/').replace(/#.*$/, '')}#mix=${mixCode(m)}`;
 function mixOfCode(code) {
   const [lat, lng, r, L] = String(code || '').split(','); const ks = Object.keys(MOODS);
-  if (!Number.isFinite(+lat) || !Number.isFinite(+lng) || !/^\d{12}$/.test(L || '')) return null;
-  const layers = Object.fromEntries(LAYERS.map((Lr, i) => { const s = L.slice(i * 3, i * 3 + 3); return [Lr.k, { on: s[0] === '1', lvl: VOLS[+s[1]] || 0.7, mood: ks[+s[2]] || 'fog' }]; }));
+  if (!Number.isFinite(+lat) || !Number.isFinite(+lng) || !/^([01]\d[0-9a-z]){4}$/.test(L || '')) return null;
+  const layers = Object.fromEntries(LAYERS.map((Lr, i) => { const s = L.slice(i * 3, i * 3 + 3); return [Lr.k, { on: s[0] === '1', lvl: VOLS[+s[1]] || 0.7, mood: ks[parseInt(s[2], 36)] || 'fog' }]; }));
   return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: +lat, lng: +lng, r: clamp(+r || 500, CONFIG.SCAN.min || 250, CONFIG.SCAN.max || 1500), place: suburbAt(+lat, +lng) }, layers };
 }
 /* its sound as a picture: the circle it is played round, each cell where it lies (a life a dot, water a ring, a place a square,

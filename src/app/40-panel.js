@@ -44,7 +44,7 @@ function syncDock() {
   document.body.classList.toggle('pane-main', shown === 'main'); document.body.classList.toggle('pane-page', shown === 'page');
 }
 function setPane(p) {
-  pane = p; if (p === 'page' && !S.open) setOpen(true); else syncDock();
+  pane = p; if (p === 'page' && !S.open) setOpen(true); else syncDock(); railFit(p === 'main' ? 'lo' : 'dflt');
   setTimeout(() => { if (S.mapReady) map.resize(); if (p === 'main' && S.view === 2) fitZ(); }, 380);
 }
 $('#sheetbar').addEventListener('click', () => { setPane(pane === 'page' ? 'main' : 'page'); tick(pane === 'page' ? 1500 : 1200); });
@@ -116,6 +116,7 @@ function renderView() {
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
   if (k === 'signs') fillThumbs();
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
+  railFit();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
@@ -461,38 +462,65 @@ $('#view').addEventListener('click', e => {
 const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length);
   return ws.length ? `<section class="sec wishes" id="sec-wishes"><ol class="filed">${ws.slice(0, 24).map((x, i) => `<li><button type="button" class="filed-b" data-sig="${esc(x.key)}"><span class="fl-h mono"><b>№ ${String(ws.length - i).padStart(3, '0')}</b><span>${esc(x.code)}</span><span>${fmtStamp(x.at)}</span></span>${x.note ? `<span class="fl-for">${esc(x.note.split(' · ')[0])}</span>` : ''}<ol class="fl-l">${WKEYS.map(k => (x.lines || {})[k] ? `<li><b>${k.toUpperCase()}</b>${esc(x.lines[k])}</li>` : '').join('')}</ol></button></li>`).join('')}</ol></section>`
     : `<section class="sec wishes" id="sec-wishes"><button type="button" class="filed-none" data-go-view="1" aria-label="The WISH MAKER">${icon('sign')}</button></section>`; };
-/* ───────── the gallery: beside the portfolio, the posters finished here, the newest as the hero, the rest on the wall ───────── */
+/* ───────── the gallery: beside the portfolio, the deck's main screen. Every poster finished here, and the example's zine first,
+   on a strip that slides under a finger or the keys, one at a time (scroll snap: no library). Under the screen its number on a
+   small display and the keys: back, close up, as a card, download, on ───────── */
 let galleryAt = 0;
 const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2];
+const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
+const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf(); galleryAt = Math.min(galleryAt, Math.max(0, ps.length - 1));
+  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf(); galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
   /* the example's zine is made once a visit; until then the muse waits in its place */
   if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
-  const p = ps[galleryAt]; const n = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
-  const art = x => (x.img ? `<img src="${x.img}" alt="">` : `<i class="gl-wait" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 48)}</i>`);
-  g.innerHTML = `<figure class="gl-hero${p.ex ? ' ex' : ''}">${art(p)}<figcaption class="mono">№ ${n(p)}${p.ex ? ' · EX' : ` · ${fmtStamp(p.at)}`}</figcaption></figure>`
-    + `<div class="gl-acts">${p.ex ? '' : `<button type="button" class="key" data-gl="card" aria-label="As a card" data-tip="As a card">${icon('stories')}</button>`}<button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
-    + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg">${art(x)}</button></li>`).join('')}</ol>` : '');
+  const art = x => (x.img ? `<img src="${x.img}" alt="" draggable="false">` : `<i class="gl-wait" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 48)}</i>`);
+  const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
+  g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
+    + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
+  const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
+  let q = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); } }); }, { passive: true });
 }
-/* a poster or a zine, close up: as wide as the screen allows, scrolled; pressed, larger again; Esc, the cross or the dark around
-   it closes it */
+/* the small display under the screen: which one, of how many; the keys that do not apply to it go quiet */
+function galleryRead() {
+  const g = $('#gallery'); const ps = wallOf(); const p = ps[galleryAt]; if (!g || !p) return;
+  const v = g.querySelector('.gl-vfd'); if (v) v.innerHTML = `<b>${wallCap(p)}</b><span>${String(galleryAt + 1).padStart(2, '0')} / ${String(ps.length).padStart(2, '0')}</span>`;
+  const dis = (k, off) => { const b = g.querySelector(`[data-gl="${k}"]`); if (b) b.disabled = !!off; };
+  dis('prev', galleryAt === 0); dis('next', galleryAt >= ps.length - 1); dis('card', p.ex); dis('png', !p.img); dis('zoom', !p.img);
+}
+function galleryGo(i) { const tr = $('#gallery .gl-track'); if (!tr) return; tr.scrollTo({ left: clamp(i, 0, wallOf().length - 1) * tr.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); }
+/* a poster or a zine, close up, at three sizes: as wide as the screen allows, twice, three times, scrolled about; a press on it
+   steps up and round again, keeping the place pressed under the finger. Esc, the cross or the dark around it closes it */
 function zoomArt(src) {
   const z = document.createElement('div'); z.className = 'zoomv'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
-  z.innerHTML = `<button type="button" class="zv-x" aria-label="Close">${icon('close')}</button><div class="zv-s"><img src="${src}" alt=""></div>`;
+  z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">1×</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
   document.body.appendChild(z); tick(1600);
-  const close = () => { z.remove(); removeEventListener('keydown', esc); tick(1100); }; const esc = e => { if (e.key === 'Escape') close(); };
-  addEventListener('keydown', esc);
-  z.addEventListener('click', e => { if (e.target.tagName === 'IMG') { e.target.classList.toggle('big'); tick(1300); return; } if (e.target.closest('.zv-x') || e.target === z || e.target.classList.contains('zv-s')) close(); });
+  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); let lv = 1;
+  const set = (n, cx, cy) => {
+    const r = im.getBoundingClientRect(); const fx = cx == null ? 0.5 : (cx - r.left) / r.width, fy = cy == null ? 0.5 : (cy - r.top) / r.height; const ax = cx == null ? sc.clientWidth / 2 : cx - sc.getBoundingClientRect().left, ay = cy == null ? sc.clientHeight / 2 : cy - sc.getBoundingClientRect().top;
+    lv = n; z.dataset.lv = n; z.querySelector('.zv-l').textContent = `${n}×`; const r2 = im.getBoundingClientRect(); const ox = r2.left - sc.getBoundingClientRect().left + sc.scrollLeft, oy = r2.top - sc.getBoundingClientRect().top + sc.scrollTop;
+    sc.scrollLeft = ox + fx * r2.width - ax; sc.scrollTop = oy + fy * r2.height - ay; tick(1100 + n * 220);
+  };
+  const close = () => { z.remove(); removeEventListener('keydown', key); tick(1100); };
+  const key = e => { if (e.key === 'Escape') close(); if (e.key === '+' || e.key === '=') set(Math.min(3, lv + 1)); if (e.key === '-') set(Math.max(1, lv - 1)); };
+  addEventListener('keydown', key);
+  z.addEventListener('click', e => {
+    const b = e.target.closest('[data-zv]'); if (b) { if (b.dataset.zv === 'x') close(); else set(clamp(lv + (b.dataset.zv === 'in' ? 1 : -1), 1, 3)); return; }
+    if (e.target === im) { set(lv % 3 + 1, e.clientX, e.clientY); return; }
+    if (e.target === z || e.target === sc) close();
+  });
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
   const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src); return; }
-  const t = e.target.closest('[data-gl-i]'); if (t) { galleryAt = +t.dataset.glI; showGallery(true); tick(1500); return; }
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
+  if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
+  if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
+  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
+document.addEventListener('keydown', e => { if (!e.target.closest || !e.target.closest('.gl-track')) return; const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); galleryGo(galleryAt + d); });
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];

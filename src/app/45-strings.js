@@ -119,23 +119,22 @@ const strings = (() => {
     /* the circular economy, community, the creative and third spaces carry more: larger, in a soft halo of their colour;
        a brand or a service is quieter, smaller */
     const r = (n.cur ? 5 : 4) * k * (tied ? 1.18 : 1) * (ch || harm ? 1.3 : 0.85);
-    if (ch || harm) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, TAU); ctx.fillStyle = `rgba(${harm ? '230,248,74' : ch},.22)`; ctx.fill(); ctx.restore(); }
-    const dia = (rr, fill, stroke, lw = 1.4) => { ctx.beginPath(); ctx.moveTo(x, y - rr); ctx.lineTo(x + rr, y); ctx.lineTo(x, y + rr); ctx.lineTo(x - rr, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); };
-    ctx.save();
-    if (n.fam === 'third') { const h = r * 0.95; ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = C.navy; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, h * 0.38, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
-    else if (n.fam === 'network') { const P = [[0, -r], [r * 0.95, r * 0.6], [-r * 0.95, r * 0.6]]; ctx.beginPath(); P.forEach(([a, b], i) => (i ? ctx.lineTo(x + a, y + b) : ctx.moveTo(x + a, y + b))); ctx.closePath(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.white; ctx.stroke(); for (const [a, b] of P) { ctx.beginPath(); ctx.arc(x + a, y + b, r * 0.42, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.navy; ctx.stroke(); } }
-    else if (n.fam === 'artists') { dia(r, C.white, C.navy); ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
-    else if (n.fam === 'circular') dia(r, C.teal, C.navy);
-    else if (n.fam === 'brand' && !harm) dia(r, C.cobalt, C.white, 1.2);
-    else dia(r, harm ? C.neon : C.white, harm ? C.navy : C.cobalt);
-    if (n.cur) { ctx.beginPath(); ctx.arc(x, y, r + 3.2, 0, TAU); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke(); }
+    if (ch || harm) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r * 1.9, 0, TAU); ctx.fillStyle = `rgba(${harm ? '230,248,74' : ch},.16)`; ctx.fill(); ctx.restore(); }
+    const dia = (rr, fill) => { ctx.beginPath(); ctx.moveTo(x, y - rr); ctx.lineTo(x + rr, y); ctx.lineTo(x, y + rr); ctx.lineTo(x - rr, y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); };
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+    if (n.fam === 'third') { const h = r * 0.9; ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = '#7FD1C2'; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.beginPath(); ctx.arc(x, y, h * 0.36, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
+    else if (n.fam === 'network') { const P = [[0, -r], [r * 0.95, r * 0.6], [-r * 0.95, r * 0.6]]; ctx.beginPath(); P.forEach(([a, b], i) => (i ? ctx.lineTo(x + a, y + b) : ctx.moveTo(x + a, y + b))); ctx.closePath(); ctx.lineWidth = 1.2; ctx.strokeStyle = '#4C9BE8'; ctx.stroke(); for (const [a, b] of P) { ctx.beginPath(); ctx.arc(x + a, y + b, r * 0.42, 0, TAU); ctx.fillStyle = '#4C9BE8'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = C.navy; ctx.stroke(); } }
+    else if (n.fam === 'artists') { dia(r, '#E6F84A'); ctx.shadowColor = 'transparent'; ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, TAU); ctx.fillStyle = C.navy; ctx.fill(); }
+    else if (n.fam === 'circular') dia(r, C.teal);
+    else if (n.fam === 'brand' && !harm) dia(r, '#4C9BE8');
+    else dia(r, harm ? C.neon : '#7FA7D9');
     ctx.restore();
   }
   function mark(ctx, n, x, y, k, tied) {
     if (k <= 0) return;
     if (n.t === 'biz') placeMark(ctx, n, x, y, k, tied);
-    else if (n.t === 'group') { ctx.save(); ctx.beginPath(); ctx.arc(x, y, 5.6 * k, 0, TAU); ctx.fillStyle = C.tribe[n.kind] || C.tribe.park; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = C.white; ctx.stroke(); ctx.restore(); }
-    else if (n.t === 'water') { ctx.save(); ctx.beginPath(); ctx.arc(x, y, 7.4 * k, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', x, y, 10 * k, C.cobalt); }
+    else if (n.t === 'group') { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; ctx.beginPath(); ctx.arc(x, y, 5.6 * k, 0, TAU); ctx.fillStyle = C.tribe[n.kind] || C.tribe.park; ctx.fill(); ctx.restore(); }
+    else if (n.t === 'water') { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; M.icon(ctx, 'water', x, y, 14 * k, '#5CC8F2', 1.2); ctx.restore(); }
     else if (n.t === 'custom') { const h = 5.4 * k; ctx.save(); ctx.beginPath(); ctx.rect(x - h, y - h, h * 2, h * 2); ctx.fillStyle = tied ? C.navy : C.white; ctx.fill(); ctx.lineWidth = 1.6; ctx.strokeStyle = tied ? C.white : C.navy; ctx.stroke(); ctx.restore(); M.icon(ctx, n.kind === 'person' ? 'people' : n.kind === 'idea' ? 'aware' : 'where', x, y, 8 * k, tied ? C.white : C.navy); }
     else if (n.t === 'life' && n.away) M.badge(ctx, { tone: n.hum ? 'offer' : M.toneOf(n.g), g: n.hum ? null : n.g, i: n.hum ? 'people' : null, d: 16 * k }, x, y);
   }

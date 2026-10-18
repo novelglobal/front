@@ -466,10 +466,11 @@
   const SHADE = [0, 0.2, -0.18, 0.34, -0.3, 0.1, -0.08, 0.26, -0.24];
   const shadeOf = g => { const grp = GROUP[g]; if (!grp) return 0; const kin = Object.keys(GROUP).filter(k => GROUP[k] === grp); return SHADE[Math.max(0, kin.indexOf(g)) % SHADE.length]; };
   const GOLD = '#F2C14E';
-  /* a life on the map is a sticker of its own kind, cut from paper: no disc, the mark itself in its colour, a white cut edge, a
-     hair out of register as a risograph prints, a soft shadow under it; several seen together, a small pile of them */
-  const PAPER = '#FBFAF4';
+  /* a mark on the map is the mark alone: an animal, a plant or a sign in its own colour, a soft shadow under it so it reads on
+     the ground; no disc, no white. Several seen together, a small pile of them; danger in the months ahead, a fine edge in red,
+     or black at the extreme; rare, a gold spark; new, a red point */
   const STICK = /^k-|^fauna$|^flora$|^night$|^cold$|^hero$/;
+  const MARK_COL = { hero: C.clay, story: C.clay, need: '#F2C14E', offer: C.teal, event: '#7C9CFF', injured: C.red, dead: '#2A2B2C', lost: '#FF6B5E', danger: C.orange, cold: '#9AA39D', hist: '#C9CFCB' };
   function edge16(ctx, parts, x, y, size, color, px) {
     if (!parts) return; const k = size / 16;
     ctx.save(); ctx.translate(x - size / 2, y - size / 2); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = color; ctx.fillStyle = color;
@@ -477,28 +478,23 @@
     ctx.restore();
   }
   function sticker(ctx, b, x, y, col) {
-    const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)), parts = gpaths()[b.g] || gpaths().paw; const cold = b.tone === 'cold', hist = b.tone === 'hist';
-    ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (hist) ctx.globalAlpha *= 0.5;
-    if (b.tier >= 2) { const g0 = ctx.createRadialGradient(x, y, s * 0.3, x, y, s * 0.5 + 9); g0.addColorStop(0, 'rgba(242,193,78,.42)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(x, y, s * 0.5 + 9, 0, TAU); ctx.fill(); }
-    const cut = s >= 14 ? 1.7 : 1.2;
-    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) { ctx.save(); ctx.globalAlpha *= 0.9; ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 2; edge16(ctx, parts, x + k * 3, y - k * 3, s, PAPER, cut); ctx.restore(); }
-    /* danger in the months ahead: the cut edge itself in red when severe, in black at the extreme, hugging the animal */
+    const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)); const parts = b.i ? paths()[b.i] : gpaths()[b.g] || gpaths().paw; const quiet = b.tone === 'cold' || b.tone === 'hist';
+    ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (b.tone === 'hist') ctx.globalAlpha *= 0.55;
+    if (b.tier >= 2) { const g0 = ctx.createRadialGradient(x, y, s * 0.3, x, y, s * 0.5 + 8); g0.addColorStop(0, 'rgba(242,193,78,.34)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(x, y, s * 0.5 + 8, 0, TAU); ctx.fill(); }
+    /* the pile: the same mark twice more behind it, deeper in colour */
+    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) { ctx.save(); ctx.globalAlpha *= 0.85; ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 3; draw16(ctx, parts, x + k * 2.6, y - k * 2.6, s, mixHex(col, -0.38), 1); ctx.restore(); }
     const dz = b.dz || (b.hot ? 3 : 0);
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1.2;
-    if (dz >= 3) edge16(ctx, parts, x, y, s, dz >= 4 ? '#14110F' : '#E8402A', cut + 1.5);
-    edge16(ctx, parts, x, y, s, cold || hist ? 'rgba(238,240,236,.9)' : PAPER, cut); ctx.restore();
-    if (!cold && !hist) draw16(ctx, parts, x + 0.6, y + 0.7, s, mixHex(col, 0.58), 1);
-    draw16(ctx, parts, x, y, s, cold || hist ? '#8A928C' : col, 1);
-    /* rare: a small gold spark at its shoulder; legendary, two */
-    if (b.tier >= 1) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(40,30,0,.55)'; ctx.stroke(); };
-      const k = Math.max(3, s * 0.2); sp(x - s * 0.46, y - s * 0.44, k); if (b.tier >= 2) sp(x - s * 0.62, y - s * 0.06, k * 0.6); }
-    if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.42, y - s * 0.42, Math.max(2.4, d * 0.12), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = PAPER; ctx.stroke(); }
+    if (dz >= 3) edge16(ctx, parts, x, y, s, dz >= 4 ? '#14110F' : '#E8402A', 1.1);
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; draw16(ctx, parts, x, y, s, quiet ? MARK_COL[b.tone] : col, 1.15); ctx.restore();
+    if (b.tier >= 1) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); };
+      const k = Math.max(2.6, s * 0.17); sp(x - s * 0.46, y - s * 0.44, k); if (b.tier >= 2) sp(x - s * 0.62, y - s * 0.06, k * 0.6); }
+    if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.42, y - s * 0.42, Math.max(2.2, d * 0.11), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); }
     ctx.restore();
   }
   function badge(ctx, b, x, y) {
     const d = b.d || 22, r = d / 2; let [bg, fg] = TONES[b.tone] || TONES.fauna;
     if (/^k-/.test(b.tone) && b.g && /^#/.test(bg)) bg = mixHex(bg, shadeOf(b.g));
-    if (b.g && (STICK.test(b.tone || 'fauna') || b.tone === 'hist')) { sticker(ctx, b, x, y, b.tone === 'hero' ? C.clay : bg); return; }
+    if (b.g || b.i) { sticker(ctx, b, x, y, MARK_COL[b.tone] && !/^k-/.test(b.tone) ? MARK_COL[b.tone] : STICK.test(b.tone || 'fauna') ? bg : C.cobalt); return; }
     /* legendary (threatened, or one of the five): a soft gold glow behind it */
     if (b.tier >= 2) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r + 7, 0, TAU); const g0 = ctx.createRadialGradient(x, y, r * 0.6, x, y, r + 9); g0.addColorStop(0, 'rgba(242,193,78,.45)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.fill(); ctx.restore(); }
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;

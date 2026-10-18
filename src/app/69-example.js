@@ -16,11 +16,11 @@ async function workBoard() { if (!exLocked()) return; const b = BOARDS.find(x =>
 
 /* ───────── the sound ───────── */
 function exampleMix() {
-  const s = exSignal(); const p = (s && s.pin) || { lat: -37.7841, lng: 144.9515, place: 'PARKVILLE' }; const k = (EXK && EXK.mix) || { r: 600, layers: {} };
+  const s = exSignal(); const k = (EXK && EXK.mix) || { r: 700, layers: {} }; const p = { ...((s && s.pin) || { lat: -37.7841, lng: 144.9515, place: 'PARKVILLE' }), ...(k.where || {}) };
   return { v: MIX_V, id: 'mx-ex', at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: p.lat, lng: p.lng, r: k.r || 600, place: p.place || suburbAt(p.lat, p.lng) }, layers: JSON.parse(JSON.stringify(k.layers || {})) };
 }
-/* play pressed before anywhere is chosen: the radar goes to Royal Park and the layers take the example's levels and moods; what
-   sounds is what the hand finds there */
+/* play pressed before anywhere is chosen: the radar goes to Royal Park, between the zoo and the wetlands, and the layers take the
+   example's levels and moods, deep and slow; what sounds is what the hand finds there */
 function playExample() { tuneMix(exampleMix(), true); }
 
 /* ───────── BOARD 00 ───────── */
