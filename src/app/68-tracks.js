@@ -8,7 +8,7 @@
    ════════════════════════════════════════════════════════════════════ */
 /* the moods, turned round on each layer's key: the first three, then the muse, a buried voice, a haunted one, the swamp, bubbles,
    and a tone blown out. Each sounds a cell its own way (snd.ping) and shades the drone */
-const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' } };
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' } };
 const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
 const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
@@ -127,10 +127,10 @@ function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
   S.radio = on; if (!on && LOOP.on) setLoop(false);
-  if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } }
+  if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } nudgeWishSoon(); }
   snd.bed(on);
   syncTracks(); if (on) life.replay(); else snd.droneOff();
-  document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); b.innerHTML = `<i class="hp-ring"></i>${icon(on ? 'pause' : 'play')}`; });
+  document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });
   document.body.classList.toggle('on-air', on); buzz(on ? [8, 30, 8] : 6); life.redraw(); life.moved();
 }
 /* a layer's meter moves as the sweep plays it */
@@ -160,7 +160,7 @@ $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-loop]')) { setLoop(!LOOP.on); return; }
   if (e.target.closest('[data-link]')) { openRadioLink(); return; }
   const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
-  const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); setRadio(!S.radio); return; }
+  const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
@@ -229,7 +229,7 @@ function loopTick() {
 function setLoop(on, kept) {
   if (on && !kept && !placed()) { toast('WHERE ARE YOU?'); return; }
   if (on) {
-    const m = kept || mixNow(); LOOP.m = m; LOOP.t0 = performance.now(); LOOP.last = LOOP.t0; LOOP.on = true;
+    const m = kept || mixNow(); LOOP.m = m; LOOP.t0 = performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m); LOOP.last = performance.now(); LOOP.on = true;
     if (!kept) { LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); }
     clearInterval(LOOP.timer); LOOP.timer = setInterval(loopTick, 40); if (!S.radio) setRadio(true); snd.droneOff();
   } else { LOOP.on = false; clearInterval(LOOP.timer); }

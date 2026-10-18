@@ -2,7 +2,7 @@
 
 Research and development for direct action. Its first work is a sonic radar over Brunswick to the Melbourne CBD for the El Niño summer of 2026–28. It shows live iNaturalist sightings, the El Niño threat, and the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. Make string figures between them, listen, notice and print out a four-line W.I.S.H. praxis poem  or brief receipt.
 
-At [novel.global](https://novel.global). MIT licence. Public alpha, 0.1.0-alpha.2: open source, made to be forked, changed and run elsewhere. Made on Wurundjeri Woi-wurrung Country.
+At [novel.global](https://novel.global). MIT licence. Public alpha, 0.1.0-alpha.3: open source, made to be forked, changed and run elsewhere. Made on Wurundjeri Woi-wurrung Country.
 
 ## Places
 

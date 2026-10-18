@@ -237,17 +237,24 @@ window.DA_FAMILIES = {
   artists: { w: 'ARTISTS', sound: 'pencil' }, third: { w: 'THIRD SPACE', sound: 'hum' }, network: { w: 'NETWORK', sound: 'hums' }, people: { w: 'PEOPLE', sound: 'breath' },
 };
 
-/* The El Niño outlook for Melbourne, month by month, for twelve months at most.
-   lv: 0–4, this archive's reading of the danger (not an official warning). h: f = forecast by the Bureau (three months),
-   m = modelled (El Niño persisting through summer into autumn), p = possible (no outlook issued yet).
+/* The El Niño outlook for Melbourne, month by month, for twelve months at most. Updated 18 October 2026.
+   lv: 0–4, this archive's reading of the danger (not an official warning). h: f = forecast by the Bureau (its outlook issued
+   15 October covers November to January), m = modelled (El Niño strong into autumn), p = possible (no outlook issued yet).
+   The readout of each month, as data, one value a month where one is known:
+     nino: the Niño 3.4 sea-surface anomaly, observed (OBS) or forecast · tmax: the chance of above-median daytime highs ·
+     hot: the chance of unusually hot days (the warmest fifth) · rain: the rainfall signal on the coast.
    windows: the unseasonable stretches, when heat and dry arrive at the wrong moment for lives that can't adapt in time. */
 window.DA_OUTLOOK = {
   start: [2026, 9],
-  lv: [1, 2, 3, 4, 4, 3, 2, 1, 1, 1, 1, 1],
-  h: ['f', 'f', 'f', 'm', 'm', 'm', 'p', 'p', 'p', 'p', 'p', 'p'],
+  lv: [2, 3, 4, 4, 4, 3, 2, 1, 1, 1, 1, 1],
+  h: ['f', 'f', 'f', 'f', 'm', 'm', 'p', 'p', 'p', 'p', 'p', 'p'],
+  nino: ['+2.8 OBS', '≈+3.7', '≈+3.7 PEAK', 'STRONG+', 'STRONG+', 'STRONG+', '', '', '', '', '', ''],
+  tmax: ['', '>80%', '>80%', '>80%', 'WARM', 'WARM', '', '', '', '', '', ''],
+  hot: ['', '>70%', '>70%', '>70%', '', '', '', '', '', '', '', ''],
+  rain: ['', 'DRY COAST', '≈50/50', '≈50/50', 'NEUTRAL', 'NEUTRAL', '', '', '', '', '', ''],
   say: {
-    f: 'Warmer days and nights, likely drier (60–80% chance of below-average rain).',
-    m: 'Warmer than average as El Niño peaks and persists into autumn.',
+    f: 'Days very likely warmer than average to January; unusually hot days most likely in Victoria; November drier on the coast.',
+    m: 'A strong El Niño into autumn: warmer than average, rain near normal.',
     p: 'No outlook issued yet. Drought and canopy loss carry on after the heat.',
   },
   windows: [
@@ -256,30 +263,15 @@ window.DA_OUTLOOK = {
     { a: 11, b: 1, w: 'HOT NIGHTS', why: 'Unusually warm nights leave no cool hours to recover in.', g: ['human', 'possum', 'flyingfox', 'bat'] },
     { a: 0, b: 2, w: 'DROUGHT', why: 'Soil and ponds dry out; old trees shed limbs and the canopy thins.', g: ['plant', 'frog', 'dragonfly', 'turtle', 'waterbird', 'fungi'] },
   ],
-  /* each month, read: one life, what makes it itself, where it is hurt, how it is helped, and what to do, more urgent as the
-     heat comes. Keyed by the month of the year (0 = January); shown when a month is pressed */
-  read: {
-    0: "We are built for heat: a person can sweat away a litre or more an hour. Our weakness is the night. The body needs it to cool down, and after a few hot nights in a row, it can't. In late January 2009, three days above 43° killed an estimated 374 more Victorians than usual, more than twice the toll of the Black Saturday fires that came days later. Most were over seventy-five. This is the month. Open a cool room to someone without one, then build the street that won't need it.",
-    1: "The growling grass frog is one of the biggest frogs in southern Australia, green and bronze, and it doesn't croak: the males growl, low and revving. It basks in full sun on the reeds, which makes it easy to love and easy to lose. The upper Merri Creek holds some of Melbourne's last. A dry February shrinks the shallow ponds before the tadpoles have legs, and a year without young is a year the frogs can't afford. A pond kept wet all summer, free of fish and ringed with reeds, is the whole answer. It has to be wet this week, not next summer.",
-    2: "A gum tree doesn't grow a hollow; it waits for one. Fungus, termites and fallen limbs slowly carve out an old trunk, and a hollow big enough for an owl or a cockatoo takes a century or more. Hundreds of Australian animals depend on them. After a hot, dry summer, big gums can drop whole limbs on still afternoons, and the usual answer is the chainsaw. Brunswick's canopy covers about 14% of its ground; a city's cooling climbs steeply past 40%. Every old tree is a century nobody can buy back. A plan that removes one has already failed.",
-    3: "Every short-finned eel in the Merri was born, as far as anyone knows, in the Coral Sea, and drifted down the coast as a see-through larva. Decades later, on dark, wet autumn nights, the adults head back to the ocean to spawn once and die, some crossing wet grass to get around a weir. The Gunditjmara built stone channels to farm eels at Budj Bim at least 6,600 years ago, before the pyramids. A drought autumn brings no rain to call them home, and shrinking pools run out of oxygen. Take out one barrier and a creek reaches the ocean again.",
-    4: "The swift parrot is one of the fastest parrots alive and one of the few that migrate. Each autumn it crosses Bass Strait from Tasmania to spend winter in the mainland's flowering gums. Fewer than a thousand are left. It breeds only in old Tasmanian tree hollows, where introduced sugar gliders eat the nesting females, and in winter it needs gums that flower when little else does: yellow gum, red ironbark. The heat has gone and the rain is back. The trees that feed the last of them have to go in the ground this winter.",
-    5: "The rakali is Australia's otter that isn't: a native water rat with webbed hind feet, thick dark fur and a white tip on its tail. It hunts yabbies, fish and mussels along the Merri and the Yarra, even around Docklands, and in the north it has learned to flip cane toads over and eat around the poison. Enclosed yabby traps drowned so many rakali and platypus that Victoria banned them in 2019. Fishing line still does the same work. A creek after a drought is a smaller creek. Give it back its banks before next summer takes them.",
-    6: "The powerful owl is Australia's largest owl, strong enough to carry a possum home in its talons. A pair holds the same territory for life, hundreds of hectares, and nests only in the big hollows of very old trees. In winter the female sits in hers for weeks while the male hunts for both. Many found dead around the city carry rat poison, eaten second-hand in what they caught. Snap traps instead of bait keep them alive. The poison is chosen in a hardware aisle, months before the heat. Design it off the shelf.",
-    7: "A platypus hunts with its eyes, ears and nose shut, reading through its bill the tiny electric pulses of the shrimp and larvae it eats. Under ultraviolet light its fur glows a faint blue-green. In late winter they court, and the females dig long nesting burrows in the creek bank. Victoria listed the platypus as vulnerable in 2021, after droughts dried the streams it needs, and a hair tie or rubber band caught around its neck will slowly strangle it. Cut every loop before it goes in the bin. In four months the creeks run hot again. Shade the banks now.",
-    8: "A fairy-wren mother sings to her eggs. Her chicks learn a password note before they hatch and use it when they beg; a cuckoo chick that never learned it can be found out. Fairy-wrens live as families, last year's young helping to raise the next, and they need dense, prickly shrubs to hide from cats and noisy miners. Tidy gardens have pushed them out of most inner streets. In September the males turn electric blue and the nesting begins. Summer starts in a month, and it will be hotter. Plant thickets, not lawns.",
-    9: "A grey-headed flying-fox can fly fifty kilometres in a night, pollinating forests as it feeds. In October the mothers at Yarra Bend give birth, and each pup rides along for its first weeks, clamped to its mother's belly. The danger is an early hot day: above about 42°, flying-foxes begin to die, and heatwaves have killed thousands in a day. Shade, water and fruit-tree netting too fine to poke a finger through keep them alive. The first hot day is a rehearsal. Whatever cools a street has to be ready before the second.",
-    10: "The blue-banded bee does something a honeybee can't. It grips a flower and head-butts it hundreds of times a second, shaking out pollen that only vibration will release; tomatoes and native flax-lilies depend on it. It lives alone, digs its nest in a sunny bank of soil, and at night the males sleep in the open, hanging from a stem by their jaws. A dry November means flowers with little nectar, and paved gardens leave nowhere to dig. Most bees here live alone. Leave them bare ground before the flowers fail.",
-    11: "A ringtail possum eats its dinner twice. Gum leaves are so poor that it passes a soft first dropping by day and eats it again, the way a rabbit does. It weaves a round nest of twigs, carrying them curled in its tail, and it can barely sweat. When nights stop cooling down, ringtails fall from the trees, dazed and dry, and carers' spare rooms fill with them. Water left up high, out of reach of cats, buys them a night. The hottest nights are a month away, and shade takes years to grow. Start the fast kind and the slow kind now.",
-  },
   /* what is normal: Melbourne (Olympic Park), 2013–2026: days of 35° or more, January to December */
   hot35: [3.4, 2.1, 0.9, 0, 0, 0, 0, 0, 0, 0.1, 0.5, 2.2],
   src: [
-    ['BoM long-range forecast, Oct–Dec 2026 (1 Oct)', 'https://www.bom.gov.au/video/long-range-forecast-october-to-december-2026'],
-    ['BoM: likely the strongest El Niño on record (Sep 2026)', 'https://www.bom.gov.au/news-and-media/el-nino-strength-doesnt-always-match-impact-on-australia'],
-    ['Southern Victoria: 60–80% chance of below-average rain', 'https://reneweconomy.com.au/september-was-australias-second-hottest-on-record-and-second-driest-in-the-east-bom-data-shows/'],
-    ['WMO: El Niño persists through February 2027', 'https://wmo.int/news/media-centre/el-nino-set-become-very-strong-raising-risks-of-extreme-weather-2027'],
-    ['Agriculture Victoria: warmer Jan–Mar 2027', 'https://agriculture.vic.gov.au/support-and-resources/newsletters/the-break/the-fast-break-victoria'],
+    ['BoM long-range forecast, Nov 2026–Jan 2027 (15 Oct): above-average highs over 80% likely; unusually hot days over 70% in parts of Victoria', 'https://www.bom.gov.au/climate/ahead/outlooks/archive/20261015-outlook.shtml'],
+    ['BoM ENSO update: Niño 3.4 +2.81 °C in the week to 11 Oct 2026, near record, strengthening through spring; positive IOD likely', 'https://www.bom.gov.au/climate/enso/'],
+    ['WMO: Niño 3.4 near +3.7 °C for Oct–Dec 2026, peaking around December (8 Oct)', 'https://public.wmo.int/resources/publication-series/global-seasonal-climate-updates/gscu-ond2026'],
+    ['NOAA CPC: strong to very strong El Niño likely through Jan–Mar 2027 (13 Oct)', 'https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/lanina/enso_evolution-status-fcsts-web.pdf'],
+    ['ABC: November drier on the coast from Adelaide to Melbourne; no clear summer rain signal (17 Oct)', 'https://www.abc.net.au/news/2026-10-17/2026-may-become-australias-wettest-el-nino-weather-year/107273884'],
+    ['Agriculture Victoria: warmer Jan–Mar 2027, rain near neutral', 'https://agriculture.vic.gov.au/support-and-resources/newsletters/the-break/the-fast-break-victoria'],
     ['Melbourne climate statistics', 'https://www.bom.gov.au/climate/averages/tables/cw_086338_All.shtml'],
   ],
 };

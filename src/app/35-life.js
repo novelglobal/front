@@ -390,7 +390,7 @@ const life = (() => {
     ctx.restore();
   }
   function loopRing(ctx, now, still) {
-    const w = LOOP.m.where; const pts = ringOf(w.lat, w.lng, w.r, 64); const c = map.project([w.lng, w.lat]); const [la, ln] = dest(w.lat, w.lng, w.r, loopBearing()); const p = map.project([ln, la]);
+    const w = LOOP.m.where; if (haversine(w.lat, w.lng, S.scan.lat, S.scan.lng) < 25 && Math.abs((w.r || 0) - S.scan.r) < 25) return; const pts = ringOf(w.lat, w.lng, w.r, 64); const c = map.project([w.lng, w.lat]); const [la, ln] = dest(w.lat, w.lng, w.r, loopBearing()); const p = map.project([ln, la]);
     ctx.save(); ctx.lineWidth = 1.6; ctx.strokeStyle = shim(now, 0.95); ctx.setLineDash([5, 6]); ctx.beginPath(); poly(ctx, pts); ctx.stroke(); ctx.setLineDash([]);
     if (!still) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p.x, p.y); ctx.stroke(); }
     ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, TAU); ctx.fillStyle = shim(now, 1); ctx.fill(); ctx.restore();
@@ -637,7 +637,7 @@ const life = (() => {
     audio.onended = () => { if (btn) btn.innerHTML = icon('play'); };
   }
   return {
-    start, data, resize, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
+    start, data, resize, sweepAt: () => sweepB, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
     seen: () => seen, reveal: revealAll, climateIn, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
     get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown,
