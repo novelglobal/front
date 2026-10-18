@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════
    THE AIR OVER THE GROUND — small sprites, barely there, drawn from the real weather. Heat rises as shimmer, more of it on a
-   hotter day and in a hotter month of the outlook; the sun glints; rain falls when rain is falling. Nothing is said; it is
+   hotter day and in a hotter month of the outlook; the sun glints; rain falls only while rain is falling now. Nothing is said; it is
    only felt. Still when motion is off, when the ground is covered, and when the page is hidden
    ════════════════════════════════════════════════════════════════════ */
 function weatherFx() {
@@ -10,8 +10,8 @@ function weatherFx() {
   const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = host.clientWidth; H = host.clientHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); };
   size(); addEventListener('resize', size);
   /* how hot the air is: today's top, or the month's degree on the outlook, whichever is hotter */
-  const heat = () => Math.max(clamp(((S.wx.tmax || 20) - 22) / 16, 0, 1), (outMonth(nowK()).lv || 0) / 4 * 0.6);
-  const wet = () => clamp((S.wx.rain || 0) / 4, 0, 1);
+  const heat = () => Math.max(clamp((Math.max(S.wx.tmax || 20, (S.wx.now || {}).t || 0) - 22) / 16, 0, 1), (outMonth(nowK()).lv || 0) / 4 * 0.6);
+  const wet = () => clamp(((S.wx.now || {}).p || 0) / 1.5, 0, 1);
   /* the ghosts: a jellyfish drifting up through the air now and then, pulsing; five taps on the muse fill the water with them */
   const jel = (a = 0.14) => ({ k: 'jel', x: W * (0.1 + Math.random() * 0.8), y: H + 60, v: 9 + Math.random() * 8, t: 0, life: 40, ph: Math.random() * 6.28, a, s: 26 + Math.random() * 30, sw: (Math.random() - 0.5) * 0.4 });
   addEventListener('da:muse', () => { for (let i = 0; i < 9; i++) { const g = jel(0.32); g.y = H + 40 + i * 50; g.v = 18 + Math.random() * 14; g.life = 30; sp.push(g); } });

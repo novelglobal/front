@@ -63,7 +63,7 @@ new MutationObserver(() => { if (document.body.classList.contains('shut') && doc
 /* out of sight, the drone falls quiet; the sweep wakes it again */
 /* ───────── boot ───────── */
 document.title = CONFIG.NAME;
-document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); document.documentElement.classList.toggle('still', !prefs.motion);
+document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); document.body.classList.toggle('nino', !!prefs.nino); document.documentElement.classList.toggle('still', !prefs.motion);
 /* a preview says so, so it is never mistaken for the live site */
 if (BUILD.branch) { const t = document.createElement('div'); t.className = 'preview mono'; t.setAttribute('aria-hidden', 'true'); t.textContent = `PREVIEW · ${BUILD.branch.toUpperCase()} · ${BUILD.sha.toUpperCase()}`; document.body.appendChild(t); }
 S.mo = nowK();

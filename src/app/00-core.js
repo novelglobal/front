@@ -115,7 +115,7 @@ if (!me.dev) { me.dev = `d${Date.now().toString(36)}${Math.random().toString(36)
 const S = {
   obs: [], byId: new Map(), user: [], community: [], hist: [],
   view: 0, open: false, radio: false, started: false, tweaked: false, sel: null, mode: null, place: null, mo: 0, tribeSel: null, sig: null,
-  wx: store.get('da.wx.v3', { t: 0, tmax: null, tmin: null, rain: null, days: [] }),
+  wx: store.get('da.wx.v4', { t: 0, tmax: null, tmin: null, rain: null, now: null, days: [] }),
   lastVisit: store.get('da.lastVisit', 0), lastSignal: 0, stale: false, me,
   biz: null, bizLoading: null, radius: new Map(), orbit: { cell: new Map() }, arrivals: new Set(), mapReady: false, sensors: [], fountains: [],
   heroes: [], tribes: [], signals: [], shared: [], partnerSel: null,
@@ -134,7 +134,7 @@ const snd = (() => {
     if (!prefs.sound || !active()) return null;
     try {
       if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.5;   /* a fifth louder than it was */
+        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; bus.connect(comp); comp.connect(ctx.destination);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
@@ -370,7 +370,7 @@ const snd = (() => {
        (new), danger, vi (which voice) */
     ping(spec, f, opt = {}) {
       if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
-      const t = ctx.currentTime + 0.01; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
+      const t0 = ctx.currentTime + 0.01; const t = prefs.nino ? Math.ceil(t0 / 0.125) * 0.125 : t0; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
       const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, blown: blownV }[md];
       if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
       return true;

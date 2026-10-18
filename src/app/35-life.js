@@ -51,7 +51,7 @@ const life = (() => {
   const halfAt = z => 0.5 + 0.5 * clamp((z - 13.5) / 2.5, 0, 1);
   const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) * halfAt(z) / 2) * 2);
   const PHOTO_Z = 16.2;   /* closer than this, a life is its photograph */
-  const HOVER_D = 68;     /* the photograph a mark grows into under the pointer */
+  const HOVER_D = 88;     /* the photograph a mark grows into under the pointer */
   /* a living map: what is new is bright and full; what is old fades and shrinks to a small ghost */
   const ghostOf = o => { if (!o || o.hero || o.partner) return 1; const t = stampOf(o); if (!t) return 1; const days = (Date.now() - t) / 864e5; return clamp(1 - (days - 1) / 40, 0.28, 1); };
   const PLACE_TONE = { flora: 'flora', injured: 'injured', dead: 'dead', lost: 'lost', need: 'need', offer: 'offer', event: 'event' };
@@ -66,7 +66,7 @@ const life = (() => {
     if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, tier: 2, hero: true }; }
     /* a story: a slip issued about a life, standing where its life was */
     if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
-    if (o.hist) return { tone: 'hist', d: Math.max(6, Math.round(d * 0.42)) };
+    if (o.hist) return { tone: 'hist', g: glyphOf(o), d: Math.max(7, Math.round(d * 0.5)) };
     /* a cell from a pack: its kind's colour and mark, a fruit tree, a mesh node, water, shade */
     if (o.pack) { const K = PACK_KINDS[o.pk] || PACK_KINDS.place; return { tone: K.tone, g: K.g || null, i: K.g ? null : K.i, d: d + 2 }; }
     if (o.kind === 'injured') return { tone: 'injured', g: o.tx || o.g ? glyphOf(o) : null, i: o.tx || o.g ? null : 'injured', d: d + 4 };
@@ -101,7 +101,7 @@ const life = (() => {
     for (const o of [...S.hist, ...S.obs.filter(x => !x.ob), ...S.user.filter(liveEvent), ...S.community.filter(liveEvent), ...S.heroes, ...storyCells()]) {
       if (hiddenCell(o.id)) continue;
       const b = badgeOf(o, curD); const r0 = seeded(`${o.id}|${WEEK}`);
-      const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, ox: 0, oy: 0, phase: r0(), pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
+      const it = { o, b, lng: o.lng, lat: o.lat, x: 0, y: 0, dx: 0, dy: 0, ox: 0, oy: 0, phase: r0(), tilt: (r0() - 0.5) * 0.36, pulse: 0, pc: null, radar: 0, moving: false, hero: !!o.hero, sd: 0, sb: 0, inS: false };
       /* outside the radar, one rule: only what is from the last 24 hours. An animal hurt, dead or lost is an alarm for as long */
       it.flag = isFresh(o); it.alarm = isAlarm(o) && it.flag; it.fade = it.alarm ? 1 : ghostOf(o);
       items.push(it);
@@ -143,8 +143,9 @@ const life = (() => {
   /* the radar keeps playing while a life is looked at: only the radio being off, or the page hidden, stills it */
   const paused = () => !S.radio || S.mode === 'place' || document.hidden;
   const running = () => !reduced() && !paused();
-  /* a month ahead chosen on the outlook: the hand quickens with its danger, twice as fast at the extreme, and the glass heats */
-  const heatAhead = () => (S.mo !== nowK() ? (outMonth(S.mo).lv || 0) : 0);
+  /* a month ahead chosen on the outlook: the hand quickens with its danger, twice as fast at the extreme, and the glass heats.
+     The El Niño switch holds it at the extreme: one turn in two bars of 120 BPM */
+  const heatAhead = () => (prefs.nino ? 4 : S.mo !== nowK() ? (outMonth(S.mo).lv || 0) : 0);
   const tempo = () => [1, 1.1, 1.3, 1.6, 2][heatAhead()];
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {
@@ -277,7 +278,7 @@ const life = (() => {
       if (list.length < 2) continue; let x = 0, y = 0; const count = new Map();
       for (const it of list) { x += it.x; y += it.y; it.binned = true; const key = `${it.b.g}|${it.b.tone}`; count.set(key, (count.get(key) || 0) + 1); }
       const [g, tone] = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0].split('|');
-      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: Math.round(curD + 2 + Math.min(10, Math.log2(list.length) * 2.2)), n: 1 } });
+      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: Math.round(curD + 2 + Math.min(10, Math.log2(list.length) * 2.2)), n: list.length } });
     }
   }
 
@@ -358,7 +359,7 @@ const life = (() => {
     const sp = M.badgeSprite(it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
     if (m && m.thread) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
     ctx.globalAlpha = a;
-    if ((m && (m.rot || m.sx !== 1)) || k !== 1) { ctx.save(); ctx.translate(x, y); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
+    if ((m && (m.rot || m.sx !== 1)) || k !== 1 || it.tilt) { ctx.save(); ctx.translate(x, y); ctx.rotate(it.tilt || 0); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
     else ctx.drawImage(sp.cv, x - sp.size / 2, y - sp.size / 2, sp.size, sp.size);
     ctx.globalAlpha = 1;
   }
@@ -490,7 +491,7 @@ const life = (() => {
       /* inside an open cell the other lives show themselves too, as photographs */
       const close = zoomNow() >= PHOTO_Z && !it.o.hum && !it.o.story && it.b.tone !== 'hist';
       const im = (node || close) && !it.o.hum ? photoOf(it.o, 'square') : null;
-      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 18 : 16, it.b.d * 1.25) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
+      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 24 : 21, it.b.d * 1.62) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
       drawItem(ctx, it, m, a * (0.3 + 0.7 * it.fade), k);
     }
     printers(ctx, t, still);
