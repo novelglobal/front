@@ -88,7 +88,7 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
-  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock(); headBar();
+  const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock(); headBar(); unNudge(i);
   if (S.mode && !keep) closeRecord('view');
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
@@ -98,19 +98,20 @@ function setView(i, keep, part) {
   renderView(); life.data();
   viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
   if (part) goPart(part);
-  try { history.replaceState(null, '', '#' + (part || VIEWS[i].k)); } catch (e) { /* file:// */ }
+  try { history.replaceState(null, '', '#' + (part || VIEWS[i].slug || VIEWS[i].k)); } catch (e) { /* file:// */ }
 }
 /* a part of a page by name */
 const PARTS = { radio: [0, null], now: [0, null], outlook: [0, 'sec-heat'], tracks: [0, 'sec-heat'], five: [0, 'sec-five'], heroes: [0, 'sec-five'], alerts: [0, 'sec-alarms'], gigs: [0, 'sec-gigs'], events: [0, 'sec-gigs'],
-  signals: [1, null], constellations: [1, 'sec-cons'], cons: [1, 'sec-cons'], groups: [1, 'sec-groups'],
-  signs: [2, null], slips: [2, 'sec-slips'], printers: [2, 'sec-prn'],
+  signals: [1, null], wish: [1, null], constellations: [1, 'sec-cons'], cons: [1, 'sec-cons'], groups: [1, 'sec-groups'],
+  signs: [2, null], print: [2, null], slips: [2, 'sec-slips'], printers: [2, 'sec-prn'],
   portfolio: [3, null], stories: [3, null], board: [3, 'sec-board'], receive: [3, 'sec-board'], briefs: [3, 'sec-briefs'], tools: [3, 'sec-tools'], field: [3, 'sec-tools'], settings: [3, 'sec-set'], sources: [3, 'sec-src'] };
 function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && document.getElementById(id); if (!el) return; if (el.tagName === 'DETAILS') el.open = true; if (part === 'receive') openReceive(true); viewEl.scrollTop = Math.max(0, el.offsetTop - 8); }
 function renderView() {
   if (S.mode) return;
-  const k = VIEWS[S.view].k;
-  viewEl.innerHTML = k === 'radio' ? viewRadio() : k === 'signals' ? viewSignals() : k === 'signs' ? viewSigns() : viewPortfolio();
-  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
+  const k = VIEWS[S.view].k; const front = faceOf(S.view) === 'front'; document.body.dataset.face = front ? 'front' : 'back';
+  viewEl.innerHTML = k === 'radio' ? (front ? radioFront() : viewRadio()) : k === 'signals' ? (front ? wishFront() : viewSignals()) : k === 'signs' ? (front ? printFront() : viewSigns()) : viewPortfolio();
+  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open && !front); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
+  if (k === 'signals' && front && S.open) wishPreview(); else { const cov = $('#cover'); if (cov) cov.replaceChildren(); }
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
   if (k === 'signs') fillThumbs();
@@ -204,11 +205,19 @@ function monthStrip() {
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
-/* a month pressed: a short piece on one life, what makes it itself, where it is hurt, how it is helped, and what to do, more
-   urgent as the heat comes (the outlook's read, in config.js). No tags: the month is lit on the strip above it */
-function readout(k) {
-  const Mo = outMonth(k); const t = (OUT.read || {})[Mo.m] || OUT.say[Mo.h] || '';
-  return `<div class="eq-read d${Mo.lv}" role="status"><p class="eq-p">${esc(t)}</p></div>`;
+/* a month pressed: its data, every point the outlook holds, as a handheld's screen on a mission would show it. No sentences:
+   the month and how far off, its danger, what the danger rests on, the ocean, the odds of heat and of rain, what is normal, the
+   windows open, the lives they reach; the jellyfish in the glass behind */
+const HZ = { f: 'BOM FORECAST', m: 'MODELS', p: 'NONE ISSUED' };
+function readout(k, top) {
+  const Mo = outMonth(k); const ws = OUT.windows.filter(w => inWin(w, Mo.m)); const at = (a) => ((a || [])[k] || '—');
+  const gs = [top, ...ws.flatMap(w => w.g)].filter((g, i, a) => g && a.indexOf(g) === i).slice(0, 7); const days = Math.ceil((monthStart(k) - Date.now()) / 864e5);
+  const row = (t, v, cls = '') => `<dt>${t}</dt><dd${cls ? ` class="${cls}"` : ''}>${v}</dd>`;
+  return `<div class="eq-read eq-hud d${Mo.lv}" role="status" aria-label="${MON[Mo.m]} ${Mo.y}"><i class="hud-spec" aria-hidden="true">${M.jellySVG('currentColor', 'rgba(127,255,224,.06)', 96)}</i>`
+    + `<p class="hud-h"><b>${MON[Mo.m]} ${Mo.y}</b><span>${String(k + 1).padStart(2, '0')}/${OUT_N}</span><span>${days > 0 ? `T−${days}D` : 'NOW'}</span></p>`
+    + `<dl class="hud-d">${row('LV', `<i class="hud-bar">${[1, 2, 3, 4].map(n => `<b${n <= Mo.lv ? ' class="on"' : ''}></b>`).join('')}</i>${DEG[Mo.lv]}`)}${row('SRC', HZ[Mo.h] || '—')}${row('NIÑO3.4', at(OUT.nino))}`
+    + `${row('TMAX>MED', at(OUT.tmax))}${row('HOT DAYS', at(OUT.hot))}${row('RAIN', at(OUT.rain))}${row('≥35° NORM', `${(OUT.hot35 || [])[Mo.m] || 0} D`)}`
+    + `${row('WINDOW', ws.length ? ws.map(w => esc(w.w)).join(' · ') : '—')}${row('LIFE', gs.map(g => `<i data-tip="${esc(M.KINDS[g] || '')}">${glyphSVG(g)}</i>`).join(''), 'hud-life')}</dl></div>`;
 }
 function bindOutlook() {
   const st = $('#sec-heat .ms-m'); if (!st) return;
@@ -313,7 +322,9 @@ const COUNTRIES = (CONFIG.COUNTRIES && CONFIG.COUNTRIES.length) ? CONFIG.COUNTRI
 const countryNow = () => COUNTRIES.find(c => c.id === prefs.ctry) || COUNTRIES[0];
 const countryBar = () => { const c = countryNow(); return `<div class="ctry"><label class="ct-sel"><select id="ctry" aria-label="Country">${COUNTRIES.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.n)}</option>`).join('')}${(CONFIG.SOON || []).length ? `<optgroup label="Soon">${CONFIG.SOON.map(n => `<option disabled>${esc(n)} · soon</option>`).join('')}</optgroup>` : ''}</select><span class="ct-n">${esc(c.n)}</span><span class="ct-s">${esc(c.s)}</span>${COUNTRIES.length > 1 ? icon('next', 'sm') : ''}</label></div>`; };
 /* the Country stands at the head of the radio only, and fades slowly over a minute (it comes back under the pointer) */
-function headBar() { const h = $('#ph'); if (h) h.innerHTML = lockup() + (S.view === 0 ? countryBar() : ''); }
+/* on the portfolio the name goes: the muse swims across the head of the page, back and forth, pulsing as it goes */
+const swim = () => `<div class="swim"><i class="sw-x"><i class="sw-y"><button type="button" class="lk-mark sw-j" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button></i></i></div>`;
+function headBar() { const h = $('#ph'); if (h) h.innerHTML = S.view === 3 ? swim() : lockup() + (S.view === 0 ? countryBar() : '') + flipKey(); }
 document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; prefs.ctry = e.target.value; savePrefs(); headBar(); });
 /* the printers online, as a pager would say it: its light, its name, a buzz when one comes on */
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
@@ -327,7 +338,7 @@ function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return `<section class="band" id="sec-heat">
+  return `<section class="band dev radio mod" id="sec-heat">${mods('RADIO', '01 · NOTICED')}
       ${pagerHTML()}${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in">${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
       <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
@@ -406,7 +417,7 @@ function quickHTML() {
     + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
     + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder=" ">${esc(QP.t)}</textarea><i class="qp-caret" aria-hidden="true"></i>`
     + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
-    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Send a message to ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i><b>send message</b></button></section>`;
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Send a message to ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i>${icon('epson')}</button></section>`;
 }
 /* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
 async function quickCanvas(W = 512) {
@@ -452,20 +463,24 @@ const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length)
     : `<section class="sec wishes" id="sec-wishes"><button type="button" class="filed-none" data-go-view="1" aria-label="The WISH MAKER">${icon('sign')}</button></section>`; };
 /* ───────── the gallery: beside the portfolio, the posters finished here, the newest as the hero, the rest on the wall ───────── */
 let galleryAt = 0;
+const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2];
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = POSTERS2; galleryAt = Math.min(galleryAt, Math.max(0, ps.length - 1));
+  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf(); galleryAt = Math.min(galleryAt, Math.max(0, ps.length - 1));
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
-  const p = ps[galleryAt];
-  g.innerHTML = `<figure class="gl-hero"><img src="${p.img}" alt=""><figcaption class="mono">№ ${String(ps.length - galleryAt).padStart(3, '0')} · ${fmtStamp(p.at)}</figcaption></figure>`
-    + `<div class="gl-acts"><button type="button" class="key" data-gl="card" aria-label="As a card" data-tip="As a card">${icon('stories')}</button><button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
-    + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg"><img src="${x.img}" alt=""></button></li>`).join('')}</ol>` : '');
+  /* the example's zine is made once a visit; until then the muse waits in its place */
+  if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
+  const p = ps[galleryAt]; const n = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
+  const art = x => (x.img ? `<img src="${x.img}" alt="">` : `<i class="gl-wait" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 48)}</i>`);
+  g.innerHTML = `<figure class="gl-hero${p.ex ? ' ex' : ''}">${art(p)}<figcaption class="mono">№ ${n(p)}${p.ex ? ' · EX' : ` · ${fmtStamp(p.at)}`}</figcaption></figure>`
+    + `<div class="gl-acts">${p.ex ? '' : `<button type="button" class="key" data-gl="card" aria-label="As a card" data-tip="As a card">${icon('stories')}</button>`}<button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
+    + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg">${art(x)}</button></li>`).join('')}</ol>` : '');
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
   const t = e.target.closest('[data-gl-i]'); if (t) { galleryAt = +t.dataset.glI; showGallery(true); tick(1500); return; }
-  const a = e.target.closest('[data-gl]'); const p = POSTERS2[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
-  if (a.dataset.gl === 'card') openPosterCard(p.id);
-  if (a.dataset.gl === 'png') { const l = document.createElement('a'); l.href = p.img; l.download = `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
+  const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
+  if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
+  if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
 function viewPortfolio() {
   loadPosts();

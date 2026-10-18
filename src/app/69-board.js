@@ -16,20 +16,21 @@ const BOARD_PROPS = ['daId', 'daFrom', 'daTo', 'daKind', 'daMix'];
 const uid = p => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 /* the boards: the first carries over a board kept before there were several */
 const BOARDS = (() => { const b = store.get('da.boards.v1', null); if (Array.isArray(b) && b.length) return b; const old = store.get('da.board.v1', null); if (old && old.json) store.set('da.board.b1', old); const first = [{ id: 'b1', n: 'BOARD 01', at: Date.now() }]; store.set('da.boards.v1', first); return first; })();
-let boardId = BOARDS.some(b => b.id === prefs.board) ? prefs.board : BOARDS[0].id;
+if (window.DA_EXAMPLE_KIT && !BOARDS.some(b => b.id === 'b00')) { BOARDS.unshift({ id: 'b00', n: 'BOARD 00', at: 0, ex: true }); store.set('da.boards.v1', BOARDS); }
+let boardId = BOARDS.some(b => b.id === prefs.board) ? prefs.board : (BOARDS.find(b => !b.ex) || BOARDS[0]).id;
 const boardOf = id => store.get('da.board.' + id, null);
 const boardJSON = () => { const k = boardOf(boardId); return (k && k.json) || { objects: [] }; };
 const HIST = []; let histLast = '';
 function saveBoard(say) {
-  if (!cv) return; const json = cv.toJSON(BOARD_PROPS); const str = JSON.stringify(json);
+  if (!cv || exLocked()) return; const json = cv.toJSON(BOARD_PROPS); const str = JSON.stringify(json);
   if (histLast && str !== histLast) { HIST.push(histLast); if (HIST.length > 40) HIST.shift(); } histLast = str;
-  store.set('da.board.' + boardId, { v: BOARD_V, json }); if (say) toast('SAVED');
+  store.set('da.board.' + boardId, { v: BOARD_V, json, ...(boardId === 'b00' ? { ex: 'edit', at: Date.now() } : {}) }); if (say) toast('SAVED');
 }
 /* one step back: the board as it was before the last change */
-async function undoBoard() { if (!cv || !HIST.length) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
+async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE']];
+const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -52,9 +53,22 @@ async function showBoard(on) {
   } else { cv.setWidth(W); cv.setHeight(H); }
   cv.renderAll(); return cv;
 }
-async function loadBoard() { cv.clear(); HIST.length = 0; const k = boardOf(boardId); histLast = k && k.json ? JSON.stringify(k.json) : ''; if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); }
+async function loadBoard() {
+  if (boardId === 'b00') await ensureExample();
+  cv.clear(); HIST.length = 0; const k = boardOf(boardId); histLast = k && k.json ? JSON.stringify(k.json) : ''; if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' });
+  exFrame(); cv.renderAll();
+}
+/* BOARD 00 is looked at, not moved, unless the approval page has it open to editing; and it is framed whole in the view */
+function exFrame() {
+  if (!cv) return; const ex = boardId === 'b00', locked = exLocked(); $('#board').classList.toggle('locked', locked); $('#board').classList.toggle('ex-edit', ex && !locked);
+  cv.selection = !locked; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'default' : 'move' });
+  if (!ex) { cv.setViewportTransform([1, 0, 0, 1, 0, 0]); return; }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const o of cv.getObjects()) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
+  if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; const z = Math.min(1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
+  cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
+}
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
-function newBoard() { const id = uid('b'); BOARDS.push({ id, n: `BOARD ${pad2(BOARDS.length + 1)}`, at: Date.now() }); store.set('da.boards.v1', BOARDS); switchBoard(id); }
+function newBoard() { const id = uid('b'); BOARDS.push({ id, n: `BOARD ${pad2(BOARDS.filter(b => !b.ex).length + 1)}`, at: Date.now() }); store.set('da.boards.v1', BOARDS); switchBoard(id); }
 const byId = id => cv.getObjects().find(o => o.daId === id);
 /* strings follow the cards they join */
 function follow() {
@@ -96,7 +110,7 @@ function mixText(m) {
     ...((m.figs || []).length ? [m.figs.map(g => g.name).join(' · ')] : [])].join('\n');
 }
 async function placeMix(m) {
-  const c = await showBoard(true); if (!c) return; const f = window.fabric;
+  await workBoard(); const c = await showBoard(true); if (!c) return; const f = window.fabric;
   if (m.board !== boardId) { m.board = boardId; store.set('da.mixes.v1', MIXES); }
   if (byId(m.id)) { c.setActiveObject(byId(m.id)); c.renderAll(); return; }
   const p = free(); const mc = textCard(f, m.id, 'mix', mixText(m), p.x, p.y, { daMix: m.id }); c.add(mc);
@@ -111,7 +125,7 @@ function photoCard(url, id, x, y, w, to) {
 }
 /* a picture laid on the active board from anywhere: onto the canvas if it is drawn, else into the board as kept */
 async function addToBoard(url, kind = 'receipt', w = 220) {
-  const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
+  await workBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
   if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
   const kept = boardOf(boardId) || {}; const json = kept.json || { version: '5.3.0', objects: [] }; json.objects = json.objects || [];
   const n = json.objects.filter(o => o.daKind && o.daKind !== 'link').length;
@@ -189,7 +203,7 @@ const assetText = {
   c: c => [c.name, ...c.keys.slice(0, 10).map(k => `· ${((c.f.n || {})[k] || (c.f.c || {})[k] || {}).n || k}`)].join('\n'),
 };
 async function placeAsset(kind, id) {
-  const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const aid = `${kind}:${id}`;
+  await workBoard(); const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const aid = `${kind}:${id}`;
   if (byId(aid)) { c.setActiveObject(byId(aid)); c.renderAll(); return; }
   if (kind === 'r') { const o = myCells().find(x => String(x.id) === String(id)); if (!o) return; const card = textCard(f, aid, 'cell', assetText.r(o), p.x, p.y); c.add(card);
     if (o.photo) f.Image.fromURL(o.photo, im => { im.set({ left: p.x, top: p.y + card.height + 30, daId: `${aid}:img`, daKind: 'image' }); im.scaleToWidth(200); c.add(im); joinCards(card, im); c.renderAll(); saveSoon(); }); }
@@ -220,12 +234,14 @@ function assetsHTML() {
 }
 /* a note, or several, from field notes in Markdown: each heading and what is under it */
 async function notesIn(md) {
-  const c = await showBoard(true); if (!c) return 0; const f = window.fabric;
+  await workBoard(); const c = await showBoard(true); if (!c) return 0; const f = window.fabric;
   const parts = String(md).split(/\n(?=#{1,3} )/).map(t => t.trim()).filter(Boolean).slice(0, 24);
   parts.forEach((t, i) => { const p = free(); c.add(textCard(f, uid('n'), 'note', t.replace(/^#{1,3} /, '').slice(0, 1200), p.x, p.y)); });
   c.renderAll(); saveBoard(false); return parts.length;
 }
 async function boardTool(k) {
+  if (k === 'exsend') { sendExample(); return; }
+  if (exLocked() && k !== 'out') { await workBoard(); }
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();
   if (k === 'note') { const n = textCard(f, uid('n'), 'note', 'A note', p.x, p.y); c.add(n); c.setActiveObject(n); n.enterEditing(); n.selectAll(); }
   if (k === 'section') { const r = new f.Rect({ left: p.x - 20, top: p.y - 20, width: 560, height: 360, fill: 'rgba(143,169,196,.08)', stroke: '#8FA9C4', strokeDashArray: [2, 4], rx: 2, ry: 2, daId: uid('s'), daKind: 'section' });
@@ -286,8 +302,8 @@ document.addEventListener('paste', e => {
 $('#board').addEventListener('dragover', e => { if ([...(e.dataTransfer.items || [])].some(x => /^image\//.test(x.type))) { e.preventDefault(); $('#board').classList.add('drop'); } });
 $('#board').addEventListener('dragleave', () => $('#board').classList.remove('drop'));
 $('#board').addEventListener('drop', e => { $('#board').classList.remove('drop'); const fl = [...(e.dataTransfer.files || [])].find(f => /^image\//.test(f.type)); if (!fl) return; e.preventDefault(); boardImageIn(fl); });
-function boardImageIn(fl) {
-  const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = async () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const t = document.createElement('canvas'); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
+async function boardImageIn(fl) {
+  await workBoard(); const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = async () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const t = document.createElement('canvas'); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
     const c = await showBoard(true); const p = free(); window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { img.set({ left: p.x, top: p.y, daId: uid('i'), daKind: 'image' }); img.scaleToWidth(220); c.add(img); c.setActiveObject(img); c.renderAll(); saveSoon(); }); }; im.src = rd.result; };
   rd.readAsDataURL(fl);
 }
@@ -295,34 +311,37 @@ $('#board').addEventListener('click', e => { const b = e.target.closest('[data-b
 
 /* ───────── the W.I.S.H.: the master form. Four lines written for a signal, sent on as a story waiting to print ───────── */
 /* what a W.I.S.H. is for: a species (sent here, or in the radar now), the climate emergency, or the circular economy */
-const INTENT = { climate: ['Heat', 'El Niño', 'Drought', 'Water', 'Shade', 'Smoke', 'Flood', 'Fire'], circular: ['Repair', 'Reuse', 'Share', 'Refill', 'Compost', 'Swap', 'Mend', 'Grow'] };
+const INTENT = {
+  climate: ['Heat', 'El Niño', 'Drought', 'Water', 'Shade', 'Smoke', 'Haze', 'Flood', 'Fire', 'Hot nights', 'Heatwave', 'Canopy', 'Cool streets', 'Dry soil', 'Storm water', 'A cool room for the street'],
+  circular: ['Repair', 'Reuse', 'Share', 'Refill', 'Compost', 'Swap', 'Mend', 'Grow', 'Upcycle', 'Lend', 'Borrow', 'Rewear', 'Second hand', 'Less plastic', 'Local fibre', 'Fair wages', 'Who made it', 'Palm oil off the label', 'Forest fibre'],
+  community: ['A street party', 'A seed swap', 'A repair café', 'A tool library', 'A water stop', 'A shade sail', 'A quiet hour', 'A nest box', 'A frog pond', 'A bee hotel', 'A pollinator strip', 'A dark night', 'A wildlife crossing', 'A community garden', 'A clothing swap', 'A free fridge', 'A neighbour check-in', 'Bare ground for bees', 'Water up high for possums', 'Snap traps, not bait'],
+};
+/* prompts that begin an intention, each finished with a life seen here */
+const PROMPTS = ['Shade for the', 'Water for the', 'A home for the', 'Food for the', 'Dark nights for the', 'A safe road for the', 'A corridor for the', 'Less poison for the'];
 function intentOptions() {
-  const sps = [...new Map([...SPECIES, ...radiusSpecies(12)].map(sp => [sp.n, sp])).values()].slice(0, 24); const cur = WDRAFT.for || '';
-  return [...sps.map(sp => sp.n), ...INTENT.climate, ...INTENT.circular].map(n => `<option value="${esc(n)}"></option>`).join('');
+  const sps = [...new Map([...SPECIES, ...radiusSpecies(24)].map(sp => [sp.n, sp])).values()].map(sp => sp.n).slice(0, 24);
+  const kinds = FIELD.map(e => e.cn).filter(Boolean);
+  const prompts = sps.slice(0, 8).flatMap(n => PROMPTS.map(p => `${p} ${n.toLowerCase()}`));
+  return [...new Set([...prompts, ...sps, ...INTENT.climate, ...INTENT.circular, ...INTENT.community, ...kinds])].map(n => `<option value="${esc(n)}"></option>`).join('');
 }
 const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by: '' });
-function wishForm() {
-  return `<form class="wish-form rec-form" id="wish-form" autocomplete="off"><div class="wf-h"><span class="wf-head" data-tip="Praxis"><span class="wf-keys" aria-label="W.I.S.H.">${WKEYS.map(k => `<b class="wk wk-${k}">${k.toUpperCase()}</b>`).join('')}</span><i class="wf-poem" aria-hidden="true">PRAXIS POEM</i></span><b class="rnd" data-tip="Sustainable innovation" aria-label="R&amp;D: sustainable innovation">R&amp;D</b></div>`
-    + `<label class="wf-l wf-for" data-tip="What it is for"><b class="wf-m mono" aria-hidden="true">RE</b><span class="wf-scr"><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="What it is for" placeholder="What is it for?" value="${esc(String(WDRAFT.for || '').replace(/^[lce]:/, ''))}"><i class="wf-cur" aria-hidden="true"></i></span><datalist id="wf-for-l">${intentOptions()}</datalist></label>`
-    + WKEYS.map(k => `<label class="wf-l wl-${k}" data-tip="${esc(WISH[k][1])}"><b class="wf-m mono" aria-hidden="true">${k.toUpperCase()}</b><input id="wf-${k}" type="text" maxlength="${SIG.line}" value="${esc(WDRAFT[k] || '')}" placeholder="${esc(WISH[k][0])}" aria-label="${esc(WISH[k][0])}" spellcheck="true"></label>`).join('')
-    + `<label class="wf-l by" data-tip="By"><b class="wf-m mono" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(WDRAFT.by || S.me.by || '')}" placeholder="Name" aria-label="By"></label>`
-    + `<button type="submit" class="send-b make-b" aria-label="Make the W.I.S.H."><b>make</b></button></form>`;
-}
+/* the form itself is the handheld (42-faces.js): its front asks for the intention, its back, modded, holds the whole poem */
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
-$('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); sendSignal(); });
+$('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); if (!WKEYS.some(k => String((($('#wf-' + k) || {}).value) || WDRAFT[k] || '').trim())) fillDraft(false); sendSignal(); });
 /* the W.I.S.H. becomes a story: where the signal was, its four lines, its constellations; kept here, waiting to print */
 async function sendSignal() {
-  const L = Object.fromEntries(WKEYS.map(k => [k, String(($('#wf-' + k) || {}).value || '').trim()]));
-  if (!WKEYS.some(k => L[k])) { nudge($('#wf-w')); return null; }
+  const L = Object.fromEntries(WKEYS.map(k => { const el = $('#wf-' + k); return [k, String(el ? el.value : WDRAFT[k] || '').trim()]; }));
+  if (!WKEYS.some(k => L[k])) { nudge($('#wf-w') || $('#wf-for')); return null; }
   const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || '').trim(); const forN = fr.replace(/^[lce]:/, '').trim(); const fsp = forN ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n.toLowerCase() === forN.toLowerCase()) : null;
   const where = m ? m.where : { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), place: suburbAt(S.scan.lat, S.scan.lng) };
   const lead = m && ((m.layers.life || {}).cells || [])[0];
-  const at = Date.now(); const who = String(($('#wf-by') || {}).value || '').trim();
+  const at = Date.now(); const byEl = $('#wf-by'); const who = String(byEl ? byEl.value : (WDRAFT.by || S.me.by || '')).trim();
   const pin = { id: null, lat: where.lat, lng: where.lng, n: fsp ? fsp.n : '', cn: where.place, ic: '', g: (fsp && fsp.g) || (lead && lead.g) || 'paw', place: where.place };
   const sig = { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who, ...(fr ? { for: fr } : {}), ...(m ? { mix: m.id } : {}), note: [forN, ...((m && m.figs) || []).map(g => g.name)].filter(Boolean).join(' · ') };
+  if (WDRAFT.photo) { OWN[sig.code] = WDRAFT.photo; saveOwn(); sig.img = { k: 'own', a: '' }; }
   const ev = await ledgerAdd({ type: 'signal', lat: pin.lat, lng: pin.lng, who, data: sig });
-  Object.assign(WDRAFT, { w: '', i: '', s: '', h: '' }); store.set('da.wish.v1', WDRAFT);
+  Object.assign(WDRAFT, { w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT);
   tie(1); snd.printer(900); buzz([10, 40, 10]); toast('✓');
   PRESS.story = ev.key; setView(2); return sig;
 }
@@ -348,9 +367,9 @@ function bookMD() {
 const sigRow2 = m => { const gs = [...new Set(((m.layers.life || {}).cells || []).map(c => c.g).filter(Boolean))].slice(0, 6);
   return `<li class="g-sig"><button type="button" class="g-play" data-mix="${esc(m.id)}" aria-label="Play on the radio" data-tip="${esc(`${m.where.place} · ${fmtStamp(m.at)}`)}">${icon('play', 'sm')}</button><span class="g-lives">${gs.map(g => glyphSVG(g)).join('')}</span><small class="mono">${fmtStamp(m.at).split(' ')[1] || ''}</small></li>`; };
 function viewSignals() {
-  const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || BOARDS[0].id) === on.id);
-  return `<section class="sec" id="sec-wish">${wishForm()}</section>` + consStrip() + assetsHTML()
-    + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
+  const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || (BOARDS.find(b => !b.ex) || BOARDS[0]).id) === on.id);
+  return wishDevice(true) + consStrip() + assetsHTML()
+    + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.ex ? `<button type="button" class="b-key ex mono" data-board="${esc(b.id)}" aria-pressed="${b.id === on.id}">${esc(b.n)}</button>` : b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
     + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();
 }

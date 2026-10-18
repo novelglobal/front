@@ -16,7 +16,7 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const fail = (status, error) => json({ error }, status);
 const now = () => Date.now();
 const H = 3600e3, DAY = 24 * H;
-const LIMIT = { body: 900e3, sig: 9000, record: 6000, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 420e3, mesh: 240, waiting: 300, perPrinter: 20 };
+const LIMIT = { example: 700e3, body: 900e3, sig: 9000, record: 6000, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 420e3, mesh: 240, waiting: 300, perPrinter: 20 };
 /* a pack of cells: up to 200, each with a place on the ground and a short name */
 const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
@@ -92,8 +92,14 @@ const PUBLIC_COLS = "id, code, kind, body, dest, created, decided, photo IS NOT 
 
 async function listStories(db, url) {
   const since = Math.max(0, +(url.searchParams.get('since') || 0));
-  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
+  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind != 'example' AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
   return json({ stories: results.map(storyOut), at: now() });
+}
+/* the example board everyone sees: the latest one approved, or none (then the example built into the site stands) */
+async function exampleBoard(db) {
+  const r = await db.prepare("SELECT body, decided FROM stories WHERE kind = 'example' AND status = 'shown' ORDER BY decided DESC LIMIT 1").first();
+  let board = null; try { board = r ? JSON.parse(r.body) : null; } catch (e) { board = null; }
+  return json({ board, at: r ? r.decided : 0 });
 }
 async function oneStory(db, code) {
   const r = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND code = ? ORDER BY decided DESC LIMIT 1`).bind(code).first();
@@ -108,11 +114,14 @@ async function photo(db, id, any) {
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
 async function send(db, env, req) {
   if (await tooMany(db, env, req, 'send', 8, 10 * 60e3)) return fail(429, 'too many');
-  const b = await body(req); const kind = b.kind === 'record' || b.kind === 'cells' ? b.kind : 'story';
+  const b = await body(req); const kind = ['record', 'cells', 'example'].includes(b.kind) ? b.kind : 'story';
   if (!CODE.test(b.code || '')) return fail(400, 'code');
   if (kind === 'story' && !(typeof b.body === 'string' && /^[A-Za-z0-9_-]{20,}$/.test(b.body) && b.body.length <= LIMIT.sig)) return fail(400, 'story');
   if (kind === 'record' && !(typeof b.body === 'string' && b.body.length <= LIMIT.record && (() => { try { return typeof JSON.parse(b.body) === 'object'; } catch (e) { return false; } })())) return fail(400, 'record');
   if (kind === 'cells' && (!cellsOk(b.body) || b.dest || b.photo)) return fail(400, 'cells');
+  /* BOARD 00, the example, rewritten: only while it is open to editing on the approval page, and shown only once approved */
+  if (kind === 'example' && !(await settingsOf(db)).exampleEdit) return fail(403, 'locked');
+  if (kind === 'example' && (b.dest || b.photo || !(typeof b.body === 'string' && b.body.length <= LIMIT.example && (() => { try { const j = JSON.parse(b.body); return !!j && Array.isArray(j.objects); } catch (e) { return false; } })()))) return fail(400, 'example');
   const lat = +b.lat, lng = +b.lng; if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(400, 'where');
   const pic = b.photo ? dataURL(b.photo) : null; if (b.photo && !pic) return fail(400, 'photo');
   const dest = typeof b.dest === 'string' && b.dest ? b.dest : ''; const toMesh = dest === 'mesh';
@@ -145,8 +154,9 @@ async function receipt(db, id) {
   let ahead = 0; if (j && j.status === 'queued') ({ ahead } = await db.prepare("SELECT count(*) AS ahead FROM jobs WHERE printer = ? AND status IN ('queued', 'printing') AND created < ?").bind(j.printer, j.created).first());
   return json({ id, code: s.code, status: s.status, dest: s.dest || '', job: j ? { status: j.status, ahead, done: j.done || null } : null });
 }
-/* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked) */
-const SETTINGS = { lifeLock: true };
+/* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
+   whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
+const SETTINGS = { lifeLock: true, exampleEdit: false };
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS }; for (const r of results) if (r.k in SETTINGS) out[r.k] = r.v === '1'; return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
@@ -291,6 +301,7 @@ async function api(req, env, url) {
   if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
   if (p[0] === 'settings' && m === 'GET') return json(await settingsOf(db));
+  if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));

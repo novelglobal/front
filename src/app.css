@@ -2237,3 +2237,226 @@ html.night .steps .st.done .st-d{background-color:#6FE3CF}
 #sec-heat .pager .pg-led{width:6px;height:6px}
 #sec-heat .pager .pg-buzz .i{width:12px;height:12px;opacity:.7}
 #sec-heat .pager .pg-lcd{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ═════════ the fronts and backs: each of RADIO, W.I.S.H. and PRINT a piece of hardware, a radio, a handheld, a label maker.
+   One language of materials (clear shells, screens, keys, lights, the jellyfish's colour); each with a personality of its own ═════════ */
+:root{--cut:#161A1C}
+
+/* the corner that turns a page over: folded down at the head; its underside is the other face: the board of the opened one, or the smoked shell as it ships. It lifts once, the first time */
+.ph{position:relative}
+.flip-k{position:absolute;top:0;right:0;z-index:4;width:48px;height:48px;padding:0;border:0;background:none;cursor:pointer}
+.fl-ear{position:absolute;top:0;right:0;width:26px;height:26px;transition:width .3s cubic-bezier(.3,1.5,.5,1),height .3s cubic-bezier(.3,1.5,.5,1);filter:drop-shadow(-2px 3px 3px rgba(0,0,0,.25))}
+.flip-k[data-face="front"] .fl-ear{background:linear-gradient(225deg,var(--cut) 0 50%,transparent 50%),var(--board) -6px 60%/auto 62% no-repeat,linear-gradient(#256A50,#1B5440)}
+.flip-k[data-face="back"] .fl-ear{background:linear-gradient(225deg,var(--cut) 0 50%,transparent 50%),var(--grain),linear-gradient(180deg,#B2CCD6,#8FB0BE)}
+.flip-k:hover .fl-ear,.flip-k:focus-visible .fl-ear{width:40px;height:40px}
+.flip-k.hint .fl-ear{animation:peel 1.5s cubic-bezier(.3,1.4,.5,1) .8s 2}
+@keyframes peel{45%{width:42px;height:42px}}
+.leaf{perspective:1400px}
+#view.flip-out{animation:flipout .19s ease-in forwards;transform-origin:50% 20%}
+#view.flip-in{animation:flipin .38s cubic-bezier(.2,.9,.3,1.15);transform-origin:50% 20%}
+@keyframes flipout{to{transform:rotateY(78deg);opacity:.15}}
+@keyframes flipin{from{transform:rotateY(-78deg);opacity:.15}to{transform:none;opacity:1}}
+
+/* the strip on the front: the receipt alone, its keys on the label maker */
+body[data-face="front"][data-view="signs"] #zine .tools{display:none}
+body[data-face="front"][data-view="signs"] #zine .desk{top:0!important}
+
+/* the month, pressed: its data on a handheld's screen on a mission; scan lines, corner marks, a jellyfish in the glass */
+.eq-read.eq-hud{position:relative;margin:14px 0 6px!important;padding:10px 12px 12px!important;border:0!important;border-radius:4px!important;background:rgba(5,14,16,.92)!important;color:#A4F5E2!important;font:400 15px/1.08 VT323,ui-monospace,monospace;letter-spacing:.05em;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(127,255,224,.32),0 12px 26px rgba(0,0,0,.28)!important}
+.eq-hud::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.3) 0 1px,transparent 1px 3px)}
+.eq-hud::after{content:"";position:absolute;inset:5px;z-index:2;pointer-events:none;background:linear-gradient(#A4F5E2,#A4F5E2) 0 0/10px 1px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 0 0/1px 10px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 100% 0/10px 1px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 100% 0/1px 10px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 0 100%/10px 1px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 0 100%/1px 10px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 100% 100%/10px 1px no-repeat,linear-gradient(#A4F5E2,#A4F5E2) 100% 100%/1px 10px no-repeat;opacity:.6}
+.hud-h{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 6px;padding-bottom:5px;border-bottom:1px dashed rgba(164,245,226,.35)}
+.hud-h b{font-weight:400;font-size:20px;letter-spacing:.08em;color:#ECFFF9}
+.hud-d{position:relative;z-index:1;display:grid;grid-template-columns:82px 1fr;gap:3px 10px;margin:0;padding-right:96px}
+.hud-d dt{color:rgba(164,245,226,.55)}
+.hud-d dd{margin:0;color:#DCFFF5}
+.hud-bar{display:inline-flex;gap:2px;margin-right:8px;vertical-align:-1px}
+.hud-bar b{width:12px;height:10px;background:rgba(164,245,226,.16)}
+.hud-bar b.on{background:#FF9A3D}
+.eq-hud.d3 .hud-bar b.on{background:#FF6A2A}.eq-hud.d4 .hud-bar b.on{background:#FF3B1F;box-shadow:0 0 6px rgba(255,59,31,.6)}
+.hud-life{display:flex;flex-wrap:wrap;gap:6px}
+.hud-life svg{width:16px;height:16px;color:#A4F5E2}
+.hud-spec{position:absolute;right:12px;top:42px;z-index:0;display:grid;place-items:center;width:86px;height:110px;color:rgba(164,245,226,.4);background:linear-gradient(rgba(164,245,226,.18),rgba(164,245,226,.18)) 50% 0/1px 100% no-repeat,linear-gradient(rgba(164,245,226,.18),rgba(164,245,226,.18)) 0 50%/100% 1px no-repeat;outline:1px dashed rgba(164,245,226,.3);outline-offset:3px}
+.hud-spec svg{width:76px;height:76px;filter:drop-shadow(0 0 6px rgba(127,255,224,.45));animation:specbob 5.5s ease-in-out infinite}
+@keyframes specbob{50%{transform:translateY(-5px) scale(1.03,.97)}}
+@media (prefers-reduced-motion:reduce){.hud-spec svg{animation:none}}
+
+/* the portfolio's head: no name, the muse swimming across it, back and forth */
+.swim{position:relative;width:100%;height:64px;overflow:hidden}
+.sw-x{position:absolute;top:6px;left:4%;width:52px;height:52px;animation:swimx 36s cubic-bezier(.45,.05,.55,.95) infinite}
+.sw-y{display:block;width:100%;height:100%;animation:swimy 3.6s ease-in-out infinite}
+.lk-mark.sw-j{display:grid;place-items:center;width:52px!important;height:52px!important;color:var(--glow)}
+.lk-mark.sw-j svg{width:44px;height:44px}
+@keyframes swimx{0%{left:4%;transform:rotate(7deg)}17%{left:36%;transform:rotate(11deg)}24%{left:31%;transform:rotate(-4deg)}44%{left:74%;transform:rotate(9deg)}52%{left:calc(100% - 60px);transform:rotate(-9deg)}68%{left:50%;transform:rotate(-12deg)}76%{left:56%;transform:rotate(5deg)}100%{left:4%;transform:rotate(7deg)}}
+@keyframes swimy{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){.sw-x,.sw-y{animation:none}}
+
+/* the tab to go to next glows, softly, until it is opened */
+#rail .tab.nudge .sq{border-radius:10px;animation:tabnudge 1.8s ease-in-out infinite}
+@keyframes tabnudge{0%,100%{box-shadow:0 0 0 0 rgba(14,143,132,0)}50%{box-shadow:0 0 0 7px rgba(14,143,132,.3)}}
+@media (prefers-reduced-motion:reduce){#rail .tab.nudge .sq{animation:none;box-shadow:0 0 0 3px rgba(14,143,132,.45)}}
+
+/* BOARD 00: looked at, framed whole; its keys off but OUT, until the approval page opens it to editing */
+#board.locked [data-bt]:not([data-bt="out"]){opacity:.28;pointer-events:none}
+#board [data-bt="exsend"]{display:none}
+#board.ex-edit [data-bt="exsend"]{display:grid;color:#E8450F}
+.b-key.ex{border-style:dashed!important}
+.b-key.ex[aria-pressed="true"]{background:var(--ac-on)!important;color:var(--navy)!important;box-shadow:inset 0 0 0 1px var(--glow)!important}
+
+/* the message key: a printer, in the jellyfish's colour */
+#sec-quick .qp-go .i{width:28px;height:28px;color:#0E8F84;animation:shim 9s ease-in-out infinite}
+html.night #sec-quick .qp-go .i{color:#6FE3CF;animation-name:shim-n}
+@media (prefers-reduced-motion:reduce){#sec-quick .qp-go .i{animation:none}}
+/* the ways out, named as a manual names them */
+.seg.outs .cap{text-transform:none;font-size:8px;letter-spacing:.08em;line-height:1.2}
+/* the example's zine, while it is made */
+.gl-wait{display:grid;place-items:center;width:100%;aspect-ratio:2/3;color:var(--glow);animation:wmfade 3s ease-in-out infinite}
+.gl-wait svg{width:48px;height:48px}
+/* the message key's printer, in the jellyfish's colour, drifting toward blue and back */
+#sec-quick .qp-go .i{color:#0E8F84!important;animation:shimh 9s ease-in-out infinite!important}
+html.night #sec-quick .qp-go .i{color:#6FE3CF!important}
+@keyframes shimh{50%{filter:hue-rotate(42deg)}}
+@media (prefers-reduced-motion:reduce){#sec-quick .qp-go .i{animation:none!important}}
+
+/* RADIO, W.I.S.H., PRINT: hardware. The front is each device as it ships: a matte shell of smoked, translucent plastic, what
+   is inside seen softly through it. The back is the same device opened: clear acrylic on four standoffs, its board in view
+   at the head, one cable plugged in, its plate at the foot. Quiet on the front; on the back, how it works */
+:root{
+  --board:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='26' viewBox='0 0 300 26'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='.45' stroke-width='.6'%3E%3Crect x='14.5' y='2.5' width='40' height='21' rx='1'/%3E%3Cpath d='M62 23h10M94 23h14M152 23h8M206 23h34'/%3E%3C/g%3E%3Crect x='19' y='6' width='30' height='14' rx='1' fill='%23141719'/%3E%3Cpath d='M22 6V4M26 6V4M30 6V4M34 6V4M38 6V4M42 6V4M46 6V4M22 20v2M26 20v2M30 20v2M34 20v2M38 20v2M42 20v2M46 20v2' stroke='%23B9C0C4'/%3E%3Ccircle cx='23' cy='9.5' r='1' fill='%23464C50'/%3E%3Crect x='66' y='8' width='16' height='10' rx='1' fill='%23141719'/%3E%3Cpath d='M64 10h2M64 13h2M64 16h2M82 10h2M82 13h2M82 16h2' stroke='%23B9C0C4'/%3E%3Crect x='96' y='9' width='16' height='8' rx='4' fill='%23CDD3D6'/%3E%3Cg fill='%23C3CACE'%3E%3Ccircle cx='130' cy='13' r='6'/%3E%3Ccircle cx='146' cy='13' r='6'/%3E%3C/g%3E%3Cpath d='M127 13h6M130 10v6M143 13h6M146 10v6' stroke='%2387909A' stroke-width='.8'/%3E%3Cg fill='%2322262A' stroke='%23C7CDD0' stroke-width='.5'%3E%3Crect x='162' y='5' width='7' height='3.5'/%3E%3Crect x='162' y='17.5' width='7' height='3.5'/%3E%3Crect x='173' y='5' width='7' height='3.5'/%3E%3Crect x='173' y='17.5' width='7' height='3.5'/%3E%3C/g%3E%3Crect x='208' y='5' width='30' height='15' rx='1' fill='%23121416'/%3E%3Cg fill='%23D7B56D'%3E%3Ccircle cx='188' cy='8' r='1.6'/%3E%3Ccircle cx='194' cy='8' r='1.6'/%3E%3Ccircle cx='200' cy='8' r='1.6'/%3E%3Ccircle cx='188' cy='18' r='1.6'/%3E%3Ccircle cx='194' cy='18' r='1.6'/%3E%3Ccircle cx='200' cy='18' r='1.6'/%3E%3Ccircle cx='213' cy='9' r='1.3'/%3E%3Ccircle cx='220' cy='9' r='1.3'/%3E%3Ccircle cx='227' cy='9' r='1.3'/%3E%3Ccircle cx='234' cy='9' r='1.3'/%3E%3Ccircle cx='213' cy='16' r='1.3'/%3E%3Ccircle cx='220' cy='16' r='1.3'/%3E%3Ccircle cx='227' cy='16' r='1.3'/%3E%3Ccircle cx='234' cy='16' r='1.3'/%3E%3C/g%3E%3Crect x='250' y='10' width='7' height='5' rx='1' fill='%23F5B544'/%3E%3C/svg%3E");
+  --plug:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='16' viewBox='0 0 30 16'%3E%3Crect x='.5' y='.5' width='29' height='15' rx='1.5' fill='%23ECEBE4' stroke='%23AFADA4'/%3E%3Cg fill='%232B2F33'%3E%3Crect x='4' y='5' width='4.5' height='6' rx='.5'/%3E%3Crect x='12.75' y='5' width='4.5' height='6' rx='.5'/%3E%3Crect x='21.5' y='5' width='4.5' height='6' rx='.5'/%3E%3C/g%3E%3C/svg%3E");
+  --cable:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='50' viewBox='0 0 22 50'%3E%3Cpath d='M0 4H6C16 4 20 12 20 22S16 42 7 42' fill='none' stroke='%23D6A60A' stroke-width='5'/%3E%3Cpath d='M0 3.6H6C15.6 3.6 19.4 11.8 19.4 22S15.6 41.4 7 41.4' fill='none' stroke='%23F4CC2A' stroke-width='3'/%3E%3Crect x='0' y='37' width='9' height='10' rx='1.5' fill='%23E3E7E9' fill-opacity='.92' stroke='%239AA3A8' stroke-width='.6'/%3E%3Crect x='1.5' y='40.5' width='6' height='3' fill='%23F4CC2A'/%3E%3C/svg%3E");
+  --barcode:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='16' viewBox='0 0 44 16' fill='%23E7EAEA'%3E%3Crect x='0' width='2' height='16'/%3E%3Crect x='3' width='1' height='16'/%3E%3Crect x='5' width='1' height='16'/%3E%3Crect x='8' width='3' height='16'/%3E%3Crect x='12' width='1' height='16'/%3E%3Crect x='14' width='2' height='16'/%3E%3Crect x='17' width='1' height='16'/%3E%3Crect x='19' width='1' height='16'/%3E%3Crect x='21' width='3' height='16'/%3E%3Crect x='25' width='1' height='16'/%3E%3Crect x='27' width='2' height='16'/%3E%3Crect x='30' width='1' height='16'/%3E%3Crect x='33' width='1' height='16'/%3E%3Crect x='35' width='2' height='16'/%3E%3Crect x='38' width='1' height='16'/%3E%3Crect x='40' width='1' height='16'/%3E%3Crect x='42' width='2' height='16'/%3E%3C/svg%3E");
+  --guts-r:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='290' viewBox='0 0 340 290' preserveAspectRatio='none' fill='%230E2A33'%3E%3Ccircle cx='96' cy='86' r='52' fill-opacity='.55'/%3E%3Ccircle cx='96' cy='86' r='24'/%3E%3Crect x='196' y='30' width='118' height='40' rx='12' fill-opacity='.4'/%3E%3Crect x='150' y='92' width='16' height='86' fill-opacity='.35'/%3E%3Crect x='16' y='168' width='308' height='104' rx='12' fill-opacity='.5'/%3E%3Crect x='56' y='192' width='46' height='30' rx='3'/%3E%3Crect x='236' y='200' width='32' height='22' rx='3' fill-opacity='.8'/%3E%3C/svg%3E");
+  --guts-w:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='330' viewBox='0 0 340 330' preserveAspectRatio='none' fill='%230B3B30'%3E%3Crect x='40' y='14' width='260' height='48' rx='14' fill-opacity='.5'/%3E%3Crect x='22' y='236' width='296' height='84' rx='18' fill-opacity='.55'/%3E%3Crect x='148' y='252' width='44' height='28' rx='3'/%3E%3Ccircle cx='72' cy='278' r='14' fill-opacity='.7'/%3E%3Crect x='246' y='262' width='34' height='22' rx='3' fill-opacity='.8'/%3E%3C/svg%3E");
+}
+.dev{position:relative;isolation:isolate}
+.dev::before{content:none}
+/* the smoke: what is inside, soft, through the shell */
+.dev.radio:not(.mod)::before,.visor:not(.mod) .vs-body::before{content:"";position:absolute;inset:8px;z-index:-1;border-radius:inherit;pointer-events:none;background:var(--guts) center/100% 100% no-repeat;filter:blur(3.5px);opacity:var(--gv,.2)}
+/* opened: the board at the head, the standoffs, the cable, the plate */
+.mod-cap{position:absolute;z-index:1;left:28px;right:28px;top:12px;height:26px;border-radius:3px;pointer-events:none;background:var(--plug) right 8px center/auto 62% no-repeat,var(--board) left 6px center/auto 100% no-repeat,linear-gradient(180deg,#256A50,#1B5440);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 -1px 0 rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.22)}
+.mod-bolt{position:absolute;z-index:2;width:13px;height:13px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 38% 32%,#FFFFFF 0,#DDE2E5 30%,#9BA3A8 72%,#6F777C 100%);box-shadow:0 1px 2px rgba(0,0,0,.3),0 0 0 2.5px rgba(255,255,255,.4)}
+.mod-bolt::after{content:"";position:absolute;inset:4px;background:#5C6368;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+.mod-bolt.tl{left:8px;top:8px}.mod-bolt.tr{right:8px;top:8px}.mod-bolt.bl{left:8px;bottom:8px}.mod-bolt.br{right:8px;bottom:8px}
+.mod-cable{position:absolute;z-index:3;top:21px;right:-14px;width:22px;height:50px;pointer-events:none;background:var(--cable) 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.mod-cable::before{content:"";position:absolute;right:100%;top:1.5px;width:var(--run,28px);height:5px;border-radius:2px 0 0 2px;background:linear-gradient(#F4CC2A 0 60%,#D6A60A)}
+.mod-label{position:absolute;z-index:2;left:26px;bottom:12px;display:grid;grid-template-columns:auto auto;align-items:center;column-gap:10px;height:30px;padding:0 10px;border-radius:3px;pointer-events:none;background:#151718;color:#E7EAEA;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 1px 2px rgba(0,0,0,.28)}
+.mod-label::before,.mod-label::after{grid-column:1;display:block;font-family:var(--mono);white-space:nowrap}
+.mod-label::before{content:attr(data-n);grid-row:1;align-self:end;font-size:9px;font-weight:600;line-height:1.15;letter-spacing:.16em}
+.mod-label::after{content:attr(data-st);grid-row:2;align-self:start;font-size:7.5px;line-height:1.2;letter-spacing:.14em;opacity:.68}
+.mod-label i{grid-column:2;grid-row:1/3;display:block;width:40px;height:14px;background:var(--barcode) center/100% 100% no-repeat}
+
+/* RADIO, the front: a smoked radio. A speaker behind the grille, one key, play, and a knob for each track, matte */
+.band.front-r{margin:0 var(--gut);padding:0!important;background:none!important;box-shadow:none!important;border-radius:0}
+.band.front-r::before{display:none!important}
+.dev.radio:not(.mod){max-width:340px;margin:6px auto 0;padding:18px 18px 18px;border-radius:22px;color:#13303A;--guts:var(--guts-r);background:var(--grain),linear-gradient(180deg,rgba(178,204,214,.88),rgba(146,178,191,.92));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 1px rgba(255,255,255,.2),inset 0 -2px 6px rgba(10,40,50,.12),0 18px 34px rgba(16,48,60,.18)}
+html.night .dev.radio:not(.mod){color:#D5ECF2;--gv:.4;background:var(--grain),linear-gradient(180deg,rgba(70,96,108,.8),rgba(46,68,80,.86));box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 18px 34px rgba(0,0,0,.42)}
+.rd-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;margin:0 4px 18px}
+.rd-grille{display:block;width:100%;max-width:116px;aspect-ratio:1;justify-self:center;border-radius:50%;background:radial-gradient(circle,rgba(12,36,44,.5) 0 1.4px,transparent 1.9px) 0 0/8px 8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),inset 0 2px 6px rgba(10,40,50,.16)}
+html.night .rd-grille{background-image:radial-gradient(circle,rgba(0,0,0,.55) 0 1.4px,transparent 1.9px)}
+.rd-play{position:relative;display:grid;place-items:center;width:96px;height:96px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#8FE8D6;background:radial-gradient(circle,#3D464C 0 60%,#353D42 61%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 4px rgba(0,0,0,.25),0 0 0 5px rgba(255,255,255,.28),0 8px 16px rgba(10,40,50,.24);transition:transform .15s,box-shadow .3s}
+.rd-play:active{transform:scale(.97)}
+.rd-play .i{width:30px;height:30px}
+.rd-led{position:absolute;top:14px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#262C30;box-shadow:inset 0 1px 1px rgba(0,0,0,.5)}
+.rd-play.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 4px rgba(0,0,0,.25),0 0 0 5px rgba(143,232,214,.5),0 8px 16px rgba(10,40,50,.24)}
+.rd-play.on .rd-led{background:#7CFFB0;box-shadow:0 0 7px #7CFFB0}
+.rd-knobs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rd-k{display:grid;justify-items:center;gap:8px}
+.rd-knob{position:relative;width:50px;height:50px;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#40494F 0 62%,#363E43 63%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 3px rgba(0,0,0,.25),0 0 0 3px rgba(255,255,255,.24),0 4px 8px rgba(10,40,50,.22);transition:opacity .2s}
+.rd-k .kn-ind{position:absolute;left:50%;top:5px;z-index:1;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:#EEF3F4;transform-origin:50% 20px;transform:rotate(var(--a,-135deg));transition:transform .28s cubic-bezier(.3,1.5,.5,1)}
+.rd-k:not(.on) .rd-knob{opacity:.5}
+.rd-knob:focus-visible{outline:2px solid #0E8F84;outline-offset:4px}
+.rd-k .kn-ticks{display:flex;gap:4px}.rd-k .kn-ticks b{width:5px;height:5px;border-radius:50%;background:rgba(10,40,50,.22)}.rd-k .kn-ticks b.on{background:#16A596;box-shadow:0 0 4px rgba(22,165,150,.7)}
+html.night .rd-k .kn-ticks b{background:rgba(255,255,255,.16)}html.night .rd-k .kn-ticks b.on{background:#6FE3CF;box-shadow:0 0 5px rgba(111,227,207,.7)}
+.rd-k .kn-ic{color:inherit;opacity:.75}.rd-k .kn-ic .i{width:14px;height:14px}
+.front-r .steps{margin-top:20px}
+/* RADIO, the back: the same radio opened, clear, the studio mounted on it */
+.band.dev.radio.mod{margin-top:10px;padding:50px 16px 56px!important;border-radius:18px!important;background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.62),rgba(234,241,243,.52))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),inset 0 0 0 3px rgba(146,178,191,.28),0 16px 34px rgba(16,48,60,.13)!important}
+html.night .band.dev.radio.mod{background:var(--grain),linear-gradient(180deg,rgba(44,62,70,.62),rgba(28,40,46,.56))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 0 0 3px rgba(146,178,191,.12),0 16px 34px rgba(0,0,0,.42)!important}
+.band.dev.mod::before{display:none!important}
+
+/* W.I.S.H.: a handheld in smoked jade. The front asks for I; the back, opened, holds the poem */
+.front-w,.back-w{margin:0 var(--gut)}
+.wish-form.visor{display:block;padding:0!important;background:none!important;box-shadow:none!important;border:0!important}
+.wish-form.visor::before,.wish-form.visor::after{display:none!important}
+.vs-body{position:relative;max-width:340px;margin:8px auto 0;padding:22px 26px 24px;border-radius:30px 30px 42px 42px;--guts:var(--guts-w);background:var(--grain),linear-gradient(180deg,rgba(126,206,185,.9),rgba(88,172,151,.93));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 0 0 1px rgba(255,255,255,.18),inset 0 -2px 6px rgba(0,50,40,.14),0 18px 34px rgba(0,70,58,.2)}
+html.night .vs-body{--gv:.4;background:var(--grain),linear-gradient(180deg,rgba(62,140,120,.86),rgba(40,104,88,.9))}
+.visor.mod .vs-body{padding:48px 26px 58px;background:var(--grain),linear-gradient(180deg,rgba(220,242,235,.74),rgba(190,226,215,.64));box-shadow:inset 0 0 0 1px rgba(255,255,255,.85),inset 0 0 0 3px rgba(60,150,128,.22),0 18px 34px rgba(0,70,58,.14)}
+html.night .visor.mod .vs-body{background:var(--grain),linear-gradient(180deg,rgba(60,100,92,.6),rgba(32,62,56,.56));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 0 0 3px rgba(60,150,128,.16),0 18px 34px rgba(0,0,0,.42)}
+.visor.mod .mod-cap{left:42px;right:42px;top:12px;height:24px}
+.visor.mod .mod-bolt.tl{left:15px;top:15px}.visor.mod .mod-bolt.tr{right:15px;top:15px}.visor.mod .mod-bolt.bl{left:19px;bottom:19px}.visor.mod .mod-bolt.br{right:19px;bottom:19px}
+.visor.mod .mod-cable{top:auto;bottom:128px;--run:0px}
+.visor.mod .mod-cable::before{display:none}
+.visor.mod .mod-label{left:50%;bottom:14px;transform:translateX(-50%)}
+.vs-rib{position:absolute;top:66px;bottom:118px;width:11px;border-radius:6px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.32) 0 1px,rgba(0,80,66,.14) 1px 3px)}
+.visor.mod .vs-rib{top:92px;bottom:150px}
+.vs-rib.l{left:7px}.vs-rib.r{right:7px}
+.vs-screen{position:relative;padding:9px 10px 10px;border-radius:5px;background:#CBD4C3;color:#1F2A20;font:400 18px/1.15 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 2px rgba(31,42,32,.55),inset 0 3px 10px rgba(0,0,0,.2),0 0 0 6px rgba(228,242,236,.5)}
+.vs-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin:0 0 8px;border-bottom:2px solid #1F2A20}
+.vs-tab{padding:3px 9px 1px;border-radius:5px 5px 0 0;background:#1F2A20;color:#CBD4C3;font:600 15px/1.15 var(--sans);letter-spacing:.01em}
+.vs-now{padding-bottom:2px;font-size:16px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vs-i{position:relative;display:grid;grid-template-columns:22px 1fr;align-items:center;padding:4px 0 8px;border-bottom:1px dotted rgba(31,42,32,.5)}
+.vs-m,.vs-poem b,.vs-by b{font:600 12px/1 var(--mono);text-align:center}
+.vs-i input{width:100%;height:40px;padding:0;border:0;outline:none;background:transparent;color:#1F2A20;font:400 20px/1 VT323,ui-monospace,monospace;letter-spacing:.03em}
+.vs-cur{position:absolute;left:24px;top:14px;width:9px;height:18px;background:#1F2A20;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none;display:none}
+.vs-i input:placeholder-shown:not(:focus)~.vs-cur{display:block}
+.vs-poem{list-style:none;margin:4px 0 0;padding:0}
+.vs-poem li,.vs-by{display:grid;grid-template-columns:22px 1fr;align-items:center;border-bottom:1px dotted rgba(31,42,32,.38)}
+.vs-poem b,.vs-by b{opacity:.65;font-size:11px}
+.vs-poem textarea{display:block;width:100%;min-height:40px;padding:5px 0 3px;border:0;outline:none;resize:none;overflow:hidden;background:transparent;color:#1F2A20;font:400 16px/1.1 VT323,ui-monospace,monospace}
+.vs-by input{width:100%;height:30px;padding:0;border:0;outline:none;background:transparent;color:#1F2A20;font:400 17px/1 VT323,ui-monospace,monospace}
+.vs-poem textarea:focus,.vs-by input:focus{background:rgba(31,42,32,.06)}
+.vs-att{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:38px;padding-top:8px}
+.vs-cam{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;cursor:pointer;color:#1F2A20;box-shadow:inset 0 0 0 1.5px rgba(31,42,32,.55)}
+.vs-cam .i{width:17px;height:17px}
+.vs-ph{position:relative;margin-right:auto}
+.vs-ph img{display:block;height:54px;width:auto;max-width:120px;object-fit:cover;filter:grayscale(1) contrast(1.15) sepia(.25) hue-rotate(40deg);box-shadow:0 0 0 1.5px rgba(31,42,32,.6)}
+.vs-phx{position:absolute;top:-8px;right:-8px;display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#1F2A20;color:#CBD4C3;cursor:pointer}
+.vs-phx .i{width:11px;height:11px}
+.vs-keys{display:flex;align-items:center;justify-content:center;gap:16px;margin:18px 0 0}
+.vs-btn{display:grid;place-items:center;width:46px;height:46px;padding:0;border:0;border-radius:50%;color:#33433D;cursor:pointer;background:radial-gradient(circle,#EEF1F0 0 62%,#E2E7E5 63%);box-shadow:inset 0 1px 0 #FFFFFF,inset 0 -2px 3px rgba(0,0,0,.1),0 3px 6px rgba(0,60,50,.22)}
+.vs-btn .i{width:18px;height:18px}
+.vs-make{position:relative;display:grid;place-items:center;width:96px;height:56px;padding:0;border:0;border-radius:28px;cursor:pointer;background:linear-gradient(180deg,#F2F4F3,#E2E7E5);box-shadow:inset 0 1px 0 #FFFFFF,inset 0 -2px 3px rgba(0,0,0,.1),0 4px 8px rgba(0,60,50,.24)}
+.vs-make:active,.vs-btn:active{transform:translateY(1px)}
+.vs-make b{font:600 16px/1 var(--sans)!important;letter-spacing:-.01em;color:#E8450F!important;text-transform:none}
+.vs-oval{display:none}
+#cover .wpv{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:34px;overflow:auto}
+#cover .wpv img{display:block;width:min(300px,70%);height:auto;transform:rotate(-1.4deg);box-shadow:0 24px 50px rgba(0,0,0,.42);image-rendering:pixelated}
+
+/* PRINT, the front: a label maker in matte graphite, its board seen through a smoked amber cap. The screen holds the words;
+   three keys; one key, the printer, prints; its light shows its name and state */
+.front-p{margin:0 var(--gut)}
+.dev.tepra:not(.mod){max-width:340px;margin:0 auto;padding:14px 18px 20px;border-radius:12px;background-color:#2C2F32;background-image:var(--grain);color:#E9ECEE;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.35),0 18px 36px rgba(0,0,0,.26)}
+.tp-lid{position:relative;height:46px;margin:0 0 12px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,rgba(255,176,90,.52),rgba(214,116,40,.66)),var(--board) left 8px top 4px/auto 26px no-repeat,linear-gradient(#1E5A44,#1A4E3B);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(0,0,0,.35)}
+.tp-win{position:absolute;left:12px;right:12px;bottom:6px;height:9px;border-radius:2px;background:#0E0F10;box-shadow:inset 0 1px 1px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.14)}
+.tp-win::after{content:"";position:absolute;left:8px;right:8px;top:3px;height:3px;background:#F6F4EC}
+.tp-latch{display:none}
+.tp-lcd{position:relative;display:grid;gap:3px;padding:10px 12px;border-radius:5px;background:#B8C2AE;color:#1E241B;font:400 18px/1.05 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),inset 0 3px 8px rgba(0,0,0,.22)}
+.tp-l1{font-size:20px;letter-spacing:.06em}
+.tp-info{font-size:15px;letter-spacing:.04em;opacity:.8}
+.tp-info b,.tp-info small{display:block;font:inherit}
+#tp-words{height:32px;margin-top:2px;padding:4px 0 0;border:0;border-top:1px dashed rgba(30,36,27,.4);outline:none;background:transparent;color:#1E241B;font:400 22px/1 VT323,ui-monospace,monospace}
+.tp-cur{position:absolute;left:12px;bottom:11px;width:9px;height:17px;background:#1E241B;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none;display:none}
+#tp-words:placeholder-shown:not(:focus)~.tp-cur{display:block}
+.tp-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 16px}
+.tp-k{display:grid;place-items:center;height:44px;padding:0;border:0;border-radius:7px;color:#FFFFFF;font:700 16px/1 var(--sans);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.22),0 2px 3px rgba(0,0,0,.35)}
+.tp-k .i{width:19px;height:19px}
+.tp-k:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.tk-teal{background:#16A89A}.tk-green{background:#2E9E57}.tk-orange{background:#E8792A}
+.tp-foot{position:relative;display:grid;justify-items:center}
+.dev.tepra .tp-prn.print-k{position:relative;display:grid;place-items:center;width:82px!important;height:82px!important;padding:0;border:0!important;border-radius:50%!important;color:#EEF2F6!important;cursor:pointer;background:radial-gradient(circle,#3F72D2 0 62%,#3567C4 63%)!important;backdrop-filter:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 5px rgba(0,0,0,.28),0 0 0 4px rgba(255,255,255,.06),0 6px 10px rgba(0,0,0,.4)!important}
+.dev.tepra .tp-prn.print-k .i{width:36px;height:36px;color:#EEF2F6!important}
+.dev.tepra .tp-prn.print-k:active{transform:scale(.97)}
+.tp-i{position:absolute;right:16px;top:50%;display:grid;place-items:center;width:30px;height:30px;margin-top:-15px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#212427;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 2px 3px rgba(0,0,0,.5)}
+.tp-led{display:block;width:8px;height:8px;border-radius:50%;background:#55595D}
+.tp-i.on .tp-led{background:#7CFF6B;box-shadow:0 0 6px #7CFF6B}
+.tp-i[aria-expanded="true"]{box-shadow:inset 0 0 0 1px #7CFF6B,inset 0 2px 3px rgba(0,0,0,.5)}
+/* PRINT, the back: the label maker opened, clear, the print shop mounted on it; the printer a tile and its light, named when
+   pressed */
+.dev.tepra.mod{margin:4px var(--gut) 18px;padding:50px 0 56px;border-radius:14px;background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.62),rgba(232,234,236,.52));box-shadow:inset 0 0 0 1px rgba(255,255,255,.9),inset 0 0 0 3px rgba(60,66,72,.12),0 16px 34px rgba(0,0,0,.11)}
+html.night .dev.tepra.mod{background:var(--grain),linear-gradient(180deg,rgba(56,60,64,.62),rgba(28,30,32,.56));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 0 0 3px rgba(255,255,255,.05),0 16px 34px rgba(0,0,0,.42)}
+.dev.tepra.mod .ps-h{display:flex;align-items:center;gap:12px;margin:0 16px 14px;padding:0 0 12px;border-bottom:1px solid var(--edge)}
+.dev.tepra.mod .ps-printer{padding:0;border:0;cursor:pointer}
+.dev.tepra.mod .ps-hl[hidden]{display:none}
+@media (max-width:759px){.sheetbar .sb-t{display:none}}
+@media (prefers-reduced-motion:reduce){.flip-k.hint .fl-ear,#view.flip-in,#view.flip-out,.vs-cur,.tp-cur{animation:none!important}}

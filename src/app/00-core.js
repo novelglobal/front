@@ -13,10 +13,10 @@ const BUILD = (() => { const [sha = '', branch = ''] = ((document.querySelector(
 /* four destinations. The first three are one journey, tied along a thread: notice on the radio, respond in signals, act in
    signs. The portfolio stands apart. Behind the scenes: make it right, make it work, make it beautiful */
 const VIEWS = [
-  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', long: 'DIRECT ACTION RADIO', was: 'now' },
-  { k: 'signals', icon: 'string', label: 'Wish maker', w: 'WISH MAKER', short: 'W.I.S.H.', long: 'W.I.S.H.MAKER' },
-  { k: 'signs', icon: 'receipt', label: 'Print shop', w: 'PRINT SHOP', short: 'ZINE', long: 'PRINT SHOP' },
-  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'novel.global', long: 'novel.global', was: 'stories' },
+  { k: 'radio', icon: 'jelly', label: 'Radio', w: 'RADIO', short: 'RADIO', long: 'RADIO', slug: 'radio', was: 'now' },
+  { k: 'signals', icon: 'string', label: 'W.I.S.H.', w: 'W.I.S.H.', short: 'W.I.S.H.', long: 'W.I.S.H.', slug: 'wish' },
+  { k: 'signs', icon: 'receipt', label: 'Print', w: 'PRINT', short: 'PRINT', long: 'PRINT', slug: 'print' },
+  { k: 'portfolio', icon: 'stories', label: 'Portfolio', w: 'PORTFOLIO', short: 'novel.global', long: 'novel.global', slug: 'portfolio', was: 'stories' },
 ];
 const viewIx = k => Math.max(0, VIEWS.findIndex(v => v.k === k || v.was === k));
 /* degrees of danger in the months ahead: orange, deeper as it rises. Red is kept for now. */
@@ -317,6 +317,20 @@ const snd = (() => {
     const lf = ladder(f * 1.4, 0.62, 6); e.connect(lf.node); const w = blower(); lf.node.connect(w); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 1800 : 900; w.connect(lp);
     const a = ctx.createGain(); lp.connect(a); env(a, t, 0.03, v * 1.6, 0.4, L - 0.5); out(a, pan, 1.2);
   }
+  /* COLLECTIVE: a small choir in a canyon. Three voices on an open chord, each vowel opening as it sings, every note thrown back
+     left and right twice, softer each time; round and bright, no drums */
+  function collectiveV(f, t, v, pan, bright, danger, vi) {
+    const chord = [0, 7, (vi || 0) % 2 ? 16 : 15]; const L = 0.62;
+    for (let echo = 0; echo < 3; echo++) {
+      const te = t + echo * 0.21, ve = v * Math.pow(0.48, echo), pe = echo ? (echo % 2 ? -0.75 : 0.75) : pan;
+      chord.forEach((st, i) => {
+        const ff = semi(f, st) * wob(), t0 = te + i * 0.035; const o = osc('sawtooth', ff, t0, t0 + L + 0.1); vib(o, t0, t0 + L, 4.8 + i * 0.5, ff * 0.009, 0.12);
+        const [f1, f2] = VOW[((vi || 0) + i + echo) % VOW.length]; const e = ctx.createGain();
+        for (const [fq, g] of [[f1, 1], [f2, 0.5]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(fq * 0.62, t0); bp.frequency.linearRampToValueAtTime(fq * (bright ? 1.15 : 1), t0 + L * 0.6); bp.Q.value = 6.5; const gg = ctx.createGain(); gg.gain.value = g; o.connect(bp); bp.connect(gg); gg.connect(e); }
+        const a = ctx.createGain(); e.connect(a); env(a, t0, 0.07, Math.max(0.0002, ve * (danger ? 1.6 : 1.35)), L * 0.32, L * 0.55); out(a, clamp(pe + (i - 1) * 0.32, -1, 1), 2.2);
+      });
+    }
+  }
   /* the drone: only where the trail crosses life, and only while nature is on. Three layers the mood sets: low reeds closed in a
      filter, a hiss like rain far off, a sub. Over empty ground, nothing */
   let dr = null;
@@ -370,14 +384,14 @@ const snd = (() => {
     ping(spec, f, opt = {}) {
       if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
       const t = ctx.currentTime + 0.01; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
-      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, blown: blownV }[md];
+      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, blown: blownV }[md];
       if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
       return true;
     },
     /* the drone: 0 to 1, how much life the trail is crossing now; and the mood it is in */
     drone(level, md = 'fog') {
       if (!ready()) return; droneOn(); const now = ctx.currentTime; const L = clamp(level, 0, 1);
-      const DR = { weight: [120, 0.3], rain: [520, 0.3], jelly: [340, 0.7], burial: [200, 0.4], haunt: [620, 0.5], voodoo: [180, 0.95], cheek: [420, 0.3], blown: [150, 0.8] }; const [cut, res] = DR[md] || [280, 0.45];
+      const DR = { collective: [460, 0.6], weight: [120, 0.3], rain: [520, 0.3], jelly: [340, 0.7], burial: [200, 0.4], haunt: [620, 0.5], voodoo: [180, 0.95], cheek: [420, 0.3], blown: [150, 0.8] }; const [cut, res] = DR[md] || [280, 0.45];
       dr.m.gain.setTargetAtTime(L * 0.045, now, L ? 0.7 : 0.4); dr.lad.cut.setTargetAtTime(cut, now, 1.2); if (dr.lad.drive) { dr.lad.res.setTargetAtTime(res, now, 1.2); dr.lad.drive.setTargetAtTime(md === 'blown' ? 5 : 1.4, now, 1.2); }
       dr.hiss.gain.setTargetAtTime(md === 'rain' ? 0.55 : md === 'burial' ? 0.22 : 0.04, now, 1.2); dr.sub.gain.setTargetAtTime(md === 'weight' || md === 'blown' ? 0.9 : 0.25, now, 1.2);
     },

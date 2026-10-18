@@ -45,6 +45,12 @@
       body = [el('h3', { text: `${p[3] || p[4] || 'A life'}` }), el('div', { class: 'meta', text: `${meta} · ${p[5] || ''} ${(+p[0]).toFixed(4)} ${(+p[1]).toFixed(4)}` }),
         typeof j.s === 'string' ? el('p', { text: j.s }) : null, lines.length ? el('ol', {}, lines.map(l => el('li', { text: l }))) : el('p', { class: 'note', text: 'NO LINES' }),
         (j.k || []).length ? el('p', { class: 'note', text: 'RELATIONS · ' + j.k.map(k => k[2]).join(' · ') }) : null, j.o ? el('p', { text: 'NOTE · ' + j.o }) : null, j.y ? el('p', { class: 'note', text: '— ' + j.y }) : null];
+    } else if (x.kind === 'example') {
+      /* BOARD 00 rewritten: what it holds; shown, it becomes the example everyone sees */
+      let j = {}; try { j = JSON.parse(x.body); } catch (e) { /* shown as it is */ } const objs = Array.isArray(j.objects) ? j.objects : [];
+      const words = objs.filter(o => typeof o.text === 'string' && o.text.trim()).map(o => o.text.trim().split('\n')[0]).slice(0, 12);
+      body = [el('h3', { text: `EXAMPLE · BOARD 00 · ${objs.length} PIECES` }), el('div', { class: 'meta', text: meta }), el('p', { class: 'note', text: 'SHOW MAKES THIS THE EXAMPLE EVERY VISITOR SEES.' }),
+        words.length ? el('ol', {}, words.map(w => el('li', { text: w }))) : null];
     } else if (x.kind === 'cells') {
       /* a pack of cells: its title, who sent it, and every cell, to check before it goes on the map */
       let j = {}; try { j = JSON.parse(x.body); } catch (e) { /* shown as it is */ } const cells = Array.isArray(j.cells) ? j.cells : [];
@@ -93,7 +99,10 @@
     const r = await api('settings'); const st = await r.json(); const card = el('section', { class: 'printer' });
     card.append(el('h3', { text: 'LIVING' }), el('div', { class: 'note', text: st.lifeLock ? 'ALWAYS ON THE MAP FOR EVERY VISITOR. THEY CAN MUTE IT.' : 'UNLOCKED: VISITORS CAN TAKE IT OFF THE MAP.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.lifeLock ? 'on' : '', text: st.lifeLock ? 'LOCKED ON' : 'UNLOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ lifeLock: !st.lifeLock }) }); show('stations'); } })));
-    main.replaceChildren(card);
+    /* BOARD 00, the example: as everyone sees it, or open to rewriting in the W.I.S.H. tab and sending here */
+    const ex = el('section', { class: 'printer' }); ex.append(el('h3', { text: 'BOARD 00 · THE EXAMPLE' }), el('div', { class: 'note', text: st.exampleEdit ? 'OPEN TO EDITING: CHANGE IT IN W.I.S.H. → BOARD 00, PRESS SEND, THEN SHOW IT HERE UNDER WAITING.' : 'LOCKED: EVERY VISITOR SEES IT AS IT IS.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: st.exampleEdit ? 'on' : '', text: st.exampleEdit ? 'EDITING ON' : 'LOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ exampleEdit: !st.exampleEdit }) }); show('stations'); } })));
+    main.replaceChildren(card, ex);
   }
   async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...list.map(printerCard)); }
 
