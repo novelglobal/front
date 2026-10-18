@@ -324,7 +324,7 @@ const countryBar = () => { const c = countryNow(); return `<div class="ctry"><la
 /* the Country stands at the head of the radio only, and fades slowly over a minute (it comes back under the pointer) */
 /* on the portfolio the name goes: the muse swims across the head of the page, back and forth, pulsing as it goes */
 const swim = () => `<div class="swim"><i class="sw-x"><i class="sw-y"><button type="button" class="lk-mark sw-j" data-muse aria-label="novel.global">${M.jellySVG('currentColor', 'var(--glass)', 44)}</button></i></i></div>`;
-function headBar() { const h = $('#ph'); if (h) h.innerHTML = S.view === 3 ? swim() : lockup() + (S.view === 0 ? countryBar() : '') + flipKey(); }
+function headBar() { const h = $('#ph'); if (h) h.innerHTML = S.view === 3 ? swim() : lockup() + (S.view === 0 ? countryBar() : ''); }
 document.addEventListener('change', e => { if (e.target.id !== 'ctry') return; prefs.ctry = e.target.value; savePrefs(); headBar(); });
 /* the printers online, as a pager would say it: its light, its name, a buzz when one comes on */
 const printersOn = () => [MASTER, ...PARTNERS].filter(p => p && (PSTATE[p.id] || {}).ready);
@@ -338,7 +338,7 @@ function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return `<section class="band dev radio mod" id="sec-heat">${mods('RADIO', '01 · NOTICED')}
+  return `<section class="band dev radio mod" id="sec-heat">${mods('RADIO', '01 · NOTICED')}${flipBtn()}
       ${pagerHTML()}${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in">${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
       ${monthStrip()}
       <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
@@ -475,8 +475,19 @@ function showGallery(on) {
     + `<div class="gl-acts">${p.ex ? '' : `<button type="button" class="key" data-gl="card" aria-label="As a card" data-tip="As a card">${icon('stories')}</button>`}<button type="button" class="key" data-gl="png" aria-label="Download" data-tip="Download">${icon('download')}</button></div>`
     + (ps.length > 1 ? `<ol class="gl-wall">${ps.map((x, i) => `<li><button type="button" class="gl-t${i === galleryAt ? ' on' : ''}" data-gl-i="${i}" style="--r:${((i * 37) % 7 - 3) * 0.8}deg">${art(x)}</button></li>`).join('')}</ol>` : '');
 }
+/* a poster or a zine, close up: as wide as the screen allows, scrolled; pressed, larger again; Esc, the cross or the dark around
+   it closes it */
+function zoomArt(src) {
+  const z = document.createElement('div'); z.className = 'zoomv'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
+  z.innerHTML = `<button type="button" class="zv-x" aria-label="Close">${icon('close')}</button><div class="zv-s"><img src="${src}" alt=""></div>`;
+  document.body.appendChild(z); tick(1600);
+  const close = () => { z.remove(); removeEventListener('keydown', esc); tick(1100); }; const esc = e => { if (e.key === 'Escape') close(); };
+  addEventListener('keydown', esc);
+  z.addEventListener('click', e => { if (e.target.tagName === 'IMG') { e.target.classList.toggle('big'); tick(1300); return; } if (e.target.closest('.zv-x') || e.target === z || e.target.classList.contains('zv-s')) close(); });
+}
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
+  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src); return; }
   const t = e.target.closest('[data-gl-i]'); if (t) { galleryAt = +t.dataset.glI; showGallery(true); tick(1500); return; }
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);

@@ -310,7 +310,8 @@ $('#zine').addEventListener('input', e => { if (e.target.id === 'zine-col') setI
 /* the middle of the part of the strip in view, in the strip's own units */
 function viewSpot() {
   const desk = $('#zine .desk'), el = zc && zc.upperCanvasEl; if (!desk || !el) return { x: 40, y: 60 }; const d = desk.getBoundingClientRect(), r = el.getBoundingClientRect(); const z = r.width / zc.getWidth() || 1;
-  const cx = (clamp((d.left + d.right) / 2, r.left, r.right) - r.left) / z, cy = (clamp((d.top + d.bottom) / 2, r.top, r.bottom) - r.top) / z; return { x: cx + rnd(-30, 30), y: cy + rnd(-30, 30) };
+  const bot = phone() && S.open ? Math.min(d.bottom, $('#panel').getBoundingClientRect().top) : d.bottom;
+  const cx = (clamp((d.left + d.right) / 2, r.left, r.right) - r.left) / z, cy = (clamp((d.top + bot) / 2, r.top, r.bottom) - r.top) / z; return { x: cx + rnd(-30, 30), y: cy + rnd(-30, 30) };
 }
 async function placeOnPage(url, kind, width, photo) {
   const c = await showZine(true); if (!c) return; const at = viewSpot(); const src = url; const F = FORMATS[PRESS.fmt]; const wd = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6));
@@ -567,15 +568,12 @@ function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
   const on = printersOn();
-  return `<div class="dev tepra mod">${mods('PRINT', '03 · DIRECT ACTION')}<header class="ps-h${on.length ? ' on' : ''}"><button type="button" class="ps-printer${st.ready ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></button><span class="ps-hl" id="ps-info" hidden><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
+  return `<div class="dev tepra mod">${mods('PRINT', '03 · DIRECT ACTION')}${flipBtn()}<header class="ps-h${on.length ? ' on' : ''}"><button type="button" class="ps-printer${st.ready ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></button><span class="ps-hl" id="ps-info" hidden><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
     + `<section class="sec lcd" id="sec-slips" data-tip="Stories waiting to print"><i class="lcd-ic">${icon('receipt')}<b class="mono">${ws.length}</b></i>`
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`
-    + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
-      + `<section class="sec" id="sec-out"><button type="button" class="print-k${on.length ? ' on' : ''}" data-pout="send" aria-label="Print receipt"><i class="pk-led"></i><b>PRINT RECEIPT</b>${icon('print')}</button>`
-      + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
-      /* the rest in four drawers, one open at a time, each its mark: the looks, the animals, the stickers, and what has been
-         made here to place on the strip */
+      /* what goes on the strip, in the order it is used, in four drawers, one open at a time, each its mark: the looks, the
+         animals, the stickers, and what has been made here to place on the strip */
       + `<section class="sec" id="sec-drawers"><div class="seg keys drawers" role="group" aria-label="Drawers">${DRAWERS.map(([k, ic, w]) => `<button type="button" class="key dr-k" data-drawer="${k}" aria-pressed="${PRESS.drawer === k}" aria-label="${w}">${k === 'look' ? `<img class="ph-sw" src="${swatchOf(photoMode())}" alt="">` : k === 'life' ? glyphSVG('bird') : icon(ic)}</button>`).join('')}</div>`
       + `<div class="drawer" id="dr-look"${PRESS.drawer === 'look' ? '' : ' hidden'}><div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k cap-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}"><img class="ph-sw" src="${swatchOf(m.k)}" alt=""><small class="cap mono">${PHOTO_FOR[m.k][0]}</small></button>`).join('')}</div></div>`
       + `<div class="drawer" id="dr-life"${PRESS.drawer === 'life' ? '' : ' hidden'}><ol class="near"><li><button type="button" class="nr-b nr-k" data-wild="any" aria-label="An animal, any">${icon('die')}</button></li><li><button type="button" class="nr-b nr-k" data-wild="new" aria-label="The newest animal seen">${icon('star5')}</button></li><li><button type="button" class="nr-b nr-k${wildBusy ? ' busy' : ''}" data-wild="more" aria-label="More animals, from further out">${icon('receive')}</button></li>${[...WILD.map(sp => ({ sp, k: 'W' })), ...sps.map(sp => ({ sp, k: 'L' }))].slice(0, 15).map(({ sp, k }) => `<li><button type="button" class="nr-b" data-piece="${k}" data-pid="${esc(sp.id)}" data-tip="${esc(sp.n)}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer"></button></li>`).join('')}</ol></div>`
@@ -584,7 +582,12 @@ function viewSigns() {
       + `<div class="drawer" id="dr-place"${PRESS.drawer === 'place' ? '' : ' hidden'}><label class="pl-pick">${icon('plus')}<select id="pl-sel" aria-label="Place on the strip">${placeOptions()}</select></label>`
         + `<form class="pl-link" id="pl-link"><input id="pl-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code on the strip"><button type="submit" class="ib" aria-label="The link as a code on the strip">${icon('qr')}</button></form>`
         + (cells.length || figs.length ? `<ol class="pieces">${cells.map(o => `<li><button type="button" class="pc-b" data-piece="r" data-pid="${esc(String(o.id))}" data-tip="${esc(nameOf(o))}"><img src="${pinOf(o)}" alt=""></button></li>`).join('')}${figs.map(g => `<li><button type="button" class="pc-b" data-piece="c" data-pid="${esc(String(g.id))}" data-tip="${esc(g.name)}">${strings.chartOf(g.id, 40) || icon('string')}</button></li>`).join('')}</ol>` : '')
-        + `</div></section></div>`
+        + `</div></section>`
+      /* then the paper, and the keys that send it out */
+    + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
+      + `<section class="sec" id="sec-out"><button type="button" class="print-k pk-ic${on.length ? ' on' : ''}${cur ? ' next' : ''}" data-pout="send" aria-label="Print receipt" data-tip="${on.length ? 'Print: online' : 'Print: offline, it waits'}">${icon('epson')}</button>`
+      + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
+    + `</div>`
     ;
 }
 $('#view').addEventListener('click', e => {

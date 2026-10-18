@@ -22,8 +22,12 @@ const ICONIC_GLYPH = { Aves: 'bird', Mammalia: 'mammal', Reptilia: 'lizard', Amp
 const NAME_GLYPH = [[/flying-?fox/i, 'flyingfox'], [/\bbat\b/i, 'bat'], [/possum|glider/i, 'possum'], [/\bbee\b|bees$/i, 'bee'], [/butterfl|\bskipper\b|\b(admiral|jezebel|swallowtail|brown)\b/i, 'butterfly'], [/\bmoth\b/i, 'moth'], [/wasp|hornet/i, 'wasp'], [/hoverfly|\bfly\b/i, 'fly'], [/dragonfly|damselfly/i, 'dragonfly'],
   [/orb-?weaver/i, 'orb'], [/spider/i, 'spider'], [/beetle|ladybird|weevil/i, 'beetle'], [/grasshopper|cricket|katydid/i, 'grasshopper'], [/mantis/i, 'mantis'], [/\bbug\b|aphid|cicada|psyllid|lerp/i, 'bug'], [/snail|slug/i, 'snail'], [/worm/i, 'segmented'],
   [/frog|toadlet|froglet/i, 'frog'], [/turtle|tortoise/i, 'turtle'], [/skink|gecko|lizard|dragon\b/i, 'lizard'], [/snake/i, 'snake'], [/\b(fish|eel|galaxias|carp|mosquitofish)\b/i, 'aquatic'],
-  [/owl|frogmouth|boobook/i, 'owl'], [/hawk|kite|falcon|eagle|goshawk/i, 'raptor'], [/duck|swan|heron|egret|ibis|cormorant|grebe|moorhen|coot|gull|darter|swamphen|teal/i, 'waterbird'], [/lorikeet|rosella|cockatoo|corella|galah|parrot/i, 'parrot'], [/orang-?utan|gorilla|chimpanzee/i, 'ape']];
-const glyphOf = o => { if (o && o.user && o.g) return o.g; if (o && o.sigPin && o.g) return o.g; const fe = fieldOf(o); if (fe) return fe.g; const sub = subjectOf(o); const cn = sub.tx && sub.tx.cn; if (cn && !o.hum) for (const [re, g] of NAME_GLYPH) if (re.test(cn)) return g; if (sub.tx && sub.tx.ic && ICONIC_GLYPH[sub.tx.ic]) return ICONIC_GLYPH[sub.tx.ic]; return o.hum ? 'human' : 'plant'; };
+  [/owl|frogmouth|boobook/i, 'owl'], [/hawk|kite|falcon|eagle|goshawk/i, 'raptor'], [/duck|swan|heron|egret|ibis|cormorant|grebe|moorhen|coot|gull|darter|swamphen|teal/i, 'waterbird'], [/lorikeet|rosella|cockatoo|corella|galah|parrot/i, 'parrot'], [/orang-?utan|gorilla|chimpanzee/i, 'ape'],
+  [/\bants?\b/i, 'ant'], [/echidna/i, 'echidna'], [/\b(rat|mouse|rakali|antechinus|bandicoot)\b/i, 'rodent'], [/\bfox\b/i, 'fox'], [/\bcat\b/i, 'cat'], [/\bdog\b|dingo/i, 'dog'], [/rabbit|\bhare\b/i, 'rabbit'], [/kangaroo|wallaby|wallaroo/i, 'macropod']];
+const PLANT_GLYPH = [[/grass|sedge|\brush\b|reed|tussock|lomandra|\bpoa\b|bulrush|cumbungi/i, 'grass'],
+  [/\bgum\b|eucalypt|\btree\b|wattle|she-?oak|\boak\b|\belm\b|\bplane\b|\bpine\b|cypress|banksia|melaleuca|paperbark|bottlebrush|callistemon|casuarina|\bfig\b|lilly ?pilly|ironbark|stringybark|peppermint|\bbox\b|redgum|blackwood/i, 'tree'],
+  [/daisy|flower|orchid|\blily\b|\brose\b|clover|dandelion|everlasting|bluebell|violet|\bpea\b|geranium|poppy|lavender|salvia|correa|grevillea|hibbertia|wahlenbergia|buttercup|bindweed|capeweed|oxalis|sorrel/i, 'flower']];
+const glyphOf = o => { if (o && o.user && o.g) return o.g; if (o && o.sigPin && o.g) return o.g; const fe = fieldOf(o); if (fe) return fe.g; const sub = subjectOf(o); const cn = sub.tx && sub.tx.cn; if (cn && !o.hum) for (const [re, g] of (sub.tx.ic === 'Plantae' ? PLANT_GLYPH : NAME_GLYPH)) if (re.test(cn)) return g; if (sub.tx && sub.tx.ic && ICONIC_GLYPH[sub.tx.ic]) return ICONIC_GLYPH[sub.tx.ic]; return o.hum ? 'human' : 'plant'; };
 const lifeOf = o => { if ((o.user || o.sigPin) && o.g) return o.g; const sub = subjectOf(o); return o.hum && !(sub && sub.tx && sub.tx.n) ? 'human' : glyphOf(o); };
 const COLD_DAYS = 21;
 const isCold = o => !!o.hist || (typeof o.id === 'number' && !o.hum && o.age != null && o.age > COLD_DAYS);
@@ -243,12 +247,12 @@ const livesIn = t => cellsAll().filter(o => !o.hum && !isCold(o) && !o.isTribe &
 
 /* ───────── weather today: for the hot-day layers on the ground ───────── */
 async function loadWeather() {
-  if (S.wx.t && Date.now() - S.wx.t < 60 * 60000 && (S.wx.days || []).length > 3) return false;
+  if (S.wx.t && Date.now() - S.wx.t < 30 * 60000 && (S.wx.days || []).length > 3) return false;
   try {
-    const j = await (await fetch(CONFIG.WEATHER_URL)).json(); const D = j.daily || {};
+    const j = await (await fetch(CONFIG.WEATHER_URL)).json(); const D = j.daily || {}; const C = j.current || {};
     const tm = D.temperature_2m_max || [], tn = D.temperature_2m_min || [], pr = D.precipitation_sum || [];
-    S.wx = { t: Date.now(), tmax: Math.max(...tm.slice(0, 2).filter(v => v != null)), tmin: tn[1] ?? tn[0] ?? null, rain: pr.slice(0, 3).reduce((a, b) => a + (b || 0), 0), days: (D.time || []).map((d, i) => ({ d, t: tm[i], n: tn[i] ?? null, p: pr[i] })) };
-    store.set('da.wx.v3', S.wx);
+    S.wx = { t: Date.now(), tmax: Math.max(...tm.slice(0, 2).filter(v => v != null)), tmin: tn[1] ?? tn[0] ?? null, rain: pr.slice(0, 3).reduce((a, b) => a + (b || 0), 0), now: { t: C.temperature_2m ?? null, p: C.precipitation ?? 0 }, days: (D.time || []).map((d, i) => ({ d, t: tm[i], n: tn[i] ?? null, p: pr[i] })) };
+    store.set('da.wx.v4', S.wx);
     if (S.obs.length) refresh();
     return true;
   } catch (e) { return false; }

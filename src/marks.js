@@ -217,6 +217,11 @@
     human: [S(circ(8, 8, 3.8), 1.3), S('M8 1.4v13.2M1.4 8h13.2', 1.2)],
     paw: [F(circ(3.8, 7, 1.5) + circ(6.4, 3.9, 1.5) + circ(9.6, 3.9, 1.5) + circ(12.2, 7, 1.5)), F(ell(8, 11.2, 3.6, 2.9))],
     ape: [F(`${circ(8, 4.4, 3)}${ell(8, 5.1, 1.7, 1.3)}`, 'evenodd'), F(ell(8, 11, 2.9, 3.4)), S('M5.3 8.6C2.9 9.4 1.9 12 1.6 15M10.7 8.6c2.4.8 3.4 3.4 3.7 6.4', 1.5)],
+    tree: [F(circ(5.2, 6.6, 3) + circ(10.8, 6.6, 3) + circ(8, 4.2, 3.4) + circ(8, 8, 2.6)), S('M8 15V9.6M8 12.2l-2.4-1.8M8 11.4l2.2-1.6', 1.5)],
+    flower: [F(circ(8, 8, 2.1)), S('M8 1.8v3M8 11.2v3M1.8 8h3M11.2 8h3M3.6 3.6l2.1 2.1M10.3 10.3l2.1 2.1M12.4 3.6l-2.1 2.1M5.7 10.3l-2.1 2.1', 2.2)],
+    grass: [S('M3.4 15C3.6 10.6 3 6.6 1.8 3.2M7.6 15c0-5.2.8-9 2.4-12.6M11.6 15c.2-4 1.4-7 3.4-9', 1.4), F(ell(10, 3, 1.1, 2))],
+    ant: [F(circ(3.4, 8, 1.5) + ell(7, 8, 1.5, 1.2) + ell(11.4, 8.2, 2.6, 1.9)), S('M6.4 7.2L5 4.6M7.6 7.2l.8-2.8M8.4 8.8l1.4 3M6.4 8.9l-1.4 2.9M2.4 6.9L1.2 4.8M2.6 7.2L1.2 8.4', 1)],
+    echidna: [F('M1.6 12.8a6.2 4.8 0 0 1 12.4 0z'), S('M3 11.2L2.2 8.6M5 9.6l-.4-3.2M7.4 9l.1-3.4M9.8 9.4l.5-3.2M11.8 10.6l1-2.6', 1.3), S('M13.8 12.2l1.6 1.2', 1.3)],
   };
 
   /* svg sprite, for the page: icons as #g-name, kinds of life as #k-name */
@@ -461,9 +466,39 @@
   const SHADE = [0, 0.2, -0.18, 0.34, -0.3, 0.1, -0.08, 0.26, -0.24];
   const shadeOf = g => { const grp = GROUP[g]; if (!grp) return 0; const kin = Object.keys(GROUP).filter(k => GROUP[k] === grp); return SHADE[Math.max(0, kin.indexOf(g)) % SHADE.length]; };
   const GOLD = '#F2C14E';
+  /* a life on the map is a sticker of its own kind, cut from paper: no disc, the mark itself in its colour, a white cut edge, a
+     hair out of register as a risograph prints, a soft shadow under it; several seen together, a small pile of them */
+  const PAPER = '#FBFAF4';
+  const STICK = /^k-|^fauna$|^flora$|^night$|^cold$|^hero$/;
+  function edge16(ctx, parts, x, y, size, color, px) {
+    if (!parts) return; const k = size / 16;
+    ctx.save(); ctx.translate(x - size / 2, y - size / 2); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = color; ctx.fillStyle = color;
+    for (const pt of parts) { ctx.lineWidth = (pt.f ? 0 : pt.w) + (px * 2) / k; ctx.stroke(pt.p); if (pt.f) ctx.fill(pt.p, pt.rule || 'nonzero'); }
+    ctx.restore();
+  }
+  function sticker(ctx, b, x, y, col) {
+    const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)), parts = gpaths()[b.g] || gpaths().paw; const cold = b.tone === 'cold', hist = b.tone === 'hist';
+    ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (hist) ctx.globalAlpha *= 0.5;
+    if (b.tier >= 2) { const g0 = ctx.createRadialGradient(x, y, s * 0.3, x, y, s * 0.5 + 9); g0.addColorStop(0, 'rgba(242,193,78,.42)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(x, y, s * 0.5 + 9, 0, TAU); ctx.fill(); }
+    const cut = s >= 14 ? 1.7 : 1.2;
+    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) { ctx.save(); ctx.globalAlpha *= 0.9; ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 2; edge16(ctx, parts, x + k * 3, y - k * 3, s, PAPER, cut); ctx.restore(); }
+    /* danger in the months ahead: the cut edge itself in red when severe, in black at the extreme, hugging the animal */
+    const dz = b.dz || (b.hot ? 3 : 0);
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.42)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1.2;
+    if (dz >= 3) edge16(ctx, parts, x, y, s, dz >= 4 ? '#14110F' : '#E8402A', cut + 1.5);
+    edge16(ctx, parts, x, y, s, cold || hist ? 'rgba(238,240,236,.9)' : PAPER, cut); ctx.restore();
+    if (!cold && !hist) draw16(ctx, parts, x + 0.6, y + 0.7, s, mixHex(col, 0.58), 1);
+    draw16(ctx, parts, x, y, s, cold || hist ? '#8A928C' : col, 1);
+    /* rare: a small gold spark at its shoulder; legendary, two */
+    if (b.tier >= 1) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(40,30,0,.55)'; ctx.stroke(); };
+      const k = Math.max(3, s * 0.2); sp(x - s * 0.46, y - s * 0.44, k); if (b.tier >= 2) sp(x - s * 0.62, y - s * 0.06, k * 0.6); }
+    if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.42, y - s * 0.42, Math.max(2.4, d * 0.12), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = PAPER; ctx.stroke(); }
+    ctx.restore();
+  }
   function badge(ctx, b, x, y) {
     const d = b.d || 22, r = d / 2; let [bg, fg] = TONES[b.tone] || TONES.fauna;
     if (/^k-/.test(b.tone) && b.g && /^#/.test(bg)) bg = mixHex(bg, shadeOf(b.g));
+    if (b.g && (STICK.test(b.tone || 'fauna') || b.tone === 'hist')) { sticker(ctx, b, x, y, b.tone === 'hero' ? C.clay : bg); return; }
     /* legendary (threatened, or one of the five): a soft gold glow behind it */
     if (b.tier >= 2) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r + 7, 0, TAU); const g0 = ctx.createRadialGradient(x, y, r * 0.6, x, y, r + 9); g0.addColorStop(0, 'rgba(242,193,78,.45)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.fill(); ctx.restore(); }
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;
@@ -567,13 +602,13 @@
     flyingfox: 'Flying-fox', bat: 'Microbat', rodent: 'Native rodent', fox: 'Fox', cat: 'Cat', dog: 'Dog', rabbit: 'Rabbit', lizard: 'Lizard or skink', snake: 'Snake', turtle: 'Turtle',
     frog: 'Frog', butterfly: 'Butterfly', moth: 'Moth', bee: 'Bee', wasp: 'Wasp', fly: 'Fly or hoverfly', beetle: 'Beetle', bug: 'True bug', spider: 'Spider', orb: 'Orb-weaver',
     grasshopper: 'Grasshopper or cricket', mantis: 'Mantis', dragonfly: 'Dragonfly or damselfly', aquatic: 'Fish and water life', snail: 'Snail or slug', segmented: 'Worm', fungi: 'Fungus', plant: 'Plant', human: 'People',
-    paw: 'Animal', ape: 'Orangutan',
+    paw: 'Animal', ape: 'Orangutan', tree: 'Tree', flower: 'Flower', grass: 'Grass or sedge', ant: 'Ant', echidna: 'Echidna',
   };
   /* the kinds of animal, as six colours: a glyph's group */
   const GROUP = {
     bird: 'bird', parrot: 'bird', waterbird: 'bird', owl: 'bird', raptor: 'bird',
-    mammal: 'mammal', macropod: 'mammal', possum: 'mammal', flyingfox: 'mammal', bat: 'mammal', rodent: 'mammal', fox: 'mammal', cat: 'mammal', dog: 'mammal', rabbit: 'mammal', ape: 'mammal',
-    butterfly: 'insect', moth: 'insect', bee: 'insect', wasp: 'insect', fly: 'insect', beetle: 'insect', bug: 'insect', grasshopper: 'insect', mantis: 'insect', dragonfly: 'insect',
+    mammal: 'mammal', macropod: 'mammal', possum: 'mammal', flyingfox: 'mammal', bat: 'mammal', rodent: 'mammal', fox: 'mammal', cat: 'mammal', dog: 'mammal', rabbit: 'mammal', ape: 'mammal', echidna: 'mammal',
+    butterfly: 'insect', moth: 'insect', bee: 'insect', wasp: 'insect', fly: 'insect', beetle: 'insect', bug: 'insect', grasshopper: 'insect', mantis: 'insect', dragonfly: 'insect', ant: 'insect',
     spider: 'spider', orb: 'spider', snail: 'spider', segmented: 'spider',
     lizard: 'reptile', snake: 'reptile', turtle: 'reptile', frog: 'water', aquatic: 'water', paw: 'other',
   };

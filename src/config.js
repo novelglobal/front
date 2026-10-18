@@ -15,7 +15,7 @@ window.DA_CONFIG = {
   PLACE_PREF: 6744,                                                 // iNaturalist place id for Australia (common names)
   IMAGERY: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', note: 'free to view with credit; not open data' },
   DEM_URL: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-  WEATHER_URL: 'https://api.open-meteo.com/v1/forecast?latitude=-37.775&longitude=144.962&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Australia%2FMelbourne&forecast_days=16',
+  WEATHER_URL: 'https://api.open-meteo.com/v1/forecast?latitude=-37.775&longitude=144.962&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&current=temperature_2m,precipitation&timezone=Australia%2FMelbourne&forecast_days=16',
   OVERPASS: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   OVERLAYS: [
     { id: 'water', label: 'Drinking fountains', dataset: 'drinking-fountains', kind: 'water' },
