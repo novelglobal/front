@@ -53,7 +53,6 @@ const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'p
 function setTrack(id, on) {
   TRK.on[id] = on; const el = document.querySelector(tkSel(id));
   if (el) { el.classList.toggle('on', on); const b = el.querySelector('.tk-play'); b.setAttribute('aria-pressed', String(on)); b.classList.toggle('muted', id === 'life' && !on); b.innerHTML = playIcon(id, on); }
-  if (!on && id === 'life') snd.droneOff();
 }
 function stopTracks() { for (const id of Object.keys(TRK.on)) if (TRK.on[id]) setTrack(id, false); }
 /* seen on the map, or not: kept on this device */
@@ -128,8 +127,7 @@ function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
   S.radio = on; if (!on && LOOP.on) setLoop(false);
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } nudgeWishSoon(); }
-  snd.bed(on);
-  syncTracks(); if (on) life.replay(); else snd.droneOff();
+  syncTracks(); if (on) life.replay();
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });
   document.body.classList.toggle('on-air', on); buzz(on ? [8, 30, 8] : 6); life.redraw(); life.moved();
 }
@@ -218,11 +216,11 @@ function loopTick() {
   if (!prefs.sound || !S.radio) return;
   const crossed = deg => (a <= b ? deg > a && deg <= b : deg > a || deg <= b);
   for (const [k, L] of Object.entries(LOOP.m.layers || {})) {
-    if (!L.on || !(L.lvl > 0.02)) continue;
+    const lvl = lvlOf(k); if (!trackOn(k) || lvl < 0.02) continue; const mood = (prefs.lm || {})[k] || L.mood || moodOf();
     for (const c of L.cells || []) {
       if (!crossed(c.b)) continue;
       const spec = k === 'life' ? { g: c.g === 'human' ? 'ape' : c.g || 'paw' } : k === 'water' ? { g: 'aquatic' } : { fam: c.fam || 'service' };
-      if (snd.ping(spec, F0 * (c.p || 4), { mood: L.mood || moodOf(), v: (k === 'life' ? 0.05 : 0.04) * L.lvl, pan: Math.sin(c.b * Math.PI / 180) * 0.7 })) flashLayer(k);
+      if (snd.ping(spec, F0 * (c.p || 4), { mood, v: (k === 'life' ? 0.05 : 0.04) * lvl, pan: Math.sin(c.b * Math.PI / 180) * 0.7 })) flashLayer(k);
     }
   }
 }
@@ -231,7 +229,7 @@ function setLoop(on, kept) {
   if (on) {
     const m = kept || mixNow(); LOOP.m = m; LOOP.t0 = performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m); LOOP.last = performance.now(); LOOP.on = true;
     if (!kept) { LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); }
-    clearInterval(LOOP.timer); LOOP.timer = setInterval(loopTick, 40); if (!S.radio) setRadio(true); snd.droneOff();
+    clearInterval(LOOP.timer); LOOP.timer = setInterval(loopTick, 40); if (!S.radio) setRadio(true);
   } else { LOOP.on = false; clearInterval(LOOP.timer); }
   $$('[data-loop]').forEach(b => { b.setAttribute('aria-pressed', String(LOOP.on)); b.classList.toggle('on', LOOP.on); });
   document.body.classList.toggle('looping', LOOP.on); snd.tick(on ? 1900 : 1100); buzz(on ? [6, 30, 6] : 5); life.redraw();

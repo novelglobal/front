@@ -19,21 +19,9 @@ function exampleMix() {
   const s = exSignal(); const p = (s && s.pin) || { lat: -37.7841, lng: 144.9515, place: 'PARKVILLE' }; const k = (EXK && EXK.mix) || { r: 600, layers: {} };
   return { v: MIX_V, id: 'mx-ex', at: Date.now(), loop: CONFIG.SCAN.turn || 8, where: { lat: p.lat, lng: p.lng, r: k.r || 600, place: p.place || suburbAt(p.lat, p.lng) }, layers: JSON.parse(JSON.stringify(k.layers || {})) };
 }
-/* play pressed before anywhere is chosen: the radar goes to Royal Park, the layers take the example's levels and moods, and the
-   loop plays what the radar holds there, with the orangutan and its strings at the head of every turn */
-function playExample() {
-  const m = exampleMix(); tuneMix(m, false); prefs.placed = true; savePrefs();
-  setTimeout(() => {
-    const live = mixNow(); live.id = 'mx-ex';
-    for (const [k, L] of Object.entries(m.layers)) if (live.layers[k]) Object.assign(live.layers[k], { on: !!L.on, lvl: L.lvl, mood: L.mood });
-    const s = exSignal();
-    if (s) {
-      live.layers.life.cells = [{ n: s.pin.cn || 'Sumatran Orangutan', g: 'ape', b: 0, d: 1, p: partialOf('ape') }, ...(live.layers.life.cells || [])];
-      live.layers.community.cells = [...(s.nodes || []).map(n => ({ n: n.n, fam: n.t === 'group' ? 'network' : ((ROLES[n.role] || {}).cat || 'artists'), b: n.b, d: n.d, p: partialOf(n.n) })), ...(live.layers.community.cells || [])];
-    }
-    setLoop(true, live); nudgeWishSoon();
-  }, 420);
-}
+/* play pressed before anywhere is chosen: the radar goes to Royal Park and the layers take the example's levels and moods; what
+   sounds is what the hand finds there */
+function playExample() { tuneMix(exampleMix(), true); }
 
 /* ───────── BOARD 00 ───────── */
 const EXB_V = 1;

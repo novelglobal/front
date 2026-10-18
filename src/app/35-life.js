@@ -168,10 +168,8 @@ const life = (() => {
     /* the constellations in the radar join the mix: each plays as the hand passes its life */
     if (S.radio && prefs.sound && !LOOP.on) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
-    /* the trail: as it crosses more life, the drone under it swells */
-    if (now - droneT > 300) { droneT = now; let n = 0; if (TRK.on.life && prefs.sound) for (const it of items) { if (!it.inS || it.b.tone === 'hist' || !seen.has(it.o.id) || !shown(it)) continue; if ((sweepB - it.sb + 360) % 360 < 42) n++; } snd.drone(n >= 3 && !LOOP.on ? Math.min(1, (n - 2) / 8) * lvlOf('life') : 0, moodOf()); }
   }
-  let droneT = 0, pings = [];
+  let pings = [];
   let scanSave = 0, fiveT = 0;
   function setScan(lat, lng, r, save) {
     if (lat != null) { S.scan.lat = clamp(lat, B.s, B.n); S.scan.lng = clamp(lng, B.w, B.e); }
