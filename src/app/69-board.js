@@ -38,19 +38,20 @@ function boardTools() {
   edgeFade(t);
 }
 /* the board shows over the ground while SIGNALS is open */
+const boardW = host => host.clientWidth - (parseFloat(getComputedStyle(host).paddingRight) || 0);
 async function showBoard(on) {
   const host = $('#board'); host.hidden = !on; if (!on) return null;
   boardTools();
   const f = await loadFabric().catch(() => null); if (!f) return null;
-  leanOnce($('#board-tools'), 'da.lean.board'); const W = host.clientWidth, H = host.clientHeight - 52 - 26;
+  leanOnce($('#board-tools'), 'da.lean.board'); const W = boardW(host), H = host.clientHeight - 52 - 26;
   if (!cv) {
     cv = new f.Canvas('board-c', { width: W, height: H, selection: true, preserveObjectStacking: true, targetFindTolerance: 6, perPixelTargetFind: true });
     await loadBoard();
     cv.on('object:moving', () => follow()); cv.on('object:modified', saveSoon); cv.on('text:changed', saveSoon);
     cv.on('path:created', e => { if (e.path) e.path.set({ daKind: 'pen', daId: uid('d') }); saveSoon(); });
     cv.on('mouse:down', e => { if (e.target && e.target.daKind === 'link' && !linkArmed) { unjoin(e.target); return; } linking(e.target); });
-    addEventListener('resize', () => { if (!host.hidden) { cv.setWidth(host.clientWidth); cv.setHeight(host.clientHeight - 78); cv.renderAll(); } });
-  } else { cv.setWidth(W); cv.setHeight(H); }
+    addEventListener('resize', () => { if (!host.hidden) { cv.setWidth(boardW(host)); cv.setHeight(host.clientHeight - 78); if (boardId === 'b00') exFrame(); cv.renderAll(); } });
+  } else { cv.setWidth(W); cv.setHeight(H); if (boardId === 'b00') exFrame(); }
   cv.renderAll(); return cv;
 }
 async function loadBoard() {
@@ -63,8 +64,8 @@ function exFrame() {
   if (!cv) return; const ex = boardId === 'b00', locked = exLocked(); $('#board').classList.toggle('locked', locked); $('#board').classList.toggle('ex-edit', ex && !locked);
   cv.selection = !locked; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'default' : 'move' });
   if (!ex) { cv.setViewportTransform([1, 0, 0, 1, 0, 0]); return; }
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const o of cv.getObjects()) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
-  if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; const z = Math.min(1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const cols = cv.getObjects().filter(o => o.daKind === 'section'); for (const o of cols.length ? cols : cv.getObjects()) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
+  if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; if (W < 120 || H < 120) { requestAnimationFrame(exFrame); return; } const z = Math.min(1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
   cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
 }
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
@@ -328,12 +329,12 @@ const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by
 /* the form itself is the handheld (42-faces.js): its front asks for the intention, its back, modded, holds the whole poem */
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
-$('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); if (!WKEYS.some(k => String((($('#wf-' + k) || {}).value) || WDRAFT[k] || '').trim())) fillDraft(false); sendSignal(); });
+$('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); sendSignal(); });
 /* the W.I.S.H. becomes a story: where the signal was, its four lines, its constellations; kept here, waiting to print */
 async function sendSignal() {
   const L = Object.fromEntries(WKEYS.map(k => { const el = $('#wf-' + k); return [k, String(el ? el.value : WDRAFT[k] || '').trim()]; }));
-  if (!WKEYS.some(k => L[k])) { nudge($('#wf-w') || $('#wf-for')); return null; }
-  const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || '').trim(); const forN = fr.replace(/^[lce]:/, '').trim(); const fsp = forN ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n.toLowerCase() === forN.toLowerCase()) : null;
+  const m = MIXES[0]; const fr = String(($('#wf-for') || {}).value || WDRAFT.for || '').trim();
+  if (!WKEYS.some(k => L[k]) && !fr) { nudge($('#wf-for') || $('#wf-w')); return null; } const forN = fr.replace(/^[lce]:/, '').trim(); const fsp = forN ? [...SPECIES, ...radiusSpecies(12)].find(x => x.n.toLowerCase() === forN.toLowerCase()) : null;
   const where = m ? m.where : { lat: +S.scan.lat.toFixed(4), lng: +S.scan.lng.toFixed(4), place: suburbAt(S.scan.lat, S.scan.lng) };
   const lead = m && ((m.layers.life || {}).cells || [])[0];
   const at = Date.now(); const byEl = $('#wf-by'); const who = String(byEl ? byEl.value : (WDRAFT.by || S.me.by || '')).trim();

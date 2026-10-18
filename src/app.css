@@ -2460,3 +2460,26 @@ html.night .dev.tepra.mod{background:var(--grain),linear-gradient(180deg,rgba(56
 .dev.tepra.mod .ps-hl[hidden]{display:none}
 @media (max-width:759px){.sheetbar .sb-t{display:none}}
 @media (prefers-reduced-motion:reduce){.flip-k.hint .fl-ear,#view.flip-in,#view.flip-out,.vs-cur,.tp-cur{animation:none!important}}
+
+/* RADIO, W.I.S.H. and PRINT on a wide screen: no sheet. Each device stands on the big screen itself, the map, the board, the
+   strip, the receipt as it will print; what the screen holds keeps clear of the device. novel.global keeps its page, and a life
+   opened keeps its card */
+@media (min-width:760px){
+  body:not([data-view="portfolio"]):not(.rec) .panel,body:not([data-view="portfolio"]):not(.rec) .panel .leaf{background:transparent!important;box-shadow:none!important}
+  body:not([data-view="portfolio"]):not(.rec) .panel{pointer-events:none}
+  body:not([data-view="portfolio"]):not(.rec) .panel .ph,body:not([data-view="portfolio"]):not(.rec) .panel .view>*,body:not([data-view="portfolio"]):not(.rec) .panel .grip{pointer-events:auto}
+  body:not([data-view="portfolio"]):not(.rec) .panel .ph{border-bottom-color:transparent}
+  body:not([data-view="portfolio"]) .cover,body:not([data-view="portfolio"]) #board,body:not([data-view="portfolio"]) #zine{right:0}
+  body:not([data-view="portfolio"]) #board{padding-right:var(--page)}
+  body:not([data-view="portfolio"]) #board .tools,body:not([data-view="portfolio"]) #zine .tools,body:not([data-view="portfolio"]) #zine .desk,body:not([data-view="portfolio"]) .hw-label{right:var(--page)}
+  body:not([data-view="portfolio"]) #cover .wpv{right:var(--page)}
+  body:not([data-view="portfolio"]) #board .tools{width:auto}
+  /* over the map, the name, the Country and the steps in light */
+  body[data-view="radio"]:not(.rec) .panel .ph,body[data-view="radio"]:not(.rec) .panel .front-r .steps{color:#F4F7F8;text-shadow:0 1px 10px rgba(0,0,0,.55)}
+  body[data-view="radio"]:not(.rec) .panel .lk-n,body[data-view="radio"]:not(.rec) .panel .ctry,body[data-view="radio"]:not(.rec) .panel .ctry *,body[data-view="radio"]:not(.rec) .panel .front-r .steps *{color:#F4F7F8!important}
+  body[data-view="radio"]:not(.rec) .panel .lk-mark{color:#9FF0DF}
+  /* on the big screen the shells are frosted: what is behind them blurs, so what is on them reads */
+  body:not([data-view="portfolio"]) .dev.radio,body:not([data-view="portfolio"]) .vs-body,body:not([data-view="portfolio"]) .dev.tepra.mod{-webkit-backdrop-filter:blur(16px) saturate(1.1);backdrop-filter:blur(16px) saturate(1.1)}
+  html:not(.night) body[data-view="radio"] .band.dev.radio.mod{background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.8),rgba(236,242,244,.72))!important}
+  html.night body[data-view="radio"] .band.dev.radio.mod{background:var(--grain),linear-gradient(180deg,rgba(30,44,50,.78),rgba(20,30,34,.74))!important}
+}

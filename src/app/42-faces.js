@@ -49,53 +49,25 @@ function nudgeWishSoon() { clearTimeout(nudgeT); nudgeT = setTimeout(() => { if 
 function unNudge(i) { if (i === 1) { const t = $('#rail .tab[data-i="1"]'); if (t) t.classList.remove('nudge'); } }
 
 /* ───────── W.I.S.H.: a handheld in smoked jade. The front asks one thing, I, the intention, and takes a photograph if one is
-   given; the poem drafts itself from the intention, behind the screen, and shows on the receipt beside it. The back is the
-   same handheld opened: the poem's four lines on its screen to rewrite, the name, the photograph ───────── */
+   given; the receipt beside it shows it as it will print. The back is the same handheld opened: the poem's four lines on its
+   screen, each showing what its letter stands for until it is written, the name, the photograph ───────── */
 function wishDevice(back) {
   const where = suburbAt(S.scan.lat, S.scan.lng); const L = WDRAFT;
   const photo = L.photo ? `<span class="vs-ph"><img src="${L.photo}" alt=""><button type="button" class="vs-phx" data-vs="unphoto" aria-label="Take the photograph off">${icon('close', 'sm')}</button></span>` : '';
   return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : ''}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">W.I.S.H.</b><span class="vs-now">${esc(String(where || '').toUpperCase())} ${fmtClock(Date.now())}</span></div>`
     + `<label class="vs-i" data-tip="Intention"><b class="vs-m wf-m" aria-hidden="true">I</b><input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" " value="${esc(String(L.for || '').replace(/^[lce]:/, ''))}"><i class="vs-cur" aria-hidden="true"></i></label><datalist id="wf-for-l">${intentOptions()}</datalist>`
-    + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
+    + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
       + `<label class="vs-by" data-tip="By"><b class="wf-m" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(L.by || S.me.by || '')}" aria-label="By" spellcheck="false"></label>` : '')
     + `<div class="vs-att">${photo}<label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
-    + `<div class="vs-keys"><button type="button" class="vs-btn" data-vs="dice" aria-label="Another intention">${icon('die')}</button><button type="submit" class="vs-make make-b" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button><button type="button" class="vs-btn" data-vs="clear" aria-label="Clear">${icon('close')}</button></div>`
+    + `<div class="vs-keys"><button type="submit" class="vs-make make-b" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button><button type="button" class="vs-btn" data-vs="clear" aria-label="Clear">${icon('close')}</button></div>`
     + `</div></form></section>`;
 }
 const wishFront = () => wishDevice(false);
-/* the intention read: the life in it (a kind on the field list, or one seen), and what it is about; the brief that fits best;
-   W from what is known about that life or that weather, I S H from the brief, its blanks filled with here */
-const TH_RE = [['heat', /shade|heat|hot|cool|el ni|canopy|tree|sun|fire|smoke|haze/], ['water', /water|drought|dry|pond|creek|rain|flood|wetland|river/], ['pollinate', /bee|pollinat|flower|nectar|butterfl/], ['night', /night|dark|light|moth|\bbat/],
-  ['food', /food|grow|garden|seed|fruit|harvest|fridge/], ['circular', /repair|reuse|share|refill|compost|swap|mend|plastic|waste|circular|fix|lend|borrow|upcycl|second|fibre|fabric|cloth|made it|fair|wear/], ['cats', /\bcats?\b/], ['diversity', /home|habitat|corridor|hollow|nest|crossing|road|wild/]];
-const fitLine = (t, n = SIG.line) => { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const cut = t.slice(0, n + 1); const i = cut.lastIndexOf(' '); return (i > n * 0.6 ? cut.slice(0, i) : t.slice(0, n)).replace(/[,;:·\-–\s]+$/, ''); };
-const titleCase = t => String(t || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-function draftWish(t) {
-  const low = String(t || '').trim().toLowerCase(); if (!low) return null;
-  const fe = FIELD.filter(e => e.cn && low.includes(e.cn.toLowerCase())).sort((a, b) => b.cn.length - a.cn.length)[0] || null;
-  const sp = fe ? null : [...SPECIES, ...radiusSpecies(24)].find(x => x.n && low.includes(x.n.toLowerCase())) || null;
-  const g = (fe && fe.g) || (sp && sp.g) || null; const th = (TH_RE.find(([, re]) => re.test(low)) || [])[0] || null; const mo = new Date().getMonth();
-  const sc = b => (g && b.g.includes(g) ? 6 : g && b.g.some(x => kinOf(g).includes(x)) ? 2 : 0) + (th && b.th === th ? 4 : 0) + (b.m.includes(mo) ? 1 : 0);
-  const best = BRIEFS.length ? [...BRIEFS].sort((a, b) => sc(b) - sc(a) || a.id.localeCompare(b.id))[0] : null;
-  const role = best && (ROLES[best.roles[0]] || {}).w; const biz = role ? `a ${role.toLowerCase()}` : 'a local business'; const place = titleCase(suburbAt(S.scan.lat, S.scan.lng));
-  const fill = x => String(x || '').replace(/\{biz\}/g, biz).replace(/\{place\}/g, place);
-  const W = g && THREAT[g] ? THREAT[g] : th === 'heat' ? 'Unusually hot days: over 70% likely, Nov–Jan' : th === 'water' ? 'November: drier than usual on the coast' : best && best.fact ? `${best.after}: ${best.fact}` : 'El Niño near record: Niño 3.4 +2.8 °C';
-  return { w: fitLine(W), i: fitLine(fill(best && best.i)), s: fitLine(fill(best && best.s)), h: fitLine(fill(best && best.h)), brief: best ? best.id : '' };
-}
-/* the draft laid into the lines (on the screen where they show, else behind it): those still empty, and those the last draft
-   wrote and nobody changed */
-function fillDraft(force) {
-  const fr = $('#wf-for'); const t = fr ? fr.value : WDRAFT.for || ''; const d = draftWish(t); if (!d) return false; const was = WDRAFT.auto || {};
-  for (const k of WKEYS) { const el = $('#wf-' + k); const cur = String(el ? el.value : WDRAFT[k] || '').trim(); if (force || !cur || cur === was[k]) { if (el) el.value = d[k]; WDRAFT[k] = d[k]; } }
-  WDRAFT.for = t; WDRAFT.auto = d; store.set('da.wish.v1', WDRAFT); wishPreview(); return true;
-}
-const draftSoon = debounce(() => fillDraft(false), 260);
-viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') draftSoon(); else if (e.target.closest('#wish-form')) wishPreview(); });
-viewEl.addEventListener('change', e => { if (e.target.id === 'wf-for') fillDraft(false); });
+viewEl.addEventListener('input', e => { if (e.target.closest('#wish-form')) wishPreview(); });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.vs-poem textarea')) e.preventDefault(); });
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-vs]'); if (!b) return;
-  if (b.dataset.vs === 'dice') { const ops = [...$$('#wf-for-l option')].map(o => o.value).filter(Boolean); const el = $('#wf-for'); if (!ops.length || !el) return; el.value = ops[Math.floor(Math.random() * ops.length)]; fillDraft(true); snd.tick(1900); buzz(4); }
   if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
   if (b.dataset.vs === 'unphoto') { WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(1000); }
 });
@@ -108,8 +80,8 @@ viewEl.addEventListener('change', e => {
 });
 /* the receipt as it will print, beside the handheld, drawn again as the lines change */
 function draftSignal() {
-  const L = Object.fromEntries(WKEYS.map(k => [k, String(WDRAFT[k] || '').trim()])); const lat = +S.scan.lat.toFixed(4), lng = +S.scan.lng.toFixed(4); const place = suburbAt(S.scan.lat, S.scan.lng);
-  return { v: 1, code: 'DA-····', at: Date.now(), pin: { id: null, lat, lng, n: '', cn: place, ic: '', g: 'paw', place }, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who: WDRAFT.by || S.me.by || '', ...(WDRAFT.photo ? { img: { k: 'own', a: '' }, photo: WDRAFT.photo } : {}) };
+  const L = Object.fromEntries(WKEYS.map(k => [k, String(WDRAFT[k] || '').trim()])); const fr = String(WDRAFT.for || '').replace(/^[lce]:/, '').trim(); const lat = +S.scan.lat.toFixed(4), lng = +S.scan.lng.toFixed(4); const place = suburbAt(S.scan.lat, S.scan.lng);
+  return { v: 1, code: 'DA-····', at: Date.now(), pin: { id: null, lat, lng, n: '', cn: place, ic: '', g: 'paw', place }, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who: WDRAFT.by || S.me.by || '', ...(fr ? { for: fr, note: fr } : {}), ...(WDRAFT.photo ? { img: { k: 'own', a: '' }, photo: WDRAFT.photo } : {}) };
 }
 let pvN = 0;
 const wishPreview = debounce(async () => {
