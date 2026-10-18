@@ -2431,11 +2431,11 @@ html.night .visor.mod .vs-body{background:var(--grain),linear-gradient(180deg,rg
 #tp-words{height:32px;margin-top:2px;padding:4px 0 0;border:0;border-top:1px dashed rgba(30,36,27,.4);outline:none;background:transparent;color:#1E241B;font:400 22px/1 VT323,ui-monospace,monospace}
 .tp-cur{position:absolute;left:12px;bottom:11px;width:9px;height:17px;background:#1E241B;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none;display:none}
 #tp-words:placeholder-shown:not(:focus)~.tp-cur{display:block}
-.tp-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 16px}
+.tp-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 16px}
 .tp-k{display:grid;place-items:center;height:44px;padding:0;border:0;border-radius:7px;color:#FFFFFF;font:700 16px/1 var(--sans);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.22),0 2px 3px rgba(0,0,0,.35)}
 .tp-k .i{width:19px;height:19px}
 .tp-k:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-.tk-teal{background:#16A89A}.tk-green{background:#2E9E57}.tk-orange{background:#E8792A}
+.tk-teal{background:#16A89A}.tk-green{background:#2E9E57}.tk-orange{background:#E8792A}.tk-grey{background:#5A6066}
 .tp-foot{position:relative;display:grid;justify-items:center}
 .dev.tepra .tp-prn.print-k{position:relative;display:grid;place-items:center;width:82px!important;height:82px!important;padding:0;border:0!important;border-radius:50%!important;color:#EEF2F6!important;cursor:pointer;background:radial-gradient(circle,#3F72D2 0 62%,#3567C4 63%)!important;backdrop-filter:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 5px rgba(0,0,0,.28),0 0 0 4px rgba(255,255,255,.06),0 6px 10px rgba(0,0,0,.4)!important}
 .dev.tepra .tp-prn.print-k .i{width:36px;height:36px;color:#EEF2F6!important}
@@ -2504,29 +2504,30 @@ body.nino .dev.radio:not(.mod){box-shadow:inset 0 1px 0 rgba(255,255,255,.55),in
 .zoomv{position:fixed;inset:0;z-index:60;background:rgba(6,9,11,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .zv-s{position:absolute;inset:0;overflow:auto;display:grid;place-items:start center;padding:64px 16px 48px;overscroll-behavior:contain}
 .zv-s img{display:block;width:min(92vw,720px);height:auto;cursor:zoom-in;box-shadow:0 30px 60px rgba(0,0,0,.5);image-rendering:pixelated}
-.zv-s img.big{width:min(1800px,240vw);cursor:zoom-out}
-.zv-x{position:fixed;top:14px;right:14px;z-index:2;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;cursor:pointer;background:rgba(255,255,255,.14);color:#FFFFFF}
-.zv-x .i{width:20px;height:20px}
 
 /* the next thing to press: a ring in the jellyfish's colour widening from it, until it is pressed */
 .vs-make.next::after,.tp-prn.next:not(.sent):not(.busy)::after,#sec-out .print-k.next:not(.sent):not(.busy)::after{content:"";position:absolute;inset:-7px;border-radius:inherit;border:2px solid rgba(111,227,207,.95);pointer-events:none;animation:nextring 2.2s ease-out infinite}
 @keyframes nextring{0%{opacity:.95;transform:scale(.94)}100%{opacity:0;transform:scale(1.16)}}
 @media (prefers-reduced-motion:reduce){.vs-make.next::after,.tp-prn.next::after,#sec-out .print-k.next::after{animation:none;opacity:.8}}
-/* RADIO, W.I.S.H. and PRINT on a phone: no sheet and no bar. The device rises from the foot over the big screen, which stays in
-   view above it; the tab pressed again lowers it out of the way and brings it back */
+/* RADIO, W.I.S.H. and PRINT on a phone: no sheet and no bar. The device rides a rail over the big screen (42-faces.js): up from
+   the foot, slid by a finger up and down, never sideways, from all of it in view to only its head showing */
 @media (max-width:759px){
-  body:not([data-view="portfolio"]):not(.rec) .panel{top:auto!important;bottom:var(--dock)!important;height:auto!important;max-height:calc(100% - var(--dock) - 110px);background:transparent!important;box-shadow:none!important;pointer-events:none}
-  body:not([data-view="portfolio"]):not(.rec) .panel .leaf{background:transparent!important}
-  body:not([data-view="portfolio"]):not(.rec) .panel .view>*{pointer-events:auto}
-  body:not([data-view="portfolio"]):not(.rec) .sheetbar{display:none!important}
-  body:not([data-view="portfolio"]):not(.rec).pane-main .panel{transform:translateY(calc(100% + var(--dock)))!important}
-  body:not([data-view="portfolio"]) #board,body:not([data-view="portfolio"]) #zine,body:not([data-view="portfolio"]) .cover{bottom:var(--dock)!important;visibility:visible!important}
-  body:not([data-view="portfolio"]):not(.rec) .panel .ph{height:0!important;min-height:0!important;padding:0!important;border:0!important;overflow:visible}
-  body:not([data-view="portfolio"]):not(.rec) .panel .ph .lockup,body:not([data-view="portfolio"]):not(.rec) .panel .ph .ctry{display:none!important}
-  body:not([data-view="portfolio"]):not(.rec) .panel .view{padding-bottom:10px}
-  body:not([data-view="portfolio"]) #zine .desk{padding-bottom:62vh!important}
-  body[data-view="signals"] #cover .wpv{bottom:46vh;padding:16px}
-  body[data-view="signals"] #cover .wpv img{width:min(220px,60%)}
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) .panel{top:0!important;bottom:var(--dock)!important;height:auto!important;max-height:none!important;overflow:visible!important;transform:none!important;background:transparent!important;box-shadow:none!important;pointer-events:none}
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) .panel::after{content:none!important}
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) .panel .leaf{position:absolute;inset:0;overflow:visible;background:transparent!important}
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) #view{position:absolute;left:0;right:0;top:0;flex:none;height:auto!important;max-height:none!important;overflow:visible!important;padding:0 0 8px!important;background:transparent!important;transform:translateY(var(--rail,0px));transition:transform .34s cubic-bezier(.2,.9,.3,1);touch-action:pan-x;pointer-events:none}
+  body.railing #view{transition:none!important}
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) #view>*{pointer-events:auto}
+  /* the rail's grip, a small bar at the device's head */
+  body[data-view]:not([data-view="portfolio"]):not(.rec):not(.shut) #view::before{content:"";position:absolute;z-index:5;top:-16px;left:50%;width:42px;height:5px;margin-left:-21px;border-radius:3px;background:rgba(255,255,255,.9);box-shadow:0 0 0 7px transparent,0 1px 5px rgba(0,0,0,.4);pointer-events:auto}
+  body[data-view]:not([data-view="portfolio"]):not(.rec) .sheetbar{display:none!important}
+  body[data-view]:not([data-view="portfolio"]) #board,body[data-view]:not([data-view="portfolio"]) #zine,body[data-view]:not([data-view="portfolio"]) .cover{bottom:var(--dock)!important;visibility:visible!important}
+  body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph{height:0!important;min-height:0!important;padding:0!important;border:0!important;overflow:visible}
+  body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph .lockup,body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph .ctry{display:none!important}
+  /* the receipt as it will print, and the strip, in the screen above the device */
+  body[data-view="signals"] #cover .wpv{bottom:max(0px,calc(100dvh - var(--dock) - var(--dev-top,50dvh) + 6px));padding:14px 16px}
+  body[data-view="signals"] #cover .wpv img{width:auto;max-width:min(260px,72%);max-height:100%;object-fit:contain}
+  body[data-view="signs"] #zine .desk{padding-bottom:max(62px,calc(100dvh - var(--dock) - var(--dev-top,40dvh) + 24px))!important}
   /* frosted, so what is behind them blurs */
   body:not([data-view="portfolio"]) .dev.radio,body:not([data-view="portfolio"]) .vs-body,body:not([data-view="portfolio"]) .dev.tepra.mod{-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1)}
   html:not(.night) body[data-view="radio"] .band.dev.radio.mod{background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.82),rgba(236,242,244,.74))!important}
@@ -2535,6 +2536,8 @@ body.nino .dev.radio:not(.mod){box-shadow:inset 0 1px 0 rgba(255,255,255,.55),in
   /* the map's credits and the information corner at the head of the screen, clear of the device */
   body:not([data-view="portfolio"]):not(.rec) .maplibregl-ctrl-bottom-left{top:calc(var(--top, 0px) + 8px)!important;bottom:auto!important}
 }
+/* on a wide screen too, no watermark over the big screen beside the devices */
+body[data-view]:not([data-view="portfolio"]):not(.rec) .panel::after{content:none!important}
 /* the layers on the opened radio: four channels of a small mixer. A matte key with a light in its layer's colour, a dial for
    its mood, a strip of lights that answer as the hand finds something, and three bars for its volume */
 .band.dev.radio.mod .lyr{--lc:#46C7A8}
@@ -2571,7 +2574,7 @@ html.night .band.dev.radio.mod .lyr .lv i,html.night .band.dev.radio.mod .lyr-v 
 
 /* the key that turns a device over: the same on every device and both faces, at its foot on the left; a dark round key with a
    page turning on it. Until it has been pressed on a page, it wiggles there now and then */
-.flip-b{position:absolute;z-index:4;left:12px;bottom:12px;display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#FFFFFF;background:radial-gradient(circle at 36% 26%,rgba(255,255,255,.4),rgba(255,255,255,0) 58%),linear-gradient(135deg,#14B89C,#2463D6);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 4px rgba(10,30,80,.3),0 0 0 2px rgba(255,255,255,.4),0 3px 8px rgba(20,60,120,.32)}
+.flip-b{position:absolute;z-index:4;left:auto;right:12px;bottom:12px;display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#FFFFFF;background:radial-gradient(circle at 36% 26%,rgba(255,255,255,.4),rgba(255,255,255,0) 58%),linear-gradient(135deg,#14B89C,#2463D6);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -2px 4px rgba(10,30,80,.3),0 0 0 2px rgba(255,255,255,.4),0 3px 8px rgba(20,60,120,.32)}
 .flip-b::before{content:"";position:absolute;inset:-6px;border-radius:50%}
 .flip-b .i{width:20px;height:20px;filter:drop-shadow(0 1px 1px rgba(0,30,60,.3))}
 .flip-b:active{transform:scale(.94)}
@@ -2587,19 +2590,63 @@ html.night .band.dev.radio.mod .lyr .lv i,html.night .band.dev.radio.mod .lyr-v 
 .dev.mod .mod-bolt.bl,.visor.mod .mod-bolt.bl{display:none}
 .band.dev.radio.mod .mod-label,.dev.tepra.mod .mod-label{left:58px}
 .dev.radio:not(.mod){padding-bottom:56px}
-/* ═════════ novel.global, a cyberdeck: every part of the portfolio a module of its own, clear acrylic on four standoffs with a
-   number plate, a ribbon cable running down the deck behind them; the hero a screen in its bezel, mounted on clear acrylic, its
-   keys on a strip of board under it and its number on a small screen ═════════ */
-:root{--standoffs:radial-gradient(circle,#FFFFFF 0 1.4px,#C9CED2 1.9px 3.3px,#7D858A 3.8px 4.4px,transparent 4.9px) 5px 5px/12px 12px no-repeat,radial-gradient(circle,#FFFFFF 0 1.4px,#C9CED2 1.9px 3.3px,#7D858A 3.8px 4.4px,transparent 4.9px) calc(100% - 5px) 5px/12px 12px no-repeat,radial-gradient(circle,#FFFFFF 0 1.4px,#C9CED2 1.9px 3.3px,#7D858A 3.8px 4.4px,transparent 4.9px) 5px calc(100% - 5px)/12px 12px no-repeat,radial-gradient(circle,#FFFFFF 0 1.4px,#C9CED2 1.9px 3.3px,#7D858A 3.8px 4.4px,transparent 4.9px) calc(100% - 5px) calc(100% - 5px)/12px 12px no-repeat}
-body[data-view="portfolio"] #view{counter-reset:mod;background:linear-gradient(90deg,transparent 9px,#AEB6BB 9px 10px,#E8402A 10px 11.5px,#AEB6BB 11.5px 12.5px,#D5DADC 12.5px 13.5px,#AEB6BB 13.5px 14.5px,#D5DADC 14.5px 15.5px,#AEB6BB 15.5px 16.5px,transparent 16.5px) 0 0/100% 100% no-repeat local}
-body[data-view="portfolio"] #view>.sec{counter-increment:mod;position:relative;margin:14px 12px 14px 26px!important;padding:30px 14px 16px!important;border:0!important;border-radius:12px!important;background:var(--standoffs),linear-gradient(180deg,rgba(255,255,255,.9),rgba(236,241,243,.84))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.95),inset 0 0 0 3px rgba(146,178,191,.26),0 6px 16px rgba(16,48,60,.1)!important}
-body[data-view="portfolio"] #view>.sec::after{content:counter(mod,decimal-leading-zero);position:absolute;top:7px;left:22px;padding:2px 6px;border-radius:2px;background:#151718;color:#E7EAEA;font:600 8px/1.3 var(--mono);letter-spacing:.16em;pointer-events:none}
-html.night body[data-view="portfolio"] #view>.sec{background:var(--standoffs),linear-gradient(180deg,rgba(44,58,64,.72),rgba(28,38,42,.66))!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 0 0 3px rgba(146,178,191,.12),0 6px 16px rgba(0,0,0,.35)!important}
-/* the hero: a screen in its bezel, straight, on a sheet of clear acrylic with a standoff at each corner */
-.gl-hero{position:relative;padding:14px 14px 10px;border-radius:12px;background:#121517;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 16px rgba(255,255,255,.5),0 0 0 17px rgba(146,178,191,.45),0 30px 60px rgba(0,0,0,.32)}
-.gl-hero::before{content:"";position:absolute;inset:-16px;border-radius:16px;pointer-events:none;background:var(--standoffs)}
-.gl-hero img{transform:none!important;animation:none!important;max-height:calc(100vh - 290px)!important;box-shadow:0 0 0 1px rgba(255,255,255,.06)!important}
-.gl-hero figcaption{justify-self:stretch;margin:2px 0 0;padding:5px 10px 3px;border-radius:3px;background:#CBD4C3;color:#1F2A20!important;font:400 15px/1 VT323,ui-monospace,monospace!important;letter-spacing:.08em!important;text-align:center;box-shadow:inset 0 0 0 1.5px rgba(31,42,32,.5)}
-.gl-acts{margin-top:18px;padding:8px 46px 8px 12px;border-radius:4px;background:var(--plug) right 10px center/auto 56% no-repeat,var(--board) left 8px center/auto 100% no-repeat,linear-gradient(180deg,#256A50,#1B5440);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 2px 5px rgba(0,0,0,.25)}
-.gl-acts .key{background:#E9EDEE!important;box-shadow:inset 0 1px 0 #FFFFFF,inset 0 -2px 3px rgba(0,0,0,.18),0 2px 3px rgba(0,0,0,.35)!important;border:0!important}
-.gl-acts{min-width:200px;justify-content:flex-start}
+/* ═════════ novel.global, a cyberdeck: the parts of the other devices, put together. Each part of the portfolio a module in one
+   of their materials, the radio's smoked ice, the handheld's jade, the label maker's warm grey, clear; a coloured stripe along
+   its head, its number on a strip of label tape, a small light. The gallery is the deck's main screen ═════════ */
+body[data-view="portfolio"] #view{padding-left:6px!important;padding-right:6px!important}
+body[data-view="portfolio"] #view>.sec{counter-increment:mod;position:relative;margin:12px 8px!important;padding:30px 14px 16px!important;border:0!important;border-radius:14px!important;--m:#8FC9D9;background:var(--grain),linear-gradient(180deg,rgba(234,243,247,.96),rgba(220,233,239,.92))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(20,40,50,.07),0 1px 0 rgba(255,255,255,.6),0 8px 20px rgba(16,40,52,.09)!important;overflow:hidden}
+body[data-view="portfolio"] #view>.sec:nth-child(4n+2){--m:#6CCDB0;background:var(--grain),linear-gradient(180deg,rgba(226,245,238,.96),rgba(208,236,226,.92))!important}
+body[data-view="portfolio"] #view>.sec:nth-child(4n+3){--m:#E8A33A;background:var(--grain),linear-gradient(180deg,rgba(244,242,236,.97),rgba(232,230,223,.93))!important}
+body[data-view="portfolio"] #view>.sec:nth-child(4n+4){--m:#A9B3B8;background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.9),rgba(244,246,247,.86))!important}
+body[data-view="portfolio"] #view>.sec::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--m);opacity:.9;pointer-events:none}
+body[data-view="portfolio"] #view>.sec::after{content:counter(mod,decimal-leading-zero);position:absolute;top:10px;left:14px;padding:3px 6px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 7.5px/1 var(--mono);letter-spacing:.16em;box-shadow:0 1px 1px rgba(0,0,0,.25),12px 0 0 -12px transparent;pointer-events:none}
+body[data-view="portfolio"] #view>.sec>:first-child{position:relative}
+body[data-view="portfolio"] #view>.sec{background-position:0 0}
+html.night body[data-view="portfolio"] #view>.sec{background:var(--grain),linear-gradient(180deg,rgba(40,52,58,.82),rgba(28,36,40,.78))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.06),0 8px 20px rgba(0,0,0,.35)!important}
+/* the deck's main screen: a graphite chassis, black glass in it, the posters on a strip that slides; under the glass a small
+   display in the radar's light, and the keys */
+.gallery{place-items:stretch center!important;grid-template-rows:minmax(0,1fr)!important;padding:26px!important}
+.gl-deck{width:min(720px,100%);height:100%;max-height:980px;min-height:0;align-self:center;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px;padding:14px;border-radius:24px;background:var(--grain),linear-gradient(180deg,#2B2F33,#202326);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -2px 6px rgba(0,0,0,.4),0 30px 60px rgba(0,0,0,.28)}
+.gl-screen{position:relative;min-height:0;border-radius:12px;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#14191B,#07090A 75%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 3px 14px rgba(0,0,0,.75)}
+.gl-screen::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,0) 32%)}
+.gl-track{list-style:none;margin:0;padding:0;height:100%;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;outline:none}
+.gl-track::-webkit-scrollbar{display:none}
+.gl-slide{flex:0 0 100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;display:grid;place-items:center;padding:18px;min-width:0}
+.gl-slide .gl-hero{margin:0;padding:0!important;width:100%;height:100%;min-height:0;display:flex;align-items:center;justify-content:center;background:none!important;box-shadow:none!important;border-radius:0}
+.gl-slide .gl-hero::before{content:none!important}
+.gl-slide .gl-hero img{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:100%!important;object-fit:contain;transform:none!important;animation:none!important;cursor:zoom-in;box-shadow:0 18px 40px rgba(0,0,0,.6)!important;background:#fff}
+.gl-slide .gl-wait{width:64px;color:#9BFFE9}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.gl-bar{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px}
+.gl-vfd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-width:0;margin:0;padding:8px 12px 6px;border-radius:6px;background:#060909;color:#BFFFEF;font:400 17px/1 VT323,ui-monospace,monospace!important;letter-spacing:.08em;text-shadow:0 0 6px rgba(140,255,225,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 2px 6px rgba(0,0,0,.8)}
+.gl-vfd b{font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-vfd span{opacity:.7;white-space:nowrap}
+.gl-keys{display:flex;gap:7px}
+.gk{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:9px;cursor:pointer;color:#E9EEF0;background:radial-gradient(circle at 50% 30%,#4A5258,#3A4146 70%);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 3px rgba(0,0,0,.35),0 2px 3px rgba(0,0,0,.4)}
+.gk .i{width:18px;height:18px}
+.gk:active{transform:translateY(1px)}
+.gk:disabled{opacity:.32;cursor:default}
+.gk[data-gl="prev"],.gk[data-gl="next"]{border-radius:50%}
+@media (max-width:759px){.gallery{padding:10px!important}.gl-deck{padding:10px;border-radius:18px}.gl-bar{grid-template-columns:1fr}.gl-keys{justify-content:space-between}.gk{width:44px;height:44px}}
+/* close up: three sizes, scrolled about; the keys at the foot */
+.zoomv .zv-s{padding:56px 16px 96px}
+.zoomv .zv-s img{width:min(92vw,720px);cursor:zoom-in;transition:width .25s}
+.zoomv[data-lv="2"] .zv-s img{width:min(184vw,1440px)}
+.zoomv[data-lv="3"] .zv-s img{width:min(276vw,2160px);cursor:zoom-out}
+.zv-keys{position:fixed;left:50%;bottom:calc(16px + var(--bot,0px));z-index:2;display:flex;align-items:center;gap:8px;padding:8px;border-radius:14px;transform:translateX(-50%);background:rgba(32,35,38,.92);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.zv-l{min-width:34px;text-align:center;color:#BFFFEF;font:400 18px/1 VT323,ui-monospace,monospace;text-shadow:0 0 6px rgba(140,255,225,.55)}
+/* the turn-over key on each side: submarine yellow with a dark jellyfish on the quick side; green going to blue with a white one
+   on the studio side */
+.flip-b[data-face="front"]{color:#13202E;background:radial-gradient(circle at 36% 26%,rgba(255,255,255,.55),rgba(255,255,255,0) 58%),linear-gradient(135deg,#FFE14D,#F2B705);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 4px rgba(120,80,0,.3),0 0 0 2px rgba(255,255,255,.45),0 3px 8px rgba(80,60,0,.3)}
+.flip-b[data-face="front"] .i{filter:none}
+.flip-b[data-face="front"].hint::after{border-color:rgba(255,214,51,.95)}
+.vs-body .flip-b,.visor.mod .vs-body .flip-b{left:auto;right:20px;bottom:18px}
+.visor.mod .vs-body .flip-b{right:16px;bottom:16px}
+.dev.mod .mod-bolt.bl,.visor.mod .mod-bolt.bl{display:block}
+.dev.mod .mod-bolt.br,.visor.mod .mod-bolt.br,.band.dev.mod .mod-bolt.br{display:none}
+.band.dev.radio.mod .mod-label,.dev.tepra.mod .mod-label{left:26px}
+/* the label maker's printer light moves to the left, the turn-over key at its right */
+.dev.tepra:not(.mod) .tp-i{right:auto;left:16px}
+/* the El Niño switch's label: a strip of embossed label tape, stuck on by hand */
+.rn-tag{position:absolute;z-index:2;top:15px;left:54px;padding:3px 5px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 7.5px/1 var(--mono);letter-spacing:.16em;text-shadow:0 -.5px 0 rgba(255,255,255,.35),0 .5px 0 rgba(0,0,0,.6);transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
+body.nino .rn-tag{background:#3A0F0A}

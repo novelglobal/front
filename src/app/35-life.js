@@ -50,7 +50,8 @@ const life = (() => {
   /* half their full size from afar, growing back to full size close in (by zoom 16) */
   const halfAt = z => 0.5 + 0.5 * clamp((z - 13.5) / 2.5, 0, 1);
   const sizeAt = (z = zoomNow()) => Math.max(4, Math.round(clamp(13 + (z - 12.5) * 3.4, 13, 24) * kzAt(z) * halfAt(z) / 2) * 2);
-  const PHOTO_Z = 16.2;   /* closer than this, a life is its photograph */
+  const PHOTO_Z = 16.3;   /* closer than this, a life is its photograph; it goes back to its mark below 15.95 */
+  let photoZ = false; const photoMode = () => { const z = zoomNow(); photoZ = photoZ ? z >= 15.95 : z >= PHOTO_Z; return photoZ; };
   const HOVER_D = 88;     /* the photograph a mark grows into under the pointer */
   /* a living map: what is new is bright and full; what is old fades and shrinks to a small ghost */
   const ghostOf = o => { if (!o || o.hero || o.partner) return 1; const t = stampOf(o); if (!t) return 1; const days = (Date.now() - t) / 864e5; return clamp(1 - (days - 1) / 40, 0.28, 1); };
@@ -229,29 +230,8 @@ const life = (() => {
     for (const f of S.fountains) { const p = map.project([f.lng, f.lat]); f.x = p.x; f.y = p.y; }
     ringPts = ringOf(S.scan.lat, S.scan.lng, S.scan.r);
     const o = selected(); cellPts = o ? ringOf(o.lat, o.lng, rangeOf(o)) : [];
-    cluster(); spread(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+    cluster(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
   }
-  /* marks that would sit on each other move apart, with room between, each staying close to where it was seen.
-     On screen only: every print keeps the true coordinates */
-  function spread() {
-    const live = items.filter(it => !it.binned && (it.flag || it.inS || it.o.story) && it.b.tone !== 'hist' && !off(it.x, it.y, 80));
-    if (live.length < 2) return; const G = Math.max(...live.map(it => it.b.d)) + 2;
-    for (let pass = 0; pass < 3; pass++) {
-      const grid = new Map(); const cellOf = it => `${Math.floor((it.x + it.ox) / G)},${Math.floor((it.y + it.oy) / G)}`;
-      for (const it of live) { const k = cellOf(it); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(it); }
-      for (const it of live) {
-        const gx = Math.floor((it.x + it.ox) / G), gy = Math.floor((it.y + it.oy) / G);
-        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const ot of grid.get(`${gx + i},${gy + j}`) || []) {
-          if (ot === it) continue; let dx = it.x + it.ox - ot.x - ot.ox, dy = it.y + it.oy - ot.y - ot.oy; const need = (it.b.d + ot.b.d) / 2 + 4, L = Math.hypot(dx, dy); if (L >= need) continue;
-          if (L < 0.01) { const a = (it.phase - ot.phase) * TAU; dx = Math.cos(a); dy = Math.sin(a); } else { dx /= L; dy /= L; }
-          /* each pair is met twice in a pass, so each meeting moves both a quarter of the overlap */
-          const k = (need - L) / 4; it.ox += dx * k; it.oy += dy * k; ot.ox -= dx * k; ot.oy -= dy * k;
-        }
-      }
-    }
-    for (const it of live) { const m = Math.hypot(it.ox, it.oy), cap = it.b.d * 1.2; if (m > cap) { it.ox *= cap / m; it.oy *= cap / m; } it.x += it.ox; it.y += it.oy; it.ox = 0; it.oy = 0; }
-  }
-  const zoomQuiet = () => zoomNow() < 14.2;
   /* what the ground shows, item by item */
   function shown(it) {
     const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
@@ -268,19 +248,19 @@ const life = (() => {
   }
   /* density: at a distance, quiet records that share a place become one stack, showing the kind seen most */
   function cluster() {
-    bins = []; if (!zoomQuiet()) { for (const it of items) it.binned = false; return; }
-    const z = zoomNow(); const G = (curD + 10) * (z < 12.5 ? 2.4 : z < 13.5 ? 1.8 : 1.25), m = new Map();
+    bins = []; const z = zoomNow(); const R = (curD + 2) * (z < 13.5 ? 1.9 : z < 14.5 ? 1.45 : z < 16 ? 1.05 : 0.85);
+    const grid = new Map(); const cell = (x, y) => `${Math.floor(x / R)},${Math.floor(y / R)}`;
+    const stand = it => { const k = cell(it.x, it.y); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(it); };
+    const near = it => { const gx = Math.floor(it.x / R), gy = Math.floor(it.y / R); for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (const o of grid.get(`${gx + i},${gy + j}`) || []) if (Math.hypot(o.x - it.x, o.y - it.y) < R) return o; return null; };
+    const rest = [];
     for (const it of items) {
-      it.binned = false; if (!shown(it) || it.flag || it.pulse || it.b.tone === 'hist' || it.o.hum || (S.mode === 'ping' && strings.lifeNode(it.o.id))) continue;
-      const k = `${Math.floor(it.x / G)},${Math.floor(it.y / G)}`; if (!m.has(k)) m.set(k, []); m.get(k).push(it);
+      it.binned = false; it.pile = 0; if (!shown(it) || off(it.x, it.y, 60)) continue;
+      if (it.flag || it.pulse || it.o.hum || (S.mode === 'ping' && strings.lifeNode(it.o.id))) stand(it); else rest.push(it);
     }
-    for (const list of m.values()) {
-      if (list.length < 2) continue; let x = 0, y = 0; const count = new Map();
-      for (const it of list) { x += it.x; y += it.y; it.binned = true; const key = `${it.b.g}|${it.b.tone}`; count.set(key, (count.get(key) || 0) + 1); }
-      const [g, tone] = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0].split('|');
-      bins.push({ x: x / list.length, y: y / list.length, n: list.length, b: { g, tone: tone === 'cold' ? M.toneOf(g) : tone, d: Math.round(curD + 2 + Math.min(10, Math.log2(list.length) * 2.2)), n: list.length } });
-    }
+    rest.sort((a, b) => (b.b.tier || 0) - (a.b.tier || 0) || (b.inS ? 1 : 0) - (a.inS ? 1 : 0) || (b.fade || 0) - (a.fade || 0) || String(a.o.id).localeCompare(String(b.o.id)));
+    for (const it of rest) { const o = near(it); if (o) { o.pile++; it.binned = true; } else stand(it); }
   }
+
 
   /* ───────── the ground layer: the radar's mask and ticks, the patches it holds, water and heat on a hot day ───────── */
   const off = (x, y, m = 50) => x < -m || y < -m || x > W + m || y > H + m;
@@ -320,79 +300,78 @@ const life = (() => {
     /* the radar's rim: a hairline and a notch at north */
     if (placed() && ringPts.length) {
       const cp = map.project([S.scan.lng, S.scan.lat]);
-      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; if (!darkNow() && !quiet) { ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(4,34,40,.5)'; ctx.lineWidth = 3; ctx.stroke(); } ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = 'rgba(255,255,255,.55)'; ctx.shadowBlur = 9; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
+      const quiet = cellOpen || S.mode === 'tribe'; ctx.save(); ctx.globalAlpha = quiet ? 0.35 : 1; if (!quiet) { ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = 3; ctx.stroke(); } ctx.beginPath(); poly(ctx, ringPts); ctx.strokeStyle = vf(0.88); ctx.lineWidth = 1.1; if (quiet) ctx.setLineDash([3, 4]); else { ctx.shadowColor = vf(0.75); ctx.shadowBlur = 8; } ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.setLineDash([]);
       const [nx, ny] = ringPts[0]; const ux = (nx - cp.x) / (Math.hypot(nx - cp.x, ny - cp.y) || 1), uy = (ny - cp.y) / (Math.hypot(nx - cp.x, ny - cp.y) || 1);
-      ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = C.white; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(nx + ux * 9, ny + uy * 9); ctx.lineTo(nx + ux * 2 - uy * 4, ny + uy * 2 + ux * 4); ctx.lineTo(nx + ux * 2 + uy * 4, ny + uy * 2 - ux * 4); ctx.closePath(); ctx.fillStyle = vf(0.95); ctx.fill();
       ctx.restore();
     }
     /* WATER, or any hot day, inside the radar: drinking water; on a hot day, the air temperature now */
     if (T4.water || (S.wx.tmax || 0) >= HEAT.hot) {
-      for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.restore(); M.icon(ctx, 'water', f.x, f.y, 10, C.cobalt); }
+      for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; M.icon(ctx, 'water', f.x, f.y, 14, '#5CC8F2', 1.2); ctx.restore(); }
       for (const s of S.sensors) {
         if (s.x == null || !inScan(s.lat, s.lng)) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
-        ctx.fillStyle = s.t >= HEAT.hot ? C.orange : C.white; ctx.fillRect(s.x - w / 2, s.y - 7, w, 14); ctx.fillStyle = C.navy; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, s.x, s.y + 0.5); ctx.restore();
+        ctx.fillStyle = 'rgba(8,14,16,.72)'; ctx.fillRect(s.x - w / 2, s.y - 7, w, 14); ctx.fillStyle = s.t >= HEAT.hot ? '#FF8A5C' : '#DFFFF8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, s.x, s.y + 0.5); ctx.restore();
       }
     }
   }
 
-  /* the radar as a disc of glass over the ground: light gathered at its upper edge, a brighter rim within, a record's fine
-     grooves, and a small clay label at its centre */
+  /* the radar as a vacuum-fluorescent display under a bell of clear water: smoked glass a little darker than the ground, the
+     display's fine grid behind it, its lines lit soft and pale, never a colour. In El Niño mode its light runs red */
+  const vfdRGB = () => (prefs.nino ? [255, 104, 64] : [216, 255, 246]);
+  const vf = a => { const [r, g, b] = vfdRGB(); return `rgba(${r},${g},${b},${Math.max(0, a).toFixed(3)})`; };
+  let meshP = null;
+  const mesh = ctx => meshP || (meshP = (() => { const c = document.createElement('canvas'); c.width = c.height = 5; const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(2, 2, 1, 1); return ctx.createPattern(c, 'repeat'); })());
   function glass(ctx) {
     const cp = map.project([S.scan.lng, S.scan.lat]); const R = Math.hypot(ringPts[0][0] - cp.x, ringPts[0][1] - cp.y); if (!(R > 8)) return;
     const ring = f => { ctx.beginPath(); ringPts.forEach(([x, y], i) => { const px = cp.x + (x - cp.x) * f, py = cp.y + (y - cp.y) * f; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); };
-    const hot = heatAhead(), day = !darkNow(); ctx.save(); ring(1); ctx.clip();
-    ctx.fillStyle = hot >= 2 ? `rgba(255,${hot >= 4 ? 70 : 110},30,${(0.05 + hot * 0.035).toFixed(3)})` : day ? 'rgba(8,74,84,.13)' : 'rgba(150,225,230,.075)'; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
-    /* the bell's ridges, faint, and a band of lighter water along its upper edge */
-    ctx.lineWidth = 1; for (const f of [0.34, 0.58, 0.8]) { ring(f); ctx.strokeStyle = hot >= 2 ? 'rgba(255,170,120,.07)' : 'rgba(200,245,245,.06)'; ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(cp.x, cp.y, R * 0.93, Math.PI * 1.08, Math.PI * 1.62); ctx.lineWidth = Math.max(2, R * 0.03); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(235,252,252,.10)'; ctx.stroke();
-    ring(0.975); ctx.lineWidth = 1; ctx.strokeStyle = hot >= 2 ? `rgba(255,120,60,${(0.2 + hot * 0.08).toFixed(2)})` : day ? 'rgba(4,40,48,.3)' : 'rgba(210,245,245,.24)'; ctx.stroke();
+    ctx.save(); ring(1); ctx.clip();
+    ctx.fillStyle = prefs.nino ? 'rgba(46,8,2,.24)' : 'rgba(5,12,14,.2)'; ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2);
+    ctx.globalAlpha = 0.075; ctx.fillStyle = mesh(ctx); ctx.fillRect(cp.x - R * 1.1, cp.y - R * 1.1, R * 2.2, R * 2.2); ctx.globalAlpha = 1;
+    ctx.lineWidth = 1; ctx.setLineDash([2, 5]); for (const f of [0.33, 0.58, 0.82]) { ring(f); ctx.strokeStyle = vf(0.13); ctx.stroke(); } ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(cp.x, cp.y, R * 0.94, Math.PI * 1.1, Math.PI * 1.6); ctx.lineWidth = Math.max(2, R * 0.024); ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.stroke();
     ctx.restore();
-    /* the centre: clear glass, a lens to press, not a colour */
-    const lr = Math.max(10, R * 0.07); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU);
-    ctx.fillStyle = 'rgba(220,250,250,.10)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.42)'; ctx.stroke(); ctx.restore();
+    /* the centre: a small lit ring, a lens to press */
+    const lr = Math.max(9, R * 0.06); ctx.save(); ctx.beginPath(); ctx.arc(cp.x, cp.y, lr, 0, TAU); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = vf(0.6); ctx.shadowColor = vf(0.8); ctx.shadowBlur = 6; ctx.stroke(); ctx.restore();
   }
 
   /* ───────── the marks layer ───────── */
   const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
   const back = k => { k = clamp(k, 0, 1); const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
   function drawItem(ctx, it, m, a = 1, k = 1) {
-    const sp = M.badgeSprite(it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
+    const sp = M.badgeSprite(it.pile ? { ...it.b, n: it.pile + 1 } : it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
     if (m && m.thread) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
     ctx.globalAlpha = a;
     if ((m && (m.rot || m.sx !== 1)) || k !== 1 || it.tilt) { ctx.save(); ctx.translate(x, y); ctx.rotate(it.tilt || 0); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
     else ctx.drawImage(sp.cv, x - sp.size / 2, y - sp.size / 2, sp.size, sp.size);
     ctx.globalAlpha = 1;
   }
-  /* the jellyfish's own colour, never quite green and never quite blue: a slow drift between the two. Deep ink by day, light by night */
-  const SHIM = { day: [[0, 112, 104], [18, 78, 170]], night: [[150, 242, 222], [146, 196, 255]] };
-  const shim = (now, a) => { const [g, b] = SHIM[darkNow() ? 'night' : 'day']; const k = (Math.sin(now / 2600) + 1) / 2; return `rgba(${g.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')},${Math.max(0, a).toFixed(3)})`; };
   /* the hand and its wake, drawn on the ground. With motion off it stands still where it is, so the radar still reads as one;
      while a loop plays it is quiet, and fainter */
   function hand(ctx, still) {
     const c = map.project([S.scan.lng, S.scan.lat]); const at = b => { const [la, ln] = dest(S.scan.lat, S.scan.lng, S.scan.r, b); return map.project([ln, la]); };
-    const now = performance.now(), day = !darkNow(), A = (day ? 0.3 : 0.19) * (LOOP.on ? 0.5 : 1);
+    const now = performance.now(), A = 0.26 * (LOOP.on ? 0.5 : 1);
     ctx.save();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 16; i++) {
       const b1 = sweepB - i * 3, b0 = b1 - 3; const p0 = at(b0), p1 = at((b0 + b1) / 2), p2 = at(b1);
       ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.closePath();
-      ctx.fillStyle = shim(now, A * Math.pow(1 - i / 14, 1.7)); ctx.fill();
+      ctx.fillStyle = vf(A * Math.pow(1 - i / 16, 1.8)); ctx.fill();
     }
     const tip = at(sweepB);
-    if (day) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = shim(now, 0.85); ctx.lineWidth = 3.2; ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tip.x, tip.y); ctx.strokeStyle = vf(0.95); ctx.lineWidth = 1.2; ctx.shadowColor = vf(0.85); ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowColor = 'transparent';
     const Rp = Math.hypot(tip.x - c.x, tip.y - c.y);
-    if (Rp > 20 && !still) { const hot = heatAhead(); const per = 7000 / tempo(); for (let k = 0; k < 2; k++) { const f = ((now + k * per / 2) % per) / per; ctx.beginPath(); ctx.arc(c.x, c.y, Rp * (0.12 + f * 0.86), 0, TAU); ctx.lineWidth = 1 + (1 - f) * 2; ctx.strokeStyle = hot >= 2 ? `rgba(255,140,80,${(0.16 * (1 - f)).toFixed(3)})` : shim(now, (day ? 0.3 : 0.12) * (1 - f)); ctx.stroke(); } }
-    if (Rp > 8 && S.mode !== 'ping') for (const off of [62, 242]) {
-      ctx.beginPath(); ctx.moveTo(c.x, c.y); for (let d = -24; d <= 24; d += 4) { const p = at(sweepB + off + d); ctx.lineTo(p.x, p.y); } ctx.closePath();
-      const sh = ctx.createRadialGradient(c.x, c.y, Rp * 0.1, c.x, c.y, Rp); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.6, 'rgba(255,255,255,.06)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = sh; ctx.fill();
+    /* the bell's pulse: two soft rings rising from the centre, and the rim breathing with them */
+    if (Rp > 20 && !still) {
+      const per = 7000 / tempo(); for (let k = 0; k < 2; k++) { const f = ((now + k * per / 2) % per) / per; ctx.beginPath(); ctx.arc(c.x, c.y, Rp * (0.12 + f * 0.86), 0, TAU); ctx.lineWidth = 1 + (1 - f) * 1.6; ctx.strokeStyle = vf(0.16 * (1 - f)); ctx.stroke(); }
+      const br = 0.5 + 0.5 * Math.sin(now / 760); ctx.beginPath(); ctx.arc(c.x, c.y, Rp, 0, TAU); ctx.lineWidth = 4; ctx.strokeStyle = vf(0.05 + 0.07 * br); ctx.shadowColor = vf(0.5); ctx.shadowBlur = 12; ctx.stroke(); ctx.shadowColor = 'transparent';
     }
     ctx.restore();
   }
   function loopRing(ctx, now, still) {
     const w = LOOP.m.where; if (haversine(w.lat, w.lng, S.scan.lat, S.scan.lng) < 25 && Math.abs((w.r || 0) - S.scan.r) < 25) return; const pts = ringOf(w.lat, w.lng, w.r, 64); const c = map.project([w.lng, w.lat]); const [la, ln] = dest(w.lat, w.lng, w.r, loopBearing()); const p = map.project([ln, la]);
-    ctx.save(); ctx.lineWidth = 1.6; ctx.strokeStyle = shim(now, 0.95); ctx.setLineDash([5, 6]); ctx.beginPath(); poly(ctx, pts); ctx.stroke(); ctx.setLineDash([]);
+    ctx.save(); ctx.lineWidth = 1.4; ctx.strokeStyle = vf(0.8); ctx.shadowColor = vf(0.6); ctx.shadowBlur = 6; ctx.setLineDash([5, 6]); ctx.beginPath(); poly(ctx, pts); ctx.stroke(); ctx.setLineDash([]);
     if (!still) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, TAU); ctx.fillStyle = shim(now, 1); ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(c.x, c.y, 3.5, 0, TAU); ctx.fillStyle = vf(1); ctx.fill(); ctx.restore();
   }
   /* the partner places with a W.I.S.H. printer: always on the map, wherever the radar is, a little larger than a life */
   const printerSize = () => Math.round(clamp(24 + (zoomNow() - 13) * 4, 28, 40));
@@ -441,13 +420,13 @@ const life = (() => {
   function photoOf(o, size) {
     const sub = subjectOf(o); const tx = sub && sub.tx && sub.tx.id ? TXI[sub.tx.id] : null;
     const src = o.photo || (sub && sub.ph && licOpen(sub.ph.l) ? photoURL(sub.ph.u, size) : '') || (tx && tx.ph ? photoURL(tx.ph.u, size) : ''); if (!src) return null;
-    let e = PH.get(src); if (!e) { if (PH.size > 240) PH.clear(); e = { im: new Image(), ok: false }; e.im.decoding = 'async'; e.im.onload = () => { e.ok = true; fxDirty = true; }; e.im.src = src; PH.set(src, e); }
+    let e = PH.get(src); if (e) { PH.delete(src); PH.set(src, e); } else { while (PH.size >= 600) PH.delete(PH.keys().next().value); e = { im: new Image(), ok: false }; e.im.decoding = 'async'; e.im.onload = () => { e.ok = true; e.im._at = performance.now(); fxDirty = true; }; e.im.src = src; PH.set(src, e); }
     return e.ok ? e.im : null;
   }
   function photoDisc(ctx, im, x, y, d, ring) {
-    const r = d / 2; ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = C.white; ctx.fill(); ctx.clip();
+    const r = d / 2; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = '#1B1F21'; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.clip();
     const s = Math.max(d / im.naturalWidth, d / im.naturalHeight); ctx.drawImage(im, x - im.naturalWidth * s / 2, y - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s); ctx.restore();
-    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.strokeStyle = ring || C.white; ctx.lineWidth = 2; ctx.stroke();
+    if (ring) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.strokeStyle = ring; ctx.lineWidth = 2; ctx.stroke(); }
   }
   /* the cell chosen: a point becomes a line, the line a boundary, and the boundary holds the knots */
   function selection(ctx, now) {
@@ -479,7 +458,7 @@ const life = (() => {
     places(ctx); signals(ctx, now, still); posters(ctx);
     /* where something sounded: a ring opening from it */
     for (const p of pings) { const q = (now - p.t) / 750; if (q < 0 || q > 1) continue; const pt = map.project([p.lng, p.lat]); ctx.save(); ctx.beginPath(); ctx.arc(pt.x, pt.y, 5 + q * 20, 0, TAU); ctx.strokeStyle = `rgba(${p.c},${(0.75 * (1 - q)).toFixed(3)})`; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); fxDirty = true; }
-    for (const b of bins) { const sp = M.badgeSprite(b.b, dpr); ctx.drawImage(sp.cv, b.x - sp.size / 2, b.y - sp.size / 2, sp.size, sp.size); }
+    const pz = photoMode();
     for (const it of items) {
       if (it.binned || !shown(it) || off(it.x, it.y)) continue;
       const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'partner' ? 0.55 : 1;
@@ -489,10 +468,10 @@ const life = (() => {
       const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = (age < 420 ? back(age / 420) : 1) * (0.55 + 0.45 * it.fade);
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
       /* inside an open cell the other lives show themselves too, as photographs */
-      const close = zoomNow() >= PHOTO_Z && !it.o.hum && !it.o.story && it.b.tone !== 'hist';
-      const im = (node || close) && !it.o.hum ? photoOf(it.o, 'square') : null;
-      if (im) { ctx.save(); ctx.globalAlpha = node ? 1 : a * (0.35 + 0.65 * it.fade); photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 24 : 21, it.b.d * 1.62) * k), it.alarm ? C.red : C.white); ctx.restore(); continue; }
-      drawItem(ctx, it, m, a * (0.3 + 0.7 * it.fade), k);
+      const close = pz && !it.o.hum && !it.o.story && it.b.tone !== 'hist';
+      const im = (node || close) && !it.o.hum ? photoOf(it.o, 'square') : null; const fa = im ? clamp((now - (im._at || 0)) / 260, 0, 1) : 0;
+      if (fa < 1) drawItem(ctx, it, m, a * (0.3 + 0.7 * it.fade) * (1 - fa), k);
+      if (im) { ctx.save(); ctx.globalAlpha = (node ? 1 : a * (0.35 + 0.65 * it.fade)) * fa; photoDisc(ctx, im, it.x + (m ? m.dx : 0), it.y + (m ? m.dy : 0), Math.round(Math.max(node ? 24 : 21, it.b.d * 1.62) * k), it.alarm ? C.red : null); ctx.restore(); if (fa < 1) fxDirty = true; }
     }
     printers(ctx, t, still);
     /* a song from the centre: each note lights where it was tied */
@@ -502,7 +481,7 @@ const life = (() => {
        The tag beside it carries the words only */
     if (hoverH && hoverH.kind === 'cell') { const it = items.find(z => z.o.id === hoverH.id); if (it && it.o.id !== S.sel && shown(it)) {
       const g = still ? 1 : ease((now - hoverAt) / 90); const D = Math.round(it.b.d + (HOVER_D - it.b.d) * g); const x = it.x + it.dx, y = it.y + it.dy; const im = !it.o.hum ? photoOf(it.o, 'small') : null;
-      if (im) photoDisc(ctx, im, x, y, D, it.o.story ? C.cobalt : it.alarm ? C.red : C.white); else M.badge(ctx, { ...it.b, a: 1, d: Math.round(it.b.d + (30 - it.b.d) * g) }, x, y);
+      if (im) photoDisc(ctx, im, x, y, D, it.o.story ? C.cobalt : it.alarm ? C.red : null); else M.badge(ctx, { ...it.b, a: 1, d: Math.round(it.b.d + (30 - it.b.d) * g) }, x, y);
       if (g < 1) fxDirty = true; } }
     /* the record being placed breathes: one ring leaving it, until it is placed */
     if (S.mode === 'place' && S.place && !still) { const q = map.project([S.place.lng, S.place.lat]); const k = (now / 1400) % 1; ctx.save(); ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(q.x, q.y, 14 + k * 26, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.8; ctx.stroke(); ctx.restore(); }
@@ -580,7 +559,9 @@ const life = (() => {
     if (seeTrack('places') && S.mode !== 'ping') placesL.forEach((p, i) => { if (p._x != null) consider(Math.hypot(p._x - x, p._y - y) - 5, { kind: 'place', id: i }); });
     const pd = printerSize() / 2 + 4; for (const p of PARTNERS) if (p.printer && p._x != null && Math.abs(p._x - x) < pd && y - p._y < pd && p._y - y < pd + 6) return { kind: 'partner', id: p.id, d: 0 };
     for (const b of bins) if (Math.abs(b.x - x) < b.b.d / 2 + 4 && Math.abs(b.y - y) < b.b.d / 2 + 4) { if (!peek) { map.easeTo({ center: map.unproject([b.x, b.y]), zoom: map.getZoom() + 1.6, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
-    for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2; consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
+    for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2;
+      if (it.pile >= 2 && zoomNow() < 15.4 && d <= slack) { if (!peek) { map.easeTo({ center: [it.lng, it.lat], zoom: map.getZoom() + 1.4, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
+      consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
     if (!best && !peek && S.mode !== 'ping') { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => (S.mode === 'tribe' || inScan(ll.lat, ll.lng)) && inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
     return best;
   }
@@ -636,7 +617,7 @@ const life = (() => {
     audio.onended = () => { if (btn) btn.innerHTML = icon('play'); };
   }
   return {
-    start, data, resize, sweepAt: () => sweepB, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
+    start, data, resize, tempo, sweepAt: () => sweepB, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
     seen: () => seen, reveal: revealAll, climateIn, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
     get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown,

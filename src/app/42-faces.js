@@ -8,8 +8,9 @@
 const FACED = [0, 1, 2];
 const faceOf = i => (FACED.includes(i) ? ((prefs.face || {})[i] === 'back' ? 'back' : 'front') : 'back');
 function setFace(i, f) { prefs.face = { ...(prefs.face || {}), [i]: f }; savePrefs(); }
-/* the key that turns a device over: the jellyfish, small and round, green going to blue, in the same place on every device and
-   both its faces, at its foot on the left. It wiggles on each page until it has been pressed there once */
+/* the key that turns a device over: the jellyfish, small and round, in the same place on every device and both its faces, at
+   its foot on the right; submarine yellow on the quick side, green going to blue on the studio side. It wiggles on each page
+   until it has been pressed there once */
 const FLIP_SVG = '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9V6.4C3 3.6 5.2 2 8 2s5 1.6 5 4.4V9c-1.5.6-3.2.9-5 .9S4.5 9.6 3 9z" fill="currentColor"/><path d="M4.8 10.6c-.6 1.3.6 2.1 0 3.4M7 10.9c-.6 1.5.6 2.3 0 3.8M9 10.9c-.6 1.5.6 2.3 0 3.8M11.2 10.6c-.6 1.3.6 2.1 0 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 const flipBtn = () => { const f = faceOf(S.view); return FACED.includes(S.view) ? `<button type="button" class="flip-b${(prefs.flipped || {})[S.view] ? '' : ' hint'}" data-flip data-face="${f}" aria-label="${f === 'front' ? 'Turn over: the studio' : 'Turn back: the quick way'}">${FLIP_SVG}</button>` : ''; };
 function flip() {
@@ -21,6 +22,46 @@ function flip() {
   setTimeout(() => { go(); viewEl.classList.remove('flip-out'); viewEl.classList.add('flip-in'); setTimeout(() => viewEl.classList.remove('flip-in'), 380); }, 190);
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-flip]')) flip(); });
+/* ───────── on a phone the device rides a rail: up from the foot over the big screen, and a finger slides it up and down, never
+   sideways and never larger, from all of it in view to only its head showing; the tab pressed again lowers it, and brings it
+   back. Where its head stands is shared (--dev-top), so the receipt and the strip keep clear of it ───────── */
+const RAIL = { y: 0, lo: 0, hi: 0, dflt: 0, key: '', drag: null };
+const LIP = 58;
+const railOn = () => phone() && S.open && !S.mode && S.view < 3 && !document.body.classList.contains('rec');
+const railAnchor = () => viewEl.querySelector('.dev.tepra, #sec-heat, #sec-wish, #sec-out') || viewEl.firstElementChild;
+function railSet(y) {
+  RAIL.y = clamp(y, RAIL.hi, RAIL.lo); viewEl.style.setProperty('--rail', `${Math.round(RAIL.y)}px`);
+  const a = railAnchor(); document.documentElement.style.setProperty('--dev-top', `${Math.round(Math.max(0, RAIL.y + (a ? a.offsetTop : 0)))}px`);
+}
+function railFit(to) {
+  if (!railOn()) { viewEl.style.removeProperty('--rail'); document.documentElement.style.removeProperty('--dev-top'); RAIL.key = ''; return; }
+  const avail = $('#panel').clientHeight, D = viewEl.offsetHeight; if (!avail || !D) return;
+  const a = railAnchor(); const ab = a ? a.offsetTop + a.offsetHeight : D;
+  RAIL.hi = avail - D; RAIL.lo = Math.max(RAIL.hi, avail - LIP); RAIL.dflt = clamp(avail - ab - 6, RAIL.hi, RAIL.lo);
+  const key = `${S.view}|${faceOf(S.view)}`;
+  if (to === 'lo') railSet(RAIL.lo); else if (to === 'dflt' || key !== RAIL.key) railSet(pane === 'main' ? RAIL.lo : RAIL.dflt); else railSet(RAIL.y);
+  RAIL.key = key;
+}
+new ResizeObserver(() => { if (railOn() && !RAIL.drag) railFit(); }).observe(viewEl);
+addEventListener('resize', () => railFit());
+viewEl.addEventListener('pointerdown', e => {
+  if (!railOn() || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('input, textarea, select, [contenteditable]')) return;
+  RAIL.drag = { id: e.pointerId, y0: e.clientY, r0: RAIL.y, on: false };
+});
+addEventListener('pointermove', e => {
+  const d = RAIL.drag; if (!d || e.pointerId !== d.id) return; const dy = e.clientY - d.y0;
+  if (!d.on) { if (Math.abs(dy) < 8) return; d.on = true; document.body.classList.add('railing'); }
+  railSet(d.r0 + dy);
+});
+function railEnd(e) {
+  const d = RAIL.drag; if (!d || e.pointerId !== d.id) return; RAIL.drag = null; if (!d.on) return;
+  document.body.classList.remove('railing');
+  /* a slide is not a press: the click that ends it is let go */
+  if (e.type === 'pointerup') { const stop = ev => { ev.stopPropagation(); ev.preventDefault(); }; addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 400); }
+  pane = RAIL.y >= RAIL.lo - 8 ? 'main' : 'page'; syncDock();
+}
+addEventListener('pointerup', railEnd); addEventListener('pointercancel', railEnd);
+
 /* what an opened device shows: its board at the head, four standoffs, one cable plugged in, and its plate: its name, its step */
 const mods = (n, st) => `<i class="mod-cap" aria-hidden="true"></i>${['tl', 'tr', 'bl', 'br'].map(c => `<i class="mod-bolt ${c}" aria-hidden="true"></i>`).join('')}<i class="mod-cable" aria-hidden="true"></i><span class="mod-label" data-n="${n}" data-st="${st}" aria-hidden="true"><i></i></span>`;
 
@@ -31,7 +72,7 @@ const knobPos = k => (trackOn(k) ? volStep(k) + 1 : 0);
 function radioFront() {
   const first = !S.started && !prefs.placed;
   return `<section class="band front-r" id="sec-heat"><div class="dev radio">`
-    + `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button>`
+    + `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`
     + `<div class="rd-top"><i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${first ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button></div>`
     + `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
       + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`
@@ -49,7 +90,7 @@ viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-nino]'); if (!b) return; prefs.nino = !prefs.nino; savePrefs();
   b.classList.toggle('on', prefs.nino); b.setAttribute('aria-checked', String(prefs.nino)); document.body.classList.toggle('nino', prefs.nino);
-  snd.tick(prefs.nino ? 2400 : 900); buzz(prefs.nino ? [10, 20, 10] : 6); life.redraw();
+  snd.tick(prefs.nino ? 2400 : 900); buzz(prefs.nino ? [10, 20, 10] : 6); life.moved(); life.redraw();
 });
 viewEl.addEventListener('keydown', e => { const k = e.target.closest('[data-knob]'); if (!k) return; const d = /Right|Up/.test(e.key) ? 1 : /Left|Down/.test(e.key) ? -1 : 0; if (!d) return; e.preventDefault(); e.stopPropagation(); turnKnob(k.dataset.knob, d, true); });
 /* once the radio has played a while, and no W.I.S.H. is begun, its tab glows until it is opened */
@@ -103,7 +144,7 @@ const wishPreview = debounce(async () => {
 /* ───────── PRINT, the front: a label maker in matte graphite, its board seen through a smoked cap. Its screen holds the words
    to set; three keys, words, a sticker, a photograph; and one key, the printer, that prints. The printer's name and state stay
    out of sight until its light is pressed ───────── */
-const TP_KEYS = [['text', '', 'teal', 'Words'], ['stk', 'star5', 'green', 'A sticker'], ['image', 'camera', 'orange', 'A photograph']];
+const TP_KEYS = [['text', '', 'teal', 'Words'], ['stk', 'star5', 'green', 'A sticker'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
 function printFront() {
   const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
   return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
@@ -113,6 +154,6 @@ function printFront() {
     + `${flipBtn()}</div></section>`;
 }
 viewEl.addEventListener('click', e => {
-  const k = e.target.closest('[data-tp]'); if (k) { zineTool(k.dataset.tp); return; }
+  const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => o.daKind !== 'base') : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
   const pr = e.target.closest('[data-prn]'); if (pr) { const i = $('#tp-info') || $('#ps-info'); if (!i) return; i.hidden = !i.hidden; pr.setAttribute('aria-expanded', String(!i.hidden)); snd.tick(i.hidden ? 1100 : 1800); buzz(5); }
 });

@@ -25,7 +25,7 @@ window.DA_EXAMPLES = [
    tape, and the orangutan's own constellation sung with the lives around it. */
 window.DA_EXAMPLE_KIT = {
   code: 'DA-0RNG', v: 1,
-  mix: { r: 600, layers: { life: { on: true, lvl: 1, mood: 'collective' }, community: { on: true, lvl: 0.7, mood: 'cheek' }, water: { on: true, lvl: 0.7, mood: 'jelly' }, pollution: { on: true, lvl: 0.35, mood: 'haunt' } } },
+  mix: { where: { lat: -37.7865, lng: 144.9515 }, r: 700, layers: { life: { on: true, lvl: 1, mood: 'dub' }, community: { on: true, lvl: 0.35, mood: 'burial' }, water: { on: true, lvl: 0.7, mood: 'weight' }, pollution: { on: false, lvl: 0.35, mood: 'haunt' } } },
   photos: [
     { u: 'https://inaturalist-open-data.s3.amazonaws.com/photos/453949619/medium.jpeg', by: 'CC0', at: 'Gunung Leuser, Sumatra', obs: 253517410 },
     { u: 'https://inaturalist-open-data.s3.amazonaws.com/photos/457027309/medium.jpg', by: '© Ioannis Magouras · CC BY', at: 'Gunung Leuser, Sumatra', obs: 255071917 },

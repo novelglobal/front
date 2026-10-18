@@ -319,6 +319,33 @@ const snd = (() => {
   }
   /* COLLECTIVE: a small choir in a canyon. Three voices on an open chord, each vowel opening as it sings, every note thrown back
      left and right twice, softer each time; round and bright, no drums */
+  /* DUB: a deep round note from below, and a short muted chord thrown into a tape echo that repeats and darkens, a dotted
+     eighth at 120 apart. Every note is a cell the hand found; nothing plays under them. The voice a cell has decides which:
+     the note and the chord, the chord alone, or the note alone */
+  let dubIn = null;
+  function dubEcho() {
+    if (dubIn) return dubIn;
+    dubIn = ctx.createGain(); const d = ctx.createDelay(2); d.delayTime.value = 0.375; const fb = ctx.createGain(); fb.gain.value = 0.5;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 220; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1700;
+    dubIn.connect(d); d.connect(hp); hp.connect(lp); lp.connect(fb); fb.connect(d);
+    const o = ctx.createGain(); o.gain.value = 0.8; lp.connect(o); out(o, 0, 0.5);
+    return dubIn;
+  }
+  function dubV(f, t, v, pan, bright, danger, vi) {
+    const k = (vi || 0) % 3;
+    if (k !== 1) {
+      let b = f; while (b > 82) b /= 2; while (b < 41) b *= 2;
+      const e = ctx.createGain(); const o = osc('sine', b * 1.6, t, t + 1.9); o.frequency.exponentialRampToValueAtTime(b, t + 0.08); o.connect(e);
+      const o2 = osc('triangle', b * 2, t, t + 0.6); const g2 = ctx.createGain(); g2.gain.value = 0.18; o2.connect(g2); g2.connect(e);
+      env(e, t, 0.01, v * 3, 0.16, 1.4); out(e, pan * 0.25, 0.2);
+    }
+    if (k !== 2) {
+      let c = f; while (c > 560) c /= 2; while (c < 280) c *= 2;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = bright ? 1500 : 1000; bp.Q.value = 1.6; const e = ctx.createGain(); bp.connect(e);
+      for (const n of k === 0 ? [0, 3, 7] : [0, 5, 10]) for (const dt of [-7, 7]) { const so = osc('sawtooth', semi(c, n), t, t + 0.22); so.detune.value = dt; so.connect(bp); }
+      env(e, t, 0.004, v * (danger ? 0.9 : 0.6), 0.05, 0.1); out(e, pan, 0.3); e.connect(dubEcho());
+    }
+  }
   function collectiveV(f, t, v, pan, bright, danger, vi) {
     const chord = [0, 7, (vi || 0) % 2 ? 16 : 15]; const L = 0.62;
     for (let echo = 0; echo < 3; echo++) {
@@ -371,7 +398,7 @@ const snd = (() => {
     ping(spec, f, opt = {}) {
       if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
       const t0 = ctx.currentTime + 0.01; const t = prefs.nino ? Math.ceil(t0 / 0.125) * 0.125 : t0; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
-      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, blown: blownV }[md];
+      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, dub: dubV, blown: blownV }[md];
       if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
       return true;
     },
