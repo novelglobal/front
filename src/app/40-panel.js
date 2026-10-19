@@ -280,11 +280,11 @@ function stepNow() {
   return now < 0 ? { now: -1 } : { n: 3, now, w: rows[now].w, go: rows[now].go };
 }
 const stepAttr = () => { const st = stepNow(); return ` data-st='${esc(JSON.stringify(st))}'${st.share ? ' data-share-mix' : st.go != null ? ` data-go-view="${st.go}"` : ''}`; };
-const stepWords = () => { const st = stepNow(); return st.now >= 0 ? `${st.now + 1}/${st.n} ${String(st.w).toUpperCase()}` : 'EL NIÑO'; };
+const stepWords = () => { const st = stepNow(); return st.now >= 0 ? String(st.w).toUpperCase() : 'EL NIÑO'; };
 let cdT = 0;
 setInterval(() => {
   const el = document.querySelector('#sec-heat .cd'); if (!el || document.hidden) return; cdT++; let st = null; try { st = JSON.parse(el.dataset.st || 'null'); } catch (e) { st = null; }
-  const showSt = st && st.now >= 0 && (cdT % 9 >= 5 || !el.dataset.to);
+  const showSt = st && st.now >= 0 && (cdT % 8 >= 4 || !el.dataset.to);
   if (showSt) { el.textContent = stepWords(); el.classList.add('st'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('st'); }
 }, 1000);
 /* the clues, the only words on the radio: find yourself; tie something to something; then the signal */
@@ -491,7 +491,7 @@ function showGallery(on) {
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
     + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
-  const cs = deck().filter(c => c.kind !== 'poster').slice(0, 16);
+  const cur = ps[galleryAt]; const cs = [...deck().filter(c => cur && !cur.ex && c.id === 'p:' + cur.id), ...deck().filter(c => c.kind !== 'poster')].slice(0, 16);
   if (cs.length) {
     const kindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || 'LIFE').toUpperCase());
     const back = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${kindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
@@ -500,7 +500,7 @@ function showGallery(on) {
   }
   g.classList.toggle('with-cards', cs.length > 0);
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
-  let q = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); } }); }, { passive: true });
+  let q = 0, qt = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); clearTimeout(qt); qt = setTimeout(() => showGallery(true), 500); } }); }, { passive: true });
 }
 /* the small display under the screen: which one, of how many; the keys that do not apply to it go quiet */
 function galleryRead() {
@@ -512,12 +512,13 @@ function galleryRead() {
 function galleryGo(i) { const tr = $('#gallery .gl-track'); if (!tr) return; tr.scrollTo({ left: clamp(i, 0, wallOf().length - 1) * tr.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); }
 /* a poster or a zine, close up, at five sizes: half, three quarters, as wide as the screen allows, twice, three times, scrolled about; a press on it
    steps up and round again, keeping the place pressed under the finger. Esc, the cross or the dark around it closes it */
-function zoomArt(src, host) {
+const lv0 = at => (at == null ? 2 : at);
+function zoomArt(src, host, at) {
   const z = document.createElement('div'); z.className = `zoomv${host ? ' in' : ''}`; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
-  z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">100%</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
+  z.dataset.lv = lv0(at); z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">100%</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
   (host || document.body).appendChild(z); tick(1600);
-  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); const LV = [0.5, 0.75, 1, 2, 3]; let lv = 2; const base = () => Math.min((host ? host.clientWidth : innerWidth) * 0.92, 720);
-  im.style.width = `${base()}px`;
+  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); const LV = [0.5, 0.75, 1, 2, 3]; let lv = at == null ? 2 : at; const base = () => Math.min((host ? host.clientWidth : innerWidth) * 0.92, 720);
+  im.style.width = `${Math.round(base() * LV[lv])}px`; z.querySelector('.zv-l').textContent = `${Math.round(LV[lv] * 100)}%`;
   const set = (n, cx, cy) => {
     const r = im.getBoundingClientRect(); const fx = cx == null ? 0.5 : (cx - r.left) / r.width, fy = cy == null ? 0.5 : (cy - r.top) / r.height; const ax = cx == null ? sc.clientWidth / 2 : cx - sc.getBoundingClientRect().left, ay = cy == null ? sc.clientHeight / 2 : cy - sc.getBoundingClientRect().top;
     lv = n; z.dataset.lv = n; im.style.width = `${Math.round(base() * LV[n])}px`; z.querySelector('.zv-l').textContent = `${Math.round(LV[n] * 100)}%`; const r2 = im.getBoundingClientRect(); const ox = r2.left - sc.getBoundingClientRect().left + sc.scrollLeft, oy = r2.top - sc.getBoundingClientRect().top + sc.scrollTop;
@@ -535,11 +536,11 @@ function zoomArt(src, host) {
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
   const gc = e.target.closest('[data-gc]'); if (gc) { if (!gc.classList.contains('over')) { $$('#gallery .gc.over').forEach(x => x.classList.remove('over')); gc.classList.add('over'); tick(1700); return; } const c = deck().find(v => v.id === gc.dataset.gc); if (c) openCard(c); return; }
-  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src, g); return; }
+  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src, g, 1); return; }
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
-  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img, g); return; }
+  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img, g, 1); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });

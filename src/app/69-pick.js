@@ -49,7 +49,7 @@ function openPick(to) {
   PICK.to = to; PICK.tab = 'made'; let el = $('#pick');
   if (!el) {
     el = document.createElement('div'); el.id = 'pick'; el.className = 'sel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Select');
-    el.innerHTML = `<div class="sel-in"><header class="sel-h"><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}</button></header><div class="sel-b"></div></div>`;
+    el.innerHTML = `<div class="sel-in"><header class="sel-h"><i class="sel-grip" aria-hidden="true"></i><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}</button></header><div class="sel-b"></div></div>`;
     document.body.appendChild(el);
   }
   el.dataset.to = to; el.hidden = false; pickRender(); snd.tick(1600); buzz(5);
@@ -101,3 +101,9 @@ document.addEventListener('submit', e => {
 });
 document.addEventListener('change', async e => { if (!e.target.closest('#pick .pk-own')) return; await addPack(e.target.files); e.target.value = ''; PRESS.pack = 'life'; pickRender(); snd.tick(1900); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && $('#pick') && !$('#pick').hidden) closePick(); });
+
+/* the sheet dragged by its head, anywhere on the screen; where it was left, it opens again */
+let selDrag = null;
+document.addEventListener('pointerdown', e => { const h = e.target.closest('#pick .sel-h'); if (!h || e.target.closest('button')) return; const box = $('#pick .sel-in'); const r = box.getBoundingClientRect(); selDrag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); e.preventDefault(); });
+document.addEventListener('pointermove', e => { if (!selDrag || e.pointerId !== selDrag.id) return; const box = $('#pick .sel-in'); const w = box.offsetWidth, hh = box.offsetHeight; const x = clamp(e.clientX - selDrag.dx, 4, innerWidth - w - 4), y = clamp(e.clientY - selDrag.dy, 4, innerHeight - hh - 4); $('#pick').classList.add('moved'); box.style.left = `${x}px`; box.style.top = `${y}px`; });
+document.addEventListener('pointerup', e => { if (selDrag && e.pointerId === selDrag.id) selDrag = null; });
