@@ -285,7 +285,7 @@ let cdT = 0;
 setInterval(() => {
   const el = document.querySelector('#sec-heat .cd'); if (!el || document.hidden) return; cdT++; let st = null; try { st = JSON.parse(el.dataset.st || 'null'); } catch (e) { st = null; }
   const showSt = st && st.now >= 0 && (cdT % 8 >= 4 || !el.dataset.to);
-  if (showSt) { el.textContent = stepWords(); el.classList.add('st'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('st'); }
+  if (showSt) { el.textContent = stepWords(); el.classList.add('stp'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('stp'); }
 }, 1000);
 /* the clues, the only words on the radio: find yourself; tie something to something; then the signal */
 /* the steps: one thin line, a dot for each, the words small under it. Done, the dot is filled; the one waiting is a ring that

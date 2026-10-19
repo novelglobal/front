@@ -64,7 +64,7 @@ function paintFace(f, wipe) {
   const o = S.mode === 'ping' ? S.byId.get(S.sel) : null; const tel = f === 'front' && o && (o.kind === 'injured' || o.kind === 'dead') ? telOf(o) : '';
   const lost = f === 'front' && o && o.kind === 'lost';
   altBtn.hidden = true; heroBtn.hidden = false; rec.classList.toggle('alarm', !!tel || lost); heroBtn.classList.remove('go'); altBtn.classList.add('go');
-  if (f === 'wish') { heroWord('base', 'TO THE BOARD'); altWord('print', 'STORY'); altBtn.hidden = false; }
+  if (f === 'wish') { heroWord('base', 'W.I.S.H.'); altWord('receipt', 'PRINT'); altBtn.hidden = false; }
   else if (f === 'signal') heroWord('receipt', 'TO PRINT');
   else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (S.mode === 'tribe') heroWord('out', 'JOIN');

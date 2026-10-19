@@ -83,7 +83,7 @@ async function pickPut(k, id, btn) {
     if (PICK.to === 'board') await addToBoard(big ? await thumbOf(u, 360) : u, k === 'stk' || k === 'pk' ? 'sticker' : 'art', big ? 200 : 110);
     else { WDRAFT.photo = await thumbOf(u, 700); store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); }
   }
-  tick(1500); buzz(5); if (phone()) closePick();
+  tick(1500); buzz(5);
 }
 document.addEventListener('click', e => {
   const opener = e.target.closest('[data-pick]'); if (opener) { openPick(opener.dataset.pick === 'wish' ? (faceOf(1) === 'back' ? 'board' : 'photo') : opener.dataset.pick); return; }
