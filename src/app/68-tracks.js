@@ -150,7 +150,7 @@ const volStep = k => VOLS.reduce((best, v, i) => (Math.abs(v - layerLvl(k)) < Ma
 function layersHTML() {
   return `<ol class="lyrs" role="group" aria-label="Layers">${LAYERS.map((L, i) => { const on = trackOn(L.k); const m = MOODS[moodOfLayer(L.k)]; const v = volStep(L.k);
     return `<li class="lyr${on ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="lyr-k" data-t4="${L.k}" aria-pressed="${on}" aria-keyshortcuts="${i + 1}" aria-label="${L.w}" data-tip="${L.w}">${icon(L.ic)}</button>`
-      + `<button type="button" class="lyr-m" data-lmood="${L.k}" aria-label="${L.w} mood: ${m.w}" data-tip="${m.w}">${icon(m.ic, 'sm')}</button>`
+      + `<button type="button" class="lyr-m" data-lmood="${L.k}" aria-label="${L.w} mood: ${m.w}">${icon(m.ic, 'sm')}</button>`
       + `<span class="lv" aria-hidden="true">${'<i></i>'.repeat(8)}</span>`
       + `<button type="button" class="lyr-v" data-vol="${L.k}" data-v="${v}" aria-label="${L.w} volume">${'<i></i>'.repeat(3)}</button></li>`; }).join('')}</ol>`;
 }
@@ -166,7 +166,7 @@ $('#view').addEventListener('click', e => {
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); lm.dataset.tip = MOODS[nx].w; if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */

@@ -83,6 +83,12 @@ function exFrame(keepView) {
   bBase = z; cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
 }
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
+/* the board open, taken away, once asked: its pieces with it; the next of one's own opens, or a new empty one */
+function delBoard() {
+  const b = BOARDS.find(x => x.id === boardId); if (!b || b.ex) return; if (!confirm(`Take ${b.n} away, and everything on it?`)) return;
+  BOARDS.splice(BOARDS.indexOf(b), 1); try { localStorage.removeItem('da.board.' + b.id); } catch (e) { /* gone anyway */ } store.set('da.boards.v1', BOARDS);
+  const next = BOARDS.find(x => !x.ex); if (next) switchBoard(next.id); else newBoard(); snd.snap(0); buzz([10, 30, 10]);
+}
 function newBoard() { const id = uid('b'); BOARDS.push({ id, n: `BOARD ${pad2(BOARDS.filter(b => !b.ex).length + 1)}`, at: Date.now() }); store.set('da.boards.v1', BOARDS); switchBoard(id); }
 const byId = id => cv.getObjects().find(o => o.daId === id);
 /* strings follow the cards they join */
@@ -242,13 +248,6 @@ function makeConstellation() {
   if (!cand.length) { tick(600); return; } setTimeout(() => { select(cand[0].o.id); setTimeout(() => { const r = $('#r-strings'); if (r) r.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); }, 700); }, 200);
 }
 $('#view').addEventListener('click', e => { if (e.target.closest('[data-make-fig]')) { makeConstellation(); tick(1500); } });
-function assetsHTML() {
-  const cells = myCells().slice(0, 12), slips = S.signals.filter(x => !x.ex && !x.shared).slice(0, 8), figs = strings.list().slice(0, 12), sps = SPECIES.slice(0, 18);
-  if (!cells.length && !slips.length && !sps.length) return '';
-  const tile = (kind, id, art, tip, cls = '') => `<li><button type="button" class="pc-t${cls}" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="${esc(tip)}" data-tip="${esc(tip)}">${art}</button></li>`;
-  return `<section class="sec assets" id="sec-assets"><ol class="pcs">${sps.map(sp => tile('l', sp.id, sp.ph ? `<img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : glyphSVG(sp.g), sp.n, ' sp')).join('')}`
-    + `${cells.map(o => tile('r', o.id, `<img src="${pinOf(o)}" alt="">`, nameOf(o))).join('')}${slips.map(x => tile('s', x.key, icon('receipt'), `${NAME_UP(x)} · ${x.code}`, ' slip')).join('')}</ol></section>`;
-}
 /* a note, or several, from field notes in Markdown: each heading and what is under it */
 async function notesIn(md) {
   await workBoard(); const c = await showBoard(true); if (!c) return 0; const f = window.fabric;
@@ -268,7 +267,7 @@ async function boardTool(k) {
   if (k === 'image') { $('#board-file').click(); return; }
   if (k === 'pencil') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = darkNow() ? '#F2F6FF' : '#0C0E0E'; c.freeDrawingBrush.width = 2; $('#board [data-bt="pencil"]').classList.toggle('on', c.isDrawingMode); snd.tick(1500); return; }
   if (k === 'out') { pickMenu($('#board [data-bt="out"]'), [{ k: 'png', n: 'PNG', ic: icon('camera', 'sm') }, { k: 'pdf', n: 'PDF', ic: icon('note', 'sm') }], it => boardOut(it.k)); return; }
-  if (k === 'add') { pickMenu($('#board [data-bt="add"]'), addables(true), it => (it.k === 'm' ? placeMix(MIXES.find(m => m.id === it.id)) : it.k === 'L' ? placeAsset('l', keepSpecies(it.sp).id) : placeAsset(it.k, it.id))); return; }
+  if (k === 'add') { openPick('board'); return; }
   if (k === 'delete') { const all = c.getActiveObjects(); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
   if (k === 'save') { saveBoard(true); return; }
   if (k === 'undo') { undoBoard(); return; }
@@ -391,14 +390,15 @@ const sigRow2 = m => { const gs = [...new Set(((m.layers.life || {}).cells || []
   return `<li class="g-sig"><button type="button" class="g-play" data-mix="${esc(m.id)}" aria-label="Play on the radio" data-tip="${esc(`${m.where.place} · ${fmtStamp(m.at)}`)}">${icon('play', 'sm')}</button><span class="g-lives">${gs.map(g => glyphSVG(g)).join('')}</span><small class="mono">${fmtStamp(m.at).split(' ')[1] || ''}</small></li>`; };
 function viewSignals() {
   const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || (BOARDS.find(b => !b.ex) || BOARDS[0]).id) === on.id);
-  return wishDevice(true) + consStrip() + assetsHTML()
+  return wishDevice(true) + consStrip()
     + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.ex ? `<button type="button" class="b-key ex mono" data-board="${esc(b.id)}" aria-pressed="${b.id === on.id}">${esc(b.n)}</button>` : b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
-    + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button><button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
+    + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button>${boardId !== 'b00' ? `<button type="button" class="ib" data-del-board aria-label="Take this board away" data-tip="Take this board away">${icon('close')}</button>` : ''}<button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();
 }
 $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-book-md]')) { download(`field-notes-${isoDay(new Date())}.md`, bookMD(), 'text/markdown;charset=utf-8'); tick(1800); return; }
   if (e.target.closest('[data-new-board]')) { newBoard(); return; }
+  if (e.target.closest('[data-del-board]')) { delBoard(); return; }
   const bd = e.target.closest('[data-board]'); if (bd) { switchBoard(bd.dataset.board); return; }
   const bm = e.target.closest('[data-board-mix]'); if (bm) { const m = MIXES.find(x => x.id === bm.dataset.boardMix); if (m) placeMix(m); tick(1500); return; }
   const as = e.target.closest('[data-asset]'); if (as) placeAsset(as.dataset.asset, as.dataset.aid);
