@@ -146,7 +146,7 @@ function photoCard(url, id, x, y, w, to) {
 }
 /* a picture laid on the active board from anywhere: onto the canvas if it is drawn, else into the board as kept */
 /* a picture made small enough to keep on a board in this browser */
-async function thumbOf(url, w = 240) { const im = await loadImage(url, false); const k = Math.min(1, w / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82); }
+async function thumbOf(url, w = 240) { const im = await loadImage(url, /^https?:/.test(url) && !url.startsWith(location.origin)); const k = Math.min(1, w / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82); }
 async function addToBoard(url, kind = 'receipt', w = 220) {
   await workBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
   if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
