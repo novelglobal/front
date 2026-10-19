@@ -272,7 +272,20 @@ function extremeAhead() {
 }
 const pad2s = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
 const countText = to => { const s = Math.max(0, (to - Date.now()) / 1000); return `${Math.floor(s / 86400)}D ${pad2s(s % 86400 / 3600)}:${pad2s(s % 3600 / 60)}:${pad2s(s % 60)}`; };
-setInterval(() => { const el = document.querySelector('#sec-heat .cd[data-to]'); if (el && !document.hidden) el.textContent = countText(+el.dataset.to); }, 1000);
+/* the step waiting, as the screen says it; none once all are done */
+function stepNow() {
+  if (!(MIXES.length || wishStarted() || mineOf().length || POSTERS2.length || printedAny())) { const s1 = placed(), s2 = s1 && (S.connected || strings.list().length > 0); const n = !s1 ? 0 : !s2 ? 1 : 2; return { n: 3, now: n, w: ['find yourself', 'make a connection', 'start'][n], share: n === 2 }; }
+  const p = placed() || !!prefs.placed, wi = wishStarted(), wo = mineOf().some(x => linesOf(x).length), mi = POSTERS2.length > 0, mo = printedAny();
+  const rows = [{ w: 'where are you?', done: p }, { w: 'W.I.S.H.', done: wi && wo, go: 1 }, { w: 'make · print', done: mi && mo, go: 2 }]; const now = rows.findIndex(r => !r.done);
+  return now < 0 ? { now: -1 } : { n: 3, now, w: rows[now].w, go: rows[now].go };
+}
+const stepAttr = () => { const st = stepNow(); return ` data-st='${esc(JSON.stringify(st))}'${st.share ? ' data-share-mix' : st.go != null ? ` data-go-view="${st.go}"` : ''}`; };
+let cdT = 0;
+setInterval(() => {
+  const el = document.querySelector('#sec-heat .cd'); if (!el || document.hidden) return; cdT++; let st = null; try { st = JSON.parse(el.dataset.st || 'null'); } catch (e) { st = null; }
+  const showSt = st && st.now >= 0 && (cdT % 9 >= 5 || !el.dataset.to);
+  if (showSt) { el.textContent = `${st.now + 1}/${st.n} ${String(st.w).toUpperCase()}`; el.classList.add('st'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('st'); }
+}, 1000);
 /* the clues, the only words on the radio: find yourself; tie something to something; then the signal */
 /* the steps: one thin line, a dot for each, the words small under it. Done, the dot is filled; the one waiting is a ring that
    breathes; begun, a point inside the ring; to come, faint. The clues first, then the checklist, the same way */
@@ -339,14 +352,13 @@ function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return `<section class="band dev radio mod" id="sec-heat">${mods('RADIO', '01 · NOTICED')}${flipBtn()}
-      ${pagerHTML()}${ex ? `<p class="b-emerg mono" data-tip="El Niño emergency in">${ex.now ? '<b class="cd">NOW</b>' : `<b class="cd" data-to="${ex.to}">${countText(ex.to)}</b>`}</p>` : ''}
+  return `<section class="band dev radio mod" id="sec-heat">${mods('DIRECT ACTION', 'RADIO')}${flipBtn()}
+      ${pagerHTML()}<p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : ''}</b></p>
       ${monthStrip()}
       <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
      + `<button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>`
      + `<button type="button" class="hp-k" data-link aria-label="This sound as a link, a code and a picture">${icon('qr')}<small>link</small></button></div>
       ${layersHTML()}
-      ${MIXES.length || wishStarted() || mineOf().length || POSTERS2.length || printedAny() ? checklistHTML() : cluesHTML()}
     </section>`;
 }
 
@@ -461,7 +473,7 @@ $('#view').addEventListener('click', e => {
 /* the W.I.S.H.es finished here, as filed: their number, the day, what each was for, and the four lines */
 const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length);
   return ws.length ? `<section class="sec wishes" id="sec-wishes"><ol class="filed">${ws.slice(0, 24).map((x, i) => `<li><button type="button" class="filed-b" data-sig="${esc(x.key)}"><span class="fl-h mono"><b>№ ${String(ws.length - i).padStart(3, '0')}</b><span>${esc(x.code)}</span><span>${fmtStamp(x.at)}</span></span>${x.note ? `<span class="fl-for">${esc(x.note.split(' · ')[0])}</span>` : ''}<ol class="fl-l">${WKEYS.map(k => (x.lines || {})[k] ? `<li><b>${k.toUpperCase()}</b>${esc(x.lines[k])}</li>` : '').join('')}</ol></button></li>`).join('')}</ol></section>`
-    : `<section class="sec wishes" id="sec-wishes"><button type="button" class="filed-none" data-go-view="1" aria-label="The WISH MAKER">${icon('sign')}</button></section>`; };
+    : ''; };
 /* ───────── the gallery: beside the portfolio, the deck's main screen. Every poster finished here, and the example's zine first,
    on a strip that slides under a finger or the keys, one at a time (scroll snap: no library). Under the screen its number on a
    small display and the keys: back, close up, as a card, download, on ───────── */
@@ -478,6 +490,14 @@ function showGallery(on) {
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
     + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
+  const cs = deck().filter(c => c.kind !== 'poster').slice(0, 16);
+  if (cs.length) {
+    const kindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || 'LIFE').toUpperCase());
+    const back = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${kindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
+    g.insertAdjacentHTML('beforeend', `<aside class="gl-cards" aria-label="Cards"><ol>${cs.map((c, i) => `<li style="--i:${i}"><button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${back(c)}</span></span></button></li>`).join('')}</ol></aside>`);
+    (async () => { for (const im of $$('#gallery img[data-card-g]')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })();
+  }
+  g.classList.toggle('with-cards', cs.length > 0);
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
   let q = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); } }); }, { passive: true });
 }
@@ -491,11 +511,11 @@ function galleryRead() {
 function galleryGo(i) { const tr = $('#gallery .gl-track'); if (!tr) return; tr.scrollTo({ left: clamp(i, 0, wallOf().length - 1) * tr.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); }
 /* a poster or a zine, close up, at five sizes: half, three quarters, as wide as the screen allows, twice, three times, scrolled about; a press on it
    steps up and round again, keeping the place pressed under the finger. Esc, the cross or the dark around it closes it */
-function zoomArt(src) {
-  const z = document.createElement('div'); z.className = 'zoomv'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
+function zoomArt(src, host) {
+  const z = document.createElement('div'); z.className = `zoomv${host ? ' in' : ''}`; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
   z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">100%</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
-  document.body.appendChild(z); tick(1600);
-  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); const LV = [0.5, 0.75, 1, 2, 3]; let lv = 2; const base = () => Math.min(innerWidth * 0.92, 720);
+  (host || document.body).appendChild(z); tick(1600);
+  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); const LV = [0.5, 0.75, 1, 2, 3]; let lv = 2; const base = () => Math.min((host ? host.clientWidth : innerWidth) * 0.92, 720);
   im.style.width = `${base()}px`;
   const set = (n, cx, cy) => {
     const r = im.getBoundingClientRect(); const fx = cx == null ? 0.5 : (cx - r.left) / r.width, fy = cy == null ? 0.5 : (cy - r.top) / r.height; const ax = cx == null ? sc.clientWidth / 2 : cx - sc.getBoundingClientRect().left, ay = cy == null ? sc.clientHeight / 2 : cy - sc.getBoundingClientRect().top;
@@ -513,11 +533,12 @@ function zoomArt(src) {
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
-  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src); return; }
+  const gc = e.target.closest('[data-gc]'); if (gc) { if (!gc.classList.contains('over')) { $$('#gallery .gc.over').forEach(x => x.classList.remove('over')); gc.classList.add('over'); tick(1700); return; } const c = deck().find(v => v.id === gc.dataset.gc); if (c) openCard(c); return; }
+  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src, g); return; }
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
-  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img); return; }
+  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img, g); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });

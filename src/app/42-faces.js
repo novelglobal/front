@@ -111,12 +111,12 @@ function unNudge(i) { if (i === 1) { const t = $('#rail .tab[data-i="1"]'); if (
 function wishDevice(back) {
   const where = suburbAt(S.scan.lat, S.scan.lng); const L = WDRAFT;
   const photo = L.photo ? `<span class="vs-ph"><img src="${L.photo}" alt=""><button type="button" class="vs-phx" data-vs="unphoto" aria-label="Take the photograph off">${icon('close', 'sm')}</button></span>` : '';
-  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : '<i class="hack h-tape" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
+  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : '<i class="hack h-ant" aria-hidden="true"></i><i class="hack h-pins" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">${back ? 'W.I.S.H.' : 'INTENTION'}</b><span class="vs-now">${esc(String(where || '').toUpperCase())} ${fmtClock(Date.now())}</span></div>`
     + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<textarea id="wf-for" rows="1" maxlength="90" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" ">${esc(String(L.for || '').replace(/^[lce]:/, ''))}</textarea><i class="vs-cur" aria-hidden="true"></i></label><ol class="vs-sug" id="wf-sug" hidden></ol>`
     + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
       + `<label class="vs-by" data-tip="By"><b class="wf-m" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(L.by || S.me.by || '')}" aria-label="By" spellcheck="false"></label>` : '')
-    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
+    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-pick="wish" aria-label="Select: art, songs, stickers, lives">${icon('plus')}</button><button type="button" class="vs-cam vs-clr" data-vs="sug" aria-pressed="${SUGON}" aria-label="Suggestions">${icon('note')}</button><button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
     + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button></div>`
     + `${flipBtn()}</div></form></section>`;
 }
@@ -124,20 +124,21 @@ const wishFront = () => wishDevice(false);
 viewEl.addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; wishPreview(); if (e.target.id === 'wf-for') { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', !!e.target.value.trim()); } });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.closest('.vs-poem textarea') || e.target.id === 'wf-for')) e.preventDefault(); if (e.key === 'Escape' && e.target.id === 'wf-for') sugShow(false); });
 const growTA = el => { if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; };
-let INTENTS = null;
+let INTENTS = null, SUGON = false;
 const intentList = () => INTENTS || (INTENTS = [...intentOptions().matchAll(/value="([^"]*)"/g)].map(m => { const t = document.createElement('textarea'); t.innerHTML = m[1]; return t.value; }));
 function sugShow(on) {
   const ol = $('#wf-sug'), f = $('#wf-for'); if (!ol || !f) return; if (!on) { ol.hidden = true; return; }
   const q = f.value.trim().toLowerCase(); const ops = intentList().filter(x => !q || x.toLowerCase().includes(q)).filter(x => x.toLowerCase() !== q).slice(0, 5);
   ol.innerHTML = ops.map(x => `<li><button type="button" data-sug="${esc(x)}">${esc(x)}</button></li>`).join(''); ol.hidden = !ops.length;
 }
-viewEl.addEventListener('focusin', e => { if (e.target.id === 'wf-for') sugShow(true); });
+viewEl.addEventListener('focusin', e => { if (e.target.id === 'wf-for' && SUGON) sugShow(true); });
 viewEl.addEventListener('focusout', e => { if (e.target.id === 'wf-for') setTimeout(() => sugShow(false), 180); });
-viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') { growTA(e.target); sugShow(true); } if (e.target.closest('.vs-poem textarea')) e.target.classList.remove('need'); });
+viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') { growTA(e.target); if (SUGON) sugShow(true); } if (e.target.closest('.vs-poem textarea')) e.target.classList.remove('need'); });
 viewEl.addEventListener('click', e => { const b = e.target.closest('[data-sug]'); if (!b) return; const f = $('#wf-for'); f.value = b.dataset.sug; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); sugShow(false); snd.tick(1700); });
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-vs]'); if (!b) return;
   if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
+  if (b.dataset.vs === 'sug') { SUGON = !SUGON; b.setAttribute('aria-pressed', String(SUGON)); sugShow(SUGON); snd.tick(SUGON ? 1700 : 1000); return; }
   if (b.dataset.vs === 'unphoto') { WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(1000); }
 });
 /* a photograph for the W.I.S.H., taken or chosen: made small here, and printed at the head of its receipt */
@@ -153,32 +154,43 @@ function draftSignal() {
   return { v: 1, code: 'DA-····', at: Date.now(), pin: { id: null, lat, lng, n: '', cn: place, ic: '', g: 'paw', place }, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who: WDRAFT.by || S.me.by || '', ...(fr ? { for: fr, note: fr } : {}), ...(WDRAFT.photo ? { img: { k: 'own', a: '' }, photo: WDRAFT.photo } : {}) };
 }
 let pvN = 0;
-/* the big screen beside the quick W.I.S.H.: the three steps as three marks, this one lit; the receipt as it will print, larger
-   when pressed; and the lives the radar holds, their photographs, pressed to make one the intention, each with its sighting */
+const ACTIONS = [{"k": "people", "ic": "people", "for": "Check on a neighbour", "w": "Heat kills more Australians than any disaster", "i": "No one on our street alone on a 35° day", "s": "Call or knock twice on every hot day", "h": "Dizzy, confused, not sweating: call 000"}, {"k": "houses", "ic": "heat", "for": "Cool the house", "w": "A shut blind keeps the sun out of the room", "i": "A cool room in every home on the street", "s": "Close blinds and curtains by 9 am", "h": "Open up when the cool change comes"}, {"k": "pets", "ic": "paw", "for": "Keep pets cool", "w": "Hot paths can burn paws", "i": "Pets in shade, with water, all day", "s": "Two bowls of water, in the shade", "h": "Walk before 8 am; test the path by hand"}, {"k": "animals", "ic": "water", "for": "Water for wildlife", "w": "Birds and flying-foxes suffer in heatwaves", "i": "Water in reach for every small life", "s": "Shallow dish, stones to climb out, in shade", "h": "Animal down? Wildlife Victoria 03 8400 7300"}, {"k": "street", "ic": "tree", "for": "Water a street tree", "w": "Young street trees die in a dry summer", "i": "Every young tree on our street lives", "s": "A bucket of water a week at its base", "h": "Ask the council for a tree outside"}, {"k": "shade", "ic": "shade", "for": "Make shade", "w": "Shaded ground is far cooler than bare", "i": "Shade where people wait and play", "s": "Plant a deciduous tree on the west side", "h": "Ask for shade at the bus stop"}, {"k": "voting", "ic": "check", "for": "Vote for cooler streets", "w": "Victoria votes on 28 November 2026", "i": "Every candidate asked about heat", "s": "Check you are enrolled: vec.vic.gov.au", "h": "Ask your candidates for their canopy plan"}];
+/* the big screen beside the quick W.I.S.H.: real actions to take up, each with its steps, so every receipt is a reminder of
+   something to do; the receipt as it will print (pressed, close up, within the screen); and the lives the radar holds that the
+   heat ahead puts most at risk, animals first, few insects, no plants, each pressed to add it to the intention */
+function needLives(n = 6) {
+  const seen = new Set(), out = []; let ins = 0;
+  const its = life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist && !it.o.hum && !isCold(it.o) && it.b.tone !== 'flora').sort((a, b) => (b.o.hero ? 1 : 0) - (a.o.hero ? 1 : 0) || degOf(b.o) - degOf(a.o) || (b.b.tier || 0) - (a.b.tier || 0));
+  for (const it of its) { const sp = spOf(it.o); const k = sp.latin || sp.n; if (!sp.ph || seen.has(k)) continue; const grp = M.GROUP[sp.g]; if (grp === 'insect' || grp === 'spider') { if (ins >= 1) continue; ins++; } seen.add(k); out.push(sp); if (out.length >= n) break; }
+  return out;
+}
 const wishPreview = debounce(async () => {
   const cov = $('#cover'); if (!cov) return; if (!(S.open && S.view === 1 && faceOf(1) === 'front' && !S.mode)) { cov.replaceChildren(); return; }
   const my = ++pvN; const cvs = await slipCanvas(draftSignal(), 384, 2, false, false).catch(() => null); if (!cvs || my !== pvN || faceOf(1) !== 'front' || S.view !== 1) return;
   let fig = cov.querySelector('.wpv');
   if (!fig) {
     fig = document.createElement('div'); fig.className = 'wpv';
-    fig.innerHTML = `<ol class="wpv-flow" aria-hidden="true">${[0, 1, 2].map(i => `<li class="${i === 0 ? 'done' : i === 1 ? 'now' : ''}">${icon(VIEWS[i].icon)}</li>`).join('')}</ol><figure class="wpv-r"><img alt="" data-zoom></figure><ul class="wpv-eco"></ul>`;
+    fig.innerHTML = `<div class="wpv-tg"><button type="button" data-wpv="acts" aria-pressed="false" aria-label="Actions to take up">${icon('check')}</button><button type="button" data-wpv="eco" aria-pressed="false" aria-label="The lives most at risk">${glyphSVG('bird')}</button></div><ol class="wpv-acts" aria-label="Actions to take up">${ACTIONS.map(a => `<li><button type="button" class="act-b" data-act="${a.k}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.for)}</b><small>${esc(a.s)}</small><small>${esc(a.h)}</small></button></li>`).join('')}</ol><figure class="wpv-r"><img alt="" data-zoom></figure><ul class="wpv-eco"></ul>`;
     cov.replaceChildren(fig);
   }
+  $$('#cover [data-act]').forEach(b => b.classList.toggle('on', (ACTIONS.find(a => a.k === b.dataset.act) || {}).for === String(WDRAFT.for || '').trim()));
   fig.querySelector('.wpv-r img').src = cvs.toDataURL('image/png');
-  const sps = radiusSpecies(6);
-  fig.querySelector('.wpv-eco').innerHTML = sps.map(sp => `<li><button type="button" class="eco-b" data-eco="${esc(sp.n)}" aria-label="${esc(sp.n)}" data-tip="${esc(sp.n)}"><img src="${esc(sp.ph)}" alt="" loading="lazy"></button>${/^\d+$/.test(sp.id) ? `<a class="eco-l" href="https://www.inaturalist.org/observations/${sp.id}" target="_blank" rel="noopener" aria-label="The sighting">${icon('out', 'sm')}</a>` : ''}</li>`).join('');
+  fig.querySelector('.wpv-eco').innerHTML = needLives(6).map(sp => `<li><button type="button" class="eco-b" data-eco="${esc(sp.n)}" aria-label="${esc(sp.n)}" data-tip="${esc(sp.n)}"><img src="${esc(sp.ph)}" alt="" loading="lazy"></button>${/^\d+$/.test(sp.id) ? `<a class="eco-l" href="https://www.inaturalist.org/observations/${sp.id}" target="_blank" rel="noopener" aria-label="The sighting">${icon('out', 'sm')}</a>` : ''}</li>`).join('');
 }, 320);
 document.addEventListener('click', e => {
   if (!e.target.closest('#cover')) return;
-  const z = e.target.closest('[data-zoom]'); if (z) { zoomArt(z.src); return; }
-  const b = e.target.closest('[data-eco]'); if (b) { const f = $('#wf-for'); if (!f) return; f.value = b.dataset.eco; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); fillWDraftFor(); snd.tick(1700); buzz(5); }
+  const tg = e.target.closest('[data-wpv]'); if (tg) { const w = $('#cover .wpv'); const k = tg.dataset.wpv; const on = !w.classList.contains('show-' + k); w.classList.toggle('show-' + k, on); tg.setAttribute('aria-pressed', String(on)); tick(on ? 1500 : 1000); return; }
+  const z = e.target.closest('[data-zoom]'); if (z) { zoomArt(z.src, $('#cover')); return; }
+  const f = $('#wf-for');
+  const a = e.target.closest('[data-act]'); if (a && f) { const A = ACTIONS.find(x => x.k === a.dataset.act); if (!A) return; f.value = A.for; for (const k of WKEYS) WDRAFT[k] = A[k]; WDRAFT.for = A.for; store.set('da.wish.v1', WDRAFT); growTA(f); f.dispatchEvent(new Event('input', { bubbles: true })); wishPreview(); snd.tick(1800); buzz(5); return; }
+  const b = e.target.closest('[data-eco]'); if (b && f) { const n = b.dataset.eco, t = f.value.trim(); if (!t.toLowerCase().includes(n.toLowerCase())) f.value = t ? `${t} for the ${n}` : n; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); fillWDraftFor(); snd.tick(1700); buzz(5); }
 });
 const fillWDraftFor = () => { const f = $('#wf-for'); if (f) { WDRAFT.for = f.value; store.set('da.wish.v1', WDRAFT); } wishPreview(); };
 
 /* ───────── PRINT, the front: a label maker in matte graphite, its board seen through a smoked cap. Its screen holds the words
    to set; three keys, words, a sticker, a photograph; and one key, the printer, that prints. The printer's name and state stay
    out of sight until its light is pressed ───────── */
-const TP_KEYS = [['text', '', 'teal', 'Words'], ['stk', 'star5', 'green', 'A sticker'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
+const TP_KEYS = [['text', '', 'teal', 'Words'], ['pick', 'plus', 'green', 'Select: art, songs, stickers, lives'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
 function printFront() {
   const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
   return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><i class="hack h-tie" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
@@ -187,7 +199,8 @@ function printFront() {
     + `<div class="tp-foot"><button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button><button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button></div>`
     + `${flipBtn()}</div></section>`;
 }
+viewEl.addEventListener('click', e => { const o = e.target.closest('[data-outs]'); if (!o) return; const sec = o.closest('#sec-out'); const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); o.setAttribute('aria-expanded', String(on)); tick(on ? 1500 : 1000); });
 viewEl.addEventListener('click', e => {
-  const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => o.daKind !== 'base') : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
+  const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'pick') { openPick('strip'); return; } if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => o.daKind !== 'base') : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
   const pr = e.target.closest('[data-prn]'); if (pr) { const i = $('#tp-info') || $('#ps-info'); if (!i) return; i.hidden = !i.hidden; pr.setAttribute('aria-expanded', String(!i.hidden)); snd.tick(i.hidden ? 1100 : 1800); buzz(5); }
 });

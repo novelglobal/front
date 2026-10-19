@@ -2744,3 +2744,115 @@ html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
 /* the card's own keys, a fourth one for the board */
 .card-view .tv-card{cursor:zoom-in}
 .dev.tepra.mod .fmt-k .key,.dev.tepra.mod .fmt-k .cap-k{height:auto!important;min-height:44px!important;padding:5px 2px 4px!important}
+
+/* RADIO's back: the equaliser on a small screen of its own, as it was; the count above it, clear of it */
+.band.dev.radio.mod .mstrip{position:relative;margin:8px 0 6px!important;padding:30px 10px 8px!important;border-radius:8px;background:#0C1112!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 3px 10px rgba(0,0,0,.7)}
+.band.dev.radio.mod .mstrip .eq-c i:not(.l){background:rgba(255,255,255,.07)!important}
+.band.dev.radio.mod .mstrip .mo,.band.dev.radio.mod .mstrip .mo *{color:rgba(200,240,232,.7)}
+.band.dev.radio.mod .b-emerg{position:relative;z-index:2;margin:0 0 4px!important}
+.band.dev.radio.mod .b-emerg .cd.st{font-size:17px!important;letter-spacing:.06em;cursor:pointer}
+.band.dev.radio.mod .b-emerg .cd:empty{display:none}
+/* the W.I.S.H. big screen: the actions in a row that slides, the receipt larger, the lives most at risk under it */
+#cover .wpv{justify-content:flex-start!important;padding:22px 24px!important;overflow:auto}
+#cover .wpv-acts{list-style:none;display:flex;gap:10px;width:100%;max-width:760px;margin:0;padding:2px 2px 8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+#cover .wpv-acts::-webkit-scrollbar{display:none}
+#cover .wpv-acts li{flex:0 0 auto;scroll-snap-align:start}
+#cover .act-b{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;width:220px;padding:10px 12px;border:0;border-radius:10px;text-align:left;cursor:pointer;background:#FFFFFF;color:#1F2A20;box-shadow:inset 0 0 0 1px rgba(20,40,50,.12),0 3px 8px rgba(20,40,50,.08)}
+#cover .act-b .act-ic{grid-row:1/4;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#E6F3EF;color:#0E8F84}
+#cover .act-b .act-ic .i{width:17px;height:17px}
+#cover .act-b b{font:600 13px/1.2 var(--sans)}
+#cover .act-b small{font:400 10.5px/1.25 var(--mono);color:rgba(31,42,32,.7)}
+#cover .act-b.on{box-shadow:inset 0 0 0 2px #0E8F84,0 3px 8px rgba(20,40,50,.12)}
+#cover .act-b.on .act-ic{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
+#cover .wpv-r{max-height:none!important;flex:1 1 auto;min-height:0}
+#cover .wpv-r img{max-width:min(380px,80%)!important;max-height:min(60vh,640px)!important}
+html.night #cover .act-b{background:#14202A;color:#DFF3EE}
+html.night #cover .act-b small{color:rgba(223,243,238,.7)}
+@media (max-width:759px){#cover .wpv{padding:12px 12px!important;gap:8px}#cover .act-b{width:190px;padding:8px 10px}#cover .wpv-r img{max-height:100%!important}}
+/* close up within a screen */
+.zoomv.in{position:absolute;inset:0;z-index:20;border-radius:inherit}
+.zoomv.in .zv-keys{position:absolute;bottom:14px}
+.vs-sugk[aria-pressed="true"],.vs-clr[aria-pressed="true"]{background:#1F2A20;color:#CBD4C3}
+/* the quick handheld's mods: a whip antenna, a pin header under the screen */
+.h-ant{top:-34px;left:30px;width:22px;height:40px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 40'%3E%3Cpath d='M15 38L7 6' stroke='%232B3034' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='6.5' cy='4.5' r='3.2' fill='%23E8450F'/%3E%3Crect x='11' y='30' width='9' height='9' rx='2' fill='%23B9C0C4'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+.h-pins{bottom:10px;left:30px;width:44px;height:9px;border-radius:1.5px;background:radial-gradient(circle,#D8B26A 0 1.3px,transparent 1.6px) 0 0/5.5px 4.5px,#1B1F22;box-shadow:0 1px 1px rgba(0,0,0,.3)}
+/* field notes out and in: the mark and its type on one line, small */
+.bk-a .ib.io{grid-auto-flow:column!important;gap:3px!important;width:auto!important;padding:0 8px!important}
+.bk-a .ib.io .i{width:14px;height:14px}
+.bk-a .ib.io small{margin:0!important;font-size:7px!important;white-space:nowrap}
+/* the print key, pressed or hovered: no red */
+#sec-out .print-k:hover,#sec-out .print-k:focus-visible{box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px var(--edge),0 8px 22px rgba(0,0,0,.14)!important}
+/* the portfolio's modules, with a few quiet mods: a jumper wire, a cable tie, a sticker */
+body[data-view="portfolio"] #view>.sec:nth-child(3){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 20'%3E%3Cpath d='M5 17C7 2 39 2 41 17' fill='none' stroke='%23D9342B' stroke-width='2.2' stroke-linecap='round'/%3E%3Crect x='1.5' y='14' width='7' height='6' rx='1' fill='%2321262A'/%3E%3Crect x='37.5' y='14' width='7' height='6' rx='1' fill='%2321262A'/%3E%3C/svg%3E"),var(--grain),linear-gradient(180deg,rgba(244,242,236,.97),rgba(232,230,223,.93))!important;background-repeat:no-repeat,repeat,no-repeat!important;background-size:40px 18px,auto,auto!important;background-position:right 20px top 4px,0 0,0 0!important}
+body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating-linear-gradient(90deg,var(--m) 0 18px,#F4CC2A 18px 22px)!important}
+
+/* SELECT: a sheet from the foot on a phone, a panel beside the device on a wider screen */
+.sel{position:fixed;z-index:40;left:0;right:0;bottom:0;display:flex;justify-content:center;pointer-events:none}
+.sel[hidden]{display:none}
+.sel-in{pointer-events:auto;display:grid;grid-template-rows:auto minmax(0,1fr);width:100%;max-height:66vh;border-radius:18px 18px 0 0;background:var(--grain),linear-gradient(180deg,#2B2F33,#202326);color:#E9EEF0;box-shadow:0 -10px 40px rgba(0,0,0,.35);padding:10px 12px calc(12px + var(--bot,0px))}
+.sel-h{display:flex;align-items:center;gap:8px;padding:0 0 10px}
+.pk-tabs{display:flex;gap:6px;flex:1}
+.pk-tab{display:grid;place-items:center;width:44px;height:38px;padding:0;border:0;border-radius:9px;cursor:pointer;color:#C9D2D6;background:#3A4146;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.pk-tab[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
+.pk-tab .i{width:18px;height:18px}
+.pk-x{color:#E9EEF0!important;background:#3A4146!important}
+.sel-b{overflow:auto;min-height:0;overscroll-behavior:contain}
+.pk-grid{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin:0;padding:0}
+.pk-it{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:1;padding:4px;border:0;border-radius:8px;cursor:pointer;overflow:hidden;background:#F4F6F6;color:#33403F;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.pk-it img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.pk-grid.round .pk-it img,.pk-it.round img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pk-it.ic{background:#3A4146;color:#E9EEF0;align-content:center;gap:2px}
+.pk-it.ic .i{width:20px;height:20px}
+.pk-it small{font:500 8px/1.1 var(--mono);letter-spacing:.06em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pk-it svg:not(.i){width:100%;height:100%}
+.pk-it.put{box-shadow:0 0 0 3px #46C7A8,0 2px 4px rgba(0,0,0,.3)}
+.pk-it.busy{opacity:.5}
+.pk-packs{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none}
+.pk-pack{flex:none;display:grid;place-items:center;width:42px;height:42px;padding:4px;border:0;border-radius:8px;cursor:pointer;background:#3A4146}
+.pk-pack[aria-pressed="true"]{background:#F4F6F6}
+.pk-pack img{max-width:100%;max-height:100%}
+.pk-link{display:flex;gap:6px;margin:12px 0 0}
+.pk-link input{flex:1;min-width:0;height:38px;padding:0 10px;border:0;border-radius:8px;background:#13171A;color:#BFFFEF;font:400 16px/1 VT323,ui-monospace,monospace}
+.pk-link .ib{color:#E9EEF0;background:#3A4146}
+@media (min-width:760px){.sel{left:24px;right:calc(var(--page) + 24px);bottom:24px;justify-content:flex-start}.sel-in{width:min(560px,100%);max-height:70vh;border-radius:18px}}
+.tk-green .i{width:20px;height:20px}
+@media (max-width:759px){#cover .act-b small:last-of-type{display:none}#cover .act-b b{font-size:12px}}
+
+/* PRINT: on a phone the other ways out fold behind one small key */
+#sec-out .outs-k{display:none}
+@media (max-width:759px){#sec-out .outs-k{display:grid;margin:0 auto 4px}#sec-out:not(.open) .seg.outs{display:none}}
+/* a card turned over: with its poster, with its song */
+.tv-with{display:flex;justify-content:center;gap:8px;margin:6px 0 10px}
+.tv-w{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:0;border-radius:15px;cursor:pointer;background:rgba(255,255,255,.12);color:#E9EEF0;font:500 11px/1 var(--mono);letter-spacing:.04em}
+.tv-w[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
+.tv-w b{font-weight:500}
+/* the quick W.I.S.H.'s screen: on a phone the actions and the lives fold behind two small keys */
+#cover .wpv-tg{display:none}
+@media (max-width:759px){
+  #cover .wpv-tg{display:flex;gap:8px;align-self:flex-end}
+  #cover .wpv-tg button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#FFFFFF;color:#33403F;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  #cover .wpv-tg button[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
+  #cover .wpv-tg .i{width:16px;height:16px}
+  #cover .wpv:not(.show-acts) .wpv-acts,#cover .wpv:not(.show-eco) .wpv-eco{display:none}
+}
+/* novel.global: the cards beside the showcase, a catalogue that drifts; one pressed turns over to its stats, pressed again opens */
+.gallery.with-cards{grid-template-columns:minmax(0,1fr) 150px!important;column-gap:18px}
+.gl-cards{min-height:0;overflow:auto;scrollbar-width:none;align-self:stretch}
+.gl-cards::-webkit-scrollbar{display:none}
+.gl-cards ol{list-style:none;display:grid;gap:14px;margin:0;padding:6px 4px}
+.gc{display:block;width:100%;aspect-ratio:5/7;padding:0;border:0;background:none;cursor:pointer;perspective:700px;animation:gcdrift 7s ease-in-out calc(var(--i,0) * -0.9s) infinite}
+.gc-in{position:relative;display:block;width:100%;height:100%;transition:transform .5s cubic-bezier(.3,1.3,.5,1);transform-style:preserve-3d}
+.gc.over .gc-in{transform:rotateY(180deg)}
+.gc-f,.gc-b{position:absolute;inset:0;width:100%;height:100%;border-radius:8px;backface-visibility:hidden;box-shadow:0 8px 18px rgba(0,0,0,.28)}
+.gc-f{object-fit:cover;background:#13171A;image-rendering:pixelated}
+.gc-b{transform:rotateY(180deg);display:flex;flex-direction:column;gap:6px;padding:12px 10px;background:#060909;color:#BFFFEF;font:400 13px/1.1 VT323,ui-monospace,monospace;text-shadow:0 0 6px rgba(140,255,225,.5);text-align:left;overflow:hidden}
+.gc-b b{font-weight:400;font-size:15px;letter-spacing:.05em}
+.gc-b span{opacity:.65;letter-spacing:.08em}
+.gc-b small{font-size:12px;opacity:.85}
+.gc-b i{margin-top:auto;font-style:normal;opacity:.6}
+@keyframes gcdrift{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-6px) rotate(1.2deg)}}
+@media (prefers-reduced-motion:reduce){.gc{animation:none}}
+@media (max-width:759px){.gallery.with-cards{grid-template-columns:none!important;grid-template-rows:minmax(0,1fr) auto!important}.gl-cards ol{display:flex;gap:10px;overflow-x:auto}.gl-cards li{flex:0 0 92px}}
+.gallery.with-cards{padding-right:84px!important}
+.gl-cards{justify-self:stretch;width:150px}
+@media (max-width:759px){.gallery.with-cards{padding-right:10px!important}.gl-cards{width:100%}}
