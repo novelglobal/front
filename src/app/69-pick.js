@@ -69,7 +69,10 @@ async function pickURL(k, id) {
   if (k === 'wild') { const sp = wildSpecies(id); return sp ? speciesSticker(sp) : null; }
   return null;
 }
+/* where a piece goes: the page open now, not the one SELECT was opened on */
+const pickTo = () => (S.view === 2 ? 'strip' : S.view === 1 ? (faceOf(1) === 'back' ? 'board' : 'photo') : PICK.to);
 async function pickPut(k, id, btn) {
+  PICK.to = pickTo(); const sh = $('#pick'); if (sh) sh.dataset.to = PICK.to;
   if (k === 'wild' && id === 'more') { pullWild(); tick(1500); setTimeout(pickRender, 1600); return; }
   if (btn) { btn.classList.add('put'); setTimeout(() => btn.classList.remove('put'), 500); }
   if (PICK.to === 'strip') {

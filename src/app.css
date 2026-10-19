@@ -2945,3 +2945,5 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 /* the photograph's looks on PRINT's studio side: tall enough for their words */
 .dev.tepra.mod .photo-k .key,.dev.tepra.mod .photo-k .cap-k{height:auto!important;min-height:46px!important;padding:5px 2px!important;display:grid!important;justify-items:center;align-content:center;gap:2px;overflow:hidden}
 .dev.tepra.mod .photo-k .cap,.dev.tepra.mod .photo-k small{display:block;font-size:7px!important;line-height:1.1!important;white-space:normal;text-align:center}
+.dev.tepra.mod .seg.outs{grid-template-columns:repeat(3,1fr)!important}
+.dev.tepra.mod .fmt-k{grid-template-columns:repeat(3,1fr)!important}
