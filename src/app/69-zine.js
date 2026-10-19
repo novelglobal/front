@@ -505,6 +505,15 @@ async function pressOut(k) {
     tie(2); store.set('da.printed.v1', Date.now()); setTimeout(() => window.print(), 300); return;
   }
   if (k === 'poster') { await savePoster(); return; }
+  if (k === 'oled') {
+    const im = await loadImage(url, false); const W = 128, H = 64; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+    const k2 = Math.min(W / im.width, H / im.height); const dw = im.width * k2, dh = im.height * k2; x.drawImage(im, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    const d = x.getImageData(0, 0, W, H).data; const bytes = []; const out = x.createImageData(W, H);
+    for (let yy = 0; yy < H; yy++) for (let bx = 0; bx < W / 8; bx++) { let b = 0; for (let i = 0; i < 8; i++) { const p = ((yy * W) + bx * 8 + i) * 4; const on = (d[p] + d[p + 1] + d[p + 2]) / 3 < 128; if (on) b |= 1 << i; const v = on ? 255 : 0; out.data[p] = v; out.data[p + 1] = v; out.data[p + 2] = v; out.data[p + 3] = 255; } bytes.push('0x' + b.toString(16).padStart(2, '0')); }
+    x.putImageData(out, 0, 0); const nm = `${s ? s.code : 'sign'}`.replace(/[^A-Za-z0-9]/g, '_');
+    const h = `// novel.global · ${nm} · 128x64, 1 bit (XBM order). For U8g2: u8g2.drawXBM(0, 0, 128, 64, ${nm});\nstatic const unsigned char ${nm}[] PROGMEM = {\n` + bytes.map((v, i) => v + (i % 16 === 15 ? ',\n' : ', ')).join('').replace(/,\s*$/, '') + '\n};\n';
+    download(`${nm}-oled.h`, h, 'text/plain;charset=utf-8'); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `${nm}-oled.png`; setTimeout(() => a.click(), 300); tick(1800); return;
+  }
   if (k === 'png') { const a = document.createElement('a'); a.href = url; a.download = `${s ? s.code : 'sign'}-${PRESS.fmt}.png`; a.click(); tick(1800); return; }
   const sg = s || stripSignal();
   /* the printer's own bytes: the strip as drawn, in two inks, banded as the TM-T88 takes it, then a cut */
@@ -541,7 +550,7 @@ const PFMT_ICON = k => (k === 'gb' ? `${icon('gb')}` : k === 'zine' ? `${icon('b
 /* each key says what it is for, small, under its mark: a sense check at a glance */
 const PFMT_W = { r80: 'receipt', r58: 'ticket', gb: '4 tones', zine: 'zine' };
 const PHOTO_FOR = { atk: ['soft', 'faces, fur'], dots: ['halftone', 'posters'], bayer: ['grid', 'pixel art'], lines: ['engraved', 'plants, bark'], hard: ['bold', 'type, marks'] };
-const OUTS = [['print', 'print', 'PRINT<br>LOCAL', 'Print on this device'], ['poster', 'stories', 'SAVE<br>WALL', 'Save to the portfolio wall'], ['png', 'download', 'EXPORT<br>PNG', 'Export as a PNG image'], ['escpos', 'escpos', 'EXPORT<br>ESC/POS', 'Export printer bytes (.bin) for a receipt printer on a cable'], ['mesh', 'mesh', 'COPY<br>MESH', 'Copy as a mesh message, to send by radio']];
+const OUTS = [['print', 'print', 'PRINT<br>LOCAL', 'Print on this device'], ['poster', 'stories', 'SAVE<br>WALL', 'Save to the portfolio wall'], ['png', 'download', 'EXPORT<br>PNG', 'Export as a PNG image'], ['escpos', 'escpos', 'EXPORT<br>ESC/POS', 'Export printer bytes (.bin) for a receipt printer on a cable'], ['mesh', 'mesh', 'COPY<br>MESH', 'Copy as a mesh message, to send by radio'], ['oled', 'gb', 'OLED<br>128×64', 'For a LILYGO OLED screen: a 128 x 64 picture and its code']];
 const PACK_W = { life: 'life', jelly: 'jelly', zone: 'zone', goth: 'goth', witch: 'witch', ink: 'ink', turtle: 'turtles', words: 'words', ideas: 'ideas' };
 const DRAWERS = [['look', 'camera', 'The photograph']];
 /* everything made here, to place on the strip: the stories, the posters, the sounds (now, the loops kept, the signals started),
@@ -586,7 +595,7 @@ function viewSigns() {
       + `<div class="drawer" id="dr-look"${PRESS.drawer === 'look' ? '' : ' hidden'}><div class="seg keys photo-k" role="group" aria-label="The photograph">${PHOTO_MODES.map(m => `<button type="button" class="key ph-k cap-k" data-photo="${m.k}" aria-pressed="${photoMode() === m.k}" aria-label="${m.w}"><img class="ph-sw" src="${swatchOf(m.k)}" alt=""><small class="cap mono">${PHOTO_FOR[m.k][0]}</small></button>`).join('')}</div></div>`
         + `</section>`
       /* then the paper, and the keys that send it out */
-    + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
+    + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).filter(k => k !== 'r80').map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
       + `<section class="sec" id="sec-out">${printersHTML()}`
       + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
     + `</div>`

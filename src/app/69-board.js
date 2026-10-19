@@ -280,7 +280,7 @@ async function boardPicture() {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
   const pad = 48, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 4200 / Math.max(W, H));
-  const png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); const im = await loadImage(png, false);
+  const vt0 = c.viewportTransform.slice(); c.setViewportTransform([1, 0, 0, 1, 0, 0]); let png; try { png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); } finally { c.setViewportTransform(vt0); } const im = await loadImage(png, false);
   const out = document.createElement('canvas'); out.width = Math.round(W * k); out.height = Math.round(H * k); const x = out.getContext('2d'); const dark = darkNow();
   x.fillStyle = dark ? '#123A66' : '#F4F8F8'; x.fillRect(0, 0, out.width, out.height);
   const step = 26 * k; for (let gx = 0, i = 0; gx < out.width; gx += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(gx, 0, 1, out.height); }
