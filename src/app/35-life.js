@@ -146,7 +146,7 @@ const life = (() => {
   const running = () => !reduced() && !paused();
   /* a month ahead chosen on the outlook: the hand quickens with its danger, twice as fast at the extreme, and the glass heats.
      The El Niño switch holds it at the extreme: one turn in two bars of 120 BPM */
-  const heatAhead = () => (prefs.nino ? 4 : S.mo !== nowK() ? (outMonth(S.mo).lv || 0) : 0);
+  const heatAhead = () => (prefs.nino ? 4 : S.mo !== nowK() ? Math.min(3, outMonth(S.mo).lv || 0) : 0);
   const tempo = () => [1, 1.1, 1.3, 1.6, 2][heatAhead()];
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {

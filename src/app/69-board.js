@@ -30,7 +30,7 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -50,6 +50,7 @@ async function showBoard(on) {
     cv.on('object:moving', () => follow()); cv.on('object:modified', saveSoon); cv.on('text:changed', saveSoon);
     cv.on('path:created', e => { if (e.path) e.path.set({ daKind: 'pen', daId: uid('d') }); saveSoon(); });
     cv.on('mouse:down', e => { if (e.target && e.target.daKind === 'link' && !linkArmed) { unjoin(e.target); return; } linking(e.target); });
+    boardPanBind();
     addEventListener('resize', () => { if (!host.hidden) { cv.setWidth(boardW(host)); cv.setHeight(host.clientHeight - 78); if (boardId === 'b00') exFrame(); cv.renderAll(); } });
   } else { cv.setWidth(W); cv.setHeight(H); if (boardId === 'b00') exFrame(); }
   cv.renderAll(); return cv;
@@ -60,13 +61,26 @@ async function loadBoard() {
   exFrame(); cv.renderAll();
 }
 /* BOARD 00 is looked at, not moved, unless the approval page has it open to editing; and it is framed whole in the view */
-function exFrame() {
-  if (!cv) return; const ex = boardId === 'b00', locked = exLocked(); $('#board').classList.toggle('locked', locked); $('#board').classList.toggle('ex-edit', ex && !locked);
-  cv.selection = !locked; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'default' : 'move' });
-  if (!ex) { cv.setViewportTransform([1, 0, 0, 1, 0, 0]); return; }
+/* the board's view: three sizes (the key, or the wheel between them); its bare ground dragged moves it about, the page never
+   lost; LOCK holds everything on it still, so any drag moves the view */
+const BZ = [0.55, 1, 1.7]; let bzi = 1, bBase = 1, bLock = false, bPan = null;
+function boardZoomStep() { bzi = (bzi + 1) % BZ.length; boardZoomTo(bBase * BZ[bzi]); const b = $('#board [data-bt="zoom"]'); if (b) b.dataset.z = String(bzi); }
+function boardZoomTo(z, x, y) { if (!cv) return; cv.zoomToPoint(new window.fabric.Point(x == null ? cv.getWidth() / 2 : x, y == null ? cv.getHeight() / 2 : y), clamp(z, 0.25, 3)); cv.requestRenderAll(); }
+const ptOf = e => { const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; return { x: t.clientX, y: t.clientY }; };
+function boardPanBind() {
+  cv.on('mouse:down', e => { if (cv.isDrawingMode || linkArmed || (e.target && !bLock && e.target.selectable !== false)) return; bPan = ptOf(e.e); cv.setCursor('grabbing'); });
+  cv.on('mouse:move', e => { if (!bPan) return; const p = ptOf(e.e); const vt = cv.viewportTransform; vt[4] += p.x - bPan.x; vt[5] += p.y - bPan.y; bPan = p; cv.requestRenderAll(); });
+  cv.on('mouse:up', () => { if (!bPan) return; bPan = null; cv.setViewportTransform(cv.viewportTransform); });
+  cv.on('mouse:wheel', o => { const z = cv.getZoom() * Math.pow(0.999, o.e.deltaY); boardZoomTo(z, o.e.offsetX, o.e.offsetY); o.e.preventDefault(); o.e.stopPropagation(); });
+}
+function exFrame(keepView) {
+  if (!cv) return; const ex = boardId === 'b00', locked = exLocked() || bLock; $('#board').classList.toggle('locked', exLocked()); $('#board').classList.toggle('ex-edit', ex && !exLocked());
+  cv.selection = false; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' });
+  if (keepView) { cv.requestRenderAll(); return; }
+  bzi = 1; if (!ex) { bBase = 1; cv.setViewportTransform([1, 0, 0, 1, 0, 0]); return; }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const cols = cv.getObjects().filter(o => o.daKind === 'section'); for (const o of cols.length ? cols : cv.getObjects()) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
   if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; if (W < 120 || H < 120) { requestAnimationFrame(exFrame); return; } const z = Math.min(1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
-  cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
+  bBase = z; cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
 }
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
 function newBoard() { const id = uid('b'); BOARDS.push({ id, n: `BOARD ${pad2(BOARDS.filter(b => !b.ex).length + 1)}`, at: Date.now() }); store.set('da.boards.v1', BOARDS); switchBoard(id); }
@@ -125,6 +139,8 @@ function photoCard(url, id, x, y, w, to) {
     window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { if (byId(id)) return; img.set({ left: x, top: y, daId: id, daKind: 'image', stroke: '#FFFFFF', strokeWidth: 6 }); img.scaleToWidth(w); cv.add(img); if (to) joinCards(to, img); cv.renderAll(); saveSoon(); }); }).catch(() => {});
 }
 /* a picture laid on the active board from anywhere: onto the canvas if it is drawn, else into the board as kept */
+/* a picture made small enough to keep on a board in this browser */
+async function thumbOf(url, w = 240) { const im = await loadImage(url, false); const k = Math.min(1, w / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82); }
 async function addToBoard(url, kind = 'receipt', w = 220) {
   await workBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
   if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
@@ -242,6 +258,7 @@ async function notesIn(md) {
 }
 async function boardTool(k) {
   if (k === 'exsend') { sendExample(); return; }
+  if (k === 'zoom' || k === 'lock') { const c0 = await showBoard(true); if (!c0) return; if (k === 'zoom') boardZoomStep(); else { bLock = !bLock; exFrame(true); $('#board').classList.toggle('pinned', bLock); const b = $('#board [data-bt="lock"]'); if (b) b.setAttribute('aria-pressed', String(bLock)); } tick(bLock ? 900 : 1500); return; }
   if (exLocked() && k !== 'out') { await workBoard(); }
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();
   if (k === 'note') { const n = textCard(f, uid('n'), 'note', 'A note', p.x, p.y); c.add(n); c.setActiveObject(n); n.enterEditing(); n.selectAll(); }
@@ -329,7 +346,11 @@ const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by
 /* the form itself is the handheld (42-faces.js): its front asks for the intention, its back, modded, holds the whole poem */
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
-$('#view').addEventListener('submit', e => { if (e.target.id !== 'wish-form') return; e.preventDefault(); sendSignal(); });
+$('#view').addEventListener('submit', e => {
+  if (e.target.id !== 'wish-form') return; e.preventDefault();
+  if (faceOf(1) === 'back') { const empty = ['for', ...WKEYS].map(k => $('#wf-' + k)).filter(el => el && !el.value.trim()); if (empty.length) { empty.forEach(el => el.classList.add('need')); nudge(empty[0]); tick(600); return; } }
+  sendSignal();
+});
 /* the W.I.S.H. becomes a story: where the signal was, its four lines, its constellations; kept here, waiting to print */
 async function sendSignal() {
   const L = Object.fromEntries(WKEYS.map(k => { const el = $('#wf-' + k); return [k, String(el ? el.value : WDRAFT[k] || '').trim()]; }));
@@ -344,6 +365,7 @@ async function sendSignal() {
   const ev = await ledgerAdd({ type: 'signal', lat: pin.lat, lng: pin.lng, who, data: sig });
   Object.assign(WDRAFT, { w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT);
   tie(1); snd.printer(900); buzz([10, 40, 10]); toast('✓');
+  slipCanvas(sig, 384, 2, false, false).then(c => thumbOf(c.toDataURL('image/png'), 240)).then(u => addToBoard(u, 'receipt', 200)).catch(() => {});
   PRESS.story = ev.key; setView(2); return sig;
 }
 /* ───────── the book: the boards, the signals and constellations under each, and the field notes ───────── */

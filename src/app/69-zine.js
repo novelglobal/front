@@ -455,7 +455,7 @@ async function openCard(card) {
   $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
   const el = document.createElement('div'); el.className = 'card-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', card.name || 'A card');
   const c = await cardArt(card, card.n, 4); c.className = 'tv-card'; const { fig, poster } = cardKin(card);
-  const acts = [['strip', 'receipt', 'onto the strip', 'placed as art, to print'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
+  const acts = [['strip', 'receipt', 'onto the strip', 'placed as art, to print'], ['board', 'base', 'onto the board', 'pinned up in W.I.S.H.'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
   el.innerHTML = `<div class="tv-in"><div class="tv-spread">`
     + (poster ? `<figure class="tv-side tv-poster"><img src="${poster.img}" alt=""><figcaption class="mono">poster</figcaption></figure>` : '')
     + `<div class="tv-mid"></div>`
@@ -465,6 +465,8 @@ async function openCard(card) {
   const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
   el.addEventListener('click', async e => { const b = e.target.closest('[data-tv]');
     if (b && b.dataset.tv === 'strip') { close(); setView(2); setTimeout(async () => placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200), 500); return; }
+    if (b && b.dataset.tv === 'board') { const u = await thumbOf(await cardURL(card, 3), 260); await addToBoard(u, 'card', 160); close(); flyToTab(1, el); snd.printer(500); buzz([8, 30, 8]); return; }
+    if (e.target.closest('.tv-card, .tv-side img')) { const t = e.target.closest('.tv-card, .tv-side img'); zoomArt(t.tagName === 'CANVAS' ? t.toDataURL('image/png') : t.src); return; }
     if (b && b.dataset.tv === 'png' && poster) { const a = document.createElement('a'); a.href = poster.img; a.download = `poster-${isoDay(new Date(poster.at || Date.now()))}.jpg`; a.click(); tick(1800); return; }
     if (b || e.target === el) close(); });
 }
@@ -495,6 +497,7 @@ async function pressOut(k) {
   const s = pressStory(); const out = await stripOut(); if (!out) return; const { url, F } = out;
   if (k === 'print' || k === 'send') feedAnim(url);
   if (k === 'print' || k === 'send' || k === 'png') savePoster(true).catch(() => {});
+  if (k === 'print' || k === 'send') thumbOf(url, 240).then(u => addToBoard(u, 'print', 170)).catch(() => {});
   if (k === 'print') {
     const el = $('#p-slip'); el.innerHTML = `<img src="${url}" alt="" style="width:100%;display:block">`; el.className = 'slip print zine';
     let st = $('#page-size'); if (!st) { st = document.createElement('style'); st.id = 'page-size'; document.head.appendChild(st); }
@@ -564,6 +567,17 @@ function swatchOf(mode) {
   const rg = x.createRadialGradient(w * 0.44, h * 0.36, 1, w * 0.5, h * 0.52, h * 0.44); rg.addColorStop(0, '#FFFFFF'); rg.addColorStop(0.55, '#8C8C8C'); rg.addColorStop(1, '#161616'); x.fillStyle = rg; x.beginPath(); x.arc(w * 0.5, h * 0.52, h * 0.4, 0, TURN); x.fill();
   x.putImageData(dither(x.getImageData(0, 0, w, h), 2, mode), 0, 0); const u = c.toDataURL('image/png'); SWS.set(mode, u); return u;
 }
+/* what has been made here, in view and one touch from the strip: the posters, the cards, the songs kept (story pieces, not the
+   portfolio's showcase) */
+function madeHTML() {
+  const ps = POSTERS2.slice(0, 18), cs = deck().slice(0, 24), ls = LOOPS.slice(0, 8); if (!ps.length && !cs.length && !ls.length) return '';
+  const row = (k, items) => (items.length ? `<ol class="made-r" data-k="${k}">${items.join('')}</ol>` : '');
+  return `<section class="sec made" id="sec-made">`
+    + row('p', ps.map(p => `<li><button type="button" class="mk" data-piece="p" data-pid="${esc(p.id)}" aria-label="A poster, onto the strip"><img src="${p.img}" alt=""></button></li>`))
+    + row('t', cs.map(c => `<li><button type="button" class="mk card" data-piece="T" data-pid="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}, onto the strip"><img data-card="${esc(c.id)}" alt=""></button></li>`))
+    + row('s', ls.map(l => `<li><button type="button" class="mk song" data-piece="R" data-pid="${esc(l.id)}" aria-label="A song, onto the strip"><img src="${loopArt(l)}" alt=""></button></li>`))
+    + `</section>`;
+}
 function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
@@ -571,7 +585,7 @@ function viewSigns() {
   return `<div class="dev tepra mod">${mods('PRINT', '03 · DIRECT ACTION')}${flipBtn()}<header class="ps-h${on.length ? ' on' : ''}"><button type="button" class="ps-printer${st.ready ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></button><span class="ps-hl" id="ps-info" hidden><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
     + `<section class="sec lcd" id="sec-slips" data-tip="Stories waiting to print"><i class="lcd-ic">${icon('receipt')}<b class="mono">${ws.length}</b></i>`
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
-      + `</section>`
+      + `</section>` + madeHTML()
       /* what goes on the strip, in the order it is used, in four drawers, one open at a time, each its mark: the looks, the
          animals, the stickers, and what has been made here to place on the strip */
       + `<section class="sec" id="sec-drawers"><div class="seg keys drawers" role="group" aria-label="Drawers">${DRAWERS.map(([k, ic, w]) => `<button type="button" class="key dr-k" data-drawer="${k}" aria-pressed="${PRESS.drawer === k}" aria-label="${w}">${k === 'look' ? `<img class="ph-sw" src="${swatchOf(photoMode())}" alt="">` : k === 'life' ? glyphSVG('bird') : icon(ic)}</button>`).join('')}</div>`

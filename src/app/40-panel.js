@@ -114,9 +114,9 @@ function renderView() {
   if (k === 'signals' && front && S.open) wishPreview(); else { const cov = $('#cover'); if (cov) cov.replaceChildren(); }
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
-  if (k === 'signs') fillThumbs();
+  if (k === 'signs') { fillThumbs(); fillDeck(); }
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
-  railFit();
+  growTA($('#wf-for')); railFit();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
@@ -129,7 +129,7 @@ function refresh() { if (refreshQ) return; refreshQ = requestAnimationFrame(() =
 setInterval(() => { $$('#panel .cdn[data-up]').forEach(t => { t.textContent = elapsed(+t.dataset.up); }); }, 1000);
 /* a month chosen on the strip: the page and the ground show that stretch of three months */
 /* a month pressed: the outlook moves to it, and its readout opens; pressed again, the readout closes */
-const pickMonth = (k, read) => { if (read && timeOn()) setTime(false); k = clamp(k, 0, OUT_N - 1); if (read) S.moRead = S.moRead === k ? null : k; if (k === S.mo && !read) return; S.mo = k; life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
+const pickMonth = (k, read) => { if (read && timeOn()) setTime(false); k = clamp(k, 0, OUT_N - 1); if (read) S.moRead = S.moRead === k ? null : k; if (k === S.mo && !read) return; S.mo = k; setNino(outMonth(k).lv >= 4 && k !== nowK()); life.data(); const st = viewEl.scrollTop; renderView(); viewEl.scrollTop = st; tick(1500 + 50 * k); };
 /* the search area of an animal lost: shown, and the whole of it framed */
 function searchFor(id) {
   const o = S.byId.get(id); if (!o) return; if (!prefs.areas) { prefs.areas = true; savePrefs(); }
@@ -489,24 +489,25 @@ function galleryRead() {
   dis('prev', galleryAt === 0); dis('next', galleryAt >= ps.length - 1); dis('card', p.ex); dis('png', !p.img); dis('zoom', !p.img);
 }
 function galleryGo(i) { const tr = $('#gallery .gl-track'); if (!tr) return; tr.scrollTo({ left: clamp(i, 0, wallOf().length - 1) * tr.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); }
-/* a poster or a zine, close up, at three sizes: as wide as the screen allows, twice, three times, scrolled about; a press on it
+/* a poster or a zine, close up, at five sizes: half, three quarters, as wide as the screen allows, twice, three times, scrolled about; a press on it
    steps up and round again, keeping the place pressed under the finger. Esc, the cross or the dark around it closes it */
 function zoomArt(src) {
   const z = document.createElement('div'); z.className = 'zoomv'; z.setAttribute('role', 'dialog'); z.setAttribute('aria-label', 'Close up');
-  z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">1×</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
+  z.innerHTML = `<div class="zv-s"><img src="${src}" alt="" draggable="false"></div><div class="zv-keys"><button type="button" class="gk" data-zv="out" aria-label="Smaller">${icon('minus')}</button><b class="zv-l mono">100%</b><button type="button" class="gk" data-zv="in" aria-label="Larger">${icon('plus')}</button><button type="button" class="gk" data-zv="x" aria-label="Close">${icon('close')}</button></div>`;
   document.body.appendChild(z); tick(1600);
-  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); let lv = 1;
+  const sc = z.querySelector('.zv-s'), im = z.querySelector('img'); const LV = [0.5, 0.75, 1, 2, 3]; let lv = 2; const base = () => Math.min(innerWidth * 0.92, 720);
+  im.style.width = `${base()}px`;
   const set = (n, cx, cy) => {
     const r = im.getBoundingClientRect(); const fx = cx == null ? 0.5 : (cx - r.left) / r.width, fy = cy == null ? 0.5 : (cy - r.top) / r.height; const ax = cx == null ? sc.clientWidth / 2 : cx - sc.getBoundingClientRect().left, ay = cy == null ? sc.clientHeight / 2 : cy - sc.getBoundingClientRect().top;
-    lv = n; z.dataset.lv = n; z.querySelector('.zv-l').textContent = `${n}×`; const r2 = im.getBoundingClientRect(); const ox = r2.left - sc.getBoundingClientRect().left + sc.scrollLeft, oy = r2.top - sc.getBoundingClientRect().top + sc.scrollTop;
-    sc.scrollLeft = ox + fx * r2.width - ax; sc.scrollTop = oy + fy * r2.height - ay; tick(1100 + n * 220);
+    lv = n; z.dataset.lv = n; im.style.width = `${Math.round(base() * LV[n])}px`; z.querySelector('.zv-l').textContent = `${Math.round(LV[n] * 100)}%`; const r2 = im.getBoundingClientRect(); const ox = r2.left - sc.getBoundingClientRect().left + sc.scrollLeft, oy = r2.top - sc.getBoundingClientRect().top + sc.scrollTop;
+    sc.scrollLeft = ox + fx * r2.width - ax; sc.scrollTop = oy + fy * r2.height - ay; tick(900 + n * 200);
   };
   const close = () => { z.remove(); removeEventListener('keydown', key); tick(1100); };
-  const key = e => { if (e.key === 'Escape') close(); if (e.key === '+' || e.key === '=') set(Math.min(3, lv + 1)); if (e.key === '-') set(Math.max(1, lv - 1)); };
+  const key = e => { if (e.key === 'Escape') close(); if (e.key === '+' || e.key === '=') set(Math.min(4, lv + 1)); if (e.key === '-') set(Math.max(0, lv - 1)); };
   addEventListener('keydown', key);
   z.addEventListener('click', e => {
-    const b = e.target.closest('[data-zv]'); if (b) { if (b.dataset.zv === 'x') close(); else set(clamp(lv + (b.dataset.zv === 'in' ? 1 : -1), 1, 3)); return; }
-    if (e.target === im) { set(lv % 3 + 1, e.clientX, e.clientY); return; }
+    const b = e.target.closest('[data-zv]'); if (b) { if (b.dataset.zv === 'x') close(); else set(clamp(lv + (b.dataset.zv === 'in' ? 1 : -1), 0, 4)); return; }
+    if (e.target === im) { set((lv + 1) % 5, e.clientX, e.clientY); return; }
     if (e.target === z || e.target === sc) close();
   });
 }
@@ -525,7 +526,7 @@ function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return quickHTML() + wishesSection() + deckHTML() + loopsHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return quickHTML() + wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
