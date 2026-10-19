@@ -567,6 +567,11 @@ function swatchOf(mode) {
   const rg = x.createRadialGradient(w * 0.44, h * 0.36, 1, w * 0.5, h * 0.52, h * 0.44); rg.addColorStop(0, '#FFFFFF'); rg.addColorStop(0.55, '#8C8C8C'); rg.addColorStop(1, '#161616'); x.fillStyle = rg; x.beginPath(); x.arc(w * 0.5, h * 0.52, h * 0.4, 0, TURN); x.fill();
   x.putImageData(dither(x.getImageData(0, 0, w, h), 2, mode), 0, 0); const u = c.toDataURL('image/png'); SWS.set(mode, u); return u;
 }
+/* the printers, each with its light, its place and its state: one now, more to come in other places and hours */
+function printersHTML() {
+  const ps = [MASTER, ...PARTNERS.filter(p => p.printer)].filter(Boolean);
+  return `<ol class="prn-l">${ps.map(p => { const on = !!(PSTATE[p.id] || {}).ready; return `<li class="${on ? 'on' : ''}"><i class="prn-led"></i><b>${esc(String(p.n).toUpperCase())}</b><small>${on ? 'ONLINE' : 'OFFLINE · WAITS'}</small></li>`; }).join('')}</ol>`;
+}
 function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
@@ -582,7 +587,7 @@ function viewSigns() {
         + `</section>`
       /* then the paper, and the keys that send it out */
     + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
-      + `<section class="sec" id="sec-out"><button type="button" class="print-k pk-ic${on.length ? ' on' : ''}${cur ? ' next' : ''}" data-pout="send" aria-label="Print receipt" data-tip="${on.length ? 'Print: online' : 'Print: offline, it waits'}">${icon('epson')}</button><button type="button" class="outs-k" data-outs aria-expanded="false" aria-label="Export: PNG, ESC/POS, mesh, print here, wall">${icon('download')}<b class="mono">EXPORT</b></button>`
+      + `<section class="sec" id="sec-out">${printersHTML()}`
       + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
     + `</div>`
     ;

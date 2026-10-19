@@ -122,7 +122,7 @@ function textCard(f, id, kind, text, x, y, o = {}) {
     slip: { fill: '#141412', backgroundColor: '#FFFFFF', fontFamily: 'VT323, monospace', fontSize: 19, width: 230 } }[kind] || {};
   return new f.Textbox(text, { left: x, top: y, padding: 12, lineHeight: 1.25, daId: id, daKind: kind, editable: true, borderColor: '#FF5A1F', cornerColor: '#FF5A1F', cornerSize: 8, transparentCorners: false, ...look, ...o });
 }
-const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind !== 'link').length; return { x: 40 + (n % 4) * 270, y: 40 + Math.floor(n / 4) * 230 }; };
+const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind !== 'link').length % 6; const vt = cv.viewportTransform, z = vt[0] || 1; return { x: (cv.getWidth() * 0.3 - vt[4]) / z + (n % 3) * 30, y: (cv.getHeight() * 0.25 - vt[5]) / z + Math.floor(n / 3) * 30 }; };
 const names = (cells, n = 6) => [...new Set((cells || []).map(c => c.n))].slice(0, n).join(', ');
 /* what a signal from the radio says: where and when; what each layer heard, by name; its constellations */
 function mixText(m) {

@@ -78,7 +78,7 @@ function radioFront() {
     + `<div class="rd-top"><i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${first ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button></div>`
     + `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
       + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`
-    + `${flipBtn()}</div>${MIXES.length || wishStarted() || mineOf().length || POSTERS2.length || printedAny() ? checklistHTML() : cluesHTML()}</section>`;
+    + `${flipBtn()}</div></section>`;
 }
 /* a knob turned: a click goes round, off, one, two, three; arrow keys step and stop at the ends */
 function turnKnob(k, d, stop) {
@@ -192,7 +192,7 @@ const fillWDraftFor = () => { const f = $('#wf-for'); if (f) { WDRAFT.for = f.va
 const TP_KEYS = [['text', '', 'teal', 'Words'], ['pick', 'plus', 'green', 'Select: art, songs, stickers, lives'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
 function printFront() {
   const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
-  return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><i class="hack h-tie" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
+  return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><i class="hack h-tie" aria-hidden="true"></i><i class="hack h-lora" aria-hidden="true"></i><i class="hack h-node" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
     + `<label class="tp-lcd"><span class="tp-l1">${s ? esc(s.code) : '80 MM'}</span><span class="tp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span><input id="tp-words" maxlength="80" spellcheck="true" autocomplete="off" placeholder=" " aria-label="Words for the strip"><i class="tp-cur" aria-hidden="true"></i></label>`
     + `<div class="tp-keys">${TP_KEYS.map(([k, ic, c, w]) => `<button type="button" class="tp-k tk-${c}" data-tp="${k}" aria-label="${w}">${k === 'text' ? '<b>Aa</b>' : icon(ic)}</button>`).join('')}</div>`
     + `<div class="tp-foot"><button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button><button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button></div>`
