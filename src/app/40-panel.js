@@ -280,11 +280,12 @@ function stepNow() {
   return now < 0 ? { now: -1 } : { n: 3, now, w: rows[now].w, go: rows[now].go };
 }
 const stepAttr = () => { const st = stepNow(); return ` data-st='${esc(JSON.stringify(st))}'${st.share ? ' data-share-mix' : st.go != null ? ` data-go-view="${st.go}"` : ''}`; };
+const stepWords = () => { const st = stepNow(); return st.now >= 0 ? `${st.now + 1}/${st.n} ${String(st.w).toUpperCase()}` : 'EL NIÑO'; };
 let cdT = 0;
 setInterval(() => {
   const el = document.querySelector('#sec-heat .cd'); if (!el || document.hidden) return; cdT++; let st = null; try { st = JSON.parse(el.dataset.st || 'null'); } catch (e) { st = null; }
   const showSt = st && st.now >= 0 && (cdT % 9 >= 5 || !el.dataset.to);
-  if (showSt) { el.textContent = `${st.now + 1}/${st.n} ${String(st.w).toUpperCase()}`; el.classList.add('st'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('st'); }
+  if (showSt) { el.textContent = stepWords(); el.classList.add('st'); } else { if (el.dataset.to) el.textContent = countText(+el.dataset.to); el.classList.remove('st'); }
 }, 1000);
 /* the clues, the only words on the radio: find yourself; tie something to something; then the signal */
 /* the steps: one thin line, a dot for each, the words small under it. Done, the dot is filled; the one waiting is a ring that
@@ -353,7 +354,7 @@ function viewRadio() {
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
   return `<section class="band dev radio mod" id="sec-heat">${mods('DIRECT ACTION', 'RADIO')}${flipBtn()}
-      ${pagerHTML()}<p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : ''}</b></p>
+      ${pagerHTML()}<p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : stepWords()}</b></p>
       ${monthStrip()}
       <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
      + `<button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>`

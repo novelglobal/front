@@ -254,7 +254,7 @@ function mixCode(m) {
   const ks = Object.keys(MOODS); const w = m.where;
   return `${(+w.lat).toFixed(4)},${(+w.lng).toFixed(4)},${Math.round(w.r)},${LAYERS.map(L => { const x = (m.layers || {})[L.k] || {}; return `${x.on ? 1 : 0}${volIdx(x.lvl == null ? 0.7 : x.lvl)}${Math.max(0, ks.indexOf(x.mood)).toString(36)}`; }).join('')}`;
 }
-const mixURL = m => `${String(CONFIG.PORTAL_URL || location.origin + '/').replace(/#.*$/, '')}#mix=${mixCode(m)}`;
+const mixURL = m => `${String(/\.workers\.dev$|localhost|\.test$/.test(location.hostname) ? location.origin + '/' : CONFIG.PORTAL_URL || location.origin + '/').replace(/#.*$/, '')}#mix=${mixCode(m)}`;
 function mixOfCode(code) {
   const [lat, lng, r, L] = String(code || '').split(','); const ks = Object.keys(MOODS);
   if (!Number.isFinite(+lat) || !Number.isFinite(+lng) || !/^([01]\d[0-9a-z]){4}$/.test(L || '')) return null;
