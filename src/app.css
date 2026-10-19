@@ -2827,14 +2827,7 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .tv-w[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
 .tv-w b{font-weight:500}
 /* the quick W.I.S.H.'s screen: on a phone the actions and the lives fold behind two small keys */
-#cover .wpv-tg{display:none}
-@media (max-width:759px){
-  #cover .wpv-tg{display:flex;gap:8px;align-self:flex-end}
-  #cover .wpv-tg button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#FFFFFF;color:#33403F;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-  #cover .wpv-tg button[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
-  #cover .wpv-tg .i{width:16px;height:16px}
-  #cover .wpv:not(.show-acts) .wpv-acts,#cover .wpv:not(.show-eco) .wpv-eco{display:none}
-}
+
 /* novel.global: the cards beside the showcase, a catalogue that drifts; one pressed turns over to its stats, pressed again opens */
 .gallery.with-cards{grid-template-columns:minmax(0,1fr) 150px!important;column-gap:18px}
 .gl-cards{min-height:0;overflow:auto;scrollbar-width:none;align-self:stretch}
@@ -2856,3 +2849,38 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .gallery.with-cards{padding-right:84px!important}
 .gl-cards{justify-self:stretch;width:150px}
 @media (max-width:759px){.gallery.with-cards{padding-right:10px!important}.gl-cards{width:100%}}
+
+/* PRINT's back, tidied: the ways out tall enough for their two lines; the print key round, as on the front; the fold key small */
+.dev.tepra.mod .seg.outs{display:grid!important;grid-template-columns:repeat(5,1fr);gap:5px!important}
+.dev.tepra.mod .seg.outs .key{height:auto!important;min-height:46px!important;padding:6px 2px 5px!important;display:grid!important;justify-items:center;align-content:center;gap:3px;overflow:visible}
+.dev.tepra.mod .seg.outs .cap{display:block;font-size:7px!important;line-height:1.15!important;letter-spacing:.06em!important;white-space:normal;text-align:center}
+.dev.tepra.mod #sec-out{display:grid;justify-items:center;gap:8px}
+.dev.tepra.mod #sec-out .print-k.pk-ic{width:64px!important;height:64px!important;border-radius:50%!important;margin:2px auto!important}
+.dev.tepra.mod #sec-out .seg.outs{width:100%}
+#sec-out .outs-k{width:30px!important;height:30px!important;border-radius:50%!important;padding:0!important}
+#sec-out .outs-k .i{width:14px;height:14px}
+#sec-out.open .outs-k{transform:rotate(45deg)}
+.dev.tepra.mod{padding-bottom:60px!important}
+/* every plate as the radio's: DIRECT ACTION, and the device's name small and grey */
+.mod-label::after{color:#9AA3A8;opacity:1!important}
+/* the label maker's mod: a neat yellow jumper looped off its side */
+.h-tie{top:auto;bottom:70px;right:-12px;width:22px;height:50px;background:var(--cable) 0 0/100% 100% no-repeat;transform:scaleX(-1)}
+
+/* the countdown's screen one size whichever it shows: the count, or the step waiting, set to fit */
+.band.dev.radio.mod .b-emerg .cd{display:inline-grid!important;place-items:center;width:216px;height:40px;box-sizing:border-box;padding:3px 10px 0!important;font-size:28px!important;white-space:nowrap;overflow:hidden}
+.band.dev.radio.mod .b-emerg .cd.st{font-size:15px!important;letter-spacing:.03em}
+/* SELECT on a wide screen: in the middle of the big screen, beside the device */
+@media (min-width:760px){.sel{left:0;right:var(--page);bottom:auto;top:50%;transform:translateY(-50%);justify-content:center}.sel-in{width:min(600px,calc(100% - 48px))}}
+
+/* the quick W.I.S.H.'s screen: the receipt alone; one small key opens a showcase of examples to remix, the actions and the lives */
+#cover .wpv{position:absolute}
+#cover .wpv-ex{position:absolute;z-index:3;top:14px;right:14px;display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#FFFFFF;color:#33403F;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+#cover .wpv-ex[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
+#cover .wpv-ex .i{width:17px;height:17px}
+#cover .wpv-show{display:none;position:absolute;z-index:2;top:62px;right:14px;width:min(380px,calc(100% - 28px));max-height:calc(100% - 80px);overflow:auto;padding:12px;border-radius:14px;background:var(--grain),linear-gradient(180deg,#2B2F33,#202326);box-shadow:0 20px 40px rgba(0,0,0,.3)}
+#cover .wpv.show-ex .wpv-show{display:grid;gap:12px}
+#cover .wpv-show .wpv-acts{flex-direction:column;overflow:visible;padding:0;max-width:none}
+#cover .wpv-show .act-b{width:100%;background:#F4F6F6}
+#cover .wpv-show .wpv-eco{justify-content:flex-start;max-width:none}
+#cover .wpv-show .eco-b{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+@media (min-width:760px){#cover .wpv-ex{right:84px}#cover .wpv-show{right:84px}}

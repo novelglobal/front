@@ -111,12 +111,12 @@ function unNudge(i) { if (i === 1) { const t = $('#rail .tab[data-i="1"]'); if (
 function wishDevice(back) {
   const where = suburbAt(S.scan.lat, S.scan.lng); const L = WDRAFT;
   const photo = L.photo ? `<span class="vs-ph"><img src="${L.photo}" alt=""><button type="button" class="vs-phx" data-vs="unphoto" aria-label="Take the photograph off">${icon('close', 'sm')}</button></span>` : '';
-  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : '<i class="hack h-ant" aria-hidden="true"></i><i class="hack h-pins" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
+  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('DIRECT ACTION', 'W.I.S.H.') : '<i class="hack h-ant" aria-hidden="true"></i><i class="hack h-pins" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">${back ? 'W.I.S.H.' : 'INTENTION'}</b><span class="vs-now">${esc(String(where || '').toUpperCase())} ${fmtClock(Date.now())}</span></div>`
     + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<textarea id="wf-for" rows="1" maxlength="90" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" ">${esc(String(L.for || '').replace(/^[lce]:/, ''))}</textarea><i class="vs-cur" aria-hidden="true"></i></label><ol class="vs-sug" id="wf-sug" hidden></ol>`
     + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
       + `<label class="vs-by" data-tip="By"><b class="wf-m" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(L.by || S.me.by || '')}" aria-label="By" spellcheck="false"></label>` : '')
-    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-pick="wish" aria-label="Select: art, songs, stickers, lives">${icon('plus')}</button><button type="button" class="vs-cam vs-clr" data-vs="sug" aria-pressed="${SUGON}" aria-label="Suggestions">${icon('note')}</button><button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
+    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-pick="wish" aria-label="Select: art, songs, stickers, lives">${icon('plus')}</button><button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
     + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button></div>`
     + `${flipBtn()}</div></form></section>`;
 }
@@ -137,7 +137,7 @@ viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') { growTA(e
 viewEl.addEventListener('click', e => { const b = e.target.closest('[data-sug]'); if (!b) return; const f = $('#wf-for'); f.value = b.dataset.sug; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); sugShow(false); snd.tick(1700); });
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-vs]'); if (!b) return;
-  if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
+  if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; WDRAFT.act = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
   if (b.dataset.vs === 'sug') { SUGON = !SUGON; b.setAttribute('aria-pressed', String(SUGON)); sugShow(SUGON); snd.tick(SUGON ? 1700 : 1000); return; }
   if (b.dataset.vs === 'unphoto') { WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(1000); }
 });
@@ -170,10 +170,10 @@ const wishPreview = debounce(async () => {
   let fig = cov.querySelector('.wpv');
   if (!fig) {
     fig = document.createElement('div'); fig.className = 'wpv';
-    fig.innerHTML = `<div class="wpv-tg"><button type="button" data-wpv="acts" aria-pressed="false" aria-label="Actions to take up">${icon('check')}</button><button type="button" data-wpv="eco" aria-pressed="false" aria-label="The lives most at risk">${glyphSVG('bird')}</button></div><ol class="wpv-acts" aria-label="Actions to take up">${ACTIONS.map(a => `<li><button type="button" class="act-b" data-act="${a.k}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.for)}</b><small>${esc(a.s)}</small><small>${esc(a.h)}</small></button></li>`).join('')}</ol><figure class="wpv-r"><img alt="" data-zoom></figure><ul class="wpv-eco"></ul>`;
+    fig.innerHTML = `<button type="button" class="wpv-ex" data-wpv="ex" aria-pressed="false" aria-label="Examples to remix">${icon('stories')}</button><div class="wpv-show"><ol class="wpv-acts" aria-label="Actions to take up">${ACTIONS.map(a => `<li><button type="button" class="act-b" data-act="${a.k}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.for)}</b><small>${esc(a.s)}</small><small>${esc(a.h)}</small></button></li>`).join('')}</ol><ul class="wpv-eco"></ul></div><figure class="wpv-r"><img alt="" data-zoom></figure>`;
     cov.replaceChildren(fig);
   }
-  $$('#cover [data-act]').forEach(b => b.classList.toggle('on', (ACTIONS.find(a => a.k === b.dataset.act) || {}).for === String(WDRAFT.for || '').trim()));
+  $$('#cover [data-act]').forEach(b => b.classList.toggle('on', WDRAFT.act === b.dataset.act));
   fig.querySelector('.wpv-r img').src = cvs.toDataURL('image/png');
   fig.querySelector('.wpv-eco').innerHTML = needLives(6).map(sp => `<li><button type="button" class="eco-b" data-eco="${esc(sp.n)}" aria-label="${esc(sp.n)}" data-tip="${esc(sp.n)}"><img src="${esc(sp.ph)}" alt="" loading="lazy"></button>${/^\d+$/.test(sp.id) ? `<a class="eco-l" href="https://www.inaturalist.org/observations/${sp.id}" target="_blank" rel="noopener" aria-label="The sighting">${icon('out', 'sm')}</a>` : ''}</li>`).join('');
 }, 320);
@@ -181,9 +181,8 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#cover')) return;
   const tg = e.target.closest('[data-wpv]'); if (tg) { const w = $('#cover .wpv'); const k = tg.dataset.wpv; const on = !w.classList.contains('show-' + k); w.classList.toggle('show-' + k, on); tg.setAttribute('aria-pressed', String(on)); tick(on ? 1500 : 1000); return; }
   const z = e.target.closest('[data-zoom]'); if (z) { zoomArt(z.src, $('#cover')); return; }
-  const f = $('#wf-for');
-  const a = e.target.closest('[data-act]'); if (a && f) { const A = ACTIONS.find(x => x.k === a.dataset.act); if (!A) return; f.value = A.for; for (const k of WKEYS) WDRAFT[k] = A[k]; WDRAFT.for = A.for; store.set('da.wish.v1', WDRAFT); growTA(f); f.dispatchEvent(new Event('input', { bubbles: true })); wishPreview(); snd.tick(1800); buzz(5); return; }
-  const b = e.target.closest('[data-eco]'); if (b && f) { const n = b.dataset.eco, t = f.value.trim(); if (!t.toLowerCase().includes(n.toLowerCase())) f.value = t ? `${t} for the ${n}` : n; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); fillWDraftFor(); snd.tick(1700); buzz(5); }
+  const a = e.target.closest('[data-act]'); if (a) { const A = ACTIONS.find(x => x.k === a.dataset.act); if (!A) return; const off = WDRAFT.act === A.k; for (const k of WKEYS) WDRAFT[k] = off ? '' : A[k]; WDRAFT.act = off ? '' : A.k; store.set('da.wish.v1', WDRAFT); wishPreview(); snd.tick(off ? 1000 : 1800); buzz(5); return; }
+  const b = e.target.closest('[data-eco]'); if (b) { const im = b.querySelector('img'); if (!im) return; thumbOf(im.src, 700).then(u => { WDRAFT.photo = u; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); }).catch(() => tick(600)); snd.tick(1700); buzz(5); }
 });
 const fillWDraftFor = () => { const f = $('#wf-for'); if (f) { WDRAFT.for = f.value; store.set('da.wish.v1', WDRAFT); } wishPreview(); };
 
