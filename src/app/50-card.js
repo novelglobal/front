@@ -65,7 +65,7 @@ function paintFace(f, wipe) {
   const lost = f === 'front' && o && o.kind === 'lost';
   altBtn.hidden = true; heroBtn.hidden = false; rec.classList.toggle('alarm', !!tel || lost); heroBtn.classList.remove('go'); altBtn.classList.add('go');
   if (f === 'wish') { heroWord('base', 'TO THE BOARD'); altWord('print', 'STORY'); altBtn.hidden = false; }
-  else if (f === 'signal') heroWord('print', 'DIRECT ACTION');
+  else if (f === 'signal') heroWord('receipt', 'TO PRINT');
   else if (f === 'place') { heroWord('check', 'PLACE'); altWord('next', 'NOTICED'); altBtn.hidden = false; }
   else if (S.mode === 'tribe') heroWord('out', 'JOIN');
   else if (S.mode === 'partner') heroWord('out', 'VISIT');

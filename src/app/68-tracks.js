@@ -47,7 +47,7 @@ function pingPlace(p) {
   if (!TRK.on.places || !prefs.sound || LOOP.on) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
   /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
   if (!p.cur && partialOf(p.n) % 3) return false; flashLayer(p.on ? 'pollution' : 'community');
-  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7 });
+  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), vi: partialOf(p.n || p.fam) % 8, v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7 });
 }
 const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
@@ -145,7 +145,7 @@ function pingClimate(c) {
   return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: Math.sin((c.sb || 0) * Math.PI / 180) * 0.7 });
 }
 /* a layer's volume, three steps: quiet, half, full */
-const VOLS = [0.35, 0.7, 1];
+const VOLS = [0.18, 0.5, 1];
 const volStep = k => VOLS.reduce((best, v, i) => (Math.abs(v - layerLvl(k)) < Math.abs(VOLS[best] - layerLvl(k)) ? i : best), 0);
 function layersHTML() {
   return `<ol class="lyrs" role="group" aria-label="Layers">${LAYERS.map((L, i) => { const on = trackOn(L.k); const m = MOODS[moodOfLayer(L.k)]; const v = volStep(L.k);
@@ -225,7 +225,7 @@ function loopTick() {
       if (!crossed(c.b)) continue; const pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
       if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8 }); }
       else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * lvl, pan });
-      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, v: 0.04 * lvl, pan }); }
+      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * lvl, pan }); }
       if (ok) flashLayer(k);
     }
   }

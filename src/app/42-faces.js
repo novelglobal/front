@@ -69,10 +69,12 @@ const mods = (n, st) => `<i class="mod-cap" aria-hidden="true"></i>${['tl', 'tr'
    three levels; the steps under it ───────── */
 const KNOB_A = [-135, -45, 45, 135];
 const knobPos = k => (trackOn(k) ? volStep(k) + 1 : 0);
+/* the El Niño switch, on both faces of the radio: one setting, one speed */
+const ninoSwitch = () => `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`;
 function radioFront() {
   const first = !S.started && !prefs.placed;
-  return `<section class="band front-r" id="sec-heat"><div class="dev radio">`
-    + `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`
+  return `<section class="band front-r" id="sec-heat"><div class="dev radio"><i class="hack h-jump" aria-hidden="true"></i>`
+    + `${ninoSwitch()}`
     + `<div class="rd-top"><i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${first ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button></div>`
     + `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
       + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`
@@ -86,11 +88,16 @@ function turnKnob(k, d, stop) {
   snd.tick(800 + p * 320); buzz(4);
 }
 viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'); if (k) turnKnob(k.dataset.knob, 1, false); });
-/* the red switch: El Niño at 120 BPM, on and off */
+/* the red switch: El Niño at 120 BPM. It is the same setting as an extreme month chosen on the studio side: on, the outlook
+   moves to the first extreme month ahead; off, back to now; and an extreme month chosen there turns it on */
+function setNino(on) {
+  on = !!on; if (!!prefs.nino === on) return; prefs.nino = on; savePrefs(); document.body.classList.toggle('nino', on);
+  $$('#view [data-nino]').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }); life.moved(); life.redraw();
+}
 viewEl.addEventListener('click', e => {
-  const b = e.target.closest('[data-nino]'); if (!b) return; prefs.nino = !prefs.nino; savePrefs();
-  b.classList.toggle('on', prefs.nino); b.setAttribute('aria-checked', String(prefs.nino)); document.body.classList.toggle('nino', prefs.nino);
-  snd.tick(prefs.nino ? 2400 : 900); buzz(prefs.nino ? [10, 20, 10] : 6); life.moved(); life.redraw();
+  const b = e.target.closest('[data-nino]'); if (!b) return; const on = !prefs.nino; setNino(on);
+  const ext = [...Array(OUT_N).keys()].find(k => k > nowK() && outMonth(k).lv >= 4); S.mo = on && ext != null ? ext : nowK(); S.moRead = null; life.data();
+  snd.tick(on ? 2400 : 900); buzz(on ? [10, 20, 10] : 6);
 });
 viewEl.addEventListener('keydown', e => { const k = e.target.closest('[data-knob]'); if (!k) return; const d = /Right|Up/.test(e.key) ? 1 : /Left|Down/.test(e.key) ? -1 : 0; if (!d) return; e.preventDefault(); e.stopPropagation(); turnKnob(k.dataset.knob, d, true); });
 /* once the radio has played a while, and no W.I.S.H. is begun, its tab glows until it is opened */
@@ -104,18 +111,30 @@ function unNudge(i) { if (i === 1) { const t = $('#rail .tab[data-i="1"]'); if (
 function wishDevice(back) {
   const where = suburbAt(S.scan.lat, S.scan.lng); const L = WDRAFT;
   const photo = L.photo ? `<span class="vs-ph"><img src="${L.photo}" alt=""><button type="button" class="vs-phx" data-vs="unphoto" aria-label="Take the photograph off">${icon('close', 'sm')}</button></span>` : '';
-  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : ''}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
+  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('W.I.S.H.', '02 · RESPONSE') : '<i class="hack h-tape" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">${back ? 'W.I.S.H.' : 'INTENTION'}</b><span class="vs-now">${esc(String(where || '').toUpperCase())} ${fmtClock(Date.now())}</span></div>`
-    + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<input id="wf-for" list="wf-for-l" maxlength="60" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" " value="${esc(String(L.for || '').replace(/^[lce]:/, ''))}"><i class="vs-cur" aria-hidden="true"></i></label><datalist id="wf-for-l">${intentOptions()}</datalist>`
+    + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<textarea id="wf-for" rows="1" maxlength="90" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" ">${esc(String(L.for || '').replace(/^[lce]:/, ''))}</textarea><i class="vs-cur" aria-hidden="true"></i></label><ol class="vs-sug" id="wf-sug" hidden></ol>`
     + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
       + `<label class="vs-by" data-tip="By"><b class="wf-m" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(L.by || S.me.by || '')}" aria-label="By" spellcheck="false"></label>` : '')
-    + `<div class="vs-att">${photo}<label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
-    + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button><button type="button" class="vs-btn" data-vs="clear" aria-label="Clear">${icon('close')}</button></div>`
+    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
+    + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button></div>`
     + `${flipBtn()}</div></form></section>`;
 }
 const wishFront = () => wishDevice(false);
 viewEl.addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; wishPreview(); if (e.target.id === 'wf-for') { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', !!e.target.value.trim()); } });
-viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.vs-poem textarea')) e.preventDefault(); });
+viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.closest('.vs-poem textarea') || e.target.id === 'wf-for')) e.preventDefault(); if (e.key === 'Escape' && e.target.id === 'wf-for') sugShow(false); });
+const growTA = el => { if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; };
+let INTENTS = null;
+const intentList = () => INTENTS || (INTENTS = [...intentOptions().matchAll(/value="([^"]*)"/g)].map(m => { const t = document.createElement('textarea'); t.innerHTML = m[1]; return t.value; }));
+function sugShow(on) {
+  const ol = $('#wf-sug'), f = $('#wf-for'); if (!ol || !f) return; if (!on) { ol.hidden = true; return; }
+  const q = f.value.trim().toLowerCase(); const ops = intentList().filter(x => !q || x.toLowerCase().includes(q)).filter(x => x.toLowerCase() !== q).slice(0, 5);
+  ol.innerHTML = ops.map(x => `<li><button type="button" data-sug="${esc(x)}">${esc(x)}</button></li>`).join(''); ol.hidden = !ops.length;
+}
+viewEl.addEventListener('focusin', e => { if (e.target.id === 'wf-for') sugShow(true); });
+viewEl.addEventListener('focusout', e => { if (e.target.id === 'wf-for') setTimeout(() => sugShow(false), 180); });
+viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') { growTA(e.target); sugShow(true); } if (e.target.closest('.vs-poem textarea')) e.target.classList.remove('need'); });
+viewEl.addEventListener('click', e => { const b = e.target.closest('[data-sug]'); if (!b) return; const f = $('#wf-for'); f.value = b.dataset.sug; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); sugShow(false); snd.tick(1700); });
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-vs]'); if (!b) return;
   if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
@@ -134,12 +153,27 @@ function draftSignal() {
   return { v: 1, code: 'DA-····', at: Date.now(), pin: { id: null, lat, lng, n: '', cn: place, ic: '', g: 'paw', place }, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who: WDRAFT.by || S.me.by || '', ...(fr ? { for: fr, note: fr } : {}), ...(WDRAFT.photo ? { img: { k: 'own', a: '' }, photo: WDRAFT.photo } : {}) };
 }
 let pvN = 0;
+/* the big screen beside the quick W.I.S.H.: the three steps as three marks, this one lit; the receipt as it will print, larger
+   when pressed; and the lives the radar holds, their photographs, pressed to make one the intention, each with its sighting */
 const wishPreview = debounce(async () => {
   const cov = $('#cover'); if (!cov) return; if (!(S.open && S.view === 1 && faceOf(1) === 'front' && !S.mode)) { cov.replaceChildren(); return; }
   const my = ++pvN; const cvs = await slipCanvas(draftSignal(), 384, 2, false, false).catch(() => null); if (!cvs || my !== pvN || faceOf(1) !== 'front' || S.view !== 1) return;
-  let fig = cov.querySelector('.wpv'); if (!fig) { fig = document.createElement('figure'); fig.className = 'wpv'; fig.innerHTML = '<img alt="">'; cov.replaceChildren(fig); }
-  fig.querySelector('img').src = cvs.toDataURL('image/png');
+  let fig = cov.querySelector('.wpv');
+  if (!fig) {
+    fig = document.createElement('div'); fig.className = 'wpv';
+    fig.innerHTML = `<ol class="wpv-flow" aria-hidden="true">${[0, 1, 2].map(i => `<li class="${i === 0 ? 'done' : i === 1 ? 'now' : ''}">${icon(VIEWS[i].icon)}</li>`).join('')}</ol><figure class="wpv-r"><img alt="" data-zoom></figure><ul class="wpv-eco"></ul>`;
+    cov.replaceChildren(fig);
+  }
+  fig.querySelector('.wpv-r img').src = cvs.toDataURL('image/png');
+  const sps = radiusSpecies(6);
+  fig.querySelector('.wpv-eco').innerHTML = sps.map(sp => `<li><button type="button" class="eco-b" data-eco="${esc(sp.n)}" aria-label="${esc(sp.n)}" data-tip="${esc(sp.n)}"><img src="${esc(sp.ph)}" alt="" loading="lazy"></button>${/^\d+$/.test(sp.id) ? `<a class="eco-l" href="https://www.inaturalist.org/observations/${sp.id}" target="_blank" rel="noopener" aria-label="The sighting">${icon('out', 'sm')}</a>` : ''}</li>`).join('');
 }, 320);
+document.addEventListener('click', e => {
+  if (!e.target.closest('#cover')) return;
+  const z = e.target.closest('[data-zoom]'); if (z) { zoomArt(z.src); return; }
+  const b = e.target.closest('[data-eco]'); if (b) { const f = $('#wf-for'); if (!f) return; f.value = b.dataset.eco; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); fillWDraftFor(); snd.tick(1700); buzz(5); }
+});
+const fillWDraftFor = () => { const f = $('#wf-for'); if (f) { WDRAFT.for = f.value; store.set('da.wish.v1', WDRAFT); } wishPreview(); };
 
 /* ───────── PRINT, the front: a label maker in matte graphite, its board seen through a smoked cap. Its screen holds the words
    to set; three keys, words, a sticker, a photograph; and one key, the printer, that prints. The printer's name and state stay
@@ -147,7 +181,7 @@ const wishPreview = debounce(async () => {
 const TP_KEYS = [['text', '', 'teal', 'Words'], ['stk', 'star5', 'green', 'A sticker'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
 function printFront() {
   const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
-  return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
+  return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><i class="hack h-tie" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
     + `<label class="tp-lcd"><span class="tp-l1">${s ? esc(s.code) : '80 MM'}</span><span class="tp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span><input id="tp-words" maxlength="80" spellcheck="true" autocomplete="off" placeholder=" " aria-label="Words for the strip"><i class="tp-cur" aria-hidden="true"></i></label>`
     + `<div class="tp-keys">${TP_KEYS.map(([k, ic, c, w]) => `<button type="button" class="tp-k tk-${c}" data-tp="${k}" aria-label="${w}">${k === 'text' ? '<b>Aa</b>' : icon(ic)}</button>`).join('')}</div>`
     + `<div class="tp-foot"><button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button><button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button></div>`

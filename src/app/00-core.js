@@ -135,7 +135,7 @@ const snd = (() => {
     try {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
-        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; bus.connect(comp); comp.connect(ctx.destination);
+        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2; bus.connect(comp); comp.connect(ctx.destination);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
@@ -399,7 +399,7 @@ const snd = (() => {
       if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
       const t0 = ctx.currentTime + 0.01; const t = prefs.nino ? Math.ceil(t0 / 0.125) * 0.125 : t0; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
       const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, dub: dubV, blown: blownV }[md];
-      if (spec.fam) knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
+      if (spec.fam && !V && md !== 'weight') knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
       return true;
     },
     /* a thermal head stepping: filtered noise in short strokes */
