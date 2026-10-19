@@ -2884,3 +2884,22 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 #cover .wpv-show .wpv-eco{justify-content:flex-start;max-width:none}
 #cover .wpv-show .eco-b{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 @media (min-width:760px){#cover .wpv-ex{right:84px}#cover .wpv-show{right:84px}}
+
+.h-tie{transform:none!important;right:-14px}
+/* PRINT's back at half the room: one compact row each, the ways out folded behind EXPORT on every screen */
+.dev.tepra.mod{padding:40px 0 54px!important}
+.dev.tepra.mod .ps-h{display:none!important}
+.dev.tepra.mod #sec-slips{margin:2px 12px!important;padding:5px 8px!important}
+.dev.tepra.mod #sec-slips .lcd-ic .i{width:14px;height:14px}
+.dev.tepra.mod>.sec,.dev.tepra.mod>section{padding:4px 12px 0!important}
+.dev.tepra.mod .fmt-k .key,.dev.tepra.mod .fmt-k .cap-k{min-height:34px!important;height:34px!important;padding:2px!important}
+.dev.tepra.mod .fmt-k .cap{display:none!important}
+.dev.tepra.mod .dr-k{height:34px!important}
+.dev.tepra.mod #sec-out{grid-template-columns:auto auto;justify-content:center;align-items:center;gap:12px!important}
+.dev.tepra.mod #sec-out .print-k.pk-ic{width:52px!important;height:52px!important}
+.dev.tepra.mod #sec-out .seg.outs{grid-column:1/-1}
+#sec-out .outs-k{display:inline-flex!important;align-items:center;gap:5px;width:auto!important;height:30px!important;padding:0 10px!important;border:0;border-radius:15px!important;cursor:pointer;background:#2B3034;color:#E9EEF0}
+#sec-out .outs-k b{font:600 9px/1 var(--mono);letter-spacing:.12em}
+#sec-out .outs-k .i{width:13px;height:13px}
+#sec-out.open .outs-k{transform:none;background:linear-gradient(135deg,#14B89C,#2463D6)}
+#sec-out:not(.open) .seg.outs{display:none!important}

@@ -582,7 +582,7 @@ function viewSigns() {
         + `</section>`
       /* then the paper, and the keys that send it out */
     + `<section class="sec" id="sec-style"><div class="seg keys fmt-k" role="group" aria-label="Paper">${Object.keys(FORMATS).map(k => `<button type="button" class="key cap-k" data-pfmt="${k}" aria-pressed="${PRESS.fmt === k}" data-tip="${k === 'zine' ? 'A5 zine' : k === 'gb' ? 'Game Boy' : `${FORMATS[k].n} mm receipt`}">${PFMT_ICON(k)}<small class="cap mono">${PFMT_W[k]}</small></button>`).join('')}</div></section>`
-      + `<section class="sec" id="sec-out"><button type="button" class="print-k pk-ic${on.length ? ' on' : ''}${cur ? ' next' : ''}" data-pout="send" aria-label="Print receipt" data-tip="${on.length ? 'Print: online' : 'Print: offline, it waits'}">${icon('epson')}</button><button type="button" class="ib outs-k" data-outs aria-expanded="false" aria-label="The other ways out">${icon('plus')}</button>`
+      + `<section class="sec" id="sec-out"><button type="button" class="print-k pk-ic${on.length ? ' on' : ''}${cur ? ' next' : ''}" data-pout="send" aria-label="Print receipt" data-tip="${on.length ? 'Print: online' : 'Print: offline, it waits'}">${icon('epson')}</button><button type="button" class="outs-k" data-outs aria-expanded="false" aria-label="Export: PNG, ESC/POS, mesh, print here, wall">${icon('download')}<b class="mono">EXPORT</b></button>`
       + `<div class="seg keys outs" role="group" aria-label="Other ways out">${OUTS.map(([k, ic, w, tip]) => `<button type="button" class="key cap-k" data-pout="${k}" aria-label="${tip}" data-tip="${tip}">${icon(ic)}<small class="cap mono">${w}</small></button>`).join('')}</div></section>`
     + `</div>`
     ;
