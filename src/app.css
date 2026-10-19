@@ -2750,7 +2750,7 @@ html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
 .band.dev.radio.mod .mstrip .eq-c i:not(.l){background:rgba(255,255,255,.07)!important}
 .band.dev.radio.mod .mstrip .mo,.band.dev.radio.mod .mstrip .mo *{color:rgba(200,240,232,.7)}
 .band.dev.radio.mod .b-emerg{position:relative;z-index:2;margin:0 0 4px!important}
-.band.dev.radio.mod .b-emerg .cd.st{font-size:17px!important;letter-spacing:.06em;cursor:pointer}
+.band.dev.radio.mod .b-emerg .cd.stp{font-size:17px!important;letter-spacing:.06em;cursor:pointer}
 .band.dev.radio.mod .b-emerg .cd:empty{display:none}
 /* the W.I.S.H. big screen: the actions in a row that slides, the receipt larger, the lives most at risk under it */
 #cover .wpv{justify-content:flex-start!important;padding:22px 24px!important;overflow:auto}
@@ -2868,7 +2868,7 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 
 /* the countdown's screen one size whichever it shows: the count, or the step waiting, set to fit */
 .band.dev.radio.mod .b-emerg .cd{display:inline-grid!important;place-items:center;width:216px;height:40px;box-sizing:border-box;padding:3px 10px 0!important;font-size:28px!important;white-space:nowrap;overflow:hidden}
-.band.dev.radio.mod .b-emerg .cd.st{font-size:15px!important;letter-spacing:.03em}
+.band.dev.radio.mod .b-emerg .cd.stp{font-size:15px!important;letter-spacing:.03em}
 /* SELECT on a wide screen: in the middle of the big screen, beside the device */
 @media (min-width:760px){.sel{left:0;right:var(--page);bottom:auto;top:50%;transform:translateY(-50%);justify-content:center}.sel-in{width:min(600px,calc(100% - 48px))}}
 
@@ -2905,7 +2905,7 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 #sec-out:not(.open) .seg.outs{display:none!important}
 
 /* 1. the step on the countdown's screen: reversed, two short lines at most, within the same size */
-.band.dev.radio.mod .b-emerg .cd.st{background:#1F2A20!important;color:#CBD4C3!important;font-size:14px!important;line-height:1.05!important;white-space:normal!important;text-align:center;padding:2px 10px 0!important}
+.band.dev.radio.mod .b-emerg .cd.stp{background:#1F2A20!important;color:#CBD4C3!important;font-size:14px!important;line-height:1.05!important;white-space:normal!important;text-align:center;padding:2px 10px 0!important}
 /* 2/3. the select sheet: smaller, dragged by its head, and on a wide screen it opens beside the device, low */
 .sel-in{max-height:46vh!important;padding:7px 8px calc(8px + var(--bot,0px))!important}
 .sel-h{padding:0 0 6px!important;cursor:grab;touch-action:none}
@@ -2937,4 +2937,11 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .h-lora{top:-30px;right:34px;width:8px;height:34px;border-radius:4px 4px 1px 1px;background:linear-gradient(90deg,#1A1C1E,#3A3F43 50%,#1A1C1E);box-shadow:0 1px 2px rgba(0,0,0,.4)}
 .h-lora::after{content:"";position:absolute;bottom:-4px;left:-3px;width:14px;height:6px;border-radius:1px;background:#C9A24C}
 .h-node{top:12px;left:-10px;width:16px;height:26px;border-radius:2px;background:radial-gradient(circle,#7CFF6B 0 1.6px,transparent 2.2px) 50% 5px/6px 6px no-repeat,#1E5A44;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 1px 2px rgba(0,0,0,.4)}
-.band.dev.radio.mod .b-emerg .cd.st{display:inline-flex!important;align-items:center;justify-content:center;place-items:normal!important}
+.band.dev.radio.mod .b-emerg .cd.stp{display:inline-flex!important;align-items:center;justify-content:center;place-items:normal!important}
+
+/* a life's receipt: its two keys side by side, W.I.S.H. (the board) and PRINT */
+#record:has(#r-alt:not([hidden])) #r-act{left:calc(50% + 4px)}
+#record #r-alt:not([hidden]){right:calc(50% + 4px);bottom:calc(var(--bot) + 16px);height:56px}
+/* the photograph's looks on PRINT's studio side: tall enough for their words */
+.dev.tepra.mod .photo-k .key,.dev.tepra.mod .photo-k .cap-k{height:auto!important;min-height:46px!important;padding:5px 2px!important;display:grid!important;justify-items:center;align-content:center;gap:2px;overflow:hidden}
+.dev.tepra.mod .photo-k .cap,.dev.tepra.mod .photo-k small{display:block;font-size:7px!important;line-height:1.1!important;white-space:normal;text-align:center}

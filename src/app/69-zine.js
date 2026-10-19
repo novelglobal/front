@@ -569,7 +569,7 @@ function swatchOf(mode) {
 }
 /* the printers, each with its light, its place and its state: one now, more to come in other places and hours */
 function printersHTML() {
-  const ps = [MASTER, ...PARTNERS.filter(p => p.printer)].filter(Boolean);
+  const ps = [MASTER, ...PARTNERS.filter(p => p.printer && (p.live || (PSTATE[p.id] || {}).ready))].filter(Boolean);
   return `<ol class="prn-l">${ps.map(p => { const on = !!(PSTATE[p.id] || {}).ready; return `<li class="${on ? 'on' : ''}"><i class="prn-led"></i><b>${esc(String(p.n).toUpperCase())}</b><small>${on ? 'ONLINE' : 'OFFLINE · WAITS'}</small></li>`; }).join('')}</ol>`;
 }
 function viewSigns() {
