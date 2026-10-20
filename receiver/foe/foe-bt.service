@@ -1,0 +1,14 @@
+[Unit]
+Description=FOE: take files sent by Bluetooth (Android) into the print inbox
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+ExecStartPre=/bin/sh -c "bluetoothctl power on; bluetoothctl discoverable on; bluetoothctl pairable on; bluetoothctl system-alias FOE"
+ExecStartPre=/bin/sh -c "(bt-agent -c NoInputNoOutput &) ; sleep 1"
+ExecStart=/usr/bin/obexpushd -B -n -o /var/lib/foe/inbox
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
