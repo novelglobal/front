@@ -148,6 +148,11 @@ try {
     check('the receiver pulls an approved slip, prints its bytes as sent, and reports it printed', run.status === 0 && got.equals(BYTES) && r5.json.job.status === 'printed', JSON.stringify({ exit: run.status, files, job: r5.json.job, log: (run.stdout + run.stderr).trim().split('\n').slice(-2) }));
     fs.rmSync(dir, { recursive: true, force: true });
   } else results.push('SKIP  the receiver: no Python here');
+  /* a message to novel.global, from the portfolio: approved, it prints; it is never listed for anyone, nor its photograph */
+  const ms = await call('/api/stories', { method: 'POST', ip: '203.0.113.77', body: story('DA-3MSG', { kind: 'message', dest: 'novelglobal', escpos: Buffer.from([0x1B, 0x40, 72, 10]).toString('base64'), photo: JPEG }) });
+  await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  const mp = await call('/api/stories'); const mc = await call('/api/stories/DA-3MSG'); const mph = await call(`/api/photos/${ms.json.id}`); const mr = await call(`/api/receipts/${ms.json.id}`);
+  check('a message is private: approved, its print joins the queue; it is never listed, found by its code, nor its photograph shown', ms.status === 201 && !mp.json.stories.some(x => x.code === 'DA-3MSG') && mc.status === 404 && mph.status === 404 && mr.json.job && mr.json.job.status === 'queued', JSON.stringify({ s: ms.status, listed: mp.json.stories.some(x => x.code === 'DA-3MSG'), mc: mc.status, mph: mph.status, job: mr.json.job }));
   let last = 0; for (let i = 0; i < 9; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJ'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }

@@ -37,12 +37,12 @@
     card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: action === 'show' ? 'SHOWN · AND SENT TO PRINT' : action === 'refuse' ? 'REFUSED' : 'DELETED' }));
   }
   function storyCard(x) {
-    const card = el('article', { class: 'card' + (x.kind !== 'story' ? ' rec' : '') });
+    const card = el('article', { class: 'card' + (x.kind !== 'story' && x.kind !== 'message' ? ' rec' : '') });
     const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}`;
     let body;
-    if (x.kind === 'story') {
+    if (x.kind === 'story' || x.kind === 'message') {
       const j = unpack(x.body) || {}; const p = j.p || []; const lines = (j.l || []).filter(Boolean);
-      body = [el('h3', { text: `${p[3] || p[4] || 'A life'}` }), el('div', { class: 'meta', text: `${meta} · ${p[5] || ''} ${(+p[0]).toFixed(4)} ${(+p[1]).toFixed(4)}` }),
+      body = [el('h3', { text: x.kind === 'message' ? 'MESSAGE · PRIVATE: PRINTS, NEVER ON THE MAP' : `${p[3] || p[4] || 'A life'}` }), el('div', { class: 'meta', text: `${meta} · ${p[5] || ''} ${(+p[0]).toFixed(4)} ${(+p[1]).toFixed(4)}` }),
         typeof j.s === 'string' ? el('p', { text: j.s }) : null, lines.length ? el('ol', {}, lines.map(l => el('li', { text: l }))) : el('p', { class: 'note', text: 'NO LINES' }),
         (j.k || []).length ? el('p', { class: 'note', text: 'RELATIONS · ' + j.k.map(k => k[2]).join(' · ') }) : null, j.o ? el('p', { text: 'NOTE · ' + j.o }) : null, j.y ? el('p', { class: 'note', text: '— ' + j.y }) : null];
     } else if (x.kind === 'example') {
@@ -63,11 +63,11 @@
     }
     const acts = el('div', { class: 'acts' },
       x.status === 'shown' && x.kind === 'story' ? el('button', { type: 'button', class: x.star ? 'on' : '', text: x.star ? '★ STARRED' : '☆ STAR', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.star ? 'unstar' : 'star' }) }); show('shown'); } }) : null,
-      x.status !== 'shown' ? el('button', { type: 'button', class: 'on', text: 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
+      x.status !== 'shown' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => act(x.id, 'delete', card) }));
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img);
-    card.append(...(x.kind !== 'story' ? [] : [img || el('div')]), el('div', {}, body, acts));
+    card.append(...(x.kind !== 'story' && x.kind !== 'message' ? [] : [img || el('div')]), el('div', {}, body, acts));
     return card;
   }
   async function stories(st) {
