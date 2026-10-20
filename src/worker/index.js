@@ -92,7 +92,7 @@ const PUBLIC_COLS = "id, code, kind, body, dest, created, decided, photo IS NOT 
 
 async function listStories(db, url) {
   const since = Math.max(0, +(url.searchParams.get('since') || 0));
-  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind != 'example' AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
+  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind NOT IN ('example', 'message') AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
   return json({ stories: results.map(storyOut), at: now() });
 }
 /* the example board everyone sees: the latest one approved, or none (then the example built into the site stands) */
@@ -102,21 +102,22 @@ async function exampleBoard(db) {
   return json({ board, at: r ? r.decided : 0 });
 }
 async function oneStory(db, code) {
-  const r = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND code = ? ORDER BY decided DESC LIMIT 1`).bind(code).first();
+  const r = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind != 'message' AND code = ? ORDER BY decided DESC LIMIT 1`).bind(code).first();
   return r ? json({ story: storyOut(r) }) : fail(404, 'not found');
 }
 async function photo(db, id, any) {
-  const r = await db.prepare(`SELECT photo, status FROM stories WHERE id = ?`).bind(id).first();
-  if (!r || !r.photo || (!any && r.status !== 'shown')) return fail(404, 'not found');
+  const r = await db.prepare(`SELECT photo, status, kind FROM stories WHERE id = ?`).bind(id).first();
+  if (!r || !r.photo || (!any && (r.status !== 'shown' || r.kind === 'message'))) return fail(404, 'not found');
   return new Response(new Uint8Array(r.photo), { headers: { 'content-type': 'image/jpeg', 'cache-control': any ? 'no-store' : 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
 }
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
 async function send(db, env, req) {
   if (await tooMany(db, env, req, 'send', 8, 10 * 60e3)) return fail(429, 'too many');
-  const b = await body(req); const kind = ['record', 'cells', 'example'].includes(b.kind) ? b.kind : 'story';
+  const b = await body(req); const kind = ['record', 'cells', 'example', 'message'].includes(b.kind) ? b.kind : 'story';
   if (!CODE.test(b.code || '')) return fail(400, 'code');
-  if (kind === 'story' && !(typeof b.body === 'string' && /^[A-Za-z0-9_-]{20,}$/.test(b.body) && b.body.length <= LIMIT.sig)) return fail(400, 'story');
+  /* a message to novel.global (the portfolio's send message) is a story kept private: printed once approved, never listed */
+  if ((kind === 'story' || kind === 'message') && !(typeof b.body === 'string' && /^[A-Za-z0-9_-]{20,}$/.test(b.body) && b.body.length <= LIMIT.sig)) return fail(400, 'story');
   if (kind === 'record' && !(typeof b.body === 'string' && b.body.length <= LIMIT.record && (() => { try { return typeof JSON.parse(b.body) === 'object'; } catch (e) { return false; } })())) return fail(400, 'record');
   if (kind === 'cells' && (!cellsOk(b.body) || b.dest || b.photo)) return fail(400, 'cells');
   /* BOARD 00, the example, rewritten: only while it is open to editing on the approval page, and shown only once approved */
