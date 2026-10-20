@@ -134,12 +134,26 @@ def stick_files(root):
     return out
 
 
+def in_use():
+    """the disks this Pi is running from (or has mounted itself): never treated as a stick to print from"""
+    disks = set()
+    try:
+        for line in open('/proc/mounts'):
+            dev = line.split()[0]
+            if dev.startswith('/dev/sd'):
+                disks.add(dev.rstrip('0123456789'))
+    except OSError:
+        pass
+    return disks
+
+
 def watch():
     os.makedirs(INBOX, exist_ok=True); os.makedirs(MNT, exist_ok=True)
     known = set()
     log(NAME, 'watching for USB sticks and', INBOX)
     while True:
-        devs = set(glob.glob('/dev/sd[a-z][0-9]')) or set(glob.glob('/dev/sd[a-z]'))
+        busy = in_use()
+        devs = {d for d in (set(glob.glob('/dev/sd[a-z][0-9]')) or set(glob.glob('/dev/sd[a-z]'))) if d.rstrip('0123456789') not in busy}
         for dev in sorted(devs - known):
             time.sleep(1.5)
             if subprocess.run(['mount', '-o', 'ro', dev, MNT]).returncode == 0:
