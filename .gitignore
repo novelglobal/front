@@ -5,3 +5,4 @@ test/shots/
 .dev.vars
 .env
 src/worker/stamp.js
+__pycache__/
