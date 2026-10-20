@@ -1,0 +1,11 @@
+[Unit]
+Description=FOE: print what is put on a USB stick or sent by Bluetooth
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/foe/foe.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
