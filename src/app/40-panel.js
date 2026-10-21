@@ -502,8 +502,11 @@ function showGallery(on) {
   galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
   /* drawn again only when what hangs on the wall has changed: a refresh from elsewhere (news arriving, a print's state) leaves
      the piece in view, its close-up and its card as they are, and only its number and light are read again */
-  const sig = JSON.stringify([ps.map(x => [x.id, !!x.img, wallCap(x)]), deck().map(c => c.id)]); const tr0 = g.querySelector('.gl-track');
-  if (tr0 && g.dataset.sig === sig) { if (Math.round(tr0.scrollLeft / Math.max(1, tr0.clientWidth)) !== galleryAt) tr0.scrollLeft = galleryAt * tr0.clientWidth; galleryRead(); return; }
+  const sig = JSON.stringify([ps.map(x => [x.id, wallCap(x)]), deck().map(c => c.id)]); const tr0 = g.querySelector('.gl-track');
+  if (tr0 && g.dataset.sig === sig) {
+    /* a picture that has arrived since (the example's, made once a visit) goes into its own slide, nothing else redrawn */
+    ps.forEach((x, i) => { const w = x.img && tr0.querySelector(`.gl-slide[data-i="${i}"] .gl-wait`); if (w) { const im = document.createElement('img'); im.src = x.img; im.alt = ''; im.draggable = false; w.replaceWith(im); } });
+    if (Math.round(tr0.scrollLeft / Math.max(1, tr0.clientWidth)) !== galleryAt) tr0.scrollLeft = galleryAt * tr0.clientWidth; galleryRead(); return; }
   g.dataset.sig = ps.length ? sig : ''; gzReset();
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
   /* the example's zine is made once a visit; until then the muse waits in its place */
