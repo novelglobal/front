@@ -1085,10 +1085,10 @@ if (run('share')) try {
   await page.setInputFiles('#pack-f', { name: 'fruit-and-radios.md', mimeType: 'text/markdown', buffer: Buffer.from(MD) }); await sleep(600);
   const pv = await page.evaluate(() => ({ n: (document.querySelector('#pack .pk-n') || {}).textContent || '', rows: [...document.querySelectorAll('#pack .pk-l li')].map(li => li.textContent), send: !!document.querySelector('#pack [data-pack="send"]'), cells: (window.__da.S.packPv || {}).cells }));
   check('a cell pack in Markdown is read and shown before it is sent: four placed, by kind; two left out', /4 CELLS/.test(pv.n) && /2 NOT PLACED/.test(pv.n) && pv.send && pv.cells.map(c => c.k).join() === 'fruit,node,water,fruit' && pv.cells[1].url === 'https://meshtastic.org', JSON.stringify(pv));
-  await tap(page, '#pack [data-pack="send"]'); await sleep(1200);
+  const e0 = errors.length; await tap(page, '#pack [data-pack="send"]'); await sleep(1200);
   const packs = (await admin('stories?status=waiting')).stories.filter(x => x.kind === 'cells');
-  const sentNote = await page.evaluate(() => (document.querySelector('#pack .pk-sent') || {}).textContent || '');
-  check('sent for approval, as a pack, nothing on the map yet', packs.length === 1 && JSON.parse(packs[0].body).cells.length === 4 && /SENT · DA-/.test(sentNote) && !(await page.evaluate(() => window.__da.S.community.some(o => o.pack))), JSON.stringify({ n: packs.length, sentNote }));
+  const sentNote = await page.evaluate(() => (document.querySelector('#pack .pk-sent') || {}).textContent || ''); const setOff = errors.slice(e0);
+  check('sent for approval, as a pack, nothing on the map yet, and nothing else set off', packs.length === 1 && JSON.parse(packs[0].body).cells.length === 4 && /SENT · DA-/.test(sentNote) && !setOff.length && !(await page.evaluate(() => window.__da.S.community.some(o => o.pack))), JSON.stringify({ n: packs.length, sentNote, setOff }));
   await admin(`stories/${packs[0].id}`, { action: 'show' });
   await page.evaluate(() => window.__da.loadShared()); await sleep(800);
   const onMap = await page.evaluate(() => { const da = window.__da; const its = da.life.items.filter(it => it.o.pack); return { n: its.length, kinds: its.map(it => it.o.pk).sort().join(), tones: [...new Set(its.map(it => it.b.tone))].sort().join(), icons: its.map(it => it.b.i || it.b.g).sort().join(), who: (its[0] || {}).o && its[0].o.who }; });

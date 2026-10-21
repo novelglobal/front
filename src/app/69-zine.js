@@ -619,7 +619,6 @@ $('#view').addEventListener('click', e => {
   /* a drawer: pressed, it opens (and any other shuts); pressed again, it shuts */
   const dr = e.target.closest('[data-drawer]'); if (dr) { const k = dr.dataset.drawer; PRESS.drawer = PRESS.drawer === k ? null : k; $$('#view [data-drawer]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.drawer === PRESS.drawer))); $$('#view .drawer').forEach(d => { d.hidden = d.id !== 'dr-' + PRESS.drawer; }); snd.tick(PRESS.drawer ? 1400 : 1000); buzz(4); if (PRESS.drawer === 'stick' && (PRESS.pack === 'words' || PRESS.pack === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
   const sp = e.target.closest('[data-spack]'); if (sp) { const k = sp.dataset.spack; PRESS.pack = k; PRESS.drawer = 'stick'; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(k) * 120); if (k === 'words' || k === 'ideas') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
-  const pk = e.target.closest('[data-pack]'); if (pk) { placeOnPage(PACKS[+pk.dataset.pack], 'sticker', 90, true); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
   const wd = e.target.closest('[data-wild]'); if (wd && wd.dataset.wild === 'more') { pullWild(); tick(1500); return; } if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }
 });
