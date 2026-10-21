@@ -126,21 +126,24 @@ const S = {
   heroes: [], tribes: [], signals: [], shared: [], partnerSel: null,
   /* the radar: where it is pinned and how far it reaches, kept between visits. A first visit starts at the print location,
      at 500 m, until the visitor's own place is known (findStart) */
-  scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 500, min: 250, max: 1500 }; const p = prefs.start2 ? prefs.scan || {} : printAt() || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: prefs.start2 ? clamp(+p.r || c.r, c.min || 250, c.max || 1500) : c.r }; })(),
+  /* a first visit opens on the city's own centre, not on a printer: nothing is pointed at before the visitor chooses */
+  scan: (() => { const c = CONFIG.SCAN || { lat: -37.769, lng: 144.963, r: 500, min: 250, max: 1500 }; const p = prefs.start2 ? prefs.scan || {} : simple() ? {} : printAt() || {}; const ok = p.lat != null && inBox(p.lat, p.lng); return { lat: ok ? p.lat : c.lat, lng: ok ? p.lng : c.lng, r: prefs.start2 ? clamp(+p.r || c.r, c.min || 250, c.max || 1500) : c.r }; })(),
 };
 const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
 const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   function ready() {
     if (!prefs.sound || !active()) return null;
     try {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
-        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2; bus.connect(comp); comp.connect(ctx.destination);
+        /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
+        heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
+        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2; bus.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
@@ -150,10 +153,23 @@ const snd = (() => {
         /* the Moog ladder (ladder.js), once it has loaded; a plain low-pass until then */
         try { if (ctx.audioWorklet) ctx.audioWorklet.addModule('ladder.js').then(() => { hasLadder = true; }).catch(() => {}); } catch (e) { /* a plain low-pass */ }
       }
-      if (ctx.state === 'suspended') ctx.resume();
+      /* a phone suspends sound when the page is put away, and some ("interrupted") only give it back inside a touch */
+      if (ctx.state !== 'running' && ctx.state !== 'closed') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
       return ctx;
     } catch (e) { return null; }
   }
+  function heatSet(on, now) {
+    if (!drive) { drive = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; drive[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); } }
+    mixLP.frequency.setTargetAtTime(on ? 7600 : 3200, ctx.currentTime, now ? 0.001 : 0.35); heatWS.curve = on ? drive : null;
+  }
+  /* ───────── one key and one tempo: A minor, from the low A, and 120 BPM. Every note a cell plays is moved to the nearest note
+     of the scale, low; every sound lands on the next sixteenth of the bar; never a wall, two sounds a sixteenth at most ───────── */
+  const AMIN = [0, 2, 3, 5, 7, 8, 10, 12];
+  const qn = f => { const n = 12 * Math.log2(f / 55); const o = Math.floor(n / 12), d = n - o * 12; let best = 0; for (const st of AMIN) if (Math.abs(d - st) < Math.abs(d - best)) best = st; return 55 * Math.pow(2, (o * 12 + best) / 12); };
+  const qf = f => { let x = f; while (x > 440) x /= 2; while (x < 55) x *= 2; return qn(x); };
+  const SIX = 0.125; const SLOTS = new Map();
+  const onGrid = t => Math.ceil((t - 0.004) / SIX) * SIX;
+  function room(t, force) { const k = Math.round(t / SIX); const n = SLOTS.get(k) || 0; if (n >= 2 && !force) return false; SLOTS.set(k, n + 1); if (SLOTS.size > 48) for (const key of [...SLOTS.keys()]) if (key < k - 16) SLOTS.delete(key); return true; }
   /* the hall's tail: noise falling away over a few seconds, darker as it goes */
   function hallBuffer(sec) {
     const sr = ctx.sampleRate, n = Math.floor(sr * sec), b = ctx.createBuffer(2, n, sr); const r = seeded('hall');
@@ -190,11 +206,6 @@ const snd = (() => {
   /* ───────── the lives play small instruments, each call cut down to a few soft notes, a little out of tune ───────── */
   const wob = () => Math.pow(2, (Math.random() - 0.5) * 0.016);
   const INST = {
-    /* birds: a soft whistle */
-    whistle(f, t, d, v, pan) { f *= wob(); const end = t + 0.05 + d + 0.18; const o = osc('sine', f, t, end); vib(o, t, end, 5.6, f * 0.007, 0.04); const e = ctx.createGain(); o.connect(e); env(e, t, 0.05, v, d, 0.18); out(e, pan); },
-    /* insects: a music-box tine */
-    box(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); for (const [m, gg] of [[1, 1], [3.98, 0.12]]) { const o = osc('sine', f * m, t, t + 0.8); const g = ctx.createGain(); g.gain.value = gg; o.connect(g); g.connect(e); }
-      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.004); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.75); out(e, pan); },
     /* frogs and beetles: a kalimba, wood and thumb */
     kalimba(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); const o = osc('sine', f, t, t + 0.6); o.connect(e); const o2 = osc('sine', f * 4.9, t, t + 0.12); const g2 = ctx.createGain(); g2.gain.setValueAtTime(0.18, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08); o2.connect(g2); g2.connect(e);
       e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.006); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.55); out(e, pan); },
@@ -204,12 +215,13 @@ const snd = (() => {
     boop(f, t, d, v, pan) { f *= wob(); const end = t + d + 0.2; const o = osc('sine', f * 1.12, t, end); o.frequency.exponentialRampToValueAtTime(f * 0.9, t + d + 0.1); const e = ctx.createGain(); o.connect(e); env(e, t, 0.03, v, d * 0.4, d * 0.6 + 0.15); out(e, pan); },
     /* owls: a hollow note that falls a little */
     hoot(f, t, d, v, pan) { const end = t + 0.1 + d + 0.3; const o = osc('sine', f * 1.02, t, end); o.frequency.exponentialRampToValueAtTime(f * 0.94, end); const e = ctx.createGain(); o.connect(e); env(e, t, 0.1, v, d * 0.6, 0.3); out(e, pan); },
-    /* flying-foxes, bats, water and plants: glass */
-    chime(f, t, d, v, pan) { f *= wob(); const e = ctx.createGain(); for (const [m, gg, dec] of [[1, 1, 1.6], [2.76, 0.32, 0.8], [5.4, 0.12, 0.4]]) { const o = osc('sine', f * m, t, t + dec); const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * gg, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dec); o.connect(g); g.connect(e); } out(e, pan, 1.3); },
     /* reptiles: a small low bonk */
     bonk(f, t, d, v, pan) { const o = osc('sine', f * 1.5, t, t + 0.35); o.frequency.exponentialRampToValueAtTime(f, t + 0.06); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v, t + 0.005); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); out(e, pan); },
   };
-  const INST_W = { whistle: 'WHISTLE', box: 'MUSIC BOX', kalimba: 'KALIMBA', harp: 'STRING', boop: 'BOOP', hoot: 'HOLLOW WHISTLE', chime: 'GLASS', bonk: 'WOOD' };
+  const INST_W = { kalimba: 'KALIMBA', harp: 'STRING', boop: 'BOOP', hoot: 'HOLLOW NOTE', bonk: 'WOOD' };
+  /* the whistle, the music box and the glass went with the move to one deep key: their calls go to the hollow note, the
+     kalimba and the string */
+  const INST_AS = { whistle: 'hoot', box: 'kalimba', chime: 'harp' };
   /* each kind's call: an instrument and a few notes, in semitones above the string's own note, with how long each lasts */
   const MOTIF = {
     bird: ['whistle', [[0, 0.16], [4, 0.16], [7, 0.34]]], parrot: ['box', [[7, 0.12], [12, 0.12], [7, 0.22]]], waterbird: ['whistle', [[0, 0.34], [-5, 0.48]]],
@@ -231,7 +243,8 @@ const snd = (() => {
   const SOUNDS = {
     swish: (f, t, v, pan) => softNoise(t, 0.38, 1600, 4200, 1.1, v * 0.5, pan),
     taps: (f, t, v, pan) => { for (const dt of [0, 0.17]) { const o = osc('sine', 560 * wob(), t + dt, t + dt + 0.08); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t + dt); e.gain.exponentialRampToValueAtTime(v * 0.6, t + dt + 0.003); e.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.07); out(e, pan, 0.4); softNoise(t + dt, 0.03, 2500, 1800, 2, v * 0.25, pan, 0.2); } },
-    cup: (f, t, v, pan) => { for (const [m, gg] of [[2150, 1], [3420, 0.5]]) { const o = osc('sine', m * wob(), t, t + 0.3); const e = ctx.createGain(); o.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(v * 0.18 * gg, t + 0.002); e.gain.exponentialRampToValueAtTime(0.0001, t + 0.26); out(e, pan, 0.8); } },
+    /* a cup set down: a dull knock now, not a ring of glass */
+    cup: (f, t, v, pan) => softNoise(t, 0.12, 900, 520, 4, v * 0.42, pan, 0.4),
     pencil: (f, t, v, pan) => { for (const dt of [0, 0.11, 0.2]) softNoise(t + dt, 0.07, 3600, 5200, 3, v * 0.22, pan, 0.2); },
     hum: (f, t, v, pan) => hum(f * 0.5, t, 0.6, v * 0.5, pan),
     hums: (f, t, v, pan) => { hum(f * 0.5, t, 0.6, v * 0.36, pan - 0.25); hum(f * 0.75, t + 0.09, 0.55, v * 0.32, pan + 0.25); },
@@ -242,9 +255,10 @@ const snd = (() => {
   /* ───────── noise, for grit and drops ───────── */
   /* a short burst of filtered noise: drops, breath, grit */
   function burst(t, dur, type, f, q, v, pan, room) { const s0 = ctx.createBufferSource(); s0.buffer = noise(dur + 0.02); const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s0.connect(fl); fl.connect(g); out(g, pan, room); s0.start(t); s0.stop(t + dur + 0.03); }
-  /* ───────── the radar is the instrument: a cell sounds when the sweep reaches it, in the mood's texture. Not chimes ─────────
-     FOG: a breath of a voice, a vowel that bends down into the hall. RAIN: a crushed glitch that stutters. WEIGHT: a thud that
-     sinks. New is brighter; danger bends further, or stutters longer, or doubles a semitone off */
+  /* ───────── the radar is the instrument: a cell sounds when the sweep reaches it, in its layer's voice. Not chimes ─────────
+     LIFE the dub stab into its echo, WATER a sub that drops, COMMUNITY dust and noise, POLLUTION a low stab; FOG a breath of a
+     voice, a vowel that bends down into the hall; BURIAL a voice buried in dust. New is brighter; danger bends further, or
+     doubles */
   const VOW = [[730, 1090], [570, 840], [300, 870], [440, 1020], [270, 2290], [660, 1700]];
   function breath(f, t, v, pan, bright, danger, vi) {
     const L = 0.45 + Math.random() * 0.6; const o = osc('sawtooth', f, t, t + L + 0.1); o.frequency.exponentialRampToValueAtTime(f * (danger ? 0.84 : 0.96), t + L);
@@ -253,29 +267,11 @@ const snd = (() => {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 3400 : 1300; e.connect(lp);
     const a = ctx.createGain(); lp.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.2), t + 0.05); a.gain.exponentialRampToValueAtTime(0.0001, t + L); out(a, pan, 2.4);
   }
-  let crushCurve = null;
-  const crusher = () => { if (!crushCurve) { crushCurve = new Float32Array(1024); for (let i = 0; i < 1024; i++) crushCurve[i] = Math.round((i / 512 - 1) * 4) / 4; } const w = ctx.createWaveShaper(); w.curve = crushCurve; return w; };
-  function glitch(f, t, v, pan, bright, danger) {
-    const n = 2 + Math.floor(Math.random() * 3) + (danger ? 3 : 0); let tt = t;
-    for (let i = 0; i < n; i++) {
-      const L = 0.02 + Math.random() * 0.05; const o = osc(i % 2 ? 'square' : 'sawtooth', f * (i % 3 === 2 ? 2 : 1) * (1 + (Math.random() - 0.5) * 0.03), tt, tt + L + 0.02);
-      const w = crusher(); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = (bright ? 2800 : 1500) * (0.6 + Math.random() * 0.8); bp.Q.value = 3;
-      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * Math.pow(0.72, i)), tt + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, tt + L);
-      o.connect(w); w.connect(bp); bp.connect(g); out(g, clamp(pan + (Math.random() - 0.5) * 0.5, -1, 1), 1.1); tt += L + Math.random() * 0.07;
-    }
-    burst(t, 0.012, 'highpass', 5200, 0.8, v * 0.5, -pan, 0.4);
-  }
-  function thud(f, t, v, pan, bright, danger) {
-    for (const m of danger ? [1, 1.06] : [1]) { const o = osc('sine', f * 2 * m, t, t + 1.3); o.frequency.exponentialRampToValueAtTime(f / 2 * m, t + 0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 900 : 380; const e = ctx.createGain(); o.connect(lp); lp.connect(e); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.4), t + 0.012); e.gain.exponentialRampToValueAtTime(0.0001, t + 1.2); out(e, pan, 1.7); }
-    burst(t, 0.2, 'lowpass', 260, 1, v * 0.9, pan, 1.3);
-  }
   /* ───────── the ladder: a Moog filter, its cutoff and resonance as params (a biquad stands in until it has loaded) ───────── */
   function ladder(cut, res = 0.3, drive = 1) {
     if (hasLadder) { try { const n = new AudioWorkletNode(ctx, 'ladder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] }); const c = n.parameters.get('cutoff'), r = n.parameters.get('resonance'), d = n.parameters.get('drive'); c.value = cut; r.value = res; d.value = drive; return { node: n, cut: c, res: r, drive: d }; } catch (e) { /* the biquad */ } }
     const b = ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = cut; b.Q.value = 0.7 + res * 14; return { node: b, cut: b.frequency, res: b.Q, drive: null };
   }
-  let blowCurve = null;
-  const blower = () => { if (!blowCurve) { blowCurve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; blowCurve[i] = Math.tanh(x * 9) * 0.9 + Math.sin(x * 23) * 0.06; } } const w = ctx.createWaveShaper(); w.curve = blowCurve; w.oversample = '2x'; return w; };
   /* dust on a record: sparse clicks, high and dry */
   function crackle(t, dur, v, pan) {
     const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded('dust' + dur);
@@ -283,47 +279,15 @@ const snd = (() => {
     const s0 = ctx.createBufferSource(); s0.buffer = b; const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400; const g = ctx.createGain(); g.gain.value = v;
     s0.connect(hp); hp.connect(g); out(g, pan, 0.3); s0.start(t);
   }
-  /* JELLY: a glass bell that opens and closes as a bell does in the water, slow, into the hall */
-  function jellyV(f, t, v, pan, bright) {
-    const L = 2.8; const e = ctx.createGain();
-    for (const [m, g] of [[1, 1], [2.003, 0.35], [3.01, 0.12]]) { const o = osc('sine', f * m * wob(), t, t + L); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
-    const lf = ladder(f * 0.9, 0.55, 1.2); e.connect(lf.node); lf.cut.setValueAtTime(f * 0.9, t); lf.cut.exponentialRampToValueAtTime(f * (bright ? 7 : 5), t + 0.55); lf.cut.exponentialRampToValueAtTime(f * 1.1, t + L);
-    const a = ctx.createGain(); lf.node.connect(a); env(a, t, 0.4, v * 2.2, 0.3, L - 0.8); out(a, pan, 2.8);
-  }
   /* BURIAL: dust, a voice cut into two syllables a fourth apart and pitched down, and a sub that swells under them */
   function burialV(f, t, v, pan, bright, danger, vi) {
     crackle(t, 0.9, v * 0.9, -pan);
     const chop = (ff, tt, L, vv, k) => { const o = osc('sawtooth', ff, tt, tt + L + 0.05); o.frequency.exponentialRampToValueAtTime(ff * (danger ? 0.8 : 0.94), tt + L); const [f1, f2] = VOW[k % VOW.length]; const e = ctx.createGain();
       for (const [fq, g] of [[f1 * 0.8, 1], [f2 * 0.8, 0.4]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = 6; const gg = ctx.createGain(); gg.gain.value = g; o.connect(bp); bp.connect(gg); gg.connect(e); }
       const a = ctx.createGain(); e.connect(a); a.gain.setValueAtTime(0.0001, tt); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, vv), tt + 0.012); a.gain.setValueAtTime(vv, tt + L * 0.7); a.gain.exponentialRampToValueAtTime(0.0001, tt + L); out(a, pan, 2.2); };
-    chop(f * 0.5, t, 0.17, v * 2.4, vi || 0); chop(f * 0.375, t + 0.24, 0.26, v * 1.8, (vi || 0) + 1);
+    chop(qn(f * 0.5), t, 0.17, v * 2.4, vi || 0); chop(qn(f * 0.375), t + 0.25, 0.26, v * 1.8, (vi || 0) + 1);
     const sb = osc('sine', f / 4, t, t + 1.6); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.5, v * 2, 0.2, 0.9); out(sg, 0, 0.4);
   }
-  /* HAUNT: a wavering electric voice that rises into its note, doubled a hair apart, and stops as if cut from tape */
-  function hauntV(f, t, v, pan) {
-    const L = 0.95; const lf = ladder(f * 3, 0.35, 1); const a = ctx.createGain();
-    for (const dt of [-7, 7]) { const o = osc('triangle', semi(f, -1), t, t + L + 0.1); o.frequency.exponentialRampToValueAtTime(f, t + 0.28); o.detune.value = dt; vib(o, t, t + L, 5.4, f * 0.012, 0.2); o.connect(lf.node); }
-    lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.2), t + L); a.gain.linearRampToValueAtTime(0.0001, t + L + 0.05); out(a, pan, 2.4);
-  }
-  /* VOODOO: a low string through a ladder that squelches shut, the swamp under it */
-  function voodooV(f, t, v, pan, bright, danger) {
-    const o = osc('sawtooth', f / 2, t, t + 0.7); const lf = ladder(f * 8, danger ? 1.02 : 0.9, 1.6); o.connect(lf.node);
-    lf.cut.setValueAtTime(f * (bright ? 12 : 8), t); lf.cut.exponentialRampToValueAtTime(f * 0.7, t + 0.36);
-    const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.6), t + 0.006); a.gain.exponentialRampToValueAtTime(0.0001, t + 0.62); out(a, pan, 1.5);
-  }
-  /* CHEEKY: three bubbles rising, each a small sine that swoops up, left and right */
-  function cheekV(f, t, v, pan) {
-    for (let i = 0; i < 3; i++) { const tt = t + i * 0.075; const o = osc('sine', f * (1.6 + i * 0.3), tt, tt + 0.09); o.frequency.exponentialRampToValueAtTime(f * (2.6 + i * 0.5), tt + 0.06); const e = ctx.createGain(); o.connect(e);
-      e.gain.setValueAtTime(0.0001, tt); e.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 1.3), tt + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.08); out(e, clamp(pan + (i % 2 ? 0.4 : -0.4), -1, 1), 0.7); }
-  }
-  /* BLOWN: a deep tone driven through the ladder until it breaks up, then clipped again; low and ugly on purpose */
-  function blownV(f, t, v, pan, bright, danger) {
-    const L = 1.3; const e = ctx.createGain(); for (const [ty, m] of [['sine', 0.25], ['sawtooth', 0.5]]) { const o = osc(ty, f * m, t, t + L); o.frequency.exponentialRampToValueAtTime(f * m * (danger ? 0.86 : 0.97), t + L); o.connect(e); }
-    const lf = ladder(f * 1.4, 0.62, 6); e.connect(lf.node); const w = blower(); lf.node.connect(w); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 1800 : 900; w.connect(lp);
-    const a = ctx.createGain(); lp.connect(a); env(a, t, 0.03, v * 1.6, 0.4, L - 0.5); out(a, pan, 1.2);
-  }
-  /* COLLECTIVE: a small choir in a canyon. Three voices on an open chord, each vowel opening as it sings, every note thrown back
-     left and right twice, softer each time; round and bright, no drums */
   /* DUB: a deep round note from below, and a short muted chord thrown into a tape echo that repeats and darkens, a dotted
      eighth at 120 apart. Every note is a cell the hand found; nothing plays under them. The voice a cell has decides which:
      the note and the chord, the chord alone, or the note alone */
@@ -347,37 +311,50 @@ const snd = (() => {
     if (k !== 2) {
       let c = f; while (c > 560) c /= 2; while (c < 280) c *= 2;
       const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = bright ? 1500 : 1000; bp.Q.value = 1.6; const e = ctx.createGain(); bp.connect(e);
-      for (const n of k === 0 ? [0, 3, 7] : [0, 5, 10]) for (const dt of [-7, 7]) { const so = osc('sawtooth', semi(c, n), t, t + 0.22); so.detune.value = dt; so.connect(bp); }
+      for (const n of k === 0 ? [0, 3, 7] : [0, 5, 10]) for (const dt of [-7, 7]) { const so = osc('sawtooth', qn(semi(c, n)), t, t + 0.22); so.detune.value = dt; so.connect(bp); }
       env(e, t, 0.004, v * (danger ? 0.9 : 0.6), 0.05, 0.1); out(e, pan, 0.3); e.connect(dubEcho());
     }
   }
-  function collectiveV(f, t, v, pan, bright, danger, vi) {
-    const chord = [0, 7, (vi || 0) % 2 ? 16 : 15]; const L = 0.62;
-    for (let echo = 0; echo < 3; echo++) {
-      const te = t + echo * 0.21, ve = v * Math.pow(0.48, echo), pe = echo ? (echo % 2 ? -0.75 : 0.75) : pan;
-      chord.forEach((st, i) => {
-        const ff = semi(f, st) * wob(), t0 = te + i * 0.035; const o = osc('sawtooth', ff, t0, t0 + L + 0.1); vib(o, t0, t0 + L, 4.8 + i * 0.5, ff * 0.009, 0.12);
-        const [f1, f2] = VOW[((vi || 0) + i + echo) % VOW.length]; const e = ctx.createGain();
-        for (const [fq, g] of [[f1, 1], [f2, 0.5]]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(fq * 0.62, t0); bp.frequency.linearRampToValueAtTime(fq * (bright ? 1.15 : 1), t0 + L * 0.6); bp.Q.value = 6.5; const gg = ctx.createGain(); gg.gain.value = g; o.connect(bp); bp.connect(gg); gg.connect(e); }
-        const a = ctx.createGain(); e.connect(a); env(a, t0, 0.07, Math.max(0.0002, ve * (danger ? 1.6 : 1.35)), L * 0.32, L * 0.55); out(a, clamp(pe + (i - 1) * 0.32, -1, 1), 2.2);
-      });
-    }
+  /* WATER: a sub note that drops, round and slow, nothing over it */
+  function dropV(f, t, v, pan, bright) {
+    let b = f; while (b > 110) b /= 2; while (b < 55) b *= 2;
+    const o = osc('sine', b * 2, t, t + 1.5); o.frequency.exponentialRampToValueAtTime(b, t + 0.35);
+    const o2 = osc('triangle', b, t, t + 0.6); const g2 = ctx.createGain(); g2.gain.value = bright ? 0.22 : 0.12; o2.connect(g2);
+    const e = ctx.createGain(); o.connect(e); g2.connect(e); env(e, t, 0.02, v * 3.2, 0.12, 1.15); out(e, pan * 0.4, 0.5);
+  }
+  /* COMMUNITY: dust on a record, and a breath of noise filtered round the note, falling */
+  function dustV(f, t, v, pan, bright) {
+    crackle(t, 0.6, v * 1.1, -pan);
+    let c = f; while (c < 220) c *= 2; while (c > 880) c /= 2;
+    const s0 = ctx.createBufferSource(); s0.buffer = noise(0.72); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(c * 2, t); bp.frequency.exponentialRampToValueAtTime(c, t + 0.5); bp.Q.value = bright ? 9 : 6;
+    const g = ctx.createGain(); env(g, t, 0.06, v * 2.6, 0.08, 0.5); s0.connect(bp); bp.connect(g); out(g, pan, 1.6); s0.start(t); s0.stop(t + 0.74);
+  }
+  /* POLLUTION: a low stab, saws pulled apart, through the ladder, cut short into the echo; more of them in danger */
+  function stabV(f, t, v, pan, bright, danger) {
+    let b = f; while (b > 165) b /= 2; while (b < 82) b *= 2;
+    const lf = ladder(bright ? 1300 : 650, danger ? 0.55 : 0.35, prefs.nino ? 2.2 : 1.1); lf.cut.setValueAtTime(bright ? 1300 : 650, t); lf.cut.exponentialRampToValueAtTime(200, t + 0.28);
+    for (const dt of danger ? [-26, 0, 26] : [-17, 17]) { const o = osc('sawtooth', b, t, t + 0.34); o.detune.value = dt; o.connect(lf.node); }
+    const e = ctx.createGain(); lf.node.connect(e); env(e, t, 0.005, v * 1.9, 0.06, 0.22); out(e, pan, 0.6); e.connect(dubEcho());
   }
   /* what a knot sounds like, as a word and notes: for its sound, and for the little score on its card */
   function describe(spec = {}) {
     if (spec.fam) { const F = FAMILIES[spec.fam] || FAMILIES.people || { sound: 'breath' }; const sd = F.sound || 'breath'; return { people: sd, w: SOUND_W[sd] || '', notes: [[0, 0.5]], len: sd === 'pencil' ? 0.45 : sd === 'taps' ? 0.4 : sd === 'cup' ? 0.4 : 0.75 }; }
-    const [inst, notes] = MOTIF[spec.g] || MOTIF.paw; return { inst, w: INST_W[inst], notes, len: notes.reduce((a, x) => a + x[1], 0) + 0.3 };
+    const [inst0, notes] = MOTIF[spec.g] || MOTIF.paw; const inst = INST_AS[inst0] || inst0; return { inst, w: INST_W[inst], notes, len: notes.reduce((a, x) => a + x[1], 0) + 0.3 };
   }
   function knotAt(spec, f, t0, v, pan) {
     const d = describe(spec);
     if (d.people) { (SOUNDS[d.people] || SOUNDS.breath)(f, t0, GAIN.people * v, pan); return d.len; }
-    let t = t0; for (const [s2, dur] of d.notes) { INST[d.inst](semi(f, s2), t, dur, (GAIN[d.inst] || 0.06) * v, pan); t += dur; }
+    let t = t0; for (const [s2, dur] of d.notes) { INST[d.inst](qn(semi(f, s2)), t, dur, (GAIN[d.inst] || 0.06) * v, pan); t += dur; }
     return d.len;
   }
   return {
     describe,
     /* woken inside a touch itself, as phones require: true once sound can play */
     wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
+    /* El Niño: the same tempo, more heat: the mix opened and driven harder */
+    heat(on) { if (ctx && mixLP) heatSet(!!on); },
+    /* sounding now, or waiting for a touch to be given its sound back */
+    running: () => !!ctx && ctx.state === 'running',
     /* a dry click for a press */
     tick(f = 1700) {
       buzz(3); if (!ready()) return;
@@ -387,24 +364,28 @@ const snd = (() => {
       o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.06);
     },
     /* a knot's own sound: an animal's instrument, or a voice for the people; f is the string's own note */
-    knot(spec, f = 330, at = 0, v = 1, pan = 0) { if (!ready()) return describe(spec).len; return knotAt(spec, f, ctx.currentTime + at, v, pan); },
+    knot(spec, f = 330, at = 0, v = 1, pan = 0) { if (!ready()) return describe(spec).len; const t = onGrid(ctx.currentTime + at); room(t, true); return knotAt(spec, qf(f), t, v, pan); },
     /* a string tied: shorter strings ring higher */
-    pluck(len = 0.5, pan = 0, gain = 0.15) { buzz(8); if (!ready()) return; play(string(150 + (1 - clamp(len, 0, 1)) * 470, 2, 0.997), gain, 0, pan, 3600); },
+    pluck(len = 0.5, pan = 0, gain = 0.15) { buzz(8); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); play(string(qn(150 + (1 - clamp(len, 0, 1)) * 470), 2, 0.997), gain, t - ctx.currentTime, pan, 3600); },
     /* a string cut: muted, low */
     snap(pan = 0) { buzz([4, 24, 4]); if (!ready()) return; play(string(98, 0.35, 0.95), 0.18, 0, pan, 1600); },
     /* every string at once, slowly, high to low */
-    strum(lens = [], dir = 1) { buzz(6); if (!ready()) return; const L = lens.length ? lens : [0.5]; L.forEach((l, i) => play(string(150 + (1 - clamp(l, 0, 1)) * 470, 2, 0.997), 0.09, i * 0.09, dir * (i / Math.max(1, L.length - 1) - 0.5), 3600)); },
+    strum(lens = [], dir = 1) { buzz(6); if (!ready()) return; const L = lens.length ? lens : [0.5]; const t0 = onGrid(ctx.currentTime + 0.01) - ctx.currentTime; L.forEach((l, i) => play(string(qn(150 + (1 - clamp(l, 0, 1)) * 470), 2, 0.997), 0.09, t0 + i * SIX, dir * (i / Math.max(1, L.length - 1) - 0.5), 3600)); },
     /* a song: each string plucked in the order it was tied, and each knot answering in its own voice */
-    song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = ctx.currentTime + 0.06; for (const n of seq.slice(0, 180)) { if (n.spec) knotAt(n.spec, n.f, t0 + n.t, n.v || 0.8, n.pan || 0); else play(string(n.f, n.dur || 2, n.dc || 0.997), n.g || 0.09, t0 - ctx.currentTime + n.t, n.pan || 0, n.cut || 3600); } },
-    /* a constellation born: four glass notes, rising */
-    born() { buzz([6, 30, 6]); if (!ready()) return; const t = ctx.currentTime; [0, 7, 12, 19].forEach((s2, i) => INST.chime(semi(523, s2), t + i * 0.14, 0.2, 0.025, (i - 1.5) * 0.3)); },
+    song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = onGrid(ctx.currentTime + 0.06);
+      for (const n of seq.slice(0, 180)) { const t = t0 + Math.round(n.t / SIX) * SIX; if (!room(t)) continue; if (n.spec) knotAt(n.spec, qf(n.f), t, n.v || 0.8, n.pan || 0); else play(string(qn(n.f), n.dur || 2, n.dc || 0.997), n.g || 0.09, t - ctx.currentTime, n.pan || 0, n.cut || 3600); } },
+    /* a constellation born: four notes of the dub stab, rising, a sixteenth apart */
+    born() { buzz([6, 30, 6]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); [110, 130.81, 164.81, 220].forEach((f, i) => dubV(f, t + i * SIX, 0.04, (i - 1.5) * 0.3, true, false, 2)); },
     /* a cell reached by the sweep. spec: { g } a life, { fam } a place (its own small real sound). opt: v, pan, mood, bright
        (new), danger, vi (which voice) */
     ping(spec, f, opt = {}) {
-      if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false; lastBlip = now;
-      const t0 = ctx.currentTime + 0.01; const t = prefs.nino ? Math.ceil(t0 / 0.125) * 0.125 : t0; const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'fog';
-      const V = { rain: glitch, jelly: jellyV, burial: burialV, haunt: hauntV, voodoo: voodooV, cheek: cheekV, collective: collectiveV, dub: dubV, blown: blownV }[md];
-      if (spec.fam && !V && md !== 'weight') knotAt(spec, f, t, v * 5, pan); else if (md === 'weight') thud(f / 2, t, v, pan, opt.bright, opt.danger); else if (V) V(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0); else breath(f, t, v, pan, opt.bright, opt.danger, opt.vi || 0);
+      if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false;
+      const t = onGrid(ctx.currentTime + 0.01); if (!room(t)) return false; lastBlip = now;
+      const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
+      /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
+         a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */
+      const V = { dub: dubV, weight: dropV, dust: dustV, stab: stabV, burial: burialV, fog: breath }[md] || dubV;
+      if (spec.fam && md === 'fog') knotAt(spec, fq, t, v * 5, pan); else V(fq, t, v, pan, bright, opt.danger, opt.vi || 0);
       return true;
     },
     /* a thermal head stepping: filtered noise in short strokes */
@@ -415,46 +396,25 @@ const snd = (() => {
       const g = ctx.createGain(); g.gain.value = 0; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
       lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
     },
-    /* a fog horn, far off over the water: for a poster put up. Two low reeds a little apart, the ladder opening and closing */
-    horn() {
-      buzz([40, 60, 120]); if (!ready()) return; const t = ctx.currentTime + 0.02;
-      const blast = (t0, L, v) => { const lf = ladder(160, 0.4, 2.2); const e = ctx.createGain();
-        for (const [ty, f, g] of [['sawtooth', 73.4, 0.5], ['sawtooth', 77.6, 0.4], ['square', 36.7, 0.35]]) { const o = osc(ty, f, t0, t0 + L + 1.4); o.frequency.setValueAtTime(f * 0.96, t0); o.frequency.exponentialRampToValueAtTime(f, t0 + 0.4); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
-        e.connect(lf.node); lf.cut.setValueAtTime(160, t0); lf.cut.exponentialRampToValueAtTime(620, t0 + 0.6); lf.cut.setValueAtTime(620, t0 + L); lf.cut.exponentialRampToValueAtTime(140, t0 + L + 1.2);
-        const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t0); a.gain.exponentialRampToValueAtTime(v, t0 + 0.45); a.gain.setValueAtTime(v, t0 + L); a.gain.exponentialRampToValueAtTime(0.0001, t0 + L + 1.3); out(a, 0, 2.2); };
-      blast(t, 1.8, 0.16); blast(t + 3.1, 0.7, 0.11);
-    },
-    /* the muse: a bell of glass that opens and closes */
-    jelly(pan = 0) { if (!ready()) return; jellyV(523.25, ctx.currentTime + 0.02, 0.05, pan, true); },
-    /* a container ship's horn in fog, as deep as a speaker will carry: low reeds through the ladder, driven, a sub under it */
-    ship() {
-      buzz([60, 80, 200]); if (!ready()) return; const t = ctx.currentTime + 0.03, L = 2.6;
-      const lf = ladder(90, 0.5, 3.6); const e = ctx.createGain();
-      for (const [ty, f, g] of [['sawtooth', 46.25, 0.55], ['sawtooth', 46.9, 0.45], ['sawtooth', 92.5, 0.25], ['square', 23.1, 0.3]]) { const o = osc(ty, f * 0.97, t, t + L + 2.6); o.frequency.exponentialRampToValueAtTime(f, t + 0.7); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
-      e.connect(lf.node); lf.cut.setValueAtTime(90, t); lf.cut.exponentialRampToValueAtTime(520, t + 0.9); lf.cut.setValueAtTime(520, t + L); lf.cut.exponentialRampToValueAtTime(70, t + L + 2.2);
-      const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(0.24, t + 0.7); a.gain.setValueAtTime(0.24, t + L); a.gain.exponentialRampToValueAtTime(0.0001, t + L + 2.4); out(a, 0, 2.6);
-      const sb = osc('sine', 46.25, t, t + L + 2.4); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.8, 0.22, L - 0.6, 2); out(sg, 0, 0.3);
-    },
-    /* the same, small and kind: a tug's two notes, for the radar set down */
-    toot() {
-      buzz([20, 40, 20]); if (!ready()) return; const t = ctx.currentTime + 0.02;
-      const note = (t0, f, L) => { const lf = ladder(240, 0.45, 1.8); const e = ctx.createGain(); for (const [ty, m, g] of [['sawtooth', 1, 0.5], ['sawtooth', 1.007, 0.4], ['triangle', 0.5, 0.35]]) { const o = osc(ty, f * m, t0, t0 + L + 0.6); const gg = ctx.createGain(); gg.gain.value = g; o.connect(gg); gg.connect(e); }
-        e.connect(lf.node); lf.cut.setValueAtTime(240, t0); lf.cut.exponentialRampToValueAtTime(900, t0 + 0.12); lf.cut.exponentialRampToValueAtTime(200, t0 + L + 0.4);
-        const a = ctx.createGain(); lf.node.connect(a); a.gain.setValueAtTime(0.0001, t0); a.gain.exponentialRampToValueAtTime(0.09, t0 + 0.06); a.gain.setValueAtTime(0.09, t0 + L); a.gain.exponentialRampToValueAtTime(0.0001, t0 + L + 0.5); out(a, 0, 1.8); };
-      note(t, 110, 0.32); note(t + 0.42, 98, 0.55);
-    },
-    /* a step met: a few notes of glass over a soft low swell, more of them the further along; never the same twice in a row */
+    /* a poster put up: the low A as a dub stab, and the sub falling under it */
+    horn() { buzz([40, 60, 120]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(55, t, 0.07, 0, true, false, 0); dropV(110, t + SIX * 2, 0.06, 0, false); },
+    /* the muse: one soft chord of the dub stab, high in the key */
+    jelly(pan = 0) { if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(220, t, 0.035, pan, true, false, 1); },
+    /* the muse tapped: the low A and its fifth, swelling slowly and away */
+    ship() { buzz([60, 80, 200]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.03); room(t, true); for (const [f, g] of [[55, 1], [82.41, 0.5], [110, 0.22]]) { const o = osc('sine', f, t, t + 3.4); const e = ctx.createGain(); o.connect(e); env(e, t, 0.7, 0.13 * g, 1.2, 1.4); out(e, 0, 0.6); } },
+    /* the radar set down: two notes of the dub stab, the A and the E above it */
+    toot() { buzz([20, 40, 20]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(110, t, 0.05, -0.2, false, false, 2); dubV(164.81, t + SIX * 3, 0.05, 0.2, false, false, 0); },
+    /* a step met: the dub stab rising, a note more the further along, in the same key as everything; never glass */
     reward(n = 1) {
-      buzz([10, 30, 10, 30, 40]); if (!ready()) return; const t = ctx.currentTime + 0.03; const base = [392, 440, 494, 523.25, 587.33][(n - 1) % 5];
-      [0, 7, 12, 16, 19].slice(0, 2 + Math.min(3, n)).forEach((st, i) => INST.chime(semi(base, st), t + i * 0.11, 0.3, 0.03, (i - 1.5) * 0.25));
-      jellyV(base / 2, t, 0.03, 0, true); const sb = osc('sine', base / 8, t, t + 2.2); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.4, 0.08, 0.4, 1.2); out(sg, 0, 0.6);
+      buzz([10, 30, 10, 30, 40]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.03); room(t, true); const F = [110, 130.81, 146.83, 164.81, 196, 220]; const k = Math.min(F.length, 1 + n);
+      for (let i = 0; i < k; i++) dubV(F[i], t + i * SIX * 2, 0.05, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2);
     },
-    /* a gate passed on a first visit: one more note of a rising figure in A minor, the dub stab into its echo; the last
-       gate, the whole chord at once and the muse's bell over it */
+    /* a gate passed on a first visit: one more note of a rising figure in A minor, the dub stab into its echo (the veil one,
+       the radar two, W.I.S.H. three, PRINT four); everything open, the whole chord at once and the sub falling under it */
     gate(n = 1) {
-      buzz(n >= 4 ? [12, 40, 12, 40, 60] : [8, 30, 8]); if (!ready()) return; const t = ctx.currentTime + 0.04; const F = [110, 130.81, 164.81, 196, 220];
-      if (n >= 4) { F.forEach((f, i) => dubV(f, t + i * 0.04, 0.06, (i - 2) * 0.3, true, false, i ? 1 : 0)); jellyV(440, t + 0.12, 0.04, 0, true); return; }
-      for (let i = 0; i < n; i++) dubV(F[i], t + i * 0.25, 0.06, (i - (n - 1) / 2) * 0.3, true, false, i === n - 1 ? 0 : 2);
+      buzz(n >= 5 ? [12, 40, 12, 40, 60] : [8, 30, 8]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.04); room(t, true); const F = [110, 130.81, 164.81, 196, 220];
+      if (n >= 5) { F.forEach((f, i) => dubV(f, t + i * 0.04, 0.06, (i - 2) * 0.3, true, false, i ? 1 : 0)); dropV(110, t + SIX * 2, 0.07, 0, true); return; }
+      for (let i = 0; i < n; i++) dubV(F[i], t + i * SIX * 2, 0.06, (i - (n - 1) / 2) * 0.3, true, false, i === n - 1 ? 0 : 2);
     },
     /* paper torn off */
     tear() {

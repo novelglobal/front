@@ -3,15 +3,18 @@
    example, stories, posters, songs, cards, constellations, boards, codes, any link), the stickers in their packs, and the lives
    near and further out. Chosen, it goes where that page works: onto the strip in PRINT, onto the board on W.I.S.H.'s studio
    side, and onto the receipt as its picture on W.I.S.H.'s quick side. A sheet from the foot on a phone, a panel beside the
-   device on a wider screen
+   device on a wider screen. It is an uncased OLED module: bare board, black glass, pixel type, a small word under each key
+   that matters, and a bright jumper wire from a header on the device it was opened from, following it wherever it is dragged
    ════════════════════════════════════════════════════════════════════ */
 const PICK = { tab: 'made', to: 'strip' };
-const PICK_TABS = [['made', 'stories', 'Made here'], ['stick', 'star5', 'Stickers'], ['lives', 'fauna', 'Lives']];
+const PICK_TABS = [['made', 'stories', 'Made here', 'MADE'], ['stick', 'star5', 'Stickers', 'STICKERS'], ['lives', 'fauna', 'Lives', 'LIVES']];
+/* the word under each kind of piece */
+const PICK_W = { X: 'EXAMPLE', S: 'STORY', p: 'POSTER', R: 'SONG', T: 'CARD', c: 'SONG', b: 'BOARD', q: 'CODE' };
 /* a first visit has made nothing yet: the lives near come first, then the stickers */
 const pickTabs = () => (simple() ? [PICK_TABS[2], PICK_TABS[1]] : PICK_TABS);
 function pickBody() {
   const t = PICK.tab, strip = PICK.to === 'strip';
-  const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-label="${esc(tip)}">${art}</button></li>`;
+  const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-label="${esc(tip)}">${art}${t === 'made' && PICK_W[k] ? `<i class="pk-kw" aria-hidden="true">${PICK_W[k]}</i>` : ''}</button></li>`;
   const img = (src, extra = '') => `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer"${extra}>`;
   if (t === 'made') {
     const mine = S.signals.filter(x => !x.ex && !x.shared);
@@ -26,7 +29,7 @@ function pickBody() {
       ...(strip ? BOARDS.map(b => it('b', b.id, `${icon('base')}<small>${esc(b.n)}</small>`, b.n, ' ic')) : []),
       ...(strip ? mine.slice(0, 12).map(x => it('q', x.key, `${icon('qr')}<small>${esc(x.code)}</small>`, `QR · ${x.code}`, ' ic')) : []),
     ];
-    return `<ol class="pk-grid">${items.join('')}</ol><form class="pk-link"><input type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code to scan"><button type="submit" class="ib" aria-label="The link as a code">${icon('qr')}</button></form>`;
+    return `<ol class="pk-grid">${items.join('')}</ol><form class="pk-link"><input type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code to scan"><button type="submit" class="ib" aria-label="The link as a code">${icon('qr')}<i class="pk-kw" aria-hidden="true">LINK</i></button></form>`;
   }
   if (t === 'stick') {
     const pk = stickNow();
@@ -43,7 +46,7 @@ function pickRender() {
   const el = $('#pick'); if (!el) return;
   /* the lives' key shows a life, the nearest with a photograph */
   const face = k => { const sp = k === 'lives' && simple() ? radiusSpecies(1)[0] : null; return sp ? `<img class="pk-tf" src="${esc(photoURL(sp.ph, 'square'))}" alt="">` : null; };
-  el.querySelector('.pk-tabs').innerHTML = pickTabs().map(([k, ic, w]) => `<button type="button" class="pk-tab" data-pk-tab="${k}" aria-pressed="${PICK.tab === k}" aria-label="${w}">${face(k) || icon(ic)}<i class="pk-tl" aria-hidden="true"></i></button>`).join('');
+  el.querySelector('.pk-tabs').innerHTML = pickTabs().map(([k, ic, w, word]) => `<button type="button" class="pk-tab" data-pk-tab="${k}" aria-pressed="${PICK.tab === k}" aria-label="${w}">${face(k) || icon(ic)}<i class="pk-tl" aria-hidden="true"></i><small class="pk-w" aria-hidden="true">${word}</small></button>`).join('');
   el.classList.toggle('simple', simple()); el.dataset.tab = PICK.tab;
   el.querySelector('.sel-b').innerHTML = pickBody(); pickFill();
 }
@@ -56,12 +59,26 @@ function openPick(to) {
   PICK.to = to; PICK.tab = simple() ? 'lives' : 'made'; let el = $('#pick');
   if (!el) {
     el = document.createElement('div'); el.id = 'pick'; el.className = 'sel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Select');
-    el.innerHTML = `<div class="sel-in"><header class="sel-h"><i class="sel-grip" aria-hidden="true"></i><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}</button></header><div class="sel-b"></div></div>`;
+    el.innerHTML = `<div class="sel-in"><i class="sel-pins" aria-hidden="true"></i><header class="sel-h"><i class="sel-grip" aria-hidden="true"></i><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}<small class="pk-w" aria-hidden="true">CLOSE</small></button></header><div class="sel-b"></div></div>`;
     document.body.appendChild(el);
   }
-  el.dataset.to = to; el.hidden = false; pickRender(); snd.tick(1600); buzz(5);
+  el.dataset.to = to; el.hidden = false; pickRender(); snd.tick(1600); buzz(5); requestAnimationFrame(selWire);
 }
-const closePick = () => { const el = $('#pick'); if (el) el.hidden = true; };
+const closePick = () => { const el = $('#pick'); if (el) el.hidden = true; selWire(); };
+/* the jumper wire: from the key SELECT was opened by, sagging, to the header on the module's board */
+let pickFrom = null;
+const selWireEl = (() => { const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); el.setAttribute('class', 'sel-wire'); el.setAttribute('aria-hidden', 'true'); el.style.display = 'none'; document.body.appendChild(el); return el; })();
+function selWire() {
+  const sh = $('#pick'); const box = sh && $('#pick .sel-in'); const on = !!box && !sh.hidden && !!pickFrom && pickFrom.isConnected && pickFrom.offsetParent !== null;
+  selWireEl.style.display = on ? '' : 'none'; if (!on) return;
+  const a = pickFrom.getBoundingClientRect(), b = box.getBoundingClientRect(); const x0 = a.left + a.width / 2, y0 = a.bottom - 4, x1 = b.left + 30, y1 = b.top - 2;
+  const sag = Math.min(180, 40 + Math.hypot(x1 - x0, y1 - y0) * 0.3);
+  selWireEl.setAttribute('width', innerWidth); selWireEl.setAttribute('height', innerHeight);
+  selWireEl.innerHTML = `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)}C${x0.toFixed(1)} ${(y0 + sag).toFixed(1)} ${x1.toFixed(1)} ${(y1 + sag).toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}"/><rect x="${(x0 - 4).toFixed(1)}" y="${(y0 - 5).toFixed(1)}" width="8" height="10" rx="1.5"/><rect x="${(x1 - 4).toFixed(1)}" y="${(y1 - 8).toFixed(1)}" width="8" height="10" rx="1.5"/>`;
+}
+addEventListener('resize', selWire); addEventListener('scroll', selWire, true);
+/* whatever key opens it, the wire starts there */
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-pick], [data-tp="pick"], [data-zt="add"], [data-bt="add"]'); if (t) pickFrom = t; }, true);
 /* a picture for any of them, for the board or the receipt */
 async function pickURL(k, id) {
   if (k === 'X') return exampleZineImage();
@@ -98,7 +115,7 @@ async function pickPut(k, id, btn) {
     const u = await pickURL(k, id); if (!u) { tick(600); return; }
     const big = /^(X|S|p|T|R)$/.test(k);
     if (PICK.to === 'board') await addToBoard(big ? await thumbOf(u, 360) : u, k === 'stk' || k === 'pk' ? 'sticker' : 'art', big ? 200 : 110);
-    else { WDRAFT.photo = await thumbOf(u, 700); store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); }
+    else { WDRAFT.photo = await thumbOf(u, 700); store.set('da.wish.v1', WDRAFT); refreshPanel(); }
   }
   tick(1500); buzz(5);
 }
@@ -113,7 +130,7 @@ document.addEventListener('click', e => {
 document.addEventListener('submit', e => {
   if (!e.target.closest('#pick .pk-link')) return; e.preventDefault(); const inp = e.target.querySelector('input'); const u = (inp.value || '').trim(); if (!u) { nudge(inp); return; }
   const mx = (u.match(/#mix=([^&\s]+)/) || [])[1]; const m = mx ? mixOfCode(decodeURIComponent(mx)) : null; const art = m ? mixArt(m, u) : qrImage(u); if (!art) { tick(600); return; }
-  if (PICK.to === 'strip') placeOnPage(art, m ? 'art' : 'qr', m ? 240 : 120); else if (PICK.to === 'board') addToBoard(art, 'art', 140); else { thumbOf(art, 700).then(p => { WDRAFT.photo = p; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); }); }
+  if (PICK.to === 'strip') placeOnPage(art, m ? 'art' : 'qr', m ? 240 : 120); else if (PICK.to === 'board') addToBoard(art, 'art', 140); else { thumbOf(art, 700).then(p => { WDRAFT.photo = p; store.set('da.wish.v1', WDRAFT); refreshPanel(); }); }
   inp.value = ''; tick(1500);
 });
 document.addEventListener('change', async e => { if (!e.target.closest('#pick .pk-own')) return; await addPack(e.target.files); e.target.value = ''; PRESS.pack = 'life'; pickRender(); snd.tick(1900); });
@@ -122,5 +139,5 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && $('#pick') && !$('#
 /* the sheet dragged by its head, anywhere on the screen; where it was left, it opens again */
 let selDrag = null;
 document.addEventListener('pointerdown', e => { const h = e.target.closest('#pick .sel-h'); if (!h || e.target.closest('button')) return; const box = $('#pick .sel-in'); const r = box.getBoundingClientRect(); selDrag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); e.preventDefault(); });
-document.addEventListener('pointermove', e => { if (!selDrag || e.pointerId !== selDrag.id) return; const box = $('#pick .sel-in'); const w = box.offsetWidth, hh = box.offsetHeight; const x = clamp(e.clientX - selDrag.dx, 4, innerWidth - w - 4), y = clamp(e.clientY - selDrag.dy, 4, innerHeight - hh - 4); $('#pick').classList.add('moved'); box.style.left = `${x}px`; box.style.top = `${y}px`; });
+document.addEventListener('pointermove', e => { if (!selDrag || e.pointerId !== selDrag.id) return; const box = $('#pick .sel-in'); const w = box.offsetWidth, hh = box.offsetHeight; const x = clamp(e.clientX - selDrag.dx, 4, innerWidth - w - 4), y = clamp(e.clientY - selDrag.dy, 4, innerHeight - hh - 4); $('#pick').classList.add('moved'); box.style.left = `${x}px`; box.style.top = `${y}px`; selWire(); });
 document.addEventListener('pointerup', e => { if (selDrag && e.pointerId === selDrag.id) selDrag = null; });

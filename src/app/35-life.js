@@ -144,10 +144,9 @@ const life = (() => {
   /* the radar keeps playing while a life is looked at: only the radio being off, or the page hidden, stills it */
   const paused = () => !S.radio || S.mode === 'place' || document.hidden;
   const running = () => !reduced() && !paused();
-  /* a month ahead chosen on the outlook: the hand quickens with its danger, twice as fast at the extreme, and the glass heats.
-     The El Niño switch holds it at the extreme: one turn in two bars of 120 BPM */
-  const heatAhead = () => (prefs.nino ? 4 : S.mo !== nowK() ? Math.min(3, outMonth(S.mo).lv || 0) : 0);
-  const tempo = () => [1, 1.1, 1.3, 1.6, 2][heatAhead()];
+  /* the hand keeps one tempo whatever the heat: a turn in four bars of 120 BPM, so every cell it finds lands on the grid the
+     sound keeps. El Niño changes heat, not speed: the glass runs red, the sound opens */
+  const tempo = () => 1;
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {
     const dt = lastSweep ? Math.min(0.12, (now - lastSweep) / 1000) : 0; lastSweep = now;
@@ -414,7 +413,8 @@ const life = (() => {
     const k = clamp(0.75 + (zoomNow() - 14) * 0.22, 0.75, 1.25);
     for (const p of placesIn()) { const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) continue; p._x = q.x; p._y = q.y; strings.placeMark(ctx, p, q.x, q.y, k, false); }
   }
-  function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { p._x = null; if (!p.printer || !prefs.printers) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; const on = !!(PSTATE[p.id] || {}).ready; M.printer(ctx, q.x, q.y, d, still || !on ? 0 : t, on); } }
+  /* a first visit shows a printer only once it is online: nothing on the bare map points anywhere before it is chosen */
+  function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { p._x = null; if (!p.printer || !prefs.printers || (simple() && !(PSTATE[p.id] || {}).ready)) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; const on = !!(PSTATE[p.id] || {}).ready; M.printer(ctx, q.x, q.y, d, still || !on ? 0 : t, on); } }
   /* a life's photograph, for the ground once its cell is open: its own, else one of its kind; loaded once, drawn when it has come */
   const PH = new Map();
   function photoOf(o, size) {

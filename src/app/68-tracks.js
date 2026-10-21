@@ -6,10 +6,14 @@
    places in their own small real sounds when their station is on; and under the trail, a drone that swells only over clusters
    of life. Nature is always seen (unless unlocked on the approval page) and on from the first touch, and can be muted.
    ════════════════════════════════════════════════════════════════════ */
-/* the moods, turned round on each layer's key: the first three, then the muse, a buried voice, a haunted one, the swamp, bubbles,
-   and a tone blown out. Each sounds a cell its own way (snd.ping) and shades the drone */
-const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' }, dub: { w: 'DUB', ic: 'sound' } };
-const moodOf = () => (MOODS[prefs.mood] ? prefs.mood : 'fog');
+/* the moods, turned round on each layer's key. Since the sound moved to one deep key at 120 BPM (brief 0.06, stage C) six are
+   left: DUB, WEIGHT (a sub that drops), DUST, STAB, FOG and BURIAL. The others stay listed only so a radio link made with one
+   still reads, and sound as the nearest deep one (MOOD_AS); new moods go at the end, since a link keeps a mood by its place */
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' }, dub: { w: 'DUB', ic: 'sound' }, dust: { w: 'DUST', ic: 'ground' }, stab: { w: 'STAB', ic: 'harm' } };
+const MOOD_AS = { rain: 'dust', jelly: 'dub', haunt: 'stab', voodoo: 'stab', cheek: 'dust', blown: 'stab', collective: 'dub' };
+const MOOD_ON = ['dub', 'weight', 'dust', 'stab', 'fog', 'burial'];
+const moodIs = m => (MOODS[m] ? MOOD_AS[m] || m : null);
+const moodOf = () => moodIs(prefs.mood) || 'fog';
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
 const partialOf = key => { let h = 2166136261; for (const c of String(key)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return PARTIALS[(h >>> 0) % PARTIALS.length]; };
 const lvlOf = id => { const v = (prefs.lvl || {})[id]; return v == null ? (id === 'life' ? 0.8 : 0.7) : clamp(v, 0, 1); };
@@ -85,10 +89,10 @@ const TRACKS = LAYERS;   /* the name an earlier build used */
 const trackOn = k => (k === 'life' ? !prefs.mute : !!T4[k]);
 const layerLvl = k => lvlOf(k);
 /* each layer has its own mood: FOG, RAIN or WEIGHT, changed on its row */
-/* the radio as it first sounds, before a mood is turned: deep and slow, dub and ambient. LIFE a deep note and an echoing
-   chord, WATER the low drop of WEIGHT, COMMUNITY the dust of BURIAL, POLLUTION the wavering HAUNT */
-const LM_DEF = { life: 'dub', community: 'burial', water: 'weight', pollution: 'haunt' };
-const moodOfLayer = k => { const m = (prefs.lm || {})[k]; return MOODS[m] ? m : MOODS[prefs.mood] ? prefs.mood : LM_DEF[k] || 'dub'; };
+/* the radio as it first sounds, before a mood is turned: deep and slow, dub and ambient. LIFE a dub chord stab into tape echo,
+   WATER a sub note that drops, COMMUNITY filtered dust and noise, POLLUTION a low detuned stab */
+const LM_DEF = { life: 'dub', community: 'dust', water: 'weight', pollution: 'stab' };
+const moodOfLayer = k => moodIs((prefs.lm || {})[k]) || moodIs(prefs.mood) || LM_DEF[k] || 'dub';
 /* what each layer holds inside the radar now: a count, nothing more */
 function trackCount(k) {
   if (k === 'life') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist).length;
@@ -138,8 +142,12 @@ function setRadio(on) {
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });
   document.body.classList.toggle('on-air', on); buzz(on ? [8, 30, 8] : 6); life.redraw(); life.moved();
 }
+/* the radio's VU meter, on its studio side: the needle kicks with every cell the sweep plays and falls back */
+let vuT = 0, vuV = 0;
+function vuKick() { const n = document.querySelector('#view .vu'); if (!n) return; vuV = Math.min(1, vuV * 0.6 + 0.42); n.style.setProperty('--v', vuV.toFixed(2)); clearTimeout(vuT); vuT = setTimeout(() => { vuV = 0; n.style.setProperty('--v', '0'); }, 160); }
 /* a layer's meter moves as the sweep plays it */
 function flashLayer(k) {
+  vuKick();
   const m = document.querySelector(`.lyr[data-lyr="${k}"] .lv`); if (!m) return; const i = m.children[Math.floor(Math.random() * m.children.length)];
   if (i) { i.classList.add('hit'); setTimeout(() => i.classList.remove('hit'), 380); }
 }
@@ -170,7 +178,7 @@ $('#view').addEventListener('click', e => {
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = Object.keys(MOODS); const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = MOOD_ON; const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */
@@ -199,7 +207,7 @@ function mixNow() {
 function shareMix() {
   if (!placed()) { toast('WHERE ARE YOU?'); return null; }
   const m = mixNow(); MIXES.unshift(m); MIXES.splice(30); store.set('da.mixes.v1', MIXES); tie(1); snd.tick(2100); buzz([10, 40, 10]);
-  setView(1); placeMix(m); return m;
+  toBoardFace(); setView(1); placeMix(m); return m;
 }
 /* a mix tuned in: the radar where it was, its layers, levels and moods; on air when asked (a link waits for a touch) */
 function tuneMix(m, play) {

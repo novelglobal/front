@@ -233,14 +233,14 @@ async function placeAsset(kind, id) {
   if (kind === 's') { const x = S.signals.find(v => v.key === id); if (!x) return; c.add(textCard(f, aid, 'slip', assetText.s(x), p.x, p.y)); }
   if (kind === 'l') { const sp = SPECIES.find(v => v.id === String(id)); if (!sp) return; const card = textCard(f, aid, 'cell', speciesText(sp), p.x, p.y); c.add(card);
     photoCard(sp.ph, `${aid}:img`, p.x, p.y + card.height + 30, 200, card); }
-  if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; await new Promise(res => f.Image.fromURL(figArt(g, darkNow() ? '#F2F6FF' : '#0C0E0E'), im => { im.set({ left: p.x, top: p.y, daId: aid, daKind: 'fig' }); im.scaleToWidth(220); c.add(im); res(); })); }
+  if (kind === 'c') { const g = strings.list().find(v => String(v.id) === String(id)); if (!g) return; await new Promise(res => f.Image.fromURL(figArt(g, '#F2F6FF'), im => { im.set({ left: p.x, top: p.y, daId: aid, daKind: 'fig' }); im.scaleToWidth(220); c.add(im); res(); })); }
   c.setActiveObject(byId(aid)); c.renderAll(); saveBoard(false); snd.tick(1500);
 }
 const assetRow = (kind, id, ic, word) => `<li><button type="button" class="as-b" data-asset="${kind}" data-aid="${esc(String(id))}" aria-label="On the board">${ic}<span class="mono">${esc(word)}</span>${icon('plus', 'sm')}</button></li>`;
 function consStrip() {
   const cs = strings.list().slice(0, 12);
   if (!cs.length) return `<section class="sec figs-row" id="sec-figs"><button type="button" class="fig-make" data-make-fig>${icon('string')}<span>make a constellation</span></button></section>`;
-  return `<section class="sec figs-row" id="sec-figs"><ol class="figs-l">${cs.map(g => `<li><button type="button" class="fig-t" data-asset="c" data-aid="${esc(String(g.id))}" aria-label="${esc(g.name)} onto the board"><img src="${figArt(g, darkNow() ? '#DCE7EA' : '#0C0E0E')}" alt=""><span>${esc(g.name)}</span></button></li>`).join('')}<li><button type="button" class="fig-t fig-new" data-make-fig aria-label="Another constellation" data-tip="Another constellation">${icon('plus')}</button></li></ol></section>`;
+  return `<section class="sec figs-row" id="sec-figs"><ol class="figs-l">${cs.map(g => `<li><button type="button" class="fig-t" data-asset="c" data-aid="${esc(String(g.id))}" aria-label="${esc(g.name)} onto the board"><img src="${figArt(g, '#DCE7EA')}" alt=""><span>${esc(g.name)}</span></button></li>`).join('')}<li><button type="button" class="fig-t fig-new" data-make-fig aria-label="Another constellation" data-tip="Another constellation">${icon('plus')}</button></li></ol></section>`;
 }
 /* a constellation begun from here: the radio, the nearest life in the radar opened, its strings in reach listed to tie */
 function makeConstellation() {
@@ -265,7 +265,7 @@ async function boardTool(k) {
     const t = textCard(f, uid('st'), 'note', 'SECTION', p.x - 10, p.y - 52, { backgroundColor: 'transparent', fill: '#8FA9C4', fontSize: 24, width: 300 }); c.add(r); c.sendToBack(r); c.add(t); c.setActiveObject(t); }
   if (k === 'link') { linkArmed = !linkArmed; linkFrom = null; $('#board [data-bt="link"]').classList.toggle('on', linkArmed); if (linkArmed && sel && sel.daId) { linkFrom = sel; } return; }
   if (k === 'image') { $('#board-file').click(); return; }
-  if (k === 'pencil') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = darkNow() ? '#F2F6FF' : '#0C0E0E'; c.freeDrawingBrush.width = 2; $('#board [data-bt="pencil"]').classList.toggle('on', c.isDrawingMode); snd.tick(1500); return; }
+  if (k === 'pencil') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = '#F2F6FF'; c.freeDrawingBrush.width = 2; $('#board [data-bt="pencil"]').classList.toggle('on', c.isDrawingMode); snd.tick(1500); return; }
   if (k === 'out') { pickMenu($('#board [data-bt="out"]'), [{ k: 'png', n: 'PNG', ic: icon('camera', 'sm') }, { k: 'pdf', n: 'PDF', ic: icon('note', 'sm') }], it => boardOut(it.k)); return; }
   if (k === 'add') { openPick('board'); return; }
   if (k === 'delete') { const all = c.getActiveObjects(); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
@@ -281,7 +281,7 @@ async function boardPicture() {
   for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
   const pad = 48, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 4200 / Math.max(W, H));
   const vt0 = c.viewportTransform.slice(); c.setViewportTransform([1, 0, 0, 1, 0, 0]); let png; try { png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); } finally { c.setViewportTransform(vt0); } const im = await loadImage(png, false);
-  const out = document.createElement('canvas'); out.width = Math.round(W * k); out.height = Math.round(H * k); const x = out.getContext('2d'); const dark = darkNow();
+  const out = document.createElement('canvas'); out.width = Math.round(W * k); out.height = Math.round(H * k); const x = out.getContext('2d'); const dark = true;   /* the blueprint, by day and by night */
   x.fillStyle = dark ? '#123A66' : '#F4F8F8'; x.fillRect(0, 0, out.width, out.height);
   const step = 26 * k; for (let gx = 0, i = 0; gx < out.width; gx += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(gx, 0, 1, out.height); }
   for (let gy = 0, i = 0; gy < out.height; gy += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(0, gy, out.width, 1); }

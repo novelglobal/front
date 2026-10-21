@@ -49,8 +49,8 @@ function setPane(p) {
 }
 $('#sheetbar').addEventListener('click', () => { setPane(pane === 'page' ? 'main' : 'page'); tick(pane === 'page' ? 1500 : 1200); });
 $('#dock').addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (!b) return; setPane(b.dataset.pane); tick(b.dataset.pane === 'main' ? 1200 : 1500); });
-/* every page but the radio covers the map, except W.I.S.H. on a first visit, which is held over the map itself */
-const offMap = i => i !== 0 && !(simple() && i === 1);
+/* every page but the radio covers the map, except W.I.S.H.'s front, which is held over the map itself; its back is the blueprint */
+const offMap = i => i !== 0 && !(i === 1 && faceOf(1) === 'front');
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5); syncDock();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
@@ -115,10 +115,9 @@ function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && docu
 function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k; const front = faceOf(S.view) === 'front'; document.body.dataset.face = front ? 'front' : 'back';
-  const sm = simple();
-  viewEl.innerHTML = k === 'radio' ? (front ? (sm ? radioSimple() : radioFront()) : viewRadio()) : k === 'signals' ? (front ? (sm ? wishSimple() : wishFront()) : viewSignals()) : k === 'signs' ? (front ? (sm ? printSimple() : printFront()) : viewSigns()) : viewPortfolio();
+  viewEl.innerHTML = k === 'radio' ? (front ? radioFront() : viewRadio()) : k === 'signals' ? (front ? wishFront() : viewSignals()) : k === 'signs' ? (front ? printFront() : viewSigns()) : viewPortfolio();
   viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && offMap(S.view)); showBoard(k === 'signals' && S.open && !front); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
-  if (k === 'signals' && front && S.open && !sm) wishPreview(); else { const cov = $('#cover'); if (cov) cov.replaceChildren(); }
+  const cov = $('#cover'); if (cov) cov.replaceChildren();
   jrShow();
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
@@ -326,9 +325,13 @@ let stepsWas = null;
 function stepsCheck() {
   let now; try { now = STEPS(); } catch (e) { return; }
   if (!stepsWas) stepsWas = Array.isArray(prefs.steps) && prefs.steps.length === now.length ? prefs.steps : now;
-  now.forEach((v, i) => { if (v && !stepsWas[i]) won(i); });
-  if (now.join() !== stepsWas.join()) { stepsWas = now; prefs.steps = now; savePrefs(); }
+  /* met once, a step stays met on this device: what met it can come and go (a story shown, then filed) without a second answer */
+  const next = now.map((v, i) => !!(v || stepsWas[i]));
+  next.forEach((v, i) => { if (v && !stepsWas[i]) won(i); });
+  if (next.join() !== stepsWas.join()) { stepsWas = next; prefs.steps = next; savePrefs(); }
 }
+/* the steps a first visit met are kept without a sound: its gates answered them already */
+function stepsQuiet() { try { const now = STEPS(); stepsWas = now.map((v, i) => !!(v || (stepsWas || prefs.steps || [])[i])); prefs.steps = stepsWas; savePrefs(); } catch (e) { /* as they were */ } }
 function won(i) {
   if (simple()) return;   /* a first visit's gates answer for themselves (43-journey.js) */
   snd.reward(i + 1); document.body.classList.remove('won'); void document.body.offsetWidth; document.body.classList.add('won'); setTimeout(() => document.body.classList.remove('won'), 1600);
@@ -362,8 +365,8 @@ function viewRadio() {
   const ex = extremeAhead();
   /* no words but the clues: El Niño's emergency counting down, in orange; the months as an equaliser; the one button; the
      layers as marks; the three clues. Every name is there on a long hover */
-  return `<section class="band dev radio mod" id="sec-heat">${mods('DIRECT ACTION', 'RADIO')}${flipBtn()}
-      ${pagerHTML()}<p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : stepWords()}</b></p>
+  return `<section class="band dev radio mod${upCls()}" id="sec-heat">${mods('DIRECT ACTION', 'RADIO')}${upMods()}${flipBtn()}
+      ${pagerHTML()}<div class="vu" aria-hidden="true"><i class="vu-n"></i></div><p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : stepWords()}</b></p>
       ${monthStrip()}
       <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
      + `<button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>`
@@ -492,7 +495,7 @@ const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.pa
 const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
 const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf();
+  const g = $('#gallery'); if (!g) return; gzReset(); g.hidden = !on; if (!on) return; const ps = wallOf();
   /* what was just printed comes first */
   if (galleryFocus) { const at = ps.findIndex(x => x.id === galleryFocus); if (at >= 0) galleryAt = at; galleryFocus = null; }
   galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
@@ -503,16 +506,21 @@ function showGallery(on) {
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
     + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
-  const cur = ps[galleryAt]; const cs = [...deck().filter(c => cur && !cur.ex && c.id === 'p:' + cur.id), ...deck().filter(c => c.kind !== 'poster')].slice(0, 16);
-  if (cs.length) {
-    const kindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || 'LIFE').toUpperCase());
-    const back = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${kindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
-    g.insertAdjacentHTML('beforeend', `<aside class="gl-cards" aria-label="Cards"><ol>${cs.map((c, i) => `<li style="--i:${i}"><button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${back(c)}</span></span></button></li>`).join('')}</ol></aside>`);
-    (async () => { for (const im of $$('#gallery img[data-card-g]')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })();
-  }
-  g.classList.toggle('with-cards', cs.length > 0);
+  g.classList.toggle('with-cards', deck().length > 0); galleryCards();
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
-  let q = 0, qt = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); clearTimeout(qt); qt = setTimeout(() => showGallery(true), 500); } }); }, { passive: true });
+  /* slid to another: its number and its card change in place; the screen itself is never drawn again while it moves */
+  let q = 0, qt = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { gzReset(); galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); clearTimeout(qt); qt = setTimeout(galleryCards, 300); } }); }, { passive: true });
+}
+/* the cards beside the screen: the one made from the poster in view first, then the lives and the constellations */
+function galleryCards() {
+  const g = $('#gallery'); if (!g || g.hidden) return; const ps = wallOf(); const cur = ps[galleryAt];
+  const cs = [...deck().filter(c => cur && !cur.ex && c.id === 'p:' + cur.id), ...deck().filter(c => c.kind !== 'poster')].slice(0, 16);
+  let aside = g.querySelector('.gl-cards'); if (!g.classList.contains('with-cards')) { if (aside) aside.remove(); return; }
+  if (!aside) { aside = document.createElement('aside'); aside.className = 'gl-cards'; aside.setAttribute('aria-label', 'Cards'); g.appendChild(aside); }
+  const kindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || (c.kind === 'poster' ? 'POSTER' : 'LIFE')).toUpperCase());
+  const back = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${kindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}${c.kind === 'poster' && cardIntel(c) ? `<small>${esc(cardIntel(c))}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
+  aside.innerHTML = `<ol>${cs.map((c, i) => `<li style="--i:${i}"><button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${back(c)}</span></span></button></li>`).join('')}</ol>`;
+  (async () => { for (const im of $$('#gallery img[data-card-g]')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })();
 }
 /* the small display under the screen: which one, of how many; the keys that do not apply to it go quiet */
 function galleryRead() {
@@ -551,14 +559,43 @@ function zoomArt(src, host, at) {
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
   const gc = e.target.closest('[data-gc]'); if (gc) { if (!gc.classList.contains('over')) { $$('#gallery .gc.over').forEach(x => x.classList.remove('over')); gc.classList.add('over'); tick(1700); return; } const c = deck().find(v => v.id === gc.dataset.gc); if (c) openCard(c); return; }
-  const hz = e.target.closest('.gl-hero img'); if (hz) { zoomArt(hz.src, g, 1); return; }
+  if (e.target.closest('.gl-hero img')) return;   /* a press on the piece is its close-up, in place (gz) */
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
-  if (a.dataset.gl === 'zoom' && p.img) { zoomArt(p.img, g, 1); return; }
+  if (a.dataset.gl === 'zoom' && p.img) { const im = gzIm(); if (im) { if (GZ.im === im && GZ.s > 1.001) gzReset(true); else gzTo(im, 2, null, null, true); tick(1600); } return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
+/* close up inside the same screen, never a second window: the wheel or a pinch scales the piece about where it points,
+   dragged it moves, a press or the close-up key takes it to twice its size and back; sliding to another lets it go */
+const GZ = { im: null, s: 1, x: 0, y: 0, pts: new Map(), pinch: null, drag: null };
+const gzIm = () => { const sl = $$('#gallery .gl-slide')[galleryAt]; return sl ? sl.querySelector('.gl-hero img') : null; };
+function gzApply(ease) { const im = GZ.im; if (!im) return; im.style.transition = ease ? 'transform .22s ease-out' : 'none'; im.style.transform = GZ.s > 1.001 ? `translate(${GZ.x.toFixed(1)}px,${GZ.y.toFixed(1)}px) scale(${GZ.s.toFixed(3)})` : ''; im.classList.toggle('zoomed', GZ.s > 1.001); const tr = $('#gallery .gl-track'); if (tr) tr.classList.toggle('zooming', GZ.s > 1.001); }
+function gzReset(ease) { if (GZ.im) { GZ.s = 1; GZ.x = 0; GZ.y = 0; gzApply(ease); } GZ.im = null; GZ.pts.clear(); GZ.pinch = null; GZ.drag = null; }
+function gzTo(im, s1, px, py, ease) {
+  if (GZ.im !== im) { gzReset(); GZ.im = im; }
+  s1 = clamp(s1, 1, 4); if (s1 <= 1.001) { gzReset(ease); return; }
+  const r = im.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2; if (px == null) { px = cx; py = cy; }
+  const qx = (px - cx) / GZ.s, qy = (py - cy) / GZ.s; GZ.x = px - cx + GZ.x - s1 * qx; GZ.y = py - cy + GZ.y - s1 * qy; GZ.s = s1; gzApply(ease);
+}
+document.addEventListener('wheel', e => { const im = e.target.closest && e.target.closest('#gallery .gl-hero img'); if (!im || (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !(GZ.im === im && GZ.s > 1.001))) return; e.preventDefault(); gzTo(im, (GZ.im === im ? GZ.s : 1) * Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY); }, { passive: false });
+document.addEventListener('pointerdown', e => {
+  const im = e.target.closest && e.target.closest('#gallery .gl-hero img'); if (!im) return; if (GZ.im !== im) gzReset(); GZ.im = im; GZ.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
+  if (GZ.pts.size === 2) { const [a, b] = [...GZ.pts.values()]; GZ.pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: GZ.s }; GZ.drag = null; }
+  else if (GZ.s > 1.001) { GZ.drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; im.setPointerCapture(e.pointerId); e.preventDefault(); }
+});
+addEventListener('pointermove', e => {
+  const p = GZ.pts.get(e.pointerId); if (!p || !GZ.im) return; p.x = e.clientX; p.y = e.clientY;
+  if (GZ.pinch && GZ.pts.size >= 2) { const [a, b] = [...GZ.pts.values()]; gzTo(GZ.im, GZ.pinch.s0 * Math.hypot(a.x - b.x, a.y - b.y) / GZ.pinch.d0, (a.x + b.x) / 2, (a.y + b.y) / 2); return; }
+  if (GZ.drag && GZ.drag.id === e.pointerId) { GZ.x += e.clientX - GZ.drag.x; GZ.y += e.clientY - GZ.drag.y; GZ.drag.x = e.clientX; GZ.drag.y = e.clientY; gzApply(); }
+});
+const gzUp = e => {
+  const p = GZ.pts.get(e.pointerId); if (!p) return; GZ.pts.delete(e.pointerId); if (GZ.pts.size < 2) GZ.pinch = null; if (GZ.drag && GZ.drag.id === e.pointerId) GZ.drag = null;
+  /* a press that did not move: twice its size where pressed, or back */
+  if (e.type === 'pointerup' && GZ.im && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 6 && performance.now() - p.t < 400 && !GZ.pts.size) { if (GZ.s > 1.001) gzReset(true); else gzTo(GZ.im, 2, e.clientX, e.clientY, true); }
+};
+addEventListener('pointerup', gzUp); addEventListener('pointercancel', gzUp);
 document.addEventListener('keydown', e => { if (!e.target.closest || !e.target.closest('.gl-track')) return; const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); galleryGo(galleryAt + d); });
 function viewPortfolio() {
   loadPosts();
@@ -576,7 +613,7 @@ function viewPortfolio() {
       + `</div><div class="docs dl">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV'], ['blank', 'print', 'BLANK W.I.S.H.', 'PRINT']].map(([k, ic, w, f]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}">${icon(ic)}<span>${esc(w)}</span><small class="mono">${f}</small></button>`).join('')}</div>`
       + packSection()
       + `</section>`
-    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb" id="ix-journey" aria-label="The first visit again">${icon('restore')}</button><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
+    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Day · Dark" aria-label="Day or dark" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}<small class="dd">${darkNow() ? 'DARK' : 'DAY'}</small></button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb" id="ix-journey" aria-label="The first visit again">${icon('restore')}</button><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
       + `<div class="rst-w" id="rst-w" hidden role="alertdialog" aria-label="Start again"><p>${icon('alert')}<span>Everything made on this device goes: signals, boards, W.I.S.H.es, posters, the press. This cannot be undone.</span></p><div class="rst-a"><button type="button" class="key" id="rst-no" aria-label="Keep it">${icon('close')}</button><button type="button" class="key rst-yes" id="rst-yes">${icon('reset')}<b class="mono">CLEAR</b></button></div></div></section>`
     + `<details class="sec" id="sec-src"><summary>${labI('quote', 'Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
@@ -600,7 +637,7 @@ function bindPortfolio() {
   $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } tick(); });
   $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', !prefs.motion); life.data(); tick(); });
   $('#ix-areas').addEventListener('click', e => { prefs.areas = !prefs.areas; e.currentTarget.setAttribute('aria-pressed', String(prefs.areas)); savePrefs(); life.redraw(); tick(); });
-  $('#ix-night').addEventListener('click', e => { prefs.night = !darkNow(); e.currentTarget.setAttribute('aria-pressed', String(prefs.night)); savePrefs(); applyNight(); tick(); });
+  $('#ix-night').addEventListener('click', e => { prefs.night = !darkNow(); e.currentTarget.setAttribute('aria-pressed', String(prefs.night)); e.currentTarget.querySelector('.dd').textContent = prefs.night ? 'DARK' : 'DAY'; savePrefs(); applyNight(); tick(); });
   $('#ix-printers').addEventListener('click', e => { prefs.printers = !prefs.printers; e.currentTarget.setAttribute('aria-pressed', String(prefs.printers)); savePrefs(); life.redraw(); tick(); });
   const hb = $('#ix-hidden'); if (hb) hb.addEventListener('click', () => { const n = HIDE.size; showAllHidden(); life.data(); hb.remove(); toast(`${n} SHOWN`); snd.pluck(0.3, 0); });
   $('#ix-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });

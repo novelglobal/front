@@ -145,7 +145,7 @@ async function showZine(on) {
     if (kept && kept.json) { zLast = JSON.stringify(kept.json); await new Promise(r => zc.loadFromJSON(kept.json, r)); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); } else zLast = '';
   }
   if (PRESS.fmt !== 'zine') await setBase(false);
-  fitZ(); zc.renderAll(); leanOnce($('#zine-tools'), 'da.lean.zine'); if (simple()) jCaret(); return zc;
+  fitZ(); zc.renderAll(); leanOnce($('#zine-tools'), 'da.lean.zine'); jCaret(); return zc;
 }
 /* the story, as the printer's head draws it, at the head of the strip; set again when the story or its style changes */
 let baseN = 0;
@@ -301,7 +301,7 @@ async function zineTool(k) {
   if (k === 'stamp') { const t = new f.Text((words() || '✓').toUpperCase(), { fontFamily: '"IBM Plex Mono", monospace', fontWeight: 700, fontSize: 22, fill: ZCOL, opacity: 0.82, padding: 8 });
     const r = new f.Rect({ width: t.width + 22, height: t.height + 16, left: -11, top: -8, fill: 'transparent', stroke: ZCOL, strokeWidth: 3, rx: 4, ry: 4, opacity: 0.82 });
     const g = new f.Group([r, t], { left: x, top: y, angle: rnd(-9, 9), daKind: 'stamp' }); c.add(g); c.setActiveObject(g); }
-  if (k === 'undo') { if (!ZHIST.length) { tick(600); return; } const prev = ZHIST.pop(); zLast = prev; await new Promise(r => c.loadFromJSON(JSON.parse(prev), r)); if (simple()) await jStrip(); c.renderAll(); store.set(zKey(), { json: JSON.parse(prev), h: c.getHeight() }); snd.tick(1100); return; }
+  if (k === 'undo') { if (!ZHIST.length) { tick(600); return; } const prev = ZHIST.pop(); zLast = prev; await new Promise(r => c.loadFromJSON(JSON.parse(prev), r)); await jStrip(); c.renderAll(); store.set(zKey(), { json: JSON.parse(prev), h: c.getHeight() }); snd.tick(1100); return; }
   c.renderAll(); saveZine(); snd.tick(1500); buzz(4);
 }
 function setInk(col) {
@@ -312,7 +312,7 @@ function setInk(col) {
 $('#zine').addEventListener('input', e => { if (e.target.id === 'zine-col') setInk(e.target.value); });
 /* the middle of the part of the strip in view, in the strip's own units */
 function viewSpot() {
-  if (simple() && jObj('code')) return jLand();
+  if (jObj('code')) return jLand();
   const desk = $('#zine .desk'), el = zc && zc.upperCanvasEl; if (!desk || !el) return { x: 40, y: 60 }; const d = desk.getBoundingClientRect(), r = el.getBoundingClientRect(); const z = r.width / zc.getWidth() || 1;
   const bot = phone() && S.open ? Math.min(d.bottom, $('#panel').getBoundingClientRect().top) : d.bottom;
   const cx = (clamp((d.left + d.right) / 2, r.left, r.right) - r.left) / z, cy = (clamp((d.top + bot) / 2, r.top, r.bottom) - r.top) / z; return { x: cx + rnd(-30, 30), y: cy + rnd(-30, 30) };
@@ -320,7 +320,7 @@ function viewSpot() {
 async function placeOnPage(url, kind, width, photo) {
   const c = await showZine(true); if (!c) return; const at = viewSpot(); const src = url; const F = FORMATS[PRESS.fmt]; const wd = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6));
   if (photo) url = await inkPhoto(src, wd * (F.dots || F.w * 2) / F.w);
-  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); if (simple()) jLayout(); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
+  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); if (jObj('code')) jLayout(); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
 }
 function cellSticker(o) {
   if (o.photo) return loadImage(o.photo, false).then(im => photoFrame(im, FRAMES[cutN++ % FRAMES.length])).catch(() => cellSticker({ ...o, photo: null }));
@@ -411,7 +411,7 @@ async function cardArt(p, n, scale = 3, pal) {
   x.fillStyle = P1; x.fillRect(4, 4, W - 8, 1); x.fillRect(4, H - 5, W - 8, 1); x.fillRect(4, 4, 1, H - 8); x.fillRect(W - 5, 4, 1, H - 8);
   for (const [sx, sy] of [[4, 4], [W - 5, 4], [4, H - 5], [W - 5, H - 5]]) { x.fillStyle = P3; x.fillRect(sx, sy - 1, 1, 3); x.fillRect(sx - 1, sy, 3, 1); }
   /* the window: the poster, small, in four tones by a 4 x 4 order */
-  const im = await loadImage(p.img, !/^data:/.test(p.img)); const ww = 44, wh = 58, wx = 8, wy = 14; const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
+  const im = await loadImage(p.img, !/^data:/.test(p.img)); const ww = 44, wh = p.kind === 'poster' ? 52 : 58, wx = 8, wy = 14; const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
   const k = Math.max(ww / im.width, wh / im.height); tx.drawImage(im, (ww - im.width * k) / 2, 0, im.width * k, im.height * k);
   const d = tx.getImageData(0, 0, ww, wh); const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; const rgb = PAL.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
   for (let y = 0; y < wh; y++) for (let xx = 0; xx < ww; xx++) { const i = (y * ww + xx) * 4; const l = (0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]) / 255; const v = clamp(Math.floor(l * 3 + (B[(y % 4) * 4 + (xx % 4)] / 16 - 0.5) * 0.9 + 0.5), 0, 3); const [r, g, b] = rgb[v]; d.data[i] = r; d.data[i + 1] = g; d.data[i + 2] = b; d.data[i + 3] = 255; }
@@ -420,14 +420,26 @@ async function cardArt(p, n, scale = 3, pal) {
   x.strokeStyle = P3; x.lineWidth = 1; x.beginPath(); x.moveTo(wx - 0.5, wy + wh + 0.5); x.lineTo(wx - 0.5, wy + ww / 2); x.arc(wx + ww / 2, wy + ww / 2, ww / 2 + 0.5, Math.PI, 0); x.lineTo(wx + ww + 0.5, wy + wh + 0.5); x.closePath(); x.stroke();
   /* its number, and the plate with the muse */
   x.fillStyle = P3; x.font = '400 10px VT323, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(roman(n + 1), W / 2, 9);
-  x.fillStyle = P2; x.fillRect(8, 76, W - 16, 15); x.fillStyle = P0; x.fillRect(9, 77, W - 18, 13); if (p.g) M.glyph(x, p.g, W / 2, 83.5, 11, P3); else M.icon(x, 'jelly', W / 2, 83.5, 11, P3);
-  x.fillStyle = P1; for (let i = 0; i < 3; i++) { x.fillRect(14 + i * 3, 83, 1, 1); x.fillRect(W - 15 - i * 3, 83, 1, 1); }
+  const py = p.kind === 'poster' ? 70 : 76;
+  x.fillStyle = P2; x.fillRect(8, py, W - 16, 15); x.fillStyle = P0; x.fillRect(9, py + 1, W - 18, 13); if (p.g) M.glyph(x, p.g, W / 2, py + 7.5, 11, P3); else M.icon(x, 'jelly', W / 2, py + 7.5, 11, P3);
+  /* a poster's danger ahead as four pips on the plate, as many lit as it is high; any other card, its three dots */
+  if (p.kind === 'poster') for (let i = 0; i < 4; i++) { x.fillStyle = i < (p.deg || 0) ? P3 : P1; x.fillRect(12, py + 3 + i * 3, 2, 2); x.fillRect(W - 14, py + 3 + i * 3, 2, 2); }
+  else { x.fillStyle = P1; for (let i = 0; i < 3; i++) { x.fillRect(14 + i * 3, py + 7, 1, 1); x.fillRect(W - 15 - i * 3, py + 7, 1, 1); } }
+  /* and the day it was made, under the plate */
+  if (p.kind === 'poster' && p.at) { x.fillStyle = P2; x.font = '400 9px VT323, monospace'; x.fillText(fmtStamp(p.at).split(' ')[0], W / 2, 90); }
   const out = document.createElement('canvas'); out.width = W * scale; out.height = H * scale; const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(c, 0, 0, out.width, out.height); return out;
 }
 /* ───────── the deck: every poster made, every life sent to the W.I.S.H.MAKER, every constellation, each a card of its own
    in its own palette. Kept here as tokens; turned over large; shared, saved, or laid on the strip as a sticker ───────── */
+/* a poster's card carries what its receipt was of: the life, its mark, the day it was made, its danger ahead and when, where */
+function posterCard(p, i) {
+  const s = p.story ? S.signals.find(x => x.key === p.story) : null; const pin = (s && s.pin) || {}; const sel = (s && s.jsel) || {};
+  return { id: 'p:' + p.id, img: p.img, n: POSTERS2.length - 1 - i, kind: 'poster', ref: p.id, name: pin.cn || pin.n || sel.n || '', g: pin.g && pin.g !== 'paw' ? pin.g : null, at: p.at, deg: (s && s.deg) || 0, when: (s && s.when) || '', place: pin.place || '' };
+}
+/* its intel in a line: the day, the danger ahead and when, where */
+const cardIntel = c => [c.at ? fmtStamp(c.at).split(' ')[0] : '', c.deg ? DEG[c.deg] : '', c.when || '', c.place || ''].filter(Boolean).join(' · ');
 function deck() {
-  return [...POSTERS2.map((p, i) => ({ id: 'p:' + p.id, img: p.img, n: POSTERS2.length - 1 - i, kind: 'poster', ref: p.id })),
+  return [...POSTERS2.map(posterCard),
     ...SPECIES.filter(sp => sp.ph).map((sp, i) => ({ id: 'l:' + sp.id, img: sp.ph, g: sp.g, n: i, kind: 'life', name: sp.n })),
     ...strings.list().map((g, i) => ({ id: 'c:' + g.id, img: figArt(g, '#000000'), g: glyphOf(g.o) || null, n: i, kind: 'fig', name: g.name }))];
 }
@@ -464,13 +476,13 @@ async function openCard(card) {
     + (poster ? `<figure class="tv-side tv-poster"><img src="${poster.img}" alt=""><figcaption class="mono">poster</figcaption></figure>` : '')
     + `<div class="tv-mid"></div>`
     + (fig ? `<figure class="tv-side tv-fig"><img src="${figArt(fig, '#DCE7EA')}" alt=""><figcaption class="mono">${esc(fig.name)}</figcaption></figure>` : '')
-    + `</div>${card.name ? `<p class="tv-name mono">${esc(card.name)}</p>` : ''}${poster || fig ? `<div class="tv-with">${poster ? `<button type="button" class="tv-w" data-with="poster" aria-pressed="true">${icon('stories', 'sm')}<b>with poster</b></button>` : ''}${fig ? `<button type="button" class="tv-w" data-with="song" aria-pressed="true">${icon('sound', 'sm')}<b>with song</b></button>` : ''}</div>` : ''}<div class="tv-acts">${acts.map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-tv="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
+    + `</div>${card.name ? `<p class="tv-name mono">${esc(card.name)}</p>` : ''}${card.kind === 'poster' && cardIntel(card) ? `<p class="tv-intel mono">${esc(cardIntel(card))}</p>` : ''}${poster || fig ? `<div class="tv-with">${poster ? `<button type="button" class="tv-w" data-with="poster" aria-pressed="true">${icon('stories', 'sm')}<b>with poster</b></button>` : ''}${fig ? `<button type="button" class="tv-w" data-with="song" aria-pressed="true">${icon('sound', 'sm')}<b>with song</b></button>` : ''}</div>` : ''}<div class="tv-acts">${acts.map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-tv="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
   el.querySelector('.tv-mid').append(c); document.body.appendChild(el);
   const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
   el.addEventListener('click', async e => { const wb = e.target.closest('[data-with]'); if (wb) { WITH[wb.dataset.with] = !WITH[wb.dataset.with]; wb.setAttribute('aria-pressed', String(WITH[wb.dataset.with])); tick(WITH[wb.dataset.with] ? 1600 : 1000); return; }
     const b = e.target.closest('[data-tv]');
     if (b && b.dataset.tv === 'strip') { close(); setView(2); setTimeout(async () => { await placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200); if (WITH.poster && poster) await placeOnPage(poster.img, 'poster', 300); if (WITH.song && fig) await placeOnPage(figChart(fig), 'chart', 120); }, 500); return; }
-    if (b && b.dataset.tv === 'board') { const u = await thumbOf(await cardURL(card, 3), 260); await addToBoard(u, 'card', 160); if (WITH.poster && poster) await addToBoard(await thumbOf(poster.img, 300), 'poster', 180); if (WITH.song && fig) await addToBoard(figArt(fig, '#DCE7EA'), 'chart', 140); close(); flyToTab(1, el); snd.printer(500); buzz([8, 30, 8]); return; }
+    if (b && b.dataset.tv === 'board') { const u = await thumbOf(await cardURL(card, 3), 260); await addToBoard(u, 'card', 160); toBoardFace(); if (WITH.poster && poster) await addToBoard(await thumbOf(poster.img, 300), 'poster', 180); if (WITH.song && fig) await addToBoard(figArt(fig, '#DCE7EA'), 'chart', 140); close(); flyToTab(1, el); snd.printer(500); buzz([8, 30, 8]); return; }
     if (e.target.closest('.tv-card, .tv-side img')) { const t = e.target.closest('.tv-card, .tv-side img'); zoomArt(t.tagName === 'CANVAS' ? t.toDataURL('image/png') : t.src); return; }
     if (b && b.dataset.tv === 'png' && poster) { const a = document.createElement('a'); a.href = poster.img; a.download = `poster-${isoDay(new Date(poster.at || Date.now()))}.jpg`; a.click(); tick(1800); return; }
     if (b || e.target === el) close(); });
@@ -593,7 +605,7 @@ function viewSigns() {
   const ws = waiting(); const cur = pressStory(); const st = MASTER ? PSTATE[MASTER.id] || {} : {};
   const cells = myCells().slice(0, 12), figs = strings.list().slice(0, 12), sps = radiusSpecies(12); const pk = stickNow();
   const on = printersOn();
-  return `<div class="dev tepra mod">${mods('DIRECT ACTION', 'PRINT')}${flipBtn()}<header class="ps-h${on.length ? ' on' : ''}"><button type="button" class="ps-printer${st.ready ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></button><span class="ps-hl" id="ps-info" hidden><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
+  return `<div class="dev tepra mod${upCls()}">${mods('DIRECT ACTION', 'PRINT')}${upMods()}${flipBtn()}<header class="ps-h${on.length ? ' on' : ''}"><button type="button" class="ps-printer${st.ready ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><img src="${printerImg(MASTER || {}, st)}" alt=""><i class="ps-led"></i></button><span class="ps-hl" id="ps-info" hidden><b>${on.length ? on.map(p => esc(String(p.n).toUpperCase())).join(' · ') : (MASTER ? esc(String(MASTER.n).toUpperCase()) : '')}</b><small class="mono"><i class="ps-dot"></i>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span></header>`
     + `<section class="sec lcd" id="sec-slips" data-tip="Stories waiting to print"><i class="lcd-ic">${icon('receipt')}<b class="mono">${ws.length}</b></i>`
       + (ws.length ? `<ol class="slips-l">${ws.map(s => `<li><button type="button" class="slip-row${cur && cur.key === s.key ? ' on' : ''}" data-press="${esc(s.key)}"><b class="mono">${esc(s.code)}</b><span class="nm">${esc(NAME_UP(s))}</span><i class="st-dot ${/QUEUE|PRINTING/.test(sentWord(s)) ? 'q' : /WAITING|SENDING/.test(sentWord(s)) ? 'w' : ''}"></i></button></li>`).join('')}</ol>` : '')
       + `</section>`

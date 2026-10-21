@@ -35,6 +35,14 @@ const buildWord = (BUILD.sha ? ` · <span class="da-build" title="The version of
 /* the tiny NOVEL.GLOBAL in it, pressed twice, opens everything on a first visit (43-journey.js) */
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME}</a> · <b class="da-egg" role="button" tabindex="0" aria-label="${esc(CONFIG.BY.toUpperCase())}">${esc(CONFIG.BY.toUpperCase())}</b> · iNaturalist · © OpenStreetMap · Open-Meteo${buildWord}` }), 'bottom-left');
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); if (!simple()) setView(3, false, 'sources'); } });
+/* the information corner stays folded, the ⓘ alone, until it is pressed: MapLibre opens it as the map loads and folds it only
+   at the first drag */
+(() => {
+  const at = map.getContainer().querySelector('.maplibregl-ctrl-attrib'); if (!at) return; let asked = false;
+  at.addEventListener('click', e => { if (e.target.closest('.maplibregl-ctrl-attrib-button')) asked = true; }, true);
+  const fold = () => { if (!asked && at.classList.contains('maplibregl-compact-show')) at.classList.remove('maplibregl-compact-show'); asked = false; };
+  new MutationObserver(fold).observe(at, { attributes: true, attributeFilter: ['class'] }); fold();
+})();
 map.on('load', () => {
   S.mapReady = true;
   const open = S.byId.get(S.sel);
