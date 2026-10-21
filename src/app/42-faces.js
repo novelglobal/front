@@ -6,15 +6,16 @@
    it over.
    ════════════════════════════════════════════════════════════════════ */
 const FACED = [0, 1, 2];
-const faceOf = i => (FACED.includes(i) ? ((prefs.face || {})[i] === 'back' ? 'back' : 'front') : 'back');
+/* a first visit sees the fronts alone (43-journey.js) */
+const faceOf = i => (FACED.includes(i) ? (!simple() && (prefs.face || {})[i] === 'back' ? 'back' : 'front') : 'back');
 function setFace(i, f) { prefs.face = { ...(prefs.face || {}), [i]: f }; savePrefs(); }
 /* the key that turns a device over: the jellyfish, small and round, in the same place on every device and both its faces, at
    its foot on the right; submarine yellow on the quick side, green going to blue on the studio side. It wiggles on each page
    until it has been pressed there once */
 const FLIP_SVG = '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9V6.4C3 3.6 5.2 2 8 2s5 1.6 5 4.4V9c-1.5.6-3.2.9-5 .9S4.5 9.6 3 9z" fill="currentColor"/><path d="M4.8 10.6c-.6 1.3.6 2.1 0 3.4M7 10.9c-.6 1.5.6 2.3 0 3.8M9 10.9c-.6 1.5.6 2.3 0 3.8M11.2 10.6c-.6 1.3.6 2.1 0 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
-const flipBtn = () => { const f = faceOf(S.view); return FACED.includes(S.view) ? `<button type="button" class="flip-b${(prefs.flipped || {})[S.view] ? '' : ' hint'}" data-flip data-face="${f}" aria-label="${f === 'front' ? 'Turn over: the studio' : 'Turn back: the quick way'}">${FLIP_SVG}</button>` : ''; };
+const flipBtn = () => { const f = faceOf(S.view); return FACED.includes(S.view) && !simple() ? `<button type="button" class="flip-b${(prefs.flipped || {})[S.view] ? '' : ' hint'}" data-flip data-face="${f}" aria-label="${f === 'front' ? 'Turn over: the studio' : 'Turn back: the quick way'}">${FLIP_SVG}</button>` : ''; };
 function flip() {
-  const i = S.view; if (!FACED.includes(i) || S.mode) return; const to = faceOf(i) === 'front' ? 'back' : 'front'; snd.tick(to === 'back' ? 1250 : 1750); buzz(6);
+  const i = S.view; if (!FACED.includes(i) || S.mode || simple()) return; const to = faceOf(i) === 'front' ? 'back' : 'front'; snd.tick(to === 'back' ? 1250 : 1750); buzz(6);
   prefs.flipped = { ...(prefs.flipped || {}), [i]: 1 };
   const go = () => { setFace(i, to); headBar(); renderView(); viewEl.scrollTop = 0; };
   if (reduced()) { go(); return; }
@@ -76,10 +77,11 @@ function radioFront() {
   return `<section class="band front-r" id="sec-heat"><div class="dev radio"><i class="hack h-jump" aria-hidden="true"></i>`
     + `${ninoSwitch()}`
     + `<div class="rd-top"><i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${first ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button></div>`
-    + `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
-      + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`
-    + `${flipBtn()}</div></section>`;
+    + `${knobsHTML()}${flipBtn()}</div></section>`;
 }
+/* a knob for each layer: off, then three levels, its ticks lit as far as it is turned, its layer's mark under it */
+const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
+  + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`;
 /* a knob turned: a click goes round, off, one, two, three; arrow keys step and stop at the ends */
 function turnKnob(k, d, stop) {
   const p0 = knobPos(k); let p = p0 + d; p = stop ? clamp(p, 0, 3) : (p + 4) % 4; if (p === p0) { tick(600); return; }
@@ -200,6 +202,6 @@ function printFront() {
 }
 viewEl.addEventListener('click', e => { const o = e.target.closest('[data-outs]'); if (!o) return; const sec = o.closest('#sec-out'); const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); o.setAttribute('aria-expanded', String(on)); tick(on ? 1500 : 1000); });
 viewEl.addEventListener('click', e => {
-  const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'pick') { openPick('strip'); return; } if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => o.daKind !== 'base') : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
+  const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'pick') { openPick('strip'); return; } if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => !ZFIXED.includes(o.daKind)) : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
   const pr = e.target.closest('[data-prn]'); if (pr) { const i = $('#tp-info') || $('#ps-info'); if (!i) return; i.hidden = !i.hidden; pr.setAttribute('aria-expanded', String(!i.hidden)); snd.tick(i.hidden ? 1100 : 1800); buzz(5); }
 });

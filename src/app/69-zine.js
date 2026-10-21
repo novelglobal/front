@@ -11,6 +11,8 @@ const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()
 let zc = null, zFmt = null;
 const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode'];
 const ZHIST = []; let zLast = '';
+/* what stays on the strip whatever is taken off it: the story at its head; on a first visit, its words and its code too */
+const ZFIXED = ['base', 'words', 'code'];
 const zKey = () => 'da.press.' + PRESS.fmt;
 const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 40) ZHIST.shift(); } zLast = str; store.set(zKey(), { json, h: zc.getHeight() }); }, 300);
 /* the tools: words, a headline, cut-out letters, a photocopy, a pen, shapes, a stamp, tape, ink, undo, remove. Icons only;
@@ -143,17 +145,19 @@ async function showZine(on) {
     if (kept && kept.json) { zLast = JSON.stringify(kept.json); await new Promise(r => zc.loadFromJSON(kept.json, r)); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); } else zLast = '';
   }
   if (PRESS.fmt !== 'zine') await setBase(false);
-  fitZ(); zc.renderAll(); leanOnce($('#zine-tools'), 'da.lean.zine'); return zc;
+  fitZ(); zc.renderAll(); leanOnce($('#zine-tools'), 'da.lean.zine'); if (simple()) jCaret(); return zc;
 }
 /* the story, as the printer's head draws it, at the head of the strip; set again when the story or its style changes */
 let baseN = 0;
 const lockBase = o => o.set({ left: 0, selectable: true, evented: true, lockMovementX: true, lockScalingX: true, lockScalingY: true, lockRotation: true, lockSkewingX: true, lockSkewingY: true, hasControls: false, borderColor: '#E8450F', borderScaleFactor: 2, hoverCursor: 'ns-resize', moveCursor: 'ns-resize' });
-async function setBase(force) {
+async function setBase(force) { await baseSet(force); await jStrip(); }
+async function baseSet(force) {
   const s = pressStory(); const F = FORMATS[PRESS.fmt]; if (!zc || PRESS.fmt === 'zine') return;
-  const was = zc.getObjects().find(o => o.daKind === 'base'); const style = `${isTty()}${isConn()}`;
+  const was = zc.getObjects().find(o => o.daKind === 'base'); const style = s && s.jr ? 'intel' : `${isTty()}${isConn()}`;
   if (!s) { if (was) zc.remove(was); return; }
   if (was && !force && was.daStory === `${s.key}|${style}`) { lockBase(was); return; }
-  const my = ++baseN; const cvs = await slipCanvas(s, F.dots - (F.dots % 8), F.levels || 2, isTty(), isConn()).catch(() => null); if (!cvs || my !== baseN) return;
+  /* a first visit's receipt is set as intel, not art (43-journey.js), and stays so */
+  const my = ++baseN; const cvs = await (s.jr ? intelCanvas(s.jsel, s, F.dots - (F.dots % 8), F.levels || 2) : slipCanvas(s, F.dots - (F.dots % 8), F.levels || 2, isTty(), isConn())).catch(() => null); if (!cvs || my !== baseN) return;
   await new Promise(res => window.fabric.Image.fromURL(cvs.toDataURL('image/png'), im => {
     const old = zc.getObjects().find(o => o.daKind === 'base'); const top0 = old ? old.top || 0 : 0; if (old) zc.remove(old);
     im.set({ top: top0, daKind: 'base', daStory: `${s.key}|${style}` }); lockBase(im); im.scaleToWidth(F.w);
@@ -287,7 +291,7 @@ async function zineTool(k) {
     const at = again ? { left: sel.left, top: sel.top, angle: sel.angle, w: sel.getScaledWidth() } : { left: x, top: y, angle: rnd(-8, 8), w: Math.min(150, W * 0.45) }; if (again) c.remove(sel);
     await new Promise(res => f.Image.fromURL(bandana(300, RAGINV).toDataURL('image/png'), im => { im.set({ left: at.left, top: at.top, angle: at.angle, daKind: 'rag' }); im.scaleToWidth(at.w); c.add(im); c.setActiveObject(im); res(); }));
   }
-  if (k === 'delete') { for (const o of c.getActiveObjects()) if (o.daKind !== 'base') c.remove(o); c.discardActiveObject(); }
+  if (k === 'delete') { for (const o of c.getActiveObjects()) if (!ZFIXED.includes(o.daKind)) c.remove(o); c.discardActiveObject(); }
   if (k === 'shape') { const n = (zineTool.n = ((zineTool.n || 0) + 1) % 4); let o;
     if (n === 1) o = new f.Circle({ left: x, top: y, radius: 30, fill: ZCOL, daKind: 'shape' });
     if (n === 2) { const pts = []; for (let i = 0; i < 24; i++) { const r = i % 2 ? 20 : 40; const a = i / 24 * Math.PI * 2; pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r }); } o = new f.Polygon(pts, { left: x, top: y, fill: ZCOL, daKind: 'shape' }); }
@@ -297,7 +301,7 @@ async function zineTool(k) {
   if (k === 'stamp') { const t = new f.Text((words() || '✓').toUpperCase(), { fontFamily: '"IBM Plex Mono", monospace', fontWeight: 700, fontSize: 22, fill: ZCOL, opacity: 0.82, padding: 8 });
     const r = new f.Rect({ width: t.width + 22, height: t.height + 16, left: -11, top: -8, fill: 'transparent', stroke: ZCOL, strokeWidth: 3, rx: 4, ry: 4, opacity: 0.82 });
     const g = new f.Group([r, t], { left: x, top: y, angle: rnd(-9, 9), daKind: 'stamp' }); c.add(g); c.setActiveObject(g); }
-  if (k === 'undo') { if (!ZHIST.length) { tick(600); return; } const prev = ZHIST.pop(); zLast = prev; await new Promise(r => c.loadFromJSON(JSON.parse(prev), r)); c.renderAll(); store.set(zKey(), { json: JSON.parse(prev), h: c.getHeight() }); snd.tick(1100); return; }
+  if (k === 'undo') { if (!ZHIST.length) { tick(600); return; } const prev = ZHIST.pop(); zLast = prev; await new Promise(r => c.loadFromJSON(JSON.parse(prev), r)); if (simple()) await jStrip(); c.renderAll(); store.set(zKey(), { json: JSON.parse(prev), h: c.getHeight() }); snd.tick(1100); return; }
   c.renderAll(); saveZine(); snd.tick(1500); buzz(4);
 }
 function setInk(col) {
@@ -308,6 +312,7 @@ function setInk(col) {
 $('#zine').addEventListener('input', e => { if (e.target.id === 'zine-col') setInk(e.target.value); });
 /* the middle of the part of the strip in view, in the strip's own units */
 function viewSpot() {
+  if (simple() && jObj('code')) return jLand();
   const desk = $('#zine .desk'), el = zc && zc.upperCanvasEl; if (!desk || !el) return { x: 40, y: 60 }; const d = desk.getBoundingClientRect(), r = el.getBoundingClientRect(); const z = r.width / zc.getWidth() || 1;
   const bot = phone() && S.open ? Math.min(d.bottom, $('#panel').getBoundingClientRect().top) : d.bottom;
   const cx = (clamp((d.left + d.right) / 2, r.left, r.right) - r.left) / z, cy = (clamp((d.top + bot) / 2, r.top, r.bottom) - r.top) / z; return { x: cx + rnd(-30, 30), y: cy + rnd(-30, 30) };
@@ -315,7 +320,7 @@ function viewSpot() {
 async function placeOnPage(url, kind, width, photo) {
   const c = await showZine(true); if (!c) return; const at = viewSpot(); const src = url; const F = FORMATS[PRESS.fmt]; const wd = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6));
   if (photo) url = await inkPhoto(src, wd * (F.dots || F.w * 2) / F.w);
-  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
+  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); if (simple()) jLayout(); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
 }
 function cellSticker(o) {
   if (o.photo) return loadImage(o.photo, false).then(im => photoFrame(im, FRAMES[cutN++ % FRAMES.length])).catch(() => cellSticker({ ...o, photo: null }));
@@ -496,7 +501,7 @@ async function stripOut() { if (!zc) return null; zc.discardActiveObject(); zc.r
 async function pressOut(k) {
   const s = pressStory(); const out = await stripOut(); if (!out) return; const { url, F } = out;
   if (k === 'print' || k === 'send') feedAnim(url);
-  if (k === 'print' || k === 'send' || k === 'png') savePoster(true).catch(() => {});
+  const kept = k === 'print' || k === 'send' || k === 'png' ? savePoster(true).catch(() => null) : null;
   if (k === 'print' || k === 'send' || k === 'poster') thumbOf(url, 240).then(u => addToBoard(u, 'print', 170)).catch(() => {});
   if (k === 'print') {
     const el = $('#p-slip'); el.innerHTML = `<img src="${url}" alt="" style="width:100%;display:block">`; el.className = 'slip print zine';
@@ -522,9 +527,12 @@ async function pressOut(k) {
   if (k === 'mesh') { const t = meshText(sg); const ok = await copyText(t); toast(ok ? `${bytes(t)} B` : t.slice(0, 60)); return; }
   if (k === 'send') {
     const btn = document.querySelector('#view .print-k'); if (btn) btn.classList.add('busy');
-    try { const v = await directAction(sg, MASTER ? MASTER.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); refreshPanel(); }
+    const first = simple();
+    try { const v = await directAction(sg, MASTER ? MASTER.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); refreshPanel(); }
     catch (e) { toast(e.status === 429 ? 'TOO MANY · TRY AGAIN SOON' : e.status === 503 ? 'THE QUEUE IS FULL' : /escpos|story/.test(e.message || '') ? 'TOO LONG TO SEND' : 'NOT SENT'); }
     finally { if (btn) btn.classList.remove('busy'); }
+    /* a first visit: printed, or waiting to, it is the showcase's hero, and everything opens (43-journey.js) */
+    if (first) jPrinted(await kept);
   }
 }
 $('#zine').addEventListener('click', e => { const b = e.target.closest('[data-zt]'); if (b) { zineTool(b.dataset.zt); return; } const ink = e.target.closest('[data-ink]'); if (ink) { setInk(ink.dataset.ink); snd.tick(1300); } });

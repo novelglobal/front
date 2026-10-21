@@ -7,6 +7,8 @@
    ════════════════════════════════════════════════════════════════════ */
 const PICK = { tab: 'made', to: 'strip' };
 const PICK_TABS = [['made', 'stories', 'Made here'], ['stick', 'star5', 'Stickers'], ['lives', 'fauna', 'Lives']];
+/* a first visit has made nothing yet: the lives near come first, then the stickers */
+const pickTabs = () => (simple() ? [PICK_TABS[2], PICK_TABS[1]] : PICK_TABS);
 function pickBody() {
   const t = PICK.tab, strip = PICK.to === 'strip';
   const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-label="${esc(tip)}">${art}</button></li>`;
@@ -31,13 +33,18 @@ function pickBody() {
     return `<div class="pk-packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-pack" data-pk-pack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${PACK_W[k]}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
       + `<ol class="pk-grid stk-g">${PRESS.pack === 'life' ? PACKS.map((u, i) => it('pk', i, img(u), 'Sticker')).join('') : ''}${pk.map((st, i) => it('stk', i, img(sticker({ ...st, col: ZCOL })), st.w || 'Sticker')).join('')}<li><label class="pk-it ic" aria-label="Stickers of your own: pictures from this device">${icon('plus')}<input type="file" class="pk-own" accept="image/*" multiple hidden></label></li></ol>`;
   }
-  const sps = radiusSpecies(18);
-  return `<ol class="pk-grid round">${it('wild', 'any', icon('die'), 'An animal, any', ' ic')}${it('wild', 'new', icon('star5'), 'The newest animal seen', ' ic')}${it('wild', 'more', icon('receive'), 'More animals, from further out', ` ic${wildBusy ? ' busy' : ''}`)}`
-    + [...sps.map(sp => ({ sp, k: 'L' })), ...WILD.map(sp => ({ sp, k: 'W' }))].slice(0, 30).map(({ sp, k }) => it(k, sp.id, img(photoURL(sp.ph, 'square')), sp.n)).join('') + '</ol>';
+  const sps = radiusSpecies(18); const more = it('wild', 'more', icon('receive'), 'More animals, from further out', ` ic${wildBusy ? ' busy' : ''}`);
+  const lives = [...sps.map(sp => ({ sp, k: 'L' })), ...WILD.map(sp => ({ sp, k: 'W' }))].slice(0, 30).map(({ sp, k }) => it(k, sp.id, img(photoURL(sp.ph, 'square')), sp.n)).join('');
+  /* a first visit: the lives themselves, the nearest first, and more from further out last */
+  if (simple()) return `<ol class="pk-grid round">${lives}${more}</ol>`;
+  return `<ol class="pk-grid round">${it('wild', 'any', icon('die'), 'An animal, any', ' ic')}${it('wild', 'new', icon('star5'), 'The newest animal seen', ' ic')}${more}` + lives + '</ol>';
 }
 function pickRender() {
   const el = $('#pick'); if (!el) return;
-  el.querySelector('.pk-tabs').innerHTML = PICK_TABS.map(([k, ic, w]) => `<button type="button" class="pk-tab" data-pk-tab="${k}" aria-pressed="${PICK.tab === k}" aria-label="${w}">${icon(ic)}</button>`).join('');
+  /* the lives' key shows a life, the nearest with a photograph */
+  const face = k => { const sp = k === 'lives' && simple() ? radiusSpecies(1)[0] : null; return sp ? `<img class="pk-tf" src="${esc(photoURL(sp.ph, 'square'))}" alt="">` : null; };
+  el.querySelector('.pk-tabs').innerHTML = pickTabs().map(([k, ic, w]) => `<button type="button" class="pk-tab" data-pk-tab="${k}" aria-pressed="${PICK.tab === k}" aria-label="${w}">${face(k) || icon(ic)}<i class="pk-tl" aria-hidden="true"></i></button>`).join('');
+  el.classList.toggle('simple', simple()); el.dataset.tab = PICK.tab;
   el.querySelector('.sel-b').innerHTML = pickBody(); pickFill();
 }
 /* the pictures that take a moment: the stories as receipts, the cards */
@@ -46,7 +53,7 @@ async function pickFill() {
   for (const im of $$('#pick img[data-pk-card]')) { const c = deck().find(v => v.id === im.dataset.pkCard); if (!c) continue; try { const u = await cardURL(c, 1); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } }
 }
 function openPick(to) {
-  PICK.to = to; PICK.tab = 'made'; let el = $('#pick');
+  PICK.to = to; PICK.tab = simple() ? 'lives' : 'made'; let el = $('#pick');
   if (!el) {
     el = document.createElement('div'); el.id = 'pick'; el.className = 'sel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Select');
     el.innerHTML = `<div class="sel-in"><header class="sel-h"><i class="sel-grip" aria-hidden="true"></i><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}</button></header><div class="sel-b"></div></div>`;
@@ -69,12 +76,19 @@ async function pickURL(k, id) {
   if (k === 'wild') { const sp = wildSpecies(id); return sp ? speciesSticker(sp) : null; }
   return null;
 }
+/* a copy of what was chosen flies onto the receipt, so it is seen to land */
+function flyToStrip(from) {
+  const d = $('#zine .desk'); if (!d || !from || reduced() || $('#zine').hidden) return; const a = from.getBoundingClientRect(), b = d.getBoundingClientRect(); const im = from.querySelector('img');
+  const el = document.createElement('div'); el.className = 'fly pk-fly'; el.style.cssText = `left:${a.left}px;top:${a.top}px;width:${a.width}px;height:${a.height}px`; if (im && im.src) el.style.backgroundImage = `url("${im.src}")`; document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.transform = `translate(${b.left + b.width / 2 - a.left - a.width / 2}px,${b.top + b.height * 0.42 - a.top - a.height / 2}px) scale(.6) rotate(8deg)`; el.style.opacity = '0'; });
+  setTimeout(() => el.remove(), 650);
+}
 /* where a piece goes: the page open now, not the one SELECT was opened on */
 const pickTo = () => (S.view === 2 ? 'strip' : S.view === 1 ? (faceOf(1) === 'back' ? 'board' : 'photo') : PICK.to);
 async function pickPut(k, id, btn) {
   PICK.to = pickTo(); const sh = $('#pick'); if (sh) sh.dataset.to = PICK.to;
   if (k === 'wild' && id === 'more') { pullWild(); tick(1500); setTimeout(pickRender, 1600); return; }
-  if (btn) { btn.classList.add('put'); setTimeout(() => btn.classList.remove('put'), 500); }
+  if (btn) { btn.classList.add('put'); setTimeout(() => btn.classList.remove('put'), 500); if (PICK.to === 'strip') flyToStrip(btn); }
   if (PICK.to === 'strip') {
     if (k === 'stk') { const st = stickNow()[+id]; if (!st) return; if (st.w) await faceReady(FACES[st.f || 0]); placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.w ? 130 : st.j ? 90 : 70); if (st.j) snd.jelly(0.3); }
     else if (k === 'pk') placeOnPage(PACKS[+id], 'sticker', 90, true);

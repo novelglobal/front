@@ -14,7 +14,7 @@ function openRecord() {
   /* a life opened from any page: the ground shows, to look at it there */
   showBoard(false); showZine(false); showGallery(false); document.body.classList.remove('off-map');
   if (!S.open) { S.from = 'map'; setOpen(true); } else if (rec.hidden) S.from = 'view';
-  rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); stopHeroes();
+  rec.hidden = false; viewEl.hidden = true; document.body.classList.add('rec'); stopHeroes(); jrShow();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', 'false'));
   rScroll.scrollTop = 0; life.placeHandle(); life.moved();
 }
@@ -85,6 +85,8 @@ function paintFace(f, wipe) {
    opt.cell: a story's cell opened on its card, not its slip */
 function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
+  /* a first visit: a life touched is what was noticed, and W.I.S.H. holds it (43-journey.js) */
+  if (simple() && !opt.sig && !opt.cell && prefs.journey >= 1) { const it = life.items.find(x => x.o === o); if (jPick(o.isTribe ? jSelGroup(o) : jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
   if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
   const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
   strings.open(o, opt.sig); openRecord(); if (!opt.sig) tie(0);
@@ -105,6 +107,7 @@ function refreshRecord() {
 /* a group already caring for a patch of ground */
 function selectTribe(id) {
   const t = S.byId.get(id); if (!t || !t.isTribe) return;
+  if (simple() && jPick(jSelGroup(t))) return;
   if (S.mode) closeRecord('switch');
   S.tribeSel = id; S.sel = null; S.mode = 'tribe'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -116,6 +119,7 @@ function selectTribe(id) {
 /* ───────── a partner place: its W.I.S.H. printer, whether it is listening, and the stories sent there ───────── */
 function selectPartner(id) {
   const p = partnerOf(id); if (!p) return;
+  if (simple() && jPick(jSelPrinter(p), p._x != null ? [p._x, p._y] : null)) return;
   if (S.mode) closeRecord('switch');
   S.partnerSel = id; S.sel = null; S.tribeSel = null; S.mode = 'partner'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -539,6 +543,8 @@ async function toBoard(o) {
    online (through approval, as every print does), and anything can be added around it first */
 function toPress(s) {
   if (s.ex) { toast('AN EXAMPLE'); return; }
+  /* a first visit: a story sent here is something noticed; W.I.S.H. holds it before PRINT (43-journey.js) */
+  if (simple() && prefs.journey < 3) { const p = s.pin || {}; closeRecord('view'); if (prefs.journey < 1) jGo(1, true); jPick({ k: 'life', id: null, iid: p.id || null, lat: +p.lat, lng: +p.lng, n: p.cn || p.n || '', latin: p.cn && p.n && p.cn !== p.n ? p.n : '', g: p.g || 'paw', place: p.place || '', deg: s.deg || 0, when: s.when || '', threat: '', alarm: '', tel: '', seen: s.at || 0, img: s.img && s.img.k === 'inat' ? s.img : null }); return; }
   PRESS.story = s.key; if (PRESS.fmt === 'zine') PRESS.fmt = 'r80'; flyToTab(2, heroBtn); snd.printer(500); buzz([10, 30, 10]);
   closeRecord('view'); setView(2);
 }
@@ -701,7 +707,7 @@ const holdRing = $('#hold'); let pressT = 0, pressAt = null, held = false;
 /* the click that ends a hold is part of the hold, not a tap on the marker it made */
 function consumeHold() { const h = held; held = false; return h; }
 const ringOff = () => holdRing.classList.remove('on');
-const arm = e => { if (S.mode) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; held = true; life.offer(null); startPlace(e.lngLat); } }, 650); };
+const arm = e => { if (S.mode || simple()) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; held = true; life.offer(null); startPlace(e.lngLat); } }, 650); };
 map.on('mousedown', e => { if (e.originalEvent.button === 0 && !life.hit(e.point.x, e.point.y, true)) arm(e); });
 map.on('touchstart', e => { if (e.points && e.points.length > 1) { clearTimeout(pressT); pressAt = null; ringOff(); return; } if (!life.hit(e.point.x, e.point.y, true)) arm(e); });
 const disarm = e => { if (!pressAt) return; if (!e || !e.point || Math.hypot(e.point.x - pressAt.x, e.point.y - pressAt.y) > 6) { clearTimeout(pressT); pressAt = null; ringOff(); } };

@@ -13,6 +13,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 3d | The radar as glass and vinyl, clay, the outlook restored, nature locked on | Live |
 | 3e | Sound as an ecology, the equaliser, hierarchy, signals outside the radar | Built, on staging |
 | 0.03 | Four destinations on one thread; TRACKS; time on the radar; the CONNECTION receipt; the portfolio | Built, on staging |
+| 0.06 A | The first visit: the map, RADIO, W.I.S.H. and PRINT as one simple way through, gated until the first print (`docs/brief-0.06.md`) | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |

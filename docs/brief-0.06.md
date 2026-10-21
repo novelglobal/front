@@ -1,7 +1,24 @@
 # novel.global — brief 0.06: one bold journey
 
-Written 20 October 2026, from the owner's notes of the same day, sense-checked before building. Nothing here is built yet.
+Written 20 October 2026, from the owner's notes of the same day, sense-checked before building. Stage A is built, as the owner
+refined it on 21 October (below); the rest is not built yet.
 Build it in the order of the stages at the end, one stage to a session, each one checked on staging before the next.
+
+## Stage A as built (21 October 2026)
+
+The owner's words of 21 October replaced gates 2 to 6 with one simple, gated way through; where they differ from the table
+below, they win. On a first visit only the simple flow shows, and the full version stays hidden until the first print.
+
+| Gate | What the person sees | What they do | Then |
+|---|---|---|---|
+| The map | The map alone, a sonar ring where life gathers | Tap anywhere | The radar lands there at 500 m; the small radio comes up |
+| RADIO, for discovering | The radio, half its height, its switch, grille, play and knobs; no jellyfish | Touch a life, a place, a printer or a group, or tie a string | The W.I.S.H. tab flies in and opens |
+| W.I.S.H., for what we noticed | Over the map: the receipt as intel (no code), the clear intention device the radio's size (no SELECT), three stories to take up | Make an intention (a story or one's own words) | The receipt shows it; the PRINT tab flies in and opens |
+| PRINT, for remembering | The label maker half its size, SELECT the hero; the receipt with its words typed on it and its code to scan | Print | It waits to print as the hero of the showcase; everything unlocks, the jellyfish keys too |
+
+Kept from the brief: done once, it stays done on that device; a link someone was sent skips the bare map; the tiny
+NOVEL.GLOBAL in the information corner, pressed twice, opens everything; Settings plays the journey again. Left for a later
+stage: the heat wind-back and the veil (gates 0 and 1), and the rest of stages B to E.
 
 ## The idea in one line
 

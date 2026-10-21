@@ -118,13 +118,17 @@ function startRadio(play = true, at) {
   arcadeOff();
   if (!S.started) {
     S.started = true; const c = at || (prefs.placed ? null : S.mapReady ? map.getCenter() : null);
-    if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, 1000, true); tootOrTick(); } else life.setScan(null, null, null, false);
+    if (c) { prefs.placed = true; savePrefs(); life.setScan(c.lat, c.lng, CONFIG.SCAN_FIRST || 500, true); tootOrTick(); } else life.setScan(null, null, null, false);
   }
   life.redraw(); life.moved(); if (play) setRadio(true); if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
 /* a song made: a layer changed, a mood, a volume, a string tied. Only then can a signal start */
 /* a connection made: a string tied, a constellation begun. Only then does the next clue wait */
-function markConnect() { if (S.connected) return; S.connected = true; markTweak(); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
+function markConnect() {
+  /* a first visit: a string tied is something noticed too, and W.I.S.H. holds the life and its figure (43-journey.js) */
+  if (simple() && prefs.journey >= 1 && S.mode === 'ping') { const c = jSelConn(); if (c) setTimeout(() => { if (S.mode === 'ping') closeRecord('view'); jPick(c); }, reduced() ? 0 : 420); }
+  if (S.connected) return; S.connected = true; markTweak(); if (S.open && S.view === 0 && !S.mode) refreshPanel();
+}
 function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }

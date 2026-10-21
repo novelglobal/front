@@ -39,7 +39,7 @@ window.DA_CONFIG = {
   COUNTRIES: [{ id: 'wurundjeri', n: 'Wurundjeri Woi-wurrung Country', s: 'Sovereignty has never been ceded' }],
   /* the cities to come: listed in the choice, not yet chosen */
   SOON: ['Sydney', 'Brisbane', 'Perth', 'Adelaide', 'Hobart', 'Darwin', 'Canberra', 'Tāmaki Makaurau Auckland', 'Te Whanganui-a-Tara Wellington', 'Ōtautahi Christchurch'],
-  SCAN_FIRST: 1000,
+  SCAN_FIRST: 500,                                                  // the radar's reach where a first tap puts it down, in metres
   REFRESH_MIN: 60,
   LIVE_MIN: 5,
 };
