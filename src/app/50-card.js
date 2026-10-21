@@ -165,7 +165,7 @@ function fiveOptions() {
 function fiveResults(q) {
   const qq = norm(q); const all = fiveOptions(); const list = (qq ? all.filter(x => norm(`${x.cn} ${x.n}`).includes(qq)) : all.sort((a, b) => b.seen - a.seen)).slice(0, 8);
   const own = q.trim() && !list.some(x => norm(x.cn) === qq) ? { n: q.trim(), cn: cap(q.trim()), ic: IC_OF_GLYPH[guessGlyph(q)] || 'Animalia', g: guessGlyph(q), own: true } : null;
-  $('#five-r').innerHTML = [...list, ...(own ? [own] : [])].map(x => `<li><button type="button" class="nrow" data-pick="${esc(JSON.stringify(x))}">${glyphSVG(x.g)}<span class="n">${esc(x.cn)}</span><small class="mono">${x.own ? 'YOUR OWN' : x.seen ? `${x.seen} SEEN` : ''}</small></button></li>`).join('');
+  $('#five-r').innerHTML = [...list, ...(own ? [own] : [])].map(x => `<li><button type="button" class="nrow" data-five-pick="${esc(JSON.stringify(x))}">${glyphSVG(x.g)}<span class="n">${esc(x.cn)}</span><small class="mono">${x.own ? 'YOUR OWN' : x.seen ? `${x.seen} SEEN` : ''}</small></button></li>`).join('');
 }
 function openFive(slot) {
   const el = $('#r-five'); if (!el.hidden && +el.dataset.slot === slot) { el.hidden = true; tick(1100); return; }
@@ -175,8 +175,8 @@ function openFive(slot) {
 }
 $('#r-chips').addEventListener('click', e => { const b = e.target.closest('[data-five]'); if (b) openFive(+b.dataset.five); });
 $('#r-five').addEventListener('click', e => {
-  const slot = +$('#r-five').dataset.slot; const pick = e.target.closest('[data-pick]'); const reset = e.target.closest('[data-five-reset]'); if (!pick && !reset) return;
-  if (reset) setFive(slot, null); else { const x = JSON.parse(pick.dataset.pick); setFive(slot, { n: x.n, cn: x.cn, ic: x.ic, th: !!x.th, g: x.g }); }
+  const slot = +$('#r-five').dataset.slot; const pick = e.target.closest('[data-five-pick]'); const reset = e.target.closest('[data-five-reset]'); if (!pick && !reset) return;
+  if (reset) setFive(slot, null); else { const x = JSON.parse(pick.dataset.fivePick); setFive(slot, { n: x.n, cn: x.cn, ic: x.ic, th: !!x.th, g: x.g }); }
   snd.pluck(0.3, 0); buzz(8); const h = S.heroes.find(o => o.slot === slot); refresh(); if (h) select(h.id);
 });
 
