@@ -204,11 +204,11 @@ const speciesText = sp => [sp.n, sp.latin].filter(Boolean).join('\n');
 function pickMenu(btn, items, onPick) {
   $$('.pick').forEach(x => x.remove()); if (!items.length) { tick(600); return; }
   const r = btn.getBoundingClientRect(); const el = document.createElement('div'); el.className = 'pick';
-  el.innerHTML = `<ol>${items.map((it, i) => `<li><button type="button" data-pick="${i}">${it.ic}<span>${esc(it.n)}</span></button></li>`).join('')}</ol>`;
+  el.innerHTML = `<ol>${items.map((it, i) => `<li><button type="button" data-menu="${i}">${it.ic}<span>${esc(it.n)}</span></button></li>`).join('')}</ol>`;
   el.style.left = `${Math.min(innerWidth - 270, r.left)}px`; el.style.top = `${r.bottom + 6}px`; document.body.appendChild(el); snd.tick(1600);
   const close = ev => { if (ev && el.contains(ev.target)) return; el.remove(); document.removeEventListener('pointerdown', close, true); };
   setTimeout(() => document.addEventListener('pointerdown', close, true), 0);
-  el.addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (!b) return; const it = items[+b.dataset.pick]; close(); onPick(it); });
+  el.addEventListener('click', e => { const b = e.target.closest('[data-menu]'); if (!b) return; const it = items[+b.dataset.menu]; close(); onPick(it); });
 }
 /* what can be added: the species sent, the constellations, the cells made, the signals */
 const addables = withSignals => [

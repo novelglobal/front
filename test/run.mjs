@@ -316,6 +316,11 @@ if (run('smoke')) try {
   check('novel.global: the name, the muse at the head of RADIO and on its tab; the radio plays on under the WISH MAKER', ng.title === 'novel.global' && ng.lockup === 'novel.global' && ng.muse && ng.icon === '#g-jelly' && ng.playsOn, JSON.stringify(ng));
   check('the PRINT SHOP: no readings row, the receipt larger than it prints, words again for another face, tape again for bandana, a bandana, nine packs', ng.styles === 0 && ng.z > 1 && ng.faces[0] !== ng.faces[1] && ng.texts === 1 && ng.tape === 'image' && ng.rag && ng.packs === 9 && ng.goth > 10, JSON.stringify(ng));
   check('a poster on the map is a card that turns over; the board leaves as a PDF', ng.hit === 'poster' && ng.card && ng.pdf === '%PDF-', JSON.stringify(ng));
+  /* the board's OUT key on the studio side: its menu is its own, so PNG takes the board away and SELECT stays shut */
+  await page.evaluate(() => { window.__da.setOpen(true); window.__da.setView(1); }); await sleep(800);
+  const [outPNG] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }).then(d => d.suggestedFilename(), () => ''), tap(page, '#board [data-bt="out"]').then(() => tap(page, '.pick [data-menu="0"]'))]); await sleep(400);
+  const outSel = await page.evaluate(() => !!document.querySelector('#pick:not([hidden])'));
+  check('the board’s OUT key: PNG downloads the board, and SELECT stays shut', /\.png$/.test(outPNG) && !outSel, JSON.stringify({ outPNG, outSel }));
   const ng2 = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
     da.setOpen(true); da.setView(0); await wait(400); const m = document.querySelector('[data-lmood="water"]'); m.click(); m.click(); out.tip = m.dataset.tip; out.mood = (JSON.parse(localStorage.getItem('da.prefs')).lm || {}).water;
     da.setView(2); await wait(1200); const z = []; for (let i = 0; i < 3; i++) { document.querySelector('#zine [data-zt="zoom"]').click(); await wait(200); z.push(da.PRESS.z); } out.z = z;
@@ -1041,9 +1046,10 @@ if (run('hide')) try {
   check('the five carry CHANGE instead of HIDE', !hf.hide && hf.change, JSON.stringify(hf));
   await tap(page, '#r-chips [data-five]'); await sleep(300); await page.fill('#five-q', 'frog'); await sleep(500);
   const pick = await page.evaluate(() => document.querySelector('#five-r .nrow .n').textContent);
-  await tap(page, '#five-r [data-pick]'); await sleep(1600);
-  const f1 = await page.evaluate(() => { const o = window.__da.S.byId.get(window.__da.S.sel) || {}; return { name: document.querySelector('#r-name').textContent, slot: o.slot, hero: !!o.hero, five: window.__da.S.heroes.length, stored: (JSON.parse(localStorage.getItem('da.five.v1') || '[]')[0] || {}).cn }; });
+  await tap(page, '#five-r [data-five-pick]'); await sleep(1600);
+  const f1 = await page.evaluate(() => { const o = window.__da.S.byId.get(window.__da.S.sel) || {}; return { name: document.querySelector('#r-name').textContent, slot: o.slot, hero: !!o.hero, five: window.__da.S.heroes.length, stored: (JSON.parse(localStorage.getItem('da.five.v1') || '[]')[0] || {}).cn, select: !!document.querySelector('#pick:not([hidden])') }; });
   check('CHANGE swaps one of the five for any life', f1.name === pick && f1.slot === 0 && f1.hero && f1.five === 5 && f1.stored === pick, JSON.stringify({ pick, ...f1 }));
+  check('and SELECT stays shut', !f1.select, JSON.stringify(f1));
   await tap(page, '#r-chips [data-five]'); await sleep(300); await page.fill('#five-q', 'Night garden visitor'); await sleep(500);
   const ownRow = await page.evaluate(() => [...document.querySelectorAll('#five-r .nrow')].map(b => b.textContent).find(t => /YOUR OWN/.test(t)) || '');
   check('or for one of your own', /Night garden visitor/i.test(ownRow), ownRow);
