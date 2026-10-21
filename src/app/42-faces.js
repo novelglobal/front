@@ -62,7 +62,7 @@ function railEnd(e) {
   document.body.classList.remove('railing');
   /* a slide is not a press: the click that ends it is let go */
   if (e.type === 'pointerup') { const stop = ev => { if (!ev.isTrusted) return; ev.stopPropagation(); ev.preventDefault(); removeEventListener('click', stop, { capture: true }); }; addEventListener('click', stop, { capture: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 400); }
-  pane = RAIL.y >= RAIL.lo - 8 ? 'main' : 'page'; syncDock();
+  pane = RAIL.y >= RAIL.lo - 8 ? 'main' : 'page'; if (pane === 'main' && viewEl.contains(document.activeElement)) document.activeElement.blur(); syncDock();
 }
 addEventListener('pointerup', railEnd); addEventListener('pointercancel', railEnd);
 
@@ -135,10 +135,9 @@ function wishDevice(back) {
    the key that opens the suggestions, and make. A handheld in smoked jade, its grip on one side, a stub LoRa antenna at its
    corner (the upgrade's own module takes its place once everything is open), a pin header at its foot ───────── */
 function wishFront() {
-  const where = String(jSel().place || suburbAt(S.scan.lat, S.scan.lng) || '').toUpperCase();
   return `<section class="sec front-w simple-w" id="sec-wish"><form class="wish-form visor jw" id="jw-form" autocomplete="off"><div class="dev vs-body jr-dev${upCls()}"><i class="vs-rib l" aria-hidden="true"></i><i class="hack h-lora" aria-hidden="true"></i>${SCREWS}<i class="hack h-pins" aria-hidden="true"></i>`
-    + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">INTENTION</b><span class="vs-now">${esc(where)} ${fmtClock(Date.now())}</span></div>`
-    + `<label class="vs-i"><textarea id="jw-for" rows="1" maxlength="90" enterkeyhint="go" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
+    + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">INTENTION</b><span class="vs-now">${esc(jNowW())}</span></div>`
+    + `<label class="vs-i"><textarea id="jw-for" rows="2" maxlength="90" enterkeyhint="go" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
     /* where SELECT once was: the key that opens the suggestions beside the receipt */
     + `<button type="button" class="vs-sg" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<b class="jt-n" aria-hidden="true"></b></button></div>`
     + `<button type="submit" class="vs-make make-b${jWants() ? ' next' : ''}" aria-label="Make the W.I.S.H."><b>make</b></button>`
@@ -147,6 +146,12 @@ function wishFront() {
 viewEl.addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; if (e.target.id === 'wf-for') { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', !!e.target.value.trim()); } });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.closest('.vs-poem textarea') || e.target.id === 'wf-for')) e.preventDefault(); if (e.key === 'Escape' && e.target.id === 'wf-for') sugShow(false); });
 const growTA = el => { if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; };
+/* the LCD's place and time: what W.I.S.H. holds, or where the radar stands */
+const jNowW = () => `${String(jSel().place || suburbAt(S.scan.lat, S.scan.lng) || '').toUpperCase()} ${fmtClock(Date.now())}`;
+/* the intention's screen is a two-line character LCD: what is longer scrolls inside it, a small arrow on the glass for what is
+   out of sight; the device never grows */
+const jwMore = el => { if (!el) return; const p = el.parentNode, m = el.scrollHeight - el.clientHeight; p.classList.toggle('lcd-up', el.scrollTop > 1); p.classList.toggle('lcd-dn', m - el.scrollTop > 1); };
+viewEl.addEventListener('scroll', e => { if (e.target.id === 'jw-for') jwMore(e.target); }, true);
 let INTENTS = null, SUGON = false;
 const intentList = () => INTENTS || (INTENTS = [...intentOptions().matchAll(/value="([^"]*)"/g)].map(m => { const t = document.createElement('textarea'); t.innerHTML = m[1]; return t.value; }));
 function sugShow(on) {
