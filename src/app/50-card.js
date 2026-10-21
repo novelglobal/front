@@ -86,7 +86,7 @@ function paintFace(f, wipe) {
 function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
   /* a first visit: a life touched is what was noticed, and W.I.S.H. holds it (43-journey.js) */
-  if (simple() && !opt.sig && !opt.cell && prefs.journey >= 1) { const it = life.items.find(x => x.o === o); if (jPick(o.isTribe ? jSelGroup(o) : jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
+  if (!opt.sig && !opt.cell && (simple() ? prefs.journey >= 1 : wishOverMap())) { const it = life.items.find(x => x.o === o); if (jPick(o.isTribe ? jSelGroup(o) : jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
   if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
   const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
   strings.open(o, opt.sig); openRecord(); if (!opt.sig) tie(0);
@@ -107,7 +107,7 @@ function refreshRecord() {
 /* a group already caring for a patch of ground */
 function selectTribe(id) {
   const t = S.byId.get(id); if (!t || !t.isTribe) return;
-  if (simple() && jPick(jSelGroup(t))) return;
+  if ((simple() || wishOverMap()) && jPick(jSelGroup(t))) return;
   if (S.mode) closeRecord('switch');
   S.tribeSel = id; S.sel = null; S.mode = 'tribe'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -119,7 +119,7 @@ function selectTribe(id) {
 /* ───────── a partner place: its W.I.S.H. printer, whether it is listening, and the stories sent there ───────── */
 function selectPartner(id) {
   const p = partnerOf(id); if (!p) return;
-  if (simple() && jPick(jSelPrinter(p), p._x != null ? [p._x, p._y] : null)) return;
+  if ((simple() || wishOverMap()) && jPick(jSelPrinter(p), p._x != null ? [p._x, p._y] : null)) return;
   if (S.mode) closeRecord('switch');
   S.partnerSel = id; S.sel = null; S.tribeSel = null; S.mode = 'partner'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -535,7 +535,7 @@ async function toBoard(o) {
     const L = Object.fromEntries(WKEYS.map(k => [k, wishOn ? $('#w-' + k).value.trim() : '']));
     const st = $('#w-threat-on').checked ? $('#w-st').value.trim() : ''; const c = imgChoice(o); const img = c.k === 'rec' ? { k: 'own', a: o.who ? `© ${o.who}` : '' } : c;
     const s = makeSignal(o, L, $('#w-sign').value.trim(), { statement: st, note: $('#w-note-on').checked ? $('#w-note-t').value.trim() : '', img });
-    const cv2 = await slipCanvas(s, 384, 2, false, false); await addToBoard(cv2.toDataURL('image/png'), 'receipt', 200);
+    const cv2 = await slipCanvas(s, 384, 2, false, false); await addToBoard(cv2.toDataURL('image/png'), 'receipt', 200); toBoardFace();
     markTweak(); flyToTab(1, heroBtn); snd.printer(700); buzz([8, 30, 8]); heroBtn.classList.add('go'); setTimeout(() => heroBtn.classList.remove('go'), 900);
   } finally { heroBtn.classList.remove('busy'); }
 }

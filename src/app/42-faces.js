@@ -1,14 +1,17 @@
 /* ════════════════════════════════════════════════════════════════════
-   THE FRONTS — RADIO, W.I.S.H. and PRINT each have two faces, and each face is a piece of hardware. The front is the device as
-   it ships, a matte shell of smoked plastic, what is inside seen softly through it: the shortest way from a sound to a receipt.
-   The back is the same device opened: clear acrylic on standoffs, its board in view, a cable plugged in, its plate, holding the
-   whole studio. A slow tool and a quick act, settled by a turn of the device rather than a lesson first: the jellyfish key at its foot turns
-   it over.
+   THE FRONTS — RADIO, W.I.S.H. and PRINT each have two faces, and each face is a piece of hardware. The front is the small
+   device a first visit walks through, the same for everyone after it: a radio half its height, the intention device over the
+   map, a label maker with SELECT its hero. Each is old analogue kit, modded: smoked shells, odd screws, tape, a pin header, a
+   cable tie. Once everything is open each front shows its upgrade, a LoRa module with its antenna and wires, and the jellyfish
+   key on a board of its own: the mod that turns it over. The back is the same device opened: clear acrylic on standoffs, its
+   board in view, a cable plugged in, its plate, holding the whole studio.
    ════════════════════════════════════════════════════════════════════ */
 const FACED = [0, 1, 2];
 /* a first visit sees the fronts alone (43-journey.js) */
 const faceOf = i => (FACED.includes(i) ? (!simple() && (prefs.face || {})[i] === 'back' ? 'back' : 'front') : 'back');
 function setFace(i, f) { prefs.face = { ...(prefs.face || {}), [i]: f }; savePrefs(); }
+/* a connection laid on the board on purpose: W.I.S.H. opens on its board, the blueprint, not its front */
+const toBoardFace = () => { if (!simple()) setFace(1, 'back'); };
 /* the key that turns a device over: the jellyfish, small and round, in the same place on every device and both its faces, at
    its foot on the right; submarine yellow on the quick side, green going to blue on the studio side. It wiggles on each page
    until it has been pressed there once */
@@ -66,18 +69,23 @@ addEventListener('pointerup', railEnd); addEventListener('pointercancel', railEn
 /* what an opened device shows: its board at the head, four standoffs, one cable plugged in, and its plate: its name, its step */
 const mods = (n, st) => `<i class="mod-cap" aria-hidden="true"></i>${['tl', 'tr', 'bl', 'br'].map(c => `<i class="mod-bolt ${c}" aria-hidden="true"></i>`).join('')}<i class="mod-cable" aria-hidden="true"></i><span class="mod-label" data-n="${n}" data-st="${st}" aria-hidden="true"><i></i></span>`;
 
-/* ───────── RADIO, the front: a smoked radio, matte. A speaker behind the grille, one key, play; a knob for each track, off and
-   three levels; the steps under it ───────── */
+/* ───────── the upgrade, once everything is open: a LoRa module glued on at the head, its stubby antenna and its jumper wires, a
+   run of cable down the side to the jellyfish key on a small board of its own. A first visit's devices have none of it ───────── */
+const upMods = () => (simple() ? '' : '<i class="hack up-lora" aria-hidden="true"></i><i class="hack up-run" aria-hidden="true"></i><i class="hack up-plate" aria-hidden="true"></i>');
+const upCls = () => (simple() ? '' : ' upg');
+/* two screws that do not match, as a device opened and closed again by hand would have */
+const SCREWS = '<i class="hack h-screw a" aria-hidden="true"></i><i class="hack h-screw b" aria-hidden="true"></i>';
+
+/* ───────── RADIO, the front: the smoked radio at half its height. The El Niño switch, the grille, play, a knob for each layer,
+   in one row ───────── */
 const KNOB_A = [-135, -45, 45, 135];
 const knobPos = k => (trackOn(k) ? volStep(k) + 1 : 0);
 /* the El Niño switch, on both faces of the radio: one setting, one speed */
 const ninoSwitch = () => `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`;
 function radioFront() {
-  const first = !S.started && !prefs.placed;
-  return `<section class="band front-r" id="sec-heat"><div class="dev radio"><i class="hack h-jump" aria-hidden="true"></i>`
-    + `${ninoSwitch()}`
-    + `<div class="rd-top"><i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${first ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button></div>`
-    + `${knobsHTML()}${flipBtn()}</div></section>`;
+  return `<section class="band front-r simple-r" id="sec-heat"><div class="dev radio jr-dev${upCls()}"><i class="hack h-jump" aria-hidden="true"></i>${SCREWS}${ninoSwitch()}`
+    + `<i class="rd-grille" aria-hidden="true"></i><button type="button" class="rd-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="${!S.started && !prefs.placed ? 'Play the example' : 'Play'}"><i class="rd-led" aria-hidden="true"></i>${icon(S.radio ? 'pause' : 'play')}</button>`
+    + `${knobsHTML()}${upMods()}${flipBtn()}</div></section>`;
 }
 /* a knob for each layer: off, then three levels, its ticks lit as far as it is turned, its layer's mark under it */
 const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
@@ -90,10 +98,11 @@ function turnKnob(k, d, stop) {
   snd.tick(800 + p * 320); buzz(4);
 }
 viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'); if (k) turnKnob(k.dataset.knob, 1, false); });
-/* the red switch: El Niño at 120 BPM. It is the same setting as an extreme month chosen on the studio side: on, the outlook
-   moves to the first extreme month ahead; off, back to now; and an extreme month chosen there turns it on */
+/* the red switch: El Niño. Everything is at 120 BPM already, so it changes heat, not speed: the sound opened and harder, the
+   radar red. It is the same setting as an extreme month chosen on the studio side: on, the outlook moves to the first extreme
+   month ahead; off, back to now; and an extreme month chosen there turns it on */
 function setNino(on) {
-  on = !!on; if (!!prefs.nino === on) return; prefs.nino = on; savePrefs(); document.body.classList.toggle('nino', on);
+  on = !!on; if (!!prefs.nino === on) return; prefs.nino = on; savePrefs(); document.body.classList.toggle('nino', on); snd.heat(on);
   $$('#view [data-nino]').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); }); life.moved(); life.redraw();
 }
 viewEl.addEventListener('click', e => {
@@ -113,7 +122,7 @@ function unNudge(i) { if (i === 1) { const t = $('#rail .tab[data-i="1"]'); if (
 function wishDevice(back) {
   const where = suburbAt(S.scan.lat, S.scan.lng); const L = WDRAFT;
   const photo = L.photo ? `<span class="vs-ph"><img src="${L.photo}" alt=""><button type="button" class="vs-phx" data-vs="unphoto" aria-label="Take the photograph off">${icon('close', 'sm')}</button></span>` : '';
-  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body">${back ? mods('DIRECT ACTION', 'W.I.S.H.') : '<i class="hack h-ant" aria-hidden="true"></i><i class="hack h-pins" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
+  return `<section class="sec ${back ? 'back-w' : 'front-w'}" id="sec-wish"><form class="wish-form visor${back ? ' mod' : ''}" id="wish-form" autocomplete="off"><div class="dev vs-body${back ? upCls() : ''}">${back ? mods('DIRECT ACTION', 'W.I.S.H.') + upMods() : '<i class="hack h-ant" aria-hidden="true"></i><i class="hack h-pins" aria-hidden="true"></i>'}<i class="vs-rib l" aria-hidden="true"></i><i class="vs-rib r" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">${back ? 'W.I.S.H.' : 'INTENTION'}</b><span class="vs-now">${esc(String(where || '').toUpperCase())} ${fmtClock(Date.now())}</span></div>`
     + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<textarea id="wf-for" rows="1" maxlength="90" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" ">${esc(String(L.for || '').replace(/^[lce]:/, ''))}</textarea><i class="vs-cur" aria-hidden="true"></i></label><ol class="vs-sug" id="wf-sug" hidden></ol>`
     + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
@@ -122,8 +131,20 @@ function wishDevice(back) {
     + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button></div>`
     + `${flipBtn()}</div></form></section>`;
 }
-const wishFront = () => wishDevice(false);
-viewEl.addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; wishPreview(); if (e.target.id === 'wf-for') { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', !!e.target.value.trim()); } });
+/* ───────── W.I.S.H., the front: the intention device, the radio's size, over the map: its screen that asks for the intention,
+   the key that opens the suggestions, and make. A handheld in smoked jade, its grip on one side, kapton tape over a corner, a
+   pin header at its foot ───────── */
+function wishFront() {
+  const where = String(jSel().place || suburbAt(S.scan.lat, S.scan.lng) || '').toUpperCase();
+  return `<section class="sec front-w simple-w" id="sec-wish"><form class="wish-form visor jw" id="jw-form" autocomplete="off"><div class="dev vs-body jr-dev${upCls()}"><i class="vs-rib l" aria-hidden="true"></i><i class="hack h-tape" aria-hidden="true"></i>${SCREWS}<i class="hack h-pins" aria-hidden="true"></i>`
+    + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">INTENTION</b><span class="vs-now">${esc(where)} ${fmtClock(Date.now())}</span></div>`
+    + `<label class="vs-i"><textarea id="jw-for" rows="1" maxlength="90" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
+    /* where SELECT once was: the key that opens the suggestions beside the receipt */
+    + `<button type="button" class="vs-sg" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<b class="jt-n" aria-hidden="true"></b></button></div>`
+    + `<button type="submit" class="vs-make make-b${jWants() ? ' next' : ''}" aria-label="Make the W.I.S.H."><b>make</b></button>`
+    + `${upMods()}${flipBtn()}</div></form></section>`;
+}
+viewEl.addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; if (e.target.id === 'wf-for') { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', !!e.target.value.trim()); } });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.closest('.vs-poem textarea') || e.target.id === 'wf-for')) e.preventDefault(); if (e.key === 'Escape' && e.target.id === 'wf-for') sugShow(false); });
 const growTA = el => { if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; };
 let INTENTS = null, SUGON = false;
@@ -139,67 +160,44 @@ viewEl.addEventListener('input', e => { if (e.target.id === 'wf-for') { growTA(e
 viewEl.addEventListener('click', e => { const b = e.target.closest('[data-sug]'); if (!b) return; const f = $('#wf-for'); f.value = b.dataset.sug; f.dispatchEvent(new Event('input', { bubbles: true })); growTA(f); sugShow(false); snd.tick(1700); });
 viewEl.addEventListener('click', e => {
   const b = e.target.closest('[data-vs]'); if (!b) return;
-  if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; WDRAFT.act = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(900); }
+  if (b.dataset.vs === 'clear') { for (const k of ['for', ...WKEYS]) { const el = $('#wf-' + k); if (el) el.value = ''; WDRAFT[k] = ''; } WDRAFT.auto = {}; WDRAFT.photo = ''; WDRAFT.act = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); snd.tick(900); }
   if (b.dataset.vs === 'sug') { SUGON = !SUGON; b.setAttribute('aria-pressed', String(SUGON)); sugShow(SUGON); snd.tick(SUGON ? 1700 : 1000); return; }
-  if (b.dataset.vs === 'unphoto') { WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); snd.tick(1000); }
+  if (b.dataset.vs === 'unphoto') { WDRAFT.photo = ''; store.set('da.wish.v1', WDRAFT); refreshPanel(); snd.tick(1000); }
 });
 /* a photograph for the W.I.S.H., taken or chosen: made small here, and printed at the head of its receipt */
 viewEl.addEventListener('change', e => {
   if (e.target.id !== 'wf-photo') return; const fl = e.target.files && e.target.files[0]; if (!fl) return;
   const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    WDRAFT.photo = c.toDataURL('image/jpeg', 0.8); if (!store.set('da.wish.v1', WDRAFT)) { WDRAFT.photo = c.toDataURL('image/jpeg', 0.55); store.set('da.wish.v1', WDRAFT); } refreshPanel(); wishPreview(); tick(1800); buzz(6); }; im.src = rd.result; };
+    WDRAFT.photo = c.toDataURL('image/jpeg', 0.8); if (!store.set('da.wish.v1', WDRAFT)) { WDRAFT.photo = c.toDataURL('image/jpeg', 0.55); store.set('da.wish.v1', WDRAFT); } refreshPanel(); tick(1800); buzz(6); }; im.src = rd.result; };
   rd.readAsDataURL(fl); e.target.value = '';
 });
-/* the receipt as it will print, beside the handheld, drawn again as the lines change */
-function draftSignal() {
-  const L = Object.fromEntries(WKEYS.map(k => [k, String(WDRAFT[k] || '').trim()])); const fr = String(WDRAFT.for || '').replace(/^[lce]:/, '').trim(); const lat = +S.scan.lat.toFixed(4), lng = +S.scan.lng.toFixed(4); const place = suburbAt(S.scan.lat, S.scan.lng);
-  return { v: 1, code: 'DA-····', at: Date.now(), pin: { id: null, lat, lng, n: '', cn: place, ic: '', g: 'paw', place }, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who: WDRAFT.by || S.me.by || '', ...(fr ? { for: fr, note: fr } : {}), ...(WDRAFT.photo ? { img: { k: 'own', a: '' }, photo: WDRAFT.photo } : {}) };
-}
-let pvN = 0;
-const ACTIONS = [{"k": "people", "ic": "people", "for": "Check on a neighbour", "w": "Heat kills more Australians than any disaster", "i": "No one on our street alone on a 35° day", "s": "Call or knock twice on every hot day", "h": "Dizzy, confused, not sweating: call 000"}, {"k": "houses", "ic": "heat", "for": "Cool the house", "w": "A shut blind keeps the sun out of the room", "i": "A cool room in every home on the street", "s": "Close blinds and curtains by 9 am", "h": "Open up when the cool change comes"}, {"k": "pets", "ic": "paw", "for": "Keep pets cool", "w": "Hot paths can burn paws", "i": "Pets in shade, with water, all day", "s": "Two bowls of water, in the shade", "h": "Walk before 8 am; test the path by hand"}, {"k": "animals", "ic": "water", "for": "Water for wildlife", "w": "Birds and flying-foxes suffer in heatwaves", "i": "Water in reach for every small life", "s": "Shallow dish, stones to climb out, in shade", "h": "Animal down? Wildlife Victoria 03 8400 7300"}, {"k": "street", "ic": "tree", "for": "Water a street tree", "w": "Young street trees die in a dry summer", "i": "Every young tree on our street lives", "s": "A bucket of water a week at its base", "h": "Ask the council for a tree outside"}, {"k": "shade", "ic": "shade", "for": "Make shade", "w": "Shaded ground is far cooler than bare", "i": "Shade where people wait and play", "s": "Plant a deciduous tree on the west side", "h": "Ask for shade at the bus stop"}, {"k": "voting", "ic": "check", "for": "Vote for cooler streets", "w": "Victoria votes on 28 November 2026", "i": "Every candidate asked about heat", "s": "Check you are enrolled: vec.vic.gov.au", "h": "Ask your candidates for their canopy plan"}];
-/* the big screen beside the quick W.I.S.H.: real actions to take up, each with its steps, so every receipt is a reminder of
-   something to do; the receipt as it will print (pressed, close up, within the screen); and the lives the radar holds that the
-   heat ahead puts most at risk, animals first, few insects, no plants, each pressed to add it to the intention */
-function needLives(n = 6) {
-  const seen = new Set(), out = []; let ins = 0;
-  const its = life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist && !it.o.hum && !isCold(it.o) && it.b.tone !== 'flora').sort((a, b) => (b.o.hero ? 1 : 0) - (a.o.hero ? 1 : 0) || degOf(b.o) - degOf(a.o) || (b.b.tier || 0) - (a.b.tier || 0));
-  for (const it of its) { const sp = spOf(it.o); const k = sp.latin || sp.n; if (!sp.ph || seen.has(k)) continue; const grp = M.GROUP[sp.g]; if (grp === 'insect' || grp === 'spider') { if (ins >= 1) continue; ins++; } seen.add(k); out.push(sp); if (out.length >= n) break; }
-  return out;
-}
-const wishPreview = debounce(async () => {
-  const cov = $('#cover'); if (!cov) return; if (!(S.open && S.view === 1 && faceOf(1) === 'front' && !S.mode)) { cov.replaceChildren(); return; }
-  const my = ++pvN; const cvs = await slipCanvas(draftSignal(), 384, 2, false, false).catch(() => null); if (!cvs || my !== pvN || faceOf(1) !== 'front' || S.view !== 1) return;
-  let fig = cov.querySelector('.wpv');
-  if (!fig) {
-    fig = document.createElement('div'); fig.className = 'wpv';
-    fig.innerHTML = `<button type="button" class="wpv-ex" data-wpv="ex" aria-pressed="false" aria-label="Examples to remix">${icon('stories')}</button><div class="wpv-show"><ol class="wpv-acts" aria-label="Actions to take up">${ACTIONS.map(a => `<li><button type="button" class="act-b" data-act="${a.k}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.for)}</b><small>${esc(a.s)}</small><small>${esc(a.h)}</small></button></li>`).join('')}</ol><ul class="wpv-eco"></ul></div><figure class="wpv-r"><img alt="" data-zoom></figure>`;
-    cov.replaceChildren(fig);
-  }
-  $$('#cover [data-act]').forEach(b => b.classList.toggle('on', WDRAFT.act === b.dataset.act));
-  fig.querySelector('.wpv-r img').src = cvs.toDataURL('image/png');
-  fig.querySelector('.wpv-eco').innerHTML = needLives(6).map(sp => `<li><button type="button" class="eco-b" data-eco="${esc(sp.n)}" aria-label="${esc(sp.n)}" data-tip="${esc(sp.n)}"><img src="${esc(sp.ph)}" alt="" loading="lazy"></button>${/^\d+$/.test(sp.id) ? `<a class="eco-l" href="https://www.inaturalist.org/observations/${sp.id}" target="_blank" rel="noopener" aria-label="The sighting">${icon('out', 'sm')}</a>` : ''}</li>`).join('');
-}, 320);
-document.addEventListener('click', e => {
-  if (!e.target.closest('#cover')) return;
-  const tg = e.target.closest('[data-wpv]'); if (tg) { const w = $('#cover .wpv'); const k = tg.dataset.wpv; const on = !w.classList.contains('show-' + k); w.classList.toggle('show-' + k, on); tg.setAttribute('aria-pressed', String(on)); tick(on ? 1500 : 1000); return; }
-  const z = e.target.closest('[data-zoom]'); if (z) { zoomArt(z.src, $('#cover')); return; }
-  const a = e.target.closest('[data-act]'); if (a) { const A = ACTIONS.find(x => x.k === a.dataset.act); if (!A) return; const off = WDRAFT.act === A.k; for (const k of WKEYS) WDRAFT[k] = off ? '' : A[k]; WDRAFT.act = off ? '' : A.k; store.set('da.wish.v1', WDRAFT); wishPreview(); snd.tick(off ? 1000 : 1800); buzz(5); return; }
-  const b = e.target.closest('[data-eco]'); if (b) { const im = b.querySelector('img'); if (!im) return; thumbOf(im.src, 700).then(u => { WDRAFT.photo = u; store.set('da.wish.v1', WDRAFT); refreshPanel(); wishPreview(); }).catch(() => tick(600)); snd.tick(1700); buzz(5); }
-});
-const fillWDraftFor = () => { const f = $('#wf-for'); if (f) { WDRAFT.for = f.value; store.set('da.wish.v1', WDRAFT); } wishPreview(); };
-
-/* ───────── PRINT, the front: a label maker in matte graphite, its board seen through a smoked cap. Its screen holds the words
-   to set; three keys, words, a sticker, a photograph; and one key, the printer, that prints. The printer's name and state stay
-   out of sight until its light is pressed ───────── */
-const TP_KEYS = [['text', '', 'teal', 'Words'], ['pick', 'plus', 'green', 'Select: art, songs, stickers, lives'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
-function printFront() {
+/* ───────── PRINT, the front. A first visit holds a dongle: SELECT its hero, a sheet of die-cut stickers to add some bling; a
+   key that types words on the receipt itself; a keycap from another machine that takes back; and the printer, its light its
+   state. Once everything is open it is the whole label maker in matte graphite, two-sided like the others: its paper out of
+   the slot at its head, its board under a smoked cap, the code on its screen and words typed there, four keys, the printer, and
+   its upgrade, the jellyfish key turning it over to the studio ───────── */
+const printFront = () => (simple() ? printDongle() : printFull());
+function printDongle() {
   const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
-  return `<section class="sec front-p" id="sec-out"><div class="dev tepra"><i class="hack h-tie" aria-hidden="true"></i><i class="hack h-lora" aria-hidden="true"></i><i class="hack h-node" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-win"></i><i class="tp-latch"></i></div>`
+  const stk = radiusSpecies(3).map((sp, i) => `<i class="jp-stk s${i}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy"></i>`).join('');
+  return `<section class="sec front-p simple-p" id="sec-out"><div class="dev tepra jr-dev"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i>`
+    + `<div class="jp-row"><button type="button" class="jp-sel" data-pick="strip" aria-label="Select: stickers, lives"><span class="jp-sheet" aria-hidden="true">${stk}<i class="jp-stk jelly">${M.jellySVG('#0F3B40', 'rgba(127,255,224,.55)', 30)}</i><i class="jp-peel"></i></span><i class="jp-plus" aria-hidden="true">${icon('plus')}</i></button>`
+    + `<span class="jp-keys"><button type="button" class="tp-k jp-aa" data-jwords aria-label="Words on the receipt"><b>Aa</b></button><button type="button" class="tp-k jp-undo" data-tp="undo" aria-label="Undo: or take off what is chosen">${icon('undo')}</button></span>`
+    + `<button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button></div>`
+    + `<button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button><span class="tp-info jp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span>`
+    + `</div></section>`;
+}
+const TP_KEYS = [['text', '', 'teal', 'Words'], ['pick', 'plus', 'green', 'Select: art, songs, stickers, lives'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
+function printFull() {
+  const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
+  return `<section class="sec front-p full-p" id="sec-out"><div class="dev tepra jr-dev${upCls()}"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-latch"></i></div>`
     + `<label class="tp-lcd"><span class="tp-l1">${s ? esc(s.code) : '80 MM'}</span><span class="tp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span><input id="tp-words" maxlength="80" spellcheck="true" autocomplete="off" placeholder=" " aria-label="Words for the strip"><i class="tp-cur" aria-hidden="true"></i></label>`
     + `<div class="tp-keys">${TP_KEYS.map(([k, ic, c, w]) => `<button type="button" class="tp-k tk-${c}" data-tp="${k}" aria-label="${w}">${k === 'text' ? '<b>Aa</b>' : icon(ic)}</button>`).join('')}</div>`
     + `<div class="tp-foot"><button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button><button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button></div>`
-    + `${flipBtn()}</div></section>`;
+    + `${upMods()}${flipBtn()}</div></section>`;
 }
+/* the dongle's words key: the caret on the receipt, and the keyboard types onto the paper */
+viewEl.addEventListener('click', e => { if (e.target.closest('[data-jwords]')) { jEdit(); snd.tick(1500); } });
 viewEl.addEventListener('click', e => { const o = e.target.closest('[data-outs]'); if (!o) return; const sec = o.closest('#sec-out'); const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); o.setAttribute('aria-expanded', String(on)); tick(on ? 1500 : 1000); });
 viewEl.addEventListener('click', e => {
   const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'pick') { openPick('strip'); return; } if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => !ZFIXED.includes(o.daKind)) : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }

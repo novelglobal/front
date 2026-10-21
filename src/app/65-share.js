@@ -106,6 +106,9 @@ async function checkSent() {
   }
   if (changed) { saveSent(); refreshSent(); }
 }
+/* a slip on its way, sent today, is looked at every twenty seconds while the page is in view: its light turns green soon after
+   it prints, not at the next refresh of the map */
+setInterval(() => { if (!document.hidden && Object.values(SENT).some(v => v.id && (v.status === 'waiting' || (v.job && !['printed', 'failed', 'expired'].includes(v.job))) && Date.now() - v.at < 864e5)) checkSent(); }, 20000);
 /* the site's own settings, as they are now */
 async function loadSettings() {
   try { const j = await apiJSON('/settings'); if (j && typeof j.exampleEdit === 'boolean' && j.exampleEdit !== !!CFG.exampleEdit) { CFG.exampleEdit = j.exampleEdit; store.set('da.cfg.v1', CFG); if (cv && boardId === 'b00') exFrame(); }

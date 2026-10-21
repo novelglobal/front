@@ -1,7 +1,7 @@
 # novel.global — brief 0.06: one bold journey
 
 Written 20 October 2026, from the owner's notes of the same day, sense-checked before building. Stage A is built, as the owner
-refined it on 21 October (below); the rest is not built yet.
+refined it on 21 October (below), with stages C and D; stage B and stage E are not built yet.
 Build it in the order of the stages at the end, one stage to a session, each one checked on staging before the next.
 
 ## Stage A as built (21 October 2026)
@@ -17,8 +17,35 @@ below, they win. On a first visit only the simple flow shows, and the full versi
 | PRINT, for remembering | The label maker half its size, SELECT the hero; the receipt with its words typed on it and its code to scan | Print | It waits to print as the hero of the showcase; everything unlocks, the jellyfish keys too |
 
 Kept from the brief: done once, it stays done on that device; a link someone was sent skips the bare map; the tiny
-NOVEL.GLOBAL in the information corner, pressed twice, opens everything; Settings plays the journey again. Left for a later
-stage: the heat wind-back and the veil (gates 0 and 1), and the rest of stages B to E.
+NOVEL.GLOBAL in the information corner, pressed twice, opens everything; Settings plays the journey again.
+
+**The second pass (21 October, after the owner's walk-through).** The small devices are the fronts for everyone, the
+jellyfish key added once everything is open, with a LoRa antenna and wires to show each has been upgraded; W.I.S.H.'s front
+over the map, its back over the blueprint, and a connection laid on the board opens W.I.S.H. on it. The devices are modded
+old kit again (screws that do not match, tape, a cable tie, a keycap from another machine, paper out of PRINT's slot, SELECT a
+sheet of stickers). Six suggestions of one size, three for anyone and three for the kind of life, each an action and a plain
+fact, as many as wanted on the receipt. The veil: "What have you noticed?", five seconds or a touch. No printer shown on a
+first visit until it is online, and the map no longer opens on one. Stage C (sound) is built; from stage D, the Settings row
+and the showcase holding still.
+
+**The third pass (21 October, the owner's sense check).** The way through is as simple as this, and it is how it was built:
+
+1. Start the radio and touch something. W.I.S.H. keeps the map and what was touched in view (a ring on it, a string to each
+   place tied, the map sliding it clear of what opens over it), swaps the radio for the intention device, and brings up the
+   receipt. The suggestions wait behind a closed tab beside it, opened by the tab or by the key where SELECT was.
+2. Make sends it to the print shop. On a first visit PRINT is a dongle: a sheet of stickers (SELECT) for quick bling, a key
+   for words typed on the receipt itself, a keycap that takes back, and print.
+3. Printed, it is the showcase's hero with its card beside it, and everything opens.
+4. Once open, RADIO is the same small radio with its upgrade (the jellyfish key on its own board, a LoRa antenna, wires); its
+   studio side gains a VU meter. W.I.S.H. keeps the map behind it with the same upgrade; its jellyfish key brings in the
+   blueprint, where what was made waits, its strings in it. PRINT becomes the whole two-sided label maker.
+
+Stage D is built in full: SELECT an uncased OLED module on a pink jumper wire from the key that opened it, a word under each
+key and piece; the pixel icon (a 16 by 16 jellyfish, its bell the background's band reversed, four Game Boy Color tones, and
+a padded copy for phones that cut their own shape); the board the blueprint by day and night; novel.global's paper by day and
+a deep 1990s grey by night; DAY · DARK on the switch; the showcase holding still, its piece at about two thirds of its
+screen, zoomed in place by pinch, wheel or press, its cards beside it. Left for later: the heat wind-back (gate 0), the rig and
+pages of stage B, and stage E.
 
 ## The idea in one line
 

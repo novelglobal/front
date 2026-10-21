@@ -78,11 +78,15 @@ jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true
 if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0); }
 /* the bare map, on a first visit: no page over it until the radar is down; a link sent skips it to the radio */
 if (simple() && prefs.journey < 1) setOpen(false); else if (simple() && !S.open) setView(0);
+/* and before it, the veil: What have you noticed? */
+jVeil();
 /* sound waits for a first touch, anywhere: browsers keep a page quiet until then, and phones let sound wake only inside the
    touch itself. Then the radar plays what it has found so far, and goes on as it sweeps */
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown'];
-/* and the nature station goes on air, unless it was muted */
-const firstTouch = () => { if (!snd.wake()) return; WAKE.forEach(t => removeEventListener(t, firstTouch, true)); };   /* the sound is woken by the first touch; nothing plays until the radio is turned on */
+/* the sound is woken by the first touch, and woken again by any touch after a phone has put it away (another tab, the lock
+   screen, a call); nothing plays until the radio is turned on */
+const firstTouch = () => { if (!snd.running()) snd.wake(); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.radio) snd.wake(); });
 /* WATER kept on from the last visit: its drinking fountains */
 if (T4.water) setTimeout(loadOverlays, 1500);
 WAKE.forEach(t => addEventListener(t, firstTouch, true));
@@ -92,7 +96,7 @@ setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
-window.__da = { simple, JR, jGo, jPick, jSelLife, jSelPlace, jMake, jStrip, jEdit, jMarks, jHint, jReplay, intelCanvas, jCodeCanvas, jSignal, S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
+window.__da = { simple, JR, jGo, jPick, jSelLife, jSelPlace, jMake, jStrip, jEdit, jMarks, jHint, jReplay, intelCanvas, jCodeCanvas, jSignal, jActs, jVeil, moodOfLayer, cardIntel, S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
   webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, SPECIES, sendSpecies, quickCanvas, quickPrint, QP, pressOut, inkAll, stripSignal, fitZ, addToBoard, boardImage, figArt, setPane, radiusSpecies, boardOut, boardPicture, openPosterCard, cardArt, zineTool, keyFace, MOODS, POSTERS2, PROOFS, savePoster, takeProof, PRESS, zineObjects: () => (zc ? zc.getObjects() : []), tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcadeOff, markTweak, markConnect, stepsCheck, directAction, toPress, deck, openCard, cardURL, cardKin, mountArt, faceOf, setFace, flip, turnKnob, playExample, exampleMix, exampleBoardJSON, ensureExample, placeExampleZine, exampleZineImage, sendExample, EXK, EXR, EXZ, boardId: () => boardId, switchBoard, CFG, WDRAFT, setLoop, playLoop, LOOP, LOOPS, mixCode, mixOfCode, mixURL, mixArt, tuneMix, openRadioLink, pullWild, WILD, makeConstellation, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();

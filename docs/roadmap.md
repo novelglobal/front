@@ -14,6 +14,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 3e | Sound as an ecology, the equaliser, hierarchy, signals outside the radar | Built, on staging |
 | 0.03 | Four destinations on one thread; TRACKS; time on the radar; the CONNECTION receipt; the portfolio | Built, on staging |
 | 0.06 A | The first visit: the map, RADIO, W.I.S.H. and PRINT as one simple way through, gated until the first print (`docs/brief-0.06.md`) | Built, on staging |
+| 0.06 A+C | The small devices as everyone's fronts, upgraded once open; six suggestions; the veil; sound in one deep key at 120 BPM | Built, on staging |
+| 0.06 D | The sense-checked way through (the held life kept in sight, suggestions behind a tab, PRINT a dongle then the whole label maker); the OLED SELECT and its wire; the pixel icon; light and dark per page; the showcase zoomed in place | Built, live |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
