@@ -6,6 +6,8 @@ const viewOfHash = h => { const p = PARTS[String(h).toLowerCase()]; return p ? p
 const isLocalHash = h => viewOfHash(h) >= 0 || /^(T\d{2}|E\d{2}|DA-[0-9A-Z]{4}|P-[a-z0-9-]+|x=.+|mix=.+)$/i.test(h);
 async function handleHash() {
   const h = decodeURIComponent(pendingHash || ''); pendingHash = ''; if (!h) return;
+  /* a link someone was sent, on a first visit: the radio is there for it (43-journey.js) */
+  if (simple() && prefs.journey < 1 && jLinked(h)) { jGo(1, true); setView(0); }
   const v = viewOfHash(h); if (v >= 0) { const part = h.toLowerCase(); setView(v, false, PARTS[part][1] ? part : null); return; }
   if (/^x=/.test(h)) { await receive('#' + h); return; }
   /* the radio tuned where the link was made, its layers as they were: a touch on play and it sounds */
@@ -70,8 +72,12 @@ S.mo = nowK();
 derive(); buildTribes(); buildHeroes(); headBar(); syncDock(); renderView(); flags(); loadEvents();
 /* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
 applyShared(); loadShared(); loadExample(); flushOutbox(); checkSent(); loadPartners().then(() => { if (S.open && !S.mode && (S.view === 0 || S.view === 2)) refreshPanel(); }); loadSettings();
+/* a first visit (43-journey.js): only what it has reached shows; a link someone was sent skips the bare map */
+jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true);
 /* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */
 if (!pendingHash || viewOfHash(pendingHash) >= 0) { pendingHash = ''; setView(0); }
+/* the bare map, on a first visit: no page over it until the radar is down; a link sent skips it to the radio */
+if (simple() && prefs.journey < 1) setOpen(false); else if (simple() && !S.open) setView(0);
 /* sound waits for a first touch, anywhere: browsers keep a page quiet until then, and phones let sound wake only inside the
    touch itself. Then the radar plays what it has found so far, and goes on as it sweeps */
 const WAKE = ['pointerdown', 'pointerup', 'touchend', 'mousedown', 'keydown'];
@@ -86,7 +92,7 @@ setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
 placesAround(S.scan.lat, S.scan.lng, S.scan.r);
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ });
-window.__da = { S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
+window.__da = { simple, JR, jGo, jPick, jSelLife, jSelPlace, jMake, jStrip, jEdit, jMarks, jHint, jReplay, intelCanvas, jCodeCanvas, jSignal, S, CONFIG, M, FIELD, BRIEFS, EXAMPLES, map, ledger, life, strings, select, setView, setOpen, closeRecord, refresh, alarmsNow, fieldOf, glyphOf, isCold, live: liveTick, fetchHistory, derive, startPlace, selectTribe,
   degOf, whenOf, threatOf, youngOf, needsOf, needLine, waterNear, outMonth, nowK, canopyAt, canopyOf, pickMonth, roleOfRow, onNotice, suburbAt, placeOf, lifeOf, inTribe, livesIn, bizNear, placesAround, harmsOfRow,
   webBriefs, makeSignal, meshText, pagerText, slipText, isTty, isConn, connText, heroSrc, bookMD, placeMix, boardJSON, boardObjects: () => (cv ? cv.getObjects() : []), boardLink: (a, b) => joinCards(a, b), sendSignal, SPECIES, sendSpecies, quickCanvas, quickPrint, QP, pressOut, inkAll, stripSignal, fitZ, addToBoard, boardImage, figArt, setPane, radiusSpecies, boardOut, boardPicture, openPosterCard, cardArt, zineTool, keyFace, MOODS, POSTERS2, PROOFS, savePoster, takeProof, PRESS, zineObjects: () => (zc ? zc.getObjects() : []), tie, DAY, T4, setTrack4, trackOn, stepMonth, setTime, turned, setRadio, startRadio, arcadeOff, markTweak, markConnect, stepsCheck, directAction, toPress, deck, openCard, cardURL, cardKin, mountArt, faceOf, setFace, flip, turnKnob, playExample, exampleMix, exampleBoardJSON, ensureExample, placeExampleZine, exampleZineImage, sendExample, EXK, EXR, EXZ, boardId: () => boardId, switchBoard, CFG, WDRAFT, setLoop, playLoop, LOOP, LOOPS, mixCode, mixOfCode, mixURL, mixArt, tuneMix, openRadioLink, pullWild, WILD, makeConstellation, shareMix, playMix, mixNow, MIXES, LAYERS, placeRadar, placed, TRK, trackVoices, setTrack, stopTracks, escpos, slipPNG, packSignal, unpackSignal, linkOf, receive, openSignal, printSlip, printBlank, remixSignal, toWish, issue, snd, prefs, hideCell, setFive, fiveList, haversine, rangeOf, nameOf, statementOf, stDefault, imgChoice, imgList, photoChoices, IMGS, OWN, showConstellation, fitWeb, fillLedger, bwCanvas, slipCanvas, slipHTML, PLACES, ROLES, PRESSURES, isFresh, stampOf, checkSent, loadShared, loadPartners, loadSettings, directAction, shareRecord, sentWord, PARTNERS, PSTATE, selectPartner, setScan: (...a) => life.setScan(...a), face: () => face };
 })();

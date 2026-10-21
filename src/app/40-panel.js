@@ -49,11 +49,14 @@ function setPane(p) {
 }
 $('#sheetbar').addEventListener('click', () => { setPane(pane === 'page' ? 'main' : 'page'); tick(pane === 'page' ? 1500 : 1200); });
 $('#dock').addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (!b) return; setPane(b.dataset.pane); tick(b.dataset.pane === 'main' ? 1200 : 1500); });
+/* every page but the radio covers the map, except W.I.S.H. on a first visit, which is held over the map itself */
+const offMap = i => i !== 0 && !(simple() && i === 1);
 function setOpen(on) {
   S.open = on; document.body.classList.toggle('shut', !on); buzz(5); syncDock();
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(on && +b.dataset.i === S.view && !S.mode)));
   if (!on) { stopHeroes(); showBoard(false); showZine(false); showGallery(false); document.body.classList.remove('off-map'); if (S.mode) closeRecord('view'); }
-  else document.body.classList.toggle('off-map', S.view !== 0);
+  else document.body.classList.toggle('off-map', offMap(S.view));
+  jrShow();
   /* on a phone the sheet covers the lower half: the radar moves up into the half left open */
   if (phone() && S.mapReady && !S.mode) map.easeTo({ center: [S.scan.lng, S.scan.lat], offset: on ? [0, -innerHeight * 0.27] : [0, 0], duration: reduced() ? 0 : 500 });
   life.moved();
@@ -88,13 +91,16 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
+  /* a first visit opens only the pages it has reached, and SELECT belongs to PRINT alone */
+  if (simple() && i > jMax()) { i = jMax(); part = null; }
+  if (simple() && i !== 2) closePick();
   const was = S.view; S.view = i; document.body.dataset.view = VIEWS[i].k; syncDock(); headBar(); unNudge(i);
   if (S.mode && !keep) closeRecord('view');
   if (!S.open) setOpen(true);
   $$('#rail .tab').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
   if (was !== i) buzz(5);
   /* once started, the radio plays on under every page */
-  document.body.classList.toggle('off-map', i !== 0);
+  document.body.classList.toggle('off-map', offMap(i));
   renderView(); life.data();
   viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
   if (part) goPart(part);
@@ -109,9 +115,11 @@ function goPart(part) { const id = (PARTS[part] || [])[1]; const el = id && docu
 function renderView() {
   if (S.mode) return;
   const k = VIEWS[S.view].k; const front = faceOf(S.view) === 'front'; document.body.dataset.face = front ? 'front' : 'back';
-  viewEl.innerHTML = k === 'radio' ? (front ? radioFront() : viewRadio()) : k === 'signals' ? (front ? wishFront() : viewSignals()) : k === 'signs' ? (front ? printFront() : viewSigns()) : viewPortfolio();
-  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && S.view !== 0); showBoard(k === 'signals' && S.open && !front); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
-  if (k === 'signals' && front && S.open) wishPreview(); else { const cov = $('#cover'); if (cov) cov.replaceChildren(); }
+  const sm = simple();
+  viewEl.innerHTML = k === 'radio' ? (front ? (sm ? radioSimple() : radioFront()) : viewRadio()) : k === 'signals' ? (front ? (sm ? wishSimple() : wishFront()) : viewSignals()) : k === 'signs' ? (front ? (sm ? printSimple() : printFront()) : viewSigns()) : viewPortfolio();
+  viewEl.scrollTop = 0; document.body.classList.toggle('off-map', S.open && offMap(S.view)); showBoard(k === 'signals' && S.open && !front); showZine(k === 'signs' && S.open); showGallery(k === 'portfolio' && S.open);
+  if (k === 'signals' && front && S.open && !sm) wishPreview(); else { const cov = $('#cover'); if (cov) cov.replaceChildren(); }
+  jrShow();
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
   if (k === 'signs') { fillThumbs(); fillDeck(); }
@@ -322,6 +330,7 @@ function stepsCheck() {
   if (now.join() !== stepsWas.join()) { stepsWas = now; prefs.steps = now; savePrefs(); }
 }
 function won(i) {
+  if (simple()) return;   /* a first visit's gates answer for themselves (43-journey.js) */
   snd.reward(i + 1); document.body.classList.remove('won'); void document.body.offsetWidth; document.body.classList.add('won'); setTimeout(() => document.body.classList.remove('won'), 1600);
   const mk = $('.lk-mark'); if (mk) { mk.classList.remove('pulse'); void mk.offsetWidth; mk.classList.add('pulse'); }
   if (S.open && S.view === 0 && !S.mode) { refreshPanel(); const r = STEP_ROW[i] && document.querySelector(`.st[data-step="${STEP_ROW[i]}"]`); if (r) r.classList.add('won'); }
@@ -478,12 +487,15 @@ const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length)
 /* ───────── the gallery: beside the portfolio, the deck's main screen. Every poster finished here, and the example's zine first,
    on a strip that slides under a finger or the keys, one at a time (scroll snap: no library). Under the screen its number on a
    small display and the keys: back, close up, as a card, download, on ───────── */
-let galleryAt = 0;
+let galleryAt = 0, galleryFocus = null;
 const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2];
 const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
 const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf(); galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
+  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) return; const ps = wallOf();
+  /* what was just printed comes first */
+  if (galleryFocus) { const at = ps.findIndex(x => x.id === galleryFocus); if (at >= 0) galleryAt = at; galleryFocus = null; }
+  galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
   /* the example's zine is made once a visit; until then the muse waits in its place */
   if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
@@ -505,7 +517,10 @@ function showGallery(on) {
 /* the small display under the screen: which one, of how many; the keys that do not apply to it go quiet */
 function galleryRead() {
   const g = $('#gallery'); const ps = wallOf(); const p = ps[galleryAt]; if (!g || !p) return;
-  const v = g.querySelector('.gl-vfd'); if (v) v.innerHTML = `<b>${wallCap(p)}</b><span>${String(galleryAt + 1).padStart(2, '0')} / ${String(ps.length).padStart(2, '0')}</span>`;
+  /* a print sent and not yet printed: its light amber, blinking, and where it has got to; printed, green */
+  const sg = p.story ? S.signals.find(x => x.key === p.story) : null; const sw = sg ? sentWord(sg) : ''; const done = /^PRINTED/.test(sw);
+  const v = g.querySelector('.gl-vfd'); if (v) v.innerHTML = `<b>${sw ? `<i class="gl-st${done ? ' done' : ''}" aria-hidden="true"></i>` : ''}${sw && !done ? `№ ${wallNo(p)}` : wallCap(p)}</b>${sw && !done ? `<span class="gl-sw">${esc(sw.split(' · ')[0])}</span>` : ''}<span>${String(galleryAt + 1).padStart(2, '0')} / ${String(ps.length).padStart(2, '0')}</span>`;
+  g.classList.toggle('waiting', !!sw && !done);
   const dis = (k, off) => { const b = g.querySelector(`[data-gl="${k}"]`); if (b) b.disabled = !!off; };
   dis('prev', galleryAt === 0); dis('next', galleryAt >= ps.length - 1); dis('card', p.ex); dis('png', !p.img); dis('zoom', !p.img);
 }
@@ -561,7 +576,7 @@ function viewPortfolio() {
       + `</div><div class="docs dl">${[['signals', 'download', 'SIGNALS', 'CSV'], ['field', 'download', 'FIELD LIST', 'CSV'], ['briefs', 'download', 'BRIEFS', 'CSV'], ['places', 'download', 'PLACES', 'CSV'], ['blank', 'print', 'BLANK W.I.S.H.', 'PRINT']].map(([k, ic, w, f]) => `<button type="button" data-doc="${k}" aria-label="${esc(w)}">${icon(ic)}<span>${esc(w)}</span><small class="mono">${f}</small></button>`).join('')}</div>`
       + packSection()
       + `</section>`
-    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
+    + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Night" aria-label="Night" id="ix-night" aria-pressed="${darkNow()}">${icon('night')}</button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb" id="ix-journey" aria-label="The first visit again">${icon('restore')}</button><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
       + `<div class="rst-w" id="rst-w" hidden role="alertdialog" aria-label="Start again"><p>${icon('alert')}<span>Everything made on this device goes: signals, boards, W.I.S.H.es, posters, the press. This cannot be undone.</span></p><div class="rst-a"><button type="button" class="key" id="rst-no" aria-label="Keep it">${icon('close')}</button><button type="button" class="key rst-yes" id="rst-yes">${icon('reset')}<b class="mono">CLEAR</b></button></div></div></section>`
     + `<details class="sec" id="sec-src"><summary>${labI('quote', 'Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
@@ -580,6 +595,7 @@ function bindPortfolio() {
   art('art-field', ['bird', 'possum', 'bee', 'orb', 'lizard', 'frog', 'moth', 'turtle'].map(g => ({ tone: M.toneOf(g), g })));
   art('art-guide', [{ tone: 'k-mammal', g: 'flyingfox', dz: 3 }, { tone: 'injured', g: 'possum' }, { tone: 'lost', g: 'dog' }, { tone: 'event', i: 'hug' }, { tone: 'story', g: 'bee', carried: true }, { tone: 'need', i: 'shade' }, { tone: 'flora', g: 'plant' }, { tone: 'dead', g: 'bird' }]);
   $('#rx-open').addEventListener('click', () => { openReceive($('#rx').hidden); tick(1500); });
+  const pf = $('#pack-f'); if (pf) pf.addEventListener('change', packFile);
   $('#rx').addEventListener('submit', e => { e.preventDefault(); const t = $('#rx-t').value.trim(); if (!t) { nudge($('#rx-t')); return; } receive(t); });
   $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } tick(); });
   $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', !prefs.motion); life.data(); tick(); });
@@ -588,6 +604,7 @@ function bindPortfolio() {
   $('#ix-printers').addEventListener('click', e => { prefs.printers = !prefs.printers; e.currentTarget.setAttribute('aria-pressed', String(prefs.printers)); savePrefs(); life.redraw(); tick(); });
   const hb = $('#ix-hidden'); if (hb) hb.addEventListener('click', () => { const n = HIDE.size; showAllHidden(); life.data(); hb.remove(); toast(`${n} SHOWN`); snd.pluck(0.3, 0); });
   $('#ix-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });
+  $('#ix-journey').addEventListener('click', () => jReplay());
   $('#ix-reset').addEventListener('click', () => { $('#rst-w').hidden = false; snd.tick(600); buzz([20, 40, 20]); $('#rst-w').scrollIntoView({ block: 'nearest' }); });
   $('#rst-no').addEventListener('click', () => { $('#rst-w').hidden = true; tick(1400); });
   $('#rst-yes').addEventListener('click', () => resetAll());

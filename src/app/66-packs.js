@@ -94,10 +94,11 @@ async function sendPack() {
   catch (e) { toast(e.status === 429 ? 'TOO MANY · TRY SOON' : e.status === 400 ? 'NOT A PACK' : 'NOT SENT'); }
   refreshPanel();
 }
-$('#view').addEventListener('change', async e => {
-  if (e.target.id !== 'pack-f' || !e.target.files || !e.target.files[0]) return; const f = e.target.files[0];
+/* bound to the input itself (bindPortfolio), so a file chosen while the page is drawn again, its picker still open, is not lost */
+async function packFile(e) {
+  if (!e.target.files || !e.target.files[0]) return; const f = e.target.files[0];
   if (f.size > 400e3) { toast('TOO LARGE'); return; }
   S.packPv = parsePack(await f.text(), f.name); snd.tick(1600); refreshPanel();
   if (!S.packPv.cells.length) toast('NO CELLS FOUND');
-});
+}
 $('#view').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; if (b.dataset.pack === 'send') sendPack(); else { S.packPv = null; refreshPanel(); } });

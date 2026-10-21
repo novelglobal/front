@@ -620,6 +620,6 @@ const life = (() => {
     start, data, resize, tempo, sweepAt: () => sweepB, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
     select: () => { selT = performance.now(); ghost = null; dirty = true; fxDirty = true; }, placeHandle,
     seen: () => seen, reveal: revealAll, climateIn, song, get sweep() { return sweepB; }, set sweep(v) { sweepB = v; },
-    get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown,
+    get items() { return items; }, get signals() { return sigs; }, get bins() { return bins; }, get movers() { return movers; }, shown, place: i => placesL[i],
   };
 })();

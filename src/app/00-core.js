@@ -97,8 +97,13 @@ const seeTrack = id => {
 };
 /* the print location: the first partner place with a W.I.S.H. printer */
 const printAt = () => { const d = (window.DA_PARTNERS || []).find(x => x.printer); const p = d && PLACES.find(x => x.partner === d.id); return p ? { lat: +p.lat, lng: +p.lng } : null; };
+const NEW_HERE = store.get('da.prefs', null) == null;
 const prefs = Object.assign({ sound: true, motion: true, areas: false, printers: true, scan: null }, store.get('da.prefs', {}));
 const savePrefs = () => store.set('da.prefs', prefs);
+/* the first visit is one simple way through, gate by gate (43-journey.js): 0 the map, 1 the radio, 2 W.I.S.H., 3 PRINT, 4 done.
+   A device that has been here before has done it */
+if (!Number.isFinite(prefs.journey)) { prefs.journey = NEW_HERE ? 0 : 4; savePrefs(); }
+const simple = () => prefs.journey < 4;
 /* the radar stands only once the radio is started, each visit: PRESS PLAY, or a tap on the map. Where it stood is kept */
 const placed = () => !!S.started;
 /* the tracks on the map besides the lives: every one on, until a key turns it off (a visit before this kept them off: on again once) */
@@ -443,6 +448,13 @@ const snd = (() => {
       buzz([10, 30, 10, 30, 40]); if (!ready()) return; const t = ctx.currentTime + 0.03; const base = [392, 440, 494, 523.25, 587.33][(n - 1) % 5];
       [0, 7, 12, 16, 19].slice(0, 2 + Math.min(3, n)).forEach((st, i) => INST.chime(semi(base, st), t + i * 0.11, 0.3, 0.03, (i - 1.5) * 0.25));
       jellyV(base / 2, t, 0.03, 0, true); const sb = osc('sine', base / 8, t, t + 2.2); const sg = ctx.createGain(); sb.connect(sg); env(sg, t, 0.4, 0.08, 0.4, 1.2); out(sg, 0, 0.6);
+    },
+    /* a gate passed on a first visit: one more note of a rising figure in A minor, the dub stab into its echo; the last
+       gate, the whole chord at once and the muse's bell over it */
+    gate(n = 1) {
+      buzz(n >= 4 ? [12, 40, 12, 40, 60] : [8, 30, 8]); if (!ready()) return; const t = ctx.currentTime + 0.04; const F = [110, 130.81, 164.81, 196, 220];
+      if (n >= 4) { F.forEach((f, i) => dubV(f, t + i * 0.04, 0.06, (i - 2) * 0.3, true, false, i ? 1 : 0)); jellyV(440, t + 0.12, 0.04, 0, true); return; }
+      for (let i = 0; i < n; i++) dubV(F[i], t + i * 0.25, 0.06, (i - (n - 1) / 2) * 0.3, true, false, i === n - 1 ? 0 : 2);
     },
     /* paper torn off */
     tear() {

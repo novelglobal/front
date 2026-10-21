@@ -32,8 +32,9 @@ const map = new maplibregl.Map({
 });
 /* the information corner: who made it, where everything comes from, the build this page came from, and the way to the approval page */
 const buildWord = (BUILD.sha ? ` · <span class="da-build" title="The version of the site you are looking at">BUILD ${esc(BUILD.sha.toUpperCase())}${BUILD.branch ? ` · ${esc(BUILD.branch.toUpperCase())}` : ''}</span>` : '') + ' · <a class="da-admin" href="admin" target="_blank" rel="noopener" title="Approval">ADMIN</a>';
-map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME} · ${CONFIG.BY.toUpperCase()}</a> · iNaturalist · © OpenStreetMap · Open-Meteo${buildWord}` }), 'bottom-left');
-document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); setView(1, false, 'sources'); } });
+/* the tiny NOVEL.GLOBAL in it, pressed twice, opens everything on a first visit (43-journey.js) */
+map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: `<a href="#sources" class="da-about">${CONFIG.NAME}</a> · <b class="da-egg" role="button" tabindex="0" aria-label="${esc(CONFIG.BY.toUpperCase())}">${esc(CONFIG.BY.toUpperCase())}</b> · iNaturalist · © OpenStreetMap · Open-Meteo${buildWord}` }), 'bottom-left');
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a.da-about'); if (a) { e.preventDefault(); if (!simple()) setView(3, false, 'sources'); } });
 map.on('load', () => {
   S.mapReady = true;
   const open = S.byId.get(S.sel);
@@ -60,6 +61,8 @@ map.on('pitchend', () => {
 map.on('click', e => {
   /* while placing: a touch inside the marker's radius moves it there; on the marker itself or outside the radius, placing is cancelled */
   if (S.mode === 'place') { if (consumeHold()) return; const p = S.place; const q = p && map.project([p.lng, p.lat]); if (p && (Math.hypot(q.x - e.point.x, q.y - e.point.y) < 18 || haversine(p.lat, p.lng, e.lngLat.lat, e.lngLat.lng) > rangeOf(p))) { cancelPlace(); return; } movePlace(e.lngLat); return; }
+  /* a first visit, the bare map: wherever the tap lands, the radar goes down there */
+  if (simple() && prefs.journey < 1 && !S.mode) { placeRadar(e.lngLat.lat, e.lngLat.lng); return; }
   const h = life.hit(e.point.x, e.point.y);
   /* an open cell keeps its focus: knots are looked at, then tied; a life outside its radius is only looked at */
   if (S.mode === 'ping') {
@@ -71,6 +74,7 @@ map.on('click', e => {
     const o = S.byId.get(S.sel); if (o && haversine(o.lat, o.lng, e.lngLat.lat, e.lngLat.lng) <= rangeOf(o)) { strings.ground(e.lngLat); return; }
     strings.unpeek(); tick(800); return;
   }
+  if (jTap(h)) return;
   if (h) {
     if (h.kind === 'zoom') return;
     if (h.kind === 'node') { strings.tap(h.key); return; }
@@ -94,8 +98,10 @@ function tootOrTick(quiet) { if (Date.now() - lastToot > 45000) { lastToot = Dat
 /* where are you: the radar is put down where the first tap on the map lands, and stays there between visits */
 function placeRadar(lat, lng) {
   if (!inBox(lat, lng)) { tick(600); return; }
-  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, first ? 1000 : null, true); tootOrTick(); buzz([6, 30, 6]); arcadeOff();
+  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, first ? CONFIG.SCAN_FIRST || 500 : null, true); tootOrTick(); buzz([6, 30, 6]); arcadeOff();
   if (first && !S.radio) setRadio(true);
+  /* a first visit: the radio comes up with it */
+  if (simple() && prefs.journey < 1) jRadio();
 }
 /* a double tap ties instead of zooming while a cell or a marker is open */
 map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') e.preventDefault(); });
