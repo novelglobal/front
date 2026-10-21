@@ -1232,7 +1232,9 @@ if (run('hide')) try {
   const [x, y] = await xy(page, it); await page.mouse.move(x, y, { steps: 4 }); await sleep(600);
   const tagOf = () => page.evaluate(id => { const t = document.querySelector('#tag'); const r = t.getBoundingClientRect(); const it = window.__da.life.items.find(i => i.o.id === id); const m = window.__da.map.getContainer().getBoundingClientRect();
     return { tag: !t.hidden, hide: !!t.querySelector('.hide'), img: t.querySelectorAll('img').length, beside: it ? Math.min(Math.abs(r.left - (m.left + it.x + it.dx)), Math.abs(r.right - (m.left + it.x + it.dx))) : -1, level: it ? Math.abs((r.top + r.bottom) / 2 - (m.top + it.y + it.dy)) : -1 }; }, it);
-  let tg = await tagOf(); if (!tg.tag) { await page.mouse.move(x + 40, y + 40); await settle(page); await sleep(300); const [x2, y2] = await xy(page, it); await page.mouse.move(x2, y2, { steps: 4 }); await sleep(800); tg = await tagOf(); }
+  /* the pointer comes to rest over the mark: the tag follows within 40 ms, or later on a busy machine; waited for, up to 3 s */
+  const landed = async () => { let t = await tagOf(); for (let k = 0; k < 20 && !(t.tag && t.level <= 12 && t.beside >= 44 && t.beside <= 62); k++) { await sleep(150); t = await tagOf(); } return t; };
+  let tg = await landed(); if (!tg.tag) { await page.mouse.move(x + 40, y + 40); await settle(page); await sleep(300); const [x2, y2] = await xy(page, it); await page.mouse.move(x2, y2, { steps: 4 }); await sleep(800); tg = await landed(); }
   check('every cell under the pointer has a small hide button', tg.tag && tg.hide, JSON.stringify(tg));
   check('the tag under the pointer is words only, level with the mark and beside the photograph it grows into', tg.img === 0 && tg.beside >= 44 && tg.beside <= 62 && tg.level <= 12, JSON.stringify(tg));
   await page.click('#tag .hide'); await sleep(500);
