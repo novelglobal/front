@@ -11,6 +11,8 @@ EnvironmentFile=/etc/da-pull.env
 ExecStart=/usr/bin/python3 /opt/da-pull/pull.py
 Restart=always
 RestartSec=10
+# /run/da-pull: where TURN OFF leaves its note for da-off.path
+RuntimeDirectory=da-pull
 # a small, quiet service: no new privileges, its own /tmp, the rest of the system read-only
 NoNewPrivileges=true
 PrivateTmp=true
