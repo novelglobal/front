@@ -62,6 +62,12 @@ under it. On a phone, SELECT is a tray on the dongle, W.I.S.H. has one key for t
 typing. The site is lighter (minified, about 400 unused style rules gone, the relief in a few small tiles) and faster (the
 offline copy installs after the first view, nothing drawn behind a cover, the showcase never drawn again for nothing).
 
+**W.I.S.H. folded and changed (22 October).** The intention device keeps one size: its screen a two-line LCD that scrolls,
+an arrow on the glass for what is out of sight. The receipt hangs from a bulldog clip that rolls it up to a strip, the map
+clear but for what is held; touched, another life or place changes it, rolled or not; the strip lets it down. On a phone the
+W.I.S.H. tab lowers the device and rolls the receipt up with it, the map in full; the tab, the strip or the device's head
+brings them back. The mods stay.
+
 Stage B, as far as it still stands after the owner's later choices (the rig and a one-sided W.I.S.H. MAKER gave way to
 W.I.S.H. over the map and its blueprint): the first board's template, a box for each of W, I, S and H saying what research
 goes there and a codec note on each tool, its words rewritten on the approval page; and a choice of printer when more than one

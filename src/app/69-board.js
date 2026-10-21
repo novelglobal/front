@@ -231,7 +231,7 @@ function radiusSpecies(n = 12) {
 }
 function sendSpecies(o) {
   /* once everything is open, the life sent from its card is what W.I.S.H.'s receipt holds, with the strings tied on it */
-  if (!simple()) { const c = jSelConn(); if (c) { JR.sel = c; JR.acts = (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); } }
+  if (!simple()) { const c = jSelConn(); if (c) { jrFold = false; JR.sel = c; JR.acts = (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); } }
   const sp = keepSpecies(spOf(o)); const g = sp.g;
   markTweak(); flyToTab(1, $('#r-fig')); snd.knot({ g }, F0 * partialOf(g), 0, 0.7, 0); buzz([8, 30, 8]);
   return sp;

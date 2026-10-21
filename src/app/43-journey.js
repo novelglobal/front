@@ -119,8 +119,10 @@ function jPick(sel, at) {
   JR.acts = first ? [] : (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); hintIt = null; life.hover(null); $('#tag').hidden = true;
   /* in its own voice; the first time, the gate's note answers alone */
   if (!first) { const pl = sel.k === 'place'; snd.knot(pl ? { fam: sel.fam } : { g: sel.g }, F0 * partialOf(pl ? sel.fam : sel.g), 0, 0.7, 0); }
+  /* something noticed from another page, or with the page away, comes as the hero */
+  if (first || S.view !== 1 || !S.open) jrFold = false;
   if (first) { jGo(2); jFly(at, 1); setTimeout(() => { setView(1); if (phone()) setPane('page'); }, reduced() ? 0 : 560); }
-  else { if (S.view !== 1) setView(1); else { jrShow(); jPreview(); } }
+  else if (S.view !== 1 || !S.open) { setView(1); if (phone()) setPane('page'); } else { jrShow(); jPreview(); }
   return true;
 }
 /* a small copy of what was touched flies from where it was to its tab */
@@ -352,17 +354,27 @@ let jrEl = null;
 /* the suggestions wait behind a tab at the receipt's side, closed, until it or the key on the intention device is pressed;
    the key carries how many are taken up */
 let jrOpen = false;
+/* the receipt hangs from a bulldog clip: pressed, it rolls up into it, a strip of its head left showing, and the map is clear
+   but for what is held; on a phone the device lowered to its lip rolls it up too. Kept for the visit only */
+let jrFold = false;
+const jrFolded = () => jrFold || (phone() && pane === 'main');
+function jrFoldSet(on) { jrFold = !!on; if (!on && phone() && pane === 'main') setPane('page'); jrTabs(); snd.tick(on ? 1000 : 1600); }
 function jrTabs() {
-  const n = (JR.acts || []).length;
-  $$('[data-jtab]').forEach(b => { b.setAttribute('aria-expanded', String(jrOpen)); b.classList.toggle('open', jrOpen); b.classList.toggle('next', b.classList.contains('vs-sg') && !jrOpen && !n && !String(JR.want || '').trim()); const c = b.querySelector('.jt-n'); if (c) c.textContent = n ? String(n) : ''; });
-  if (jrEl) { jrEl.classList.toggle('open', jrOpen); const l = jrEl.querySelector('.jr-acts'); if (l) l.hidden = !jrOpen; }
+  const n = (JR.acts || []).length, f = jrFolded(), op = jrOpen && !f;
+  $$('[data-jtab]').forEach(b => { b.setAttribute('aria-expanded', String(op)); b.classList.toggle('open', op); b.classList.toggle('next', b.classList.contains('vs-sg') && !jrOpen && !n && !String(JR.want || '').trim()); const c = b.querySelector('.jt-n'); if (c) c.textContent = n ? String(n) : ''; });
+  if (!jrEl) return; const was = jrEl.classList.contains('fold');
+  jrEl.classList.toggle('open', jrOpen); jrEl.classList.toggle('fold', f); const l = jrEl.querySelector('.jr-acts'); if (l) l.hidden = !jrOpen; const k = jrEl.querySelector('.jr-fold'); if (k) k.setAttribute('aria-expanded', String(!f));
+  /* let down again: what is held is slid clear of it once the device is up */
+  if (was && !f) { clearK = ''; setTimeout(() => requestAnimationFrame(() => jClear(true)), phone() && !reduced() ? 380 : 0); }
 }
-function jrToggle(on) { jrOpen = on == null ? !jrOpen : !!on; jrTabs(); snd.tick(jrOpen ? 1600 : 1000); }
+/* rolled up, the device's suggestions key lets the receipt down with its suggestions open, one tick */
+function jrToggle(on) { if (jrFolded()) { on = true; jrFold = false; if (phone() && pane === 'main') setPane('page'); } jrOpen = on == null ? !jrOpen : !!on; jrTabs(); snd.tick(jrOpen ? 1600 : 1000); }
 function jrShow() {
   const on = wishOverMap() && (!simple() || (prefs.journey >= 2 && !!JR.sel));
   if (!jrEl) { if (!on) { jHeld(); return; } jrEl = document.createElement('div'); jrEl.className = 'jr'; jrEl.id = 'jr'; document.body.appendChild(jrEl); }
   jrEl.hidden = !on; jHeld(); if (!on) return;
-  if (!jrEl.firstChild) jrEl.innerHTML = `<figure class="jr-r"><img alt="" data-zoom></figure><div class="jr-sg"><button type="button" class="jr-tab" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<i class="jt-c" aria-hidden="true">${icon('next', 'sm')}</i></button><ol class="jr-acts" aria-label="Suggestions to take up" hidden></ol></div>`;
+  const nw = $('#view .simple-w .vs-now'); if (nw) nw.textContent = jNowW();
+  if (!jrEl.firstChild) jrEl.innerHTML = `<figure class="jr-r"><button type="button" class="jr-fold" data-jfold aria-expanded="true" aria-label="Receipt"></button><img alt="" data-zoom></figure><div class="jr-sg"><button type="button" class="jr-tab" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<i class="jt-c" aria-hidden="true">${icon('next', 'sm')}</i></button><ol class="jr-acts" aria-label="Suggestions to take up" hidden></ol></div>`;
   jrEl.querySelector('.jr-acts').innerHTML = jActs().map(a => { const on2 = (JR.acts || []).includes(a.k); return `<li><button type="button" class="jr-act${on2 ? ' on' : ''}" data-jact="${a.k}" aria-pressed="${on2}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.w)}</b></button></li>`; }).join('');
   jrTabs(); jPreview();
 }
@@ -377,14 +389,16 @@ function jHeld() {
   heldEl.setAttribute('width', innerWidth); heldEl.setAttribute('height', innerHeight);
   heldEl.innerHTML = ties.map(([a, b]) => `<line x1="${x}" y1="${y}" x2="${a}" y2="${b}"/><circle class="k" cx="${a}" cy="${b}" r="6"/>`).join('') + `<circle class="h" cx="${x}" cy="${y}" r="21"/><circle class="h2" cx="${x}" cy="${y}" r="29"/>`;
 }
-addEventListener('resize', jHeld);
+addEventListener('resize', () => { jHeld(); jrTabs(); });
 /* and kept in sight: if the receipt, the suggestions or the device would cover it, the map slides it to the nearest clear
    ground, once for each thing held */
 let clearK = '';
-function jClear() {
+function jClear(soft) {
   const s = JR.sel; if (!s || s.lat == null || s.k === 'here' || !wishOverMap() || !S.mapReady || !jrEl || jrEl.hidden) return;
   const key = `${s.k}|${s.id || s.n}|${s.lat}|${s.lng}`; if (key === clearK) return; clearK = key;
   const r = map.getContainer().getBoundingClientRect(); const q = map.project([s.lng, s.lat]); const x = r.left + q.x, y = r.top + q.y;
+  /* let down after the map was looked over: what is held is not chased back from off the screen (true only: a frame passes a time) */
+  if (soft === true && (x < 0 || y < 0 || x > innerWidth || y > innerHeight)) return;
   /* where everything stands with the suggestions shut and open, so opening them never covers it */
   const measure = () => [...jrEl.querySelectorAll('.jr-r img, .jr-tab, .jr-acts:not([hidden])'), $('#view .dev'), rail].filter(Boolean).map(el => el.getBoundingClientRect()).filter(b => b.width && b.height);
   const boxes = measure(); const l = jrEl.querySelector('.jr-acts');
@@ -406,15 +420,19 @@ const jPreview = debounce(async () => {
 const jWantSave = debounce(saveJR, 300);
 const jMakeLit = () => { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', jWants()); };
 document.addEventListener('click', e => {
+  if (e.target.closest('#jr [data-jfold]')) { jrFoldSet(!jrFolded()); return; }
   if (e.target.closest('[data-jtab]')) { jrToggle(); return; }
   const a = e.target.closest('#jr [data-jact]');
   if (a) { const k = a.dataset.jact; const on = !(JR.acts || []).includes(k); JR.acts = on ? [...(JR.acts || []), k] : JR.acts.filter(x => x !== k); saveJR();
     a.classList.toggle('on', on); a.setAttribute('aria-pressed', String(on)); jMakeLit(); jrTabs(); jPreview(); snd.tick(on ? 1800 : 1000); return; }
-  const z = e.target.closest('#jr [data-zoom]'); if (z && z.src) zoomArt(z.src);
+  /* the strip lets the receipt down; the receipt let down opens its close-up */
+  const z = e.target.closest('#jr [data-zoom]'); if (z && z.src) { if (jrFolded()) jrFoldSet(false); else zoomArt(z.src); }
 });
-viewEl.addEventListener('input', e => { if (e.target.id !== 'jw-for') return; JR.want = e.target.value; jWantSave(); growTA(e.target); jMakeLit(); jrTabs(); jPreview(); });
+viewEl.addEventListener('input', e => { if (e.target.id !== 'jw-for') return; JR.want = e.target.value; jWantSave(); jwMore(e.target); jMakeLit(); jrTabs(); jPreview(); });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'jw-for') { e.preventDefault(); $('#jw-form').requestSubmit ? $('#jw-form').requestSubmit() : jMake(); } });
 viewEl.addEventListener('submit', e => { if (e.target.id !== 'jw-form') return; e.preventDefault(); jMake(); });
+/* on a phone, the device lowered to its lip: a touch on its head brings it up, the receipt with it as it was left */
+viewEl.addEventListener('click', e => { if (!phone() || pane !== 'main' || !wishOverMap() || !e.target.closest('#sec-wish') || e.target.closest('[data-flip]')) return; setPane('page'); snd.tick(1600); });
 /* make: the receipt is made, kept here as a signal waiting to print, and flies to PRINT, which opens for it; W.I.S.H. is
    cleared behind it */
 let jMaking = false;
@@ -431,7 +449,7 @@ async function jMake() {
     const im = $('#jr .jr-r img'); const first = simple() && prefs.journey < 3;
     tie(1); if (!first) snd.printer(700); jBoard(sig);
     /* handed on, as on a line: the receipt goes to PRINT, and W.I.S.H. is left clear for what is noticed next */
-    JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; clearK = ''; saveJR();
+    JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; jrFold = false; clearK = ''; saveJR();
     PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = 0; jFresh = true; if (!simple()) setFace(2, 'front');
     if (first) jGo(3); if (im) flyToTab(2, im);
     setTimeout(() => { setView(2); if (phone()) setPane('page'); }, reduced() ? 0 : 560);

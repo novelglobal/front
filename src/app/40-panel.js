@@ -41,9 +41,11 @@ function syncDock() {
   m.setAttribute('aria-pressed', String(shown === 'main')); pg.setAttribute('aria-pressed', String(shown === 'page'));
   const sb = $('#sheetbar'); if (sb) { sb.querySelector('.sb-t').textContent = VIEWS[S.view].long || VIEWS[S.view].w; sb.setAttribute('aria-expanded', String(shown === 'page')); }
   document.body.classList.toggle('pane-main', shown === 'main'); document.body.classList.toggle('pane-page', shown === 'page');
+  /* on a phone the device lowered to its lip rolls W.I.S.H.'s receipt up with it */
+  try { jrTabs(); } catch (e) { /* W.I.S.H. not built yet */ }
 }
 function setPane(p) {
-  pane = p; if (p === 'page' && !S.open) setOpen(true); else syncDock(); railFit(p === 'main' ? 'lo' : 'dflt');
+  pane = p; if (p === 'main' && viewEl.contains(document.activeElement)) document.activeElement.blur(); if (p === 'page' && !S.open) setOpen(true); else syncDock(); railFit(p === 'main' ? 'lo' : 'dflt');
   setTimeout(() => { if (S.mapReady) map.resize(); if (p === 'main' && S.view === 2) fitZ(); }, 380);
 }
 $('#sheetbar').addEventListener('click', () => { setPane(pane === 'page' ? 'main' : 'page'); tick(pane === 'page' ? 1500 : 1200); });
@@ -122,7 +124,7 @@ function renderView() {
   if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
   if (k === 'signs') { fillThumbs(); fillDeck(); }
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
-  growTA($('#wf-for')); railFit();
+  growTA($('#wf-for')); jwMore($('#jw-for')); railFit();
 }
 /* a refresh keeps the place on the page, and never takes text from under the hand */
 function refreshPanel() {
