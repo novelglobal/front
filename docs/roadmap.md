@@ -17,6 +17,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 0.06 A+C | The small devices as everyone's fronts, upgraded once open; six suggestions; the veil; sound in one deep key at 120 BPM | Built, on staging |
 | 0.06 D | The sense-checked way through (the held life kept in sight, suggestions behind a tab, PRINT a dongle); the OLED SELECT and its wire; the pixel icon; light and dark per page; the showcase zoomed in place | Built, live |
 | 0.06 B | Sound that heals itself; the line from W.I.S.H. to PRINT to the wall; PRINT a dongle for everyone; smaller suggestions; the showcase full screen on a phone, each card beside its poster; the first board's W.I.S.H. template, rewritten on the approval page; a choice of printer | Built, on staging |
+| 0.06 polish | One answer to each moment, PRINT's sound in time, sound in key to the last click; one switch for stillness; haptics on iPhone; SELECT a tray on a phone, one suggestions key; minified, about 400 unused style rules gone, the relief lighter, the offline copy after the first view | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |

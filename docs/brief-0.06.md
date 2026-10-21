@@ -54,6 +54,14 @@ and on the board. PRINT is the dongle for everyone, upgraded once open. The sugg
 On a phone the showcase opens full screen; each poster's card stands beside it, turns over and back, and has its own key to
 open it.
 
+**The fifth pass (21 October, lighter, faster, one answer at a time).** Each moment of the way through has one answer: the
+gate's note alone on a first visit, a life touched in its own voice, every click on a note of A minor, the unlock the rising
+figure brought home. PRINT sounds in time: the head steps audibly, for everyone, and the tear is heard when the paper tears.
+The veil's first note now sounds on a phone. Motion is one switch, the Motion setting or the system's, with every cue at rest
+under it. On a phone, SELECT is a tray on the dongle, W.I.S.H. has one key for the suggestions, and nothing zooms in on
+typing. The site is lighter (minified, about 400 unused style rules gone, the relief in a few small tiles) and faster (the
+offline copy installs after the first view, nothing drawn behind a cover, the showcase never drawn again for nothing).
+
 Stage B, as far as it still stands after the owner's later choices (the rig and a one-sided W.I.S.H. MAKER gave way to
 W.I.S.H. over the map and its blueprint): the first board's template, a box for each of W, I, S and H saying what research
 goes there and a codec note on each tool, its words rewritten on the approval page; and a choice of printer when more than one

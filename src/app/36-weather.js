@@ -6,7 +6,7 @@
 function weatherFx() {
   const host = $('#world'); if (!host || $('#wx-fx')) return;
   const cv = document.createElement('canvas'); cv.id = 'wx-fx'; cv.className = 'wx-fx'; cv.setAttribute('aria-hidden', 'true'); host.appendChild(cv);
-  const x = cv.getContext('2d'); let W = 0, H = 0, dpr = 1, last = 0, raf = 0; const sp = [];
+  const x = cv.getContext('2d'); let W = 0, H = 0, dpr = 1, last = 0, raf = 0, blank = false; const sp = [];
   const size = () => { dpr = Math.min(2, devicePixelRatio || 1); W = host.clientWidth; H = host.clientHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); };
   size(); addEventListener('resize', size);
   /* how hot the air is: today's top, or the month's degree on the outlook, whichever is hotter */
@@ -22,9 +22,11 @@ function weatherFx() {
     raf = requestAnimationFrame(frame);
     if (document.hidden || reduced() || !prefs.motion || document.body.classList.contains('off-map') && !document.body.classList.contains('shut')) { if (sp.length) { sp.length = 0; x.clearRect(0, 0, cv.width, cv.height); } return; }
     if (now - last < 50) return; const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    const h = heat(), w = wet(); const want = { heat: Math.round(4 + 34 * h), glint: Math.round(h * 4), rain: Math.round(60 * w) };
+    const h = heat(), w = wet(); const want = { heat: h > 0.08 ? Math.round(34 * h) : 0, glint: Math.round(h * 4), rain: Math.round(60 * w) };
     for (const k of Object.keys(want)) { const n = sp.filter(s => s.k === k).length; for (let i = n; i < want[k]; i++) if (Math.random() < 0.08) sp.push(spawn(k)); }
     if (!sp.some(s => s.k === 'jel') && Math.random() < (darkNow() ? 0.0016 : 0.0006)) sp.push(jel());
+    /* nothing in the air on a mild, dry day: the canvas is cleared once and left still */
+    if (!sp.length) { if (!blank) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cv.width, cv.height); blank = true; } return; } blank = false;
     x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
     for (let i = sp.length - 1; i >= 0; i--) {
       const s = sp[i];

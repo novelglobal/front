@@ -10,7 +10,8 @@ const style = {
   sources: {
     sat: { type: 'raster', tiles: [IMG.url], tileSize: 256, maxzoom: IMG.maxzoom || 19, attribution: IMG.attribution },
     dem: { type: 'raster-dem', tiles: [CONFIG.DEM_URL], tileSize: 256, maxzoom: 15, encoding: 'terrarium', attribution: 'Terrain: AWS Terrain Tiles, GA 5 m DEM' },
-    demShade: { type: 'raster-dem', tiles: [CONFIG.DEM_URL], tileSize: 256, maxzoom: 15, encoding: 'terrarium' },
+    /* the faint relief needs no detail: zoom 13 at most, a few small tiles a view instead of a megabyte */
+    demShade: { type: 'raster-dem', tiles: [CONFIG.DEM_URL], tileSize: 256, maxzoom: 13, encoding: 'terrarium' },
   },
   layers: [
     { id: 'ground', type: 'background', paint: { 'background-color': '#1E2622' } },
@@ -106,7 +107,7 @@ function tootOrTick(quiet) { if (Date.now() - lastToot > 45000) { lastToot = Dat
 /* where are you: the radar is put down where the first tap on the map lands, and stays there between visits */
 function placeRadar(lat, lng) {
   if (!inBox(lat, lng)) { tick(600); return; }
-  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, first ? CONFIG.SCAN_FIRST || 500 : null, true); tootOrTick(); buzz([6, 30, 6]); arcadeOff();
+  const first = !placed(); prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, first ? CONFIG.SCAN_FIRST || 500 : null, true); if (!(simple() && prefs.journey < 1)) tootOrTick(); arcadeOff();
   if (first && !S.radio) setRadio(true);
   /* a first visit: the radio comes up with it */
   if (simple() && prefs.journey < 1) jRadio();

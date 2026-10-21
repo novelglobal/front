@@ -213,7 +213,7 @@ const life = (() => {
   function moveScan(lat, lng, anim) {
     if (!inBox(lat, lng)) { tick(600); return; }
     cancelAnimationFrame(glide); const a = { lat: S.scan.lat, lng: S.scan.lng }; const t0 = performance.now(); const dur = anim && !reduced() ? 520 : 0;
-    snd.tick(700); buzz(6);
+    snd.tick(700);
     const step = now => { const k = dur ? Math.min(1, (now - t0) / dur) : 1; const e = 1 - Math.pow(1 - k, 3); setScan(a.lat + (lat - a.lat) * e, a.lng + (lng - a.lng) * e, null, k >= 1); if (k < 1) glide = requestAnimationFrame(step); else snd.tick(1100); };
     glide = requestAnimationFrame(step);
   }
@@ -492,6 +492,8 @@ const life = (() => {
     if (document.hidden || !bx) { lastSweep = 0; return; }
     if (dirty) { dirty = false; project(); drawBase(); fxDirty = true; }
     sweep(now);
+    /* PRINT, the board or novel.global covering the map: the sweep and its sound go on, nothing is drawn behind the cover */
+    if (document.body.classList.contains('off-map') && !document.body.classList.contains('shut')) { fxDirty = true; return; }
     const selecting = !!selT && !reduced() && now - selT < 1400;
     const animating = !reduced() && (running() || LOOP.on || movers.length > 0 || selecting || S.mode === 'place' || !!ghost || strings.busy(now) || songFx.some(n => now - n.at < 800));
     if (fxDirty || (animating && now - lastFx >= 1000 / 30 - 2)) { fxDirty = false; lastFx = now; drawFx(now); }
@@ -517,7 +519,7 @@ const life = (() => {
       if (kind === 'move') setScan(ll.lat, ll.lng, null, false);
       else { const r0 = S.scan.r; setScan(null, null, haversine(S.scan.lat, S.scan.lng, ll.lat, ll.lng), false); if (Math.abs(S.scan.r - r0) >= 50 || Math.floor(S.scan.r / 100) !== Math.floor(r0 / 100)) snd.tick(900 + S.scan.r / 2); }
     });
-    const end = () => { if (!knobDrag || knobDrag.kind !== kind) return; const moved = knobDrag.moved; knobDrag = null; el.classList.remove('on'); map.dragPan.enable(); if (!moved && kind === 'move') { song(); return; } setScan(null, null, null, true); snd.tick(1100); buzz(6); };
+    const end = () => { if (!knobDrag || knobDrag.kind !== kind) return; const moved = knobDrag.moved; knobDrag = null; el.classList.remove('on'); map.dragPan.enable(); if (!moved && kind === 'move') { song(); return; } setScan(null, null, null, true); snd.tick(1100); };
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
     el.addEventListener('keydown', e => {
       if (kind === 'move' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); song(); return; }

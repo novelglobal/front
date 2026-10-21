@@ -1,5 +1,6 @@
 /* novel.global, the offline cache.
    The app itself: network first, so an edit to config.js or examples.js shows on the next load; the cached copy when there is no signal.
+   Its libraries and type (vendor/): kept first, since they change only with a release, and a release renames the cache.
    Imagery, land and photos: kept once seen. Live data: network first, the last answer when offline. */
 const V = 'da-v61';
 const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'portfolio.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'vendor/fabric.min.js', 'ladder.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
@@ -27,6 +28,8 @@ self.addEventListener('fetch', e => {
     e.respondWith((async () => {
       const c = await caches.open(`${V}-shell`);
       const hit = await c.match(req, { ignoreSearch: true });
+      /* the libraries and type change only with a release, and each release renames the cache: kept first */
+      if (hit && url.pathname.startsWith('/vendor/')) return hit;
       const net = fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; });
       if (!hit) return net.catch(() => Response.error());
       const slow = new Promise(res => setTimeout(() => res(hit), 3500));

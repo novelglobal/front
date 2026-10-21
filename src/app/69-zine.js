@@ -17,7 +17,7 @@ const ZHIST = []; let zLast = '';
 /* what stays on the strip whatever is taken off it: the story at its head; on a first visit, its words and its code too */
 const ZFIXED = ['base', 'words', 'code'];
 const zKey = () => 'da.press.' + PRESS.fmt;
-const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 40) ZHIST.shift(); } zLast = str; store.set(zKey(), { json, h: zc.getHeight() }); }, 300);
+const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 12) ZHIST.shift(); } zLast = str; if (!store.set(zKey(), { json, h: zc.getHeight() })) saveFull(); }, 300);
 /* the tools: words, a headline, cut-out letters, a photocopy, a pen, shapes, a stamp, tape, ink, undo, remove. Icons only;
    their names come on a long hover */
 const ZTOOLS = [['add', 'plus', 'Add'], ['text', 'quote', 'Words: again for another face'], ['head', 'sign', 'Headline: again for another face'], ['cut', 'remix', 'Cut-out letters'], ['image', 'camera', 'Photocopy'], ['draw', 'pencil', 'Pen'], ['shape', 'base', 'Shapes: again for another'], ['stamp', 'check', 'Stamp'], ['tape', 'minus', 'Tape: again for bandana, wire'], ['rag', 'base', 'Bandana: again to turn it'], ['undo', 'undo', 'Undo'], ['delete', 'close', 'Remove'], ['len', 'receipt', 'Longer paper: again for more'], ['zoom', 'search', 'Closer: again for closer, then back']];
@@ -120,7 +120,9 @@ const photoMode = () => (PHOTO_MODES.some(m => m.k === prefs.photo) ? prefs.phot
 /* the receipt shown larger than it prints, so the hand can work on it; the paper's own size stays the same underneath */
 function fitZ() {
   if (!zc) return; const host = $('#zine .desk'); const F = FORMATS[PRESS.fmt]; const room = (host && host.clientWidth ? host.clientWidth : 640) - 48;
-  const fit = Math.max(0.3, room / F.w); const roomH = (host && host.clientHeight ? host.clientHeight : 700) - 64; const all = Math.max(0.12, Math.min(fit, roomH / zc.getHeight()));
+  const fit = Math.max(0.3, room / F.w); const cs = host ? getComputedStyle(host) : null; const padY = cs ? parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) : 0;
+  /* the room left once the desk's padding is counted: on a phone the dongle sits in its foot, and the code must clear it */
+  const roomH = (host && host.clientHeight ? host.clientHeight : 700) - Math.max(64, padY + 8); const all = Math.max(0.12, Math.min(fit, roomH / zc.getHeight()));
   const L = phone() ? [all, fit, fit * 1.7] : PRESS.fmt === 'zine' ? [all, 0.85, 1.25] : PRESS.fmt === 'gb' ? [all, 2.2, 3] : [all, 1.6, 2.4]; const z = L[PRESS.zl]; PRESS.z = z;
   zc.setDimensions({ width: `${Math.round(zc.getWidth() * z)}px`, height: `${Math.round(zc.getHeight() * z)}px` }, { cssOnly: true });
   zc.renderAll();   /* on a sharp screen the size set again clears the paper: it is drawn again at once */
@@ -305,7 +307,7 @@ async function zineTool(k) {
     const r = new f.Rect({ width: t.width + 22, height: t.height + 16, left: -11, top: -8, fill: 'transparent', stroke: ZCOL, strokeWidth: 3, rx: 4, ry: 4, opacity: 0.82 });
     const g = new f.Group([r, t], { left: x, top: y, angle: rnd(-9, 9), daKind: 'stamp' }); c.add(g); c.setActiveObject(g); }
   if (k === 'undo') { if (!ZHIST.length) { tick(600); return; } const prev = ZHIST.pop(); zLast = prev; await new Promise(r => c.loadFromJSON(JSON.parse(prev), r)); await jStrip(); c.renderAll(); store.set(zKey(), { json: JSON.parse(prev), h: c.getHeight() }); snd.tick(1100); return; }
-  c.renderAll(); saveZine(); snd.tick(1500); buzz(4);
+  c.renderAll(); saveZine(); snd.tick(1500);
 }
 function setInk(col) {
   ZCOL = col; store.set('da.zcol', ZCOL); $$('#zine .sw[data-ink]').forEach(b => b.classList.toggle('on', b.dataset.ink === col)); const pk = $('#zine-col'); if (pk) pk.value = col;
@@ -323,7 +325,7 @@ function viewSpot() {
 async function placeOnPage(url, kind, width, photo) {
   const c = await showZine(true); if (!c) return; const at = viewSpot(); const src = url; const F = FORMATS[PRESS.fmt]; const wd = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6));
   if (photo) url = await inkPhoto(src, wd * (F.dots || F.w * 2) / F.w);
-  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); if (jObj('code')) jLayout(); c.renderAll(); saveZine(); snd.tick(1700); buzz(4); });
+  window.fabric.Image.fromURL(url, im => { if (photo) im.set({ daSrc: src, daPhoto: true }); const w = Math.min(width, c.getWidth() * (kind === 'board' ? 0.94 : 0.6)); im.set({ originX: 'center', originY: 'center', left: clamp(at.x, w / 2, c.getWidth() - w / 2), top: Math.max(20, at.y), angle: kind === 'sticker' ? rnd(-12, 12) : 0, daKind: kind }); im.scaleToWidth(w); c.add(im); c.setActiveObject(im); if (jObj('code')) jLayout(); c.renderAll(); saveZine(); snd.tick(1700); });
 }
 function cellSticker(o) {
   if (o.photo) return loadImage(o.photo, false).then(im => photoFrame(im, FRAMES[cutN++ % FRAMES.length])).catch(() => cellSticker({ ...o, photo: null }));
@@ -383,12 +385,13 @@ async function pieceOn(kind, id) {
   if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
   if (kind === 'q') { const x = S.signals.find(v => v.key === id); const t = x ? qrText(x) : CONFIG.PORTAL_URL; const u = qrImage(t); if (u) placeOnPage(u, 'qr', 120); }
 }
-function setFormat(k) { if (!FORMATS[k]) return; PRESS.fmt = k; $$('#view [data-pfmt]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pfmt === k))); showZine(true); tick(1500); buzz(4); }
+function setFormat(k) { if (!FORMATS[k]) return; PRESS.fmt = k; $$('#view [data-pfmt]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pfmt === k))); showZine(true); tick(1500); }
 /* a print sent: a small clear printer, hand-drawn, the paper feeding out, then torn; no words */
 function feedAnim(url) {
-  const d = $('#zine .desk'); if (!d || reduced()) return;
+  /* the head steps whether or not the paper is seen to move */
+  snd.printer(1400); const d = $('#zine .desk'); if (!d || reduced()) return;
   const el = document.createElement('div'); el.className = 'feed'; el.innerHTML = `<i class="fp-body"></i><i class="fp-slot"></i><i class="fp-led"></i><span class="fp-paper"><img src="${url}" alt=""></span>`;
-  d.appendChild(el); snd.printer(1400); setTimeout(() => el.classList.add('torn'), 1500); setTimeout(() => el.remove(), 2600);
+  d.appendChild(el); setTimeout(() => el.classList.add('torn'), 1500); setTimeout(() => el.remove(), 2600);
 }
 const POSTERS2 = store.get('da.posters2.v1', []);
 let lastPoster = '';
@@ -471,7 +474,7 @@ function cardKin(card) {
   return { fig, poster };
 }
 async function openCard(card) {
-  $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
+  $$('.card-view').forEach(e => e.remove()); snd.jelly(0);
   const el = document.createElement('div'); el.className = 'card-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', card.name || 'A card');
   const c = await cardArt(card, card.n, 4); c.className = 'tv-card'; const { fig, poster } = cardKin(card); const WITH = { poster: !!poster, song: !!fig };
   const acts = [['strip', 'receipt', 'onto the strip', 'placed as art, to print'], ['board', 'base', 'onto the board', 'pinned up in W.I.S.H.'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
@@ -525,6 +528,8 @@ async function pressOut(k) {
   /* nothing on the paper and no story at its head: nothing to print */
   if (k === 'send' && !s && zc && !zc.getObjects().length) { tick(600); return; }
   const out = await stripOut(); if (!out) return; const { url, F } = out;
+  /* the paper is torn off at 1.5 s; the tear is heard then, not when the network answers */
+  const tearAt = performance.now() + (reduced() ? 0 : 1500);
   if (k === 'print' || k === 'send') feedAnim(url);
   const kept = k === 'print' || k === 'send' || k === 'png' ? savePoster(true).catch(() => null) : null;
   if (k === 'print' || k === 'send' || k === 'poster') thumbOf(url, 240).then(u => addToBoard(u, 'print', 170)).catch(() => {});
@@ -553,7 +558,7 @@ async function pressOut(k) {
   if (k === 'send') {
     const btn = document.querySelector('#view .print-k'); if (btn) btn.classList.add('busy');
     const first = simple();
-    try { const to = prnNow(); const v = await directAction(sg, to ? to.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); await kept; pressDone(sg); refreshPanel(); }
+    try { const to = prnNow(); const v = await directAction(sg, to ? to.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); await new Promise(r => setTimeout(r, Math.max(0, tearAt - performance.now()))); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); await kept; pressDone(sg); refreshPanel(); }
     catch (e) { toast(e.status === 429 ? 'TOO MANY · TRY AGAIN SOON' : e.status === 503 ? 'THE QUEUE IS FULL' : /escpos|story/.test(e.message || '') ? 'TOO LONG TO SEND' : 'NOT SENT'); }
     finally { if (btn) btn.classList.remove('busy'); }
     /* a first visit: printed, or waiting to, it is the showcase's hero, and everything opens (43-journey.js) */
@@ -642,7 +647,7 @@ $('#view').addEventListener('click', e => {
   const po = e.target.closest('[data-pout]'); if (po) { pressOut(po.dataset.pout); return; }
   const sk = e.target.closest('[data-stk]'); if (sk) { const st = stickNow()[+sk.dataset.stk]; if (st.w) faceReady(FACES[st.f || 0]).then(() => placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', 130)); else placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.j ? 90 : 70); if (st.j) snd.jelly(0.3); return; }
   /* a drawer: pressed, it opens (and any other shuts); pressed again, it shuts */
-  const dr = e.target.closest('[data-drawer]'); if (dr) { const k = dr.dataset.drawer; PRESS.drawer = PRESS.drawer === k ? null : k; $$('#view [data-drawer]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.drawer === PRESS.drawer))); $$('#view .drawer').forEach(d => { d.hidden = d.id !== 'dr-' + PRESS.drawer; }); snd.tick(PRESS.drawer ? 1400 : 1000); buzz(4); if (PRESS.drawer === 'stick' && (PRESS.pack === 'words' || PRESS.pack === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
+  const dr = e.target.closest('[data-drawer]'); if (dr) { const k = dr.dataset.drawer; PRESS.drawer = PRESS.drawer === k ? null : k; $$('#view [data-drawer]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.drawer === PRESS.drawer))); $$('#view .drawer').forEach(d => { d.hidden = d.id !== 'dr-' + PRESS.drawer; }); snd.tick(PRESS.drawer ? 1400 : 1000); if (PRESS.drawer === 'stick' && (PRESS.pack === 'words' || PRESS.pack === 'ideas')) Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
   const sp = e.target.closest('[data-spack]'); if (sp) { const k = sp.dataset.spack; PRESS.pack = k; PRESS.drawer = 'stick'; refreshPanel(); snd.tick(1300 + Object.keys(PACKS_ALL).indexOf(k) * 120); if (k === 'words' || k === 'ideas') Promise.all(FACES.map(faceReady)).then(redrawSheet); return; }
   const pc = e.target.closest('[data-piece]'); if (pc) { pieceOn(pc.dataset.piece, pc.dataset.pid); tick(1500); }
   const wd = e.target.closest('[data-wild]'); if (wd && wd.dataset.wild === 'more') { pullWild(); tick(1500); return; } if (wd) { const sp = wildSpecies(wd.dataset.wild); if (sp) speciesSticker(sp).then(u => placeOnPage(u, 'sticker', 96, true)); else tick(600); return; }

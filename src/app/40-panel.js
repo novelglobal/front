@@ -9,7 +9,6 @@ rail.innerHTML = VIEWS.map((v, i) => `<button type="button" class="tab${i < 3 ? 
 function drawThread() { const t = [0, 1, 2].filter(n => DAY[n]); $$('#rail .tab').forEach((b, i) => b.classList.toggle('tied', !!DAY[i])); rail.style.setProperty('--tp', `${t.length ? Math.max(...t) * 46 : 0}px`); }
 function tie(n) {
   if (DAY[n]) return; DAY[n] = Date.now(); store.set('da.day.v1', DAY); drawThread();
-  if (prefs.sound) snd.knot({ fam: 'people' }, F0 * [4, 5, 6][n], 0.05, 0.6, 0.6);
 }
 drawThread();
 rail.addEventListener('click', e => { const b = e.target.closest('.tab'); if (!b) return; const i = +b.dataset.i; tick(1400 + 160 * i);
@@ -153,7 +152,7 @@ viewEl.addEventListener('click', e => {
   const gp = e.target.closest('[data-part]'); if (gp) { const P = PARTS[gp.dataset.part]; if (P) setView(P[0], false, gp.dataset.part); return; }
   const sg = e.target.closest('[data-sig]'); if (sg) { openSignal(sg.dataset.sig); return; }
   const dc = e.target.closest('[data-doc]'); if (dc) { takeAway(dc.dataset.doc); return; }
-  const sy = e.target.closest('[data-style]'); if (sy) { prefs.slip = sy.dataset.style; savePrefs(); $$('#view [data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.slip))); if (S.view === 2) showZine(true); tick(1500); buzz(4); return; }
+  const sy = e.target.closest('[data-style]'); if (sy) { prefs.slip = sy.dataset.style; savePrefs(); $$('#view [data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.slip))); if (S.view === 2) showZine(true); tick(1500); return; }
   if (e.target.closest('[data-to-radar]')) { setOpen(false); return; }
   if (e.target.closest('a[href]')) return;
   const tr = e.target.closest('[data-tribe]'); if (tr) { selectTribe(tr.dataset.tribe); return; }
@@ -495,10 +494,15 @@ const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.pa
 const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
 const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; gzReset(); g.hidden = !on; if (!on) { g.classList.remove('full'); document.body.classList.remove('gl-full'); return; } const ps = wallOf();
+  const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) { gzReset(); g.classList.remove('full'); document.body.classList.remove('gl-full'); return; } const ps = wallOf();
   /* what was just printed comes first */
   if (galleryFocus) { const at = ps.findIndex(x => x.id === galleryFocus); if (at >= 0) galleryAt = at; galleryFocus = null; }
   galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
+  /* drawn again only when what hangs on the wall has changed: a refresh from elsewhere (news arriving, a print's state) leaves
+     the piece in view, its close-up and its card as they are, and only its number and light are read again */
+  const sig = JSON.stringify([ps.map(x => [x.id, !!x.img, wallCap(x)]), deck().map(c => c.id)]); const tr0 = g.querySelector('.gl-track');
+  if (tr0 && g.dataset.sig === sig) { if (Math.round(tr0.scrollLeft / Math.max(1, tr0.clientWidth)) !== galleryAt) tr0.scrollLeft = galleryAt * tr0.clientWidth; galleryRead(); return; }
+  g.dataset.sig = ps.length ? sig : ''; gzReset();
   if (!ps.length) { g.innerHTML = `<div class="gl-none"><button type="button" class="key" data-go-view="2" aria-label="The print shop" data-tip="The print shop">${icon('receipt')}</button></div>`; return; }
   /* the example's zine is made once a visit; until then the muse waits in its place */
   if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
@@ -649,8 +653,8 @@ function bindPortfolio() {
   $('#rx-open').addEventListener('click', () => { openReceive($('#rx').hidden); tick(1500); });
   const pf = $('#pack-f'); if (pf) pf.addEventListener('change', packFile);
   $('#rx').addEventListener('submit', e => { e.preventDefault(); const t = $('#rx-t').value.trim(); if (!t) { nudge($('#rx-t')); return; } receive(t); });
-  $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); if (!prefs.sound) { stopTracks(); snd.droneOff(); } tick(); });
-  $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', !prefs.motion); life.data(); tick(); });
+  $('#ix-sound').addEventListener('click', e => { prefs.sound = !prefs.sound; e.currentTarget.setAttribute('aria-pressed', String(prefs.sound)); savePrefs(); syncTracks(); tick(); });
+  $('#ix-motion').addEventListener('click', e => { prefs.motion = !prefs.motion; e.currentTarget.setAttribute('aria-pressed', String(prefs.motion)); savePrefs(); document.documentElement.classList.toggle('still', reduced()); life.data(); tick(); });
   $('#ix-areas').addEventListener('click', e => { prefs.areas = !prefs.areas; e.currentTarget.setAttribute('aria-pressed', String(prefs.areas)); savePrefs(); life.redraw(); tick(); });
   $('#ix-night').addEventListener('click', e => { prefs.night = !darkNow(); e.currentTarget.setAttribute('aria-pressed', String(prefs.night)); e.currentTarget.querySelector('.dd').textContent = prefs.night ? 'DARK' : 'DAY'; savePrefs(); applyNight(); tick(); });
   $('#ix-printers').addEventListener('click', e => { prefs.printers = !prefs.printers; e.currentTarget.setAttribute('aria-pressed', String(prefs.printers)); savePrefs(); life.redraw(); tick(); });

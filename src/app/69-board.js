@@ -20,11 +20,13 @@ if (window.DA_EXAMPLE_KIT && !BOARDS.some(b => b.id === 'b00')) { BOARDS.unshift
 let boardId = BOARDS.some(b => b.id === prefs.board) ? prefs.board : (BOARDS.find(b => !b.ex) || BOARDS[0]).id;
 const boardOf = id => store.get('da.board.' + id, null);
 const boardJSON = () => { const k = boardOf(boardId); return (k && k.json) || { objects: [] }; };
-const HIST = []; let histLast = '';
+const HIST = []; let histLast = '', fullAt = 0;
+/* the browser's storage full: said, at most every few seconds, instead of SAVED when nothing was */
+const saveFull = () => { if (Date.now() - fullAt > 8000) { fullAt = Date.now(); toast('FULL · NOT SAVED'); } };
 function saveBoard(say) {
   if (!cv || exLocked()) return; const json = cv.toJSON(BOARD_PROPS); const str = JSON.stringify(json);
-  if (histLast && str !== histLast) { HIST.push(histLast); if (HIST.length > 40) HIST.shift(); } histLast = str;
-  store.set('da.board.' + boardId, { v: BOARD_V, json, ...(boardId === 'b00' ? { ex: 'edit', at: Date.now() } : {}) }); if (say) toast('SAVED');
+  if (histLast && str !== histLast) { HIST.push(histLast); if (HIST.length > 12) HIST.shift(); } histLast = str;
+  if (!store.set('da.board.' + boardId, { v: BOARD_V, json, ...(boardId === 'b00' ? { ex: 'edit', at: Date.now() } : {}) })) saveFull(); else if (say) toast('SAVED');
 }
 /* one step back: the board as it was before the last change */
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
@@ -106,7 +108,7 @@ function joinCards(a, b) {
   cv.add(l); cv.sendToBack(l); for (const o of cv.getObjects().filter(o => o.daKind === 'section')) cv.sendToBack(o); saveSoon();
 }
 /* a string let go: one click on it */
-function unjoin(l) { cv.remove(l); cv.requestRenderAll(); saveSoon(); snd.pluck(0.2, 0); buzz(4); }
+function unjoin(l) { cv.remove(l); cv.requestRenderAll(); saveSoon(); snd.pluck(0.2, 0); }
 /* joining: the key pressed, then one card, then another; the same two again lets them go */
 let linkFrom = null, linkArmed = false;
 function linking(t) {
@@ -228,6 +230,8 @@ function radiusSpecies(n = 12) {
   return out;
 }
 function sendSpecies(o) {
+  /* once everything is open, the life sent from its card is what W.I.S.H.'s receipt holds, with the strings tied on it */
+  if (!simple()) { const c = jSelConn(); if (c) { JR.sel = c; JR.acts = (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); } }
   const sp = keepSpecies(spOf(o)); const g = sp.g;
   markTweak(); flyToTab(1, $('#r-fig')); snd.knot({ g }, F0 * partialOf(g), 0, 0.7, 0); buzz([8, 30, 8]);
   return sp;
