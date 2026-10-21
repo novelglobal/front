@@ -1,0 +1,14 @@
+[Unit]
+Description=Wi-Fi setup: with no Wi-Fi, this Pi opens its own, so a phone can choose one
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+EnvironmentFile=/etc/wifi-setup.env
+EnvironmentFile=-/etc/printd.env
+ExecStart=/usr/bin/python3 /opt/wifi-setup/wifi.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

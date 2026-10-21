@@ -21,6 +21,7 @@ Two open-source projects do the work with the hardware:
 - A Raspberry Pi 3 Model A+ (or any Pi with Wi-Fi), a 5 V 2.5 A supply and a 32 GB microSD card.
 - An Epson TM-T88V with its PS-180 supply, 80 mm paper, and a USB-A to USB-B cable.
 - *Optional:* a Meshtastic radio with a USB cable.
+- *Optional:* a push button with two female jumper wires, to turn the Pi off and on again.
 
 ## 1. The printer
 
@@ -119,6 +120,22 @@ sudo -u da python3 -m pip install --user meshtastic
 
 Then set `DA_MESH=auto` in `/etc/da-pull.env`, or the radio's device, such as `/dev/ttyACM0`. Turn **MESH ON** for this printer on the approval page, and run `sudo systemctl restart da-pull`. Each slip's mesh line, 200 bytes at most, now also goes out on the radio's primary channel.
 
+## 6. Wi-Fi from a phone, and turning it off
+
+For a printer that moves from place to place. One line sets up both, on this Pi or on FOE. Run it again at any time to update:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/setup/install.sh | sh
+```
+
+**Wi-Fi from a phone** (`setup/wifi.py`). When the Pi has found no Wi-Fi it knows for two minutes, it opens its own, `<NAME> SETUP`, and the printer prints its password and a code to scan. Join it with a phone: a page opens by itself (or go to `http://10.42.0.1`). Choose the Wi-Fi, type its password and press **JOIN**. The printer prints **ON WI-FI** once the Pi has joined, and the Pi remembers it. Every Wi-Fi the Pi already knows is kept. If nobody comes, the setup Wi-Fi closes after ten minutes and the Wi-Fi it knows is looked for again. It is built on NetworkManager's own hotspot, so it needs Raspberry Pi OS Bookworm or newer, and nothing else to install. `python3 wifi.py --demo` shows the page on a computer, at `http://127.0.0.1:8080`.
+
+**Turning it off**, so its card is never cut off mid-write:
+
+- **TURN OFF** on the approval page, under **PRINTERS**, shows while the Pi is listening. The printer prints **TURNING OFF**, and the Pi shuts down. Unplug it once the green light stops. A TURN OFF that the Pi has not heard within two minutes is dropped, so a printer moved and switched on later is never turned off by it.
+- **A push button** on pins 5 and 6 (GPIO 3 and ground) turns the Pi off, and on again. This is the Pi's own `gpio-shutdown`, switched on by the line above after one restart.
+- **FOE**: a USB stick with a file called `OFF` on it.
+
 ## When something is wrong
 
 | What you see | What to do |
@@ -127,6 +144,7 @@ Then set `DA_MESH=auto` in `/etc/da-pull.env`, or the radio's device, such as `/
 | `printd answered 401` | `PRINTD_API_KEY` in `/etc/da-pull.env` and `/etc/printd.env` must match |
 | `no signal` in the log | The Wi-Fi dropped. The bridge keeps asking, and prints what is waiting when the signal returns |
 | Nothing prints, and no errors | Check that the slip was approved. A printer set to print after approval holds each slip until then |
+| The Wi-Fi it knows is out of range | With the setup line above, it opens `<NAME> SETUP` after two minutes and prints how to join it. Without it: a network cable, then `sudo nmcli device wifi connect "<name>" password "<password>"` |
 
 ## Privacy
 

@@ -8,6 +8,8 @@ in, so it needs no open ports and works behind any shop's Wi-Fi.
     the slip's ESC/POS bytes are sent to its POST /print/raw as {"bytes_b64": ...}
   · a slip's mesh line can also go out over a Meshtastic radio plugged into this Pi, through Meshtastic's own Python
     library (https://github.com/meshtastic/python, GPL-3.0), when DA_MESH is set and the printer's MESH is on
+  · TURN OFF on the approval page: this bridge prints a slip and leaves a note in /run/da-pull, and da-off.path, a
+    systemd unit, turns the Pi off safely. It is offered only where da-off.path is installed (receiver/setup/install.sh)
 
 Standard library only, apart from the optional meshtastic package. Settings come from the environment
 (see da-pull.env.example). Logs go to standard output, which systemd keeps in the journal.
@@ -17,6 +19,7 @@ import json
 import logging
 import os
 import signal
+import subprocess
 import sys
 import time
 import urllib.error
@@ -33,6 +36,8 @@ POLL = float(os.environ.get('DA_POLL', '3'))  # seconds between asks when the qu
 DRY = os.environ.get('DA_DRY', '') == '1'     # write each slip to DA_DRY_DIR instead of printing it: for testing
 DRY_DIR = os.environ.get('DA_DRY_DIR', '/tmp')
 COLS = int(os.environ.get('DA_COLS', '42'))   # characters a line holds, for the slips this bridge sets itself
+OFF_FILE = os.environ.get('DA_OFF_FILE', '/run/da-pull/off')   # the note da-off.path waits for
+CAN_OFF = os.path.exists('/etc/systemd/system/da-off.path') or 'DA_OFF_FILE' in os.environ
 
 log = logging.getLogger('da-pull')
 running = True
@@ -103,8 +108,31 @@ def auth():
 
 
 def next_job():
-    status, j = http('GET', f'{SERVER}/api/printers/{PRINTER}/next', headers=auth())
+    status, j = http('GET', f'{SERVER}/api/printers/{PRINTER}/next' + ('?can=off' if CAN_OFF else ''), headers=auth())
     return j if status == 200 else None
+
+
+def wifi_name():
+    """the Wi-Fi this Pi is on, for the READY slip; '' on a cable, or where NetworkManager is not asked"""
+    try:
+        out = subprocess.run(['nmcli', '-t', '-f', 'ACTIVE,SSID', 'device', 'wifi', 'list', '--rescan', 'no'], capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ''
+    for line in out.splitlines():
+        if line.startswith('yes:'):
+            return line[4:].replace('\\:', ':')
+    return ''
+
+
+def turn_off():
+    """TURN OFF from the approval page: a slip to say so, then the note that has systemd turn the Pi off safely"""
+    try:
+        print_bytes(text_slip(['DIRECT ACTION', 'TURNING OFF', PRINTER.upper(), 'UNPLUG ONCE THE GREEN LIGHT STOPS', datetime.now().strftime('%d.%m.%y %H:%M')]))
+    except Exception as e:  # turned off all the same
+        log.warning('no TURNING OFF slip: %s', e)
+    with open(OFF_FILE, 'w') as f:
+        f.write(datetime.now().isoformat())
+    log.info('turning off, as asked on the approval page')
 
 
 def report(job, ok, error=''):
@@ -140,7 +168,8 @@ def main():
     signal.signal(signal.SIGINT, stop)
     if '--no-ready' not in sys.argv:
         try:
-            print_bytes(text_slip(['DIRECT ACTION', 'READY', PRINTER.upper(), datetime.now().strftime('%d.%m.%y %H:%M')]))
+            net = wifi_name()
+            print_bytes(text_slip(['DIRECT ACTION', 'READY', PRINTER.upper()] + ([f'WI-FI {net}'] if net else []) + [datetime.now().strftime('%d.%m.%y %H:%M')]))
         except Exception as e:
             log.warning('no READY slip: %s', e)
     wait = POLL
@@ -148,6 +177,16 @@ def main():
         try:
             j = next_job()
             wait = POLL
+            if j and j.get('off'):
+                turn_off()
+                if once:
+                    return 0
+                for _ in range(60):  # systemd stops this bridge as the Pi turns off; if that has not come, carry on
+                    if not running:
+                        return 0
+                    time.sleep(1)
+                log.error('asked to turn off, but the Pi is still on: is da-off.path installed?')
+                continue
             if j:
                 handle(j)
                 if once:

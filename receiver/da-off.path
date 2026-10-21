@@ -1,0 +1,10 @@
+# Direct Action · TURN OFF from the approval page. The bridge (pull.py) leaves a note in /run/da-pull; this unit sees
+# it and starts da-off.service, which turns the Pi off safely. Installed by receiver/setup/install.sh.
+[Unit]
+Description=Turn this Pi off when the approval page asks
+
+[Path]
+PathExists=/run/da-pull/off
+
+[Install]
+WantedBy=multi-user.target

@@ -147,6 +147,17 @@ try {
     const files = fs.readdirSync(dir); const got = files.length ? fs.readFileSync(path.join(dir, files[0])) : Buffer.alloc(0); const r5 = await call(`/api/receipts/${s5.json.id}`);
     check('the receiver pulls an approved slip, prints its bytes as sent, and reports it printed', run.status === 0 && got.equals(BYTES) && r5.json.job.status === 'printed', JSON.stringify({ exit: run.status, files, job: r5.json.job, log: (run.stdout + run.stderr).trim().split('\n').slice(-2) }));
     fs.rmSync(dir, { recursive: true, force: true });
+    /* TURN OFF on the approval page: dropped by a receiver that cannot turn off; handed once to one that can, which prints a slip and leaves the note that turns its Pi off */
+    await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'off' } });
+    const old = await call('/api/printers/elsie/next', { token: tk });
+    await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'off' } });
+    const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'da-off-')); const note = path.join(dir2, 'off');
+    const run2 = spawnSync(py, [path.join(ROOT, 'receiver/pull.py'), '--once', '--no-ready'], { env: { ...process.env, DA_SERVER: O, DA_PRINTER: 'elsie', DA_TOKEN: tk, DA_DRY: '1', DA_DRY_DIR: dir2, DA_OFF_FILE: note }, encoding: 'utf8', timeout: 60000 });
+    const slips = fs.readdirSync(dir2).filter(f => f.startsWith('da-slip-')); const slip = slips.length ? fs.readFileSync(path.join(dir2, slips[0]), 'latin1') : '';
+    const again = await call('/api/printers/elsie/next?can=off', { token: tk }); const pl = await call('/api/admin/printers', { key: KEY });
+    check('TURN OFF: dropped by a receiver that cannot; handed once to one that can, which prints a slip and asks its Pi to turn off', old.status === 204 && run2.status === 0 && fs.existsSync(note) && /TURNING OFF/.test(slip) && again.status === 204 && pl.json.printers.find(p => p.id === 'elsie').can === 'off',
+      JSON.stringify({ old: old.status, exit: run2.status, note: fs.existsSync(note), slips: slips.length, again: again.status, can: (pl.json.printers.find(p => p.id === 'elsie') || {}).can, log: (run2.stdout + run2.stderr).slice(-300) }));
+    fs.rmSync(dir2, { recursive: true, force: true });
   } else results.push('SKIP  the receiver: no Python here');
   /* a message to novel.global, from the portfolio: approved, it prints; it is never listed for anyone, nor its photograph */
   const ms = await call('/api/stories', { method: 'POST', ip: '203.0.113.77', body: story('DA-3MSG', { kind: 'message', dest: 'novelglobal', escpos: Buffer.from([0x1B, 0x40, 72, 10]).toString('base64'), photo: JPEG }) });

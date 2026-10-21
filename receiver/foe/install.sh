@@ -3,6 +3,7 @@
 # on an Epson receipt printer on USB. Run on the Pi:
 #   curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/foe/install.sh | sh
 #   curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/foe/install.sh | BT=1 sh
+# For Wi-Fi chosen from a phone and an off button, run receiver/setup/install.sh afterwards.
 set -e
 BASE=https://raw.githubusercontent.com/novelglobal/front/staging/receiver/foe
 sudo apt-get update

@@ -3,6 +3,7 @@
 
 Plug in a USB stick: every picture (.png .jpg .jpeg .gif .bmp .webp), text (.txt .md), PDF and raw printer file (.bin) on it
 prints, once, on the Epson on /dev/usb/lp0. Files sent to the Pi by Bluetooth land in the inbox and print the same way.
+A stick with a file called OFF (or OFF.txt) on it prints nothing: FOE turns itself off, safely, and says so on a slip.
 Standard library, Pillow, and pdftoppm for PDFs.
 
   sudo python3 foe.py --test     a test receipt
@@ -22,6 +23,7 @@ MNT = '/mnt/foe'
 PICS = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')
 TEXT = ('.txt', '.md')
 ESC, GS = b'\x1b', b'\x1d'
+OFF = ('OFF', 'OFF.TXT')   # a file of this name on a stick turns FOE off instead
 
 
 def log(*a):
@@ -107,7 +109,7 @@ def digest(path):
 
 def wanted(path):
     n = os.path.basename(path)
-    return not n.startswith('.') and n.lower().endswith(PICS + TEXT + ('.pdf', '.bin'))
+    return not n.startswith('.') and n.upper() not in OFF and n.lower().endswith(PICS + TEXT + ('.pdf', '.bin'))
 
 
 def run_batch(files, once=True):
@@ -134,6 +136,16 @@ def stick_files(root):
     return out
 
 
+def turn_off():
+    """an OFF stick: a slip to say so, then the Pi turns off safely, so its card is never cut off mid-write"""
+    log('an OFF stick: turning off')
+    try:
+        send(header() + text_bytes('Turning off.\nUnplug once the green light stops.') + cut())
+    except OSError as e:
+        log('no slip:', e)
+    subprocess.run(['systemctl', 'poweroff'])
+
+
 def in_use():
     """the disks this Pi is running from (or has mounted itself): never treated as a stick to print from"""
     disks = set()
@@ -158,11 +170,15 @@ def watch():
             time.sleep(1.5)
             if subprocess.run(['mount', '-o', 'ro', dev, MNT]).returncode == 0:
                 log('stick', dev)
+                off = any(n.upper() in OFF for n in os.listdir(MNT))
                 try:
-                    run_batch(stick_files(MNT))
+                    if not off:
+                        run_batch(stick_files(MNT))
                 finally:
                     subprocess.run(['umount', MNT])
                     log('done: the stick can come out')
+                if off:
+                    turn_off()
         known = devs
         files = [os.path.join(INBOX, f) for f in os.listdir(INBOX) if os.path.isfile(os.path.join(INBOX, f))]
         if files:

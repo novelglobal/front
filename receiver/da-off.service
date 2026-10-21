@@ -1,0 +1,7 @@
+# Direct Action · started by da-off.path: turns this Pi off safely, so its card is never cut off mid-write.
+[Unit]
+Description=Turn this Pi off safely
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl poweroff
