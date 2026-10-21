@@ -161,7 +161,9 @@ async function receipt(db, id) {
 /* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
 const SETTINGS = { lifeLock: true, exampleEdit: false };
-async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS }; for (const r of results) if (r.k in SETTINGS) out[r.k] = r.v === '1'; return out; }
+/* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
+const TEXTS = { template: 6000 };
+async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
   const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.live, p.token IS NOT NULL AS paired, p.seen,
@@ -228,7 +230,10 @@ async function admin(db, env, req, parts) {
   if (what === 'posts' && id && parts[2] === 'cover') return postCover(db, id, true);
   if (what === 'posts' && id && req.method === 'GET') return onePost(db, id, true);
   if (what === 'posts' && id && req.method === 'POST') { const b = await body(req); if (b.action !== 'delete') return fail(400, 'action'); await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run(); return json({ ok: true }); }
-  if (what === 'settings' && req.method === 'POST') { const b = await body(req); for (const k of Object.keys(SETTINGS)) if (typeof b[k] === 'boolean') await db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, b[k] ? '1' : '0').run(); return json(await settingsOf(db)); }
+  if (what === 'settings' && req.method === 'POST') { const b = await body(req); const put = (k, v) => db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, v).run();
+    for (const k of Object.keys(SETTINGS)) if (typeof b[k] === 'boolean') await put(k, b[k] ? '1' : '0');
+    for (const [k, max] of Object.entries(TEXTS)) if (typeof b[k] === 'string') await put(k, b[k].replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '').slice(0, max));
+    return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.seen, p.can, p.off,

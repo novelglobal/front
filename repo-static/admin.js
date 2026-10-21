@@ -106,7 +106,14 @@
     /* BOARD 00, the example: as everyone sees it, or open to rewriting in the W.I.S.H. tab and sending here */
     const ex = el('section', { class: 'printer' }); ex.append(el('h3', { text: 'BOARD 00 · THE EXAMPLE' }), el('div', { class: 'note', text: st.exampleEdit ? 'OPEN TO EDITING: CHANGE IT IN W.I.S.H. → BOARD 00, PRESS SEND, THEN SHOW IT HERE UNDER WAITING.' : 'LOCKED: EVERY VISITOR SEES IT AS IT IS.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.exampleEdit ? 'on' : '', text: st.exampleEdit ? 'EDITING ON' : 'LOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ exampleEdit: !st.exampleEdit }) }); show('stations'); } })));
-    main.replaceChildren(card, ex);
+    /* the first board's template: its words, a note to a paragraph, its title on its first line; empty, the site's own */
+    const own = ((window.DA_CONFIG || {}).TEMPLATE || []).map(([, t, d]) => `${t}\n${d}`).join('\n\n');
+    const ta = el('textarea', { class: 'body', maxlength: 6000, spellcheck: 'true', 'aria-label': 'The first board, in words' }); ta.value = st.template || own;
+    const tp = el('section', { class: 'printer ed' }); tp.append(el('h3', { text: 'BOARD 01 · THE TEMPLATE' }),
+      el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
+        el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
+    main.replaceChildren(card, ex, tp);
   }
   async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...list.map(printerCard)); }
 

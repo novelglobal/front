@@ -56,7 +56,7 @@ async function showBoard(on) {
   cv.renderAll(); return cv;
 }
 async function loadBoard() {
-  if (boardId === 'b00') await ensureExample();
+  if (boardId === 'b00') await ensureExample(); else if (tplDue(boardId)) await ensureTemplate(boardId);
   cv.clear(); HIST.length = 0; const k = boardOf(boardId); histLast = k && k.json ? JSON.stringify(k.json) : ''; if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' });
   exFrame(); cv.renderAll();
 }
@@ -114,12 +114,50 @@ function linking(t) {
   if (!linkFrom) { linkFrom = t; snd.tick(1500); return; }
   joinCards(linkFrom, t); linkFrom = null; linkArmed = false; $('#board [data-bt="link"]').classList.remove('on'); snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0);
 }
+/* ───────── the first board's template: the W.I.S.H. matrix, a box for each letter saying what research goes in it, and around
+   it a codec note on each tool of the board. Laid once on the first board of one's own when it is opened empty (or holding
+   only what a first visit made, which goes into W); every piece can be deleted, and a board emptied stays empty. Its words
+   are config.js's TEMPLATE, or as rewritten on the approval page ───────── */
+const TPL_KEYS = ['HOW', 'W', 'I', 'S', 'H', 'NOTE', 'SECT', 'LINK', 'IMG', 'ZOOM', 'LOCK', 'OUT'];
+const TPLD = new Set(store.get('da.tpl.v1', []));
+function tplWords() {
+  const out = {}; for (const [k, t, d] of CONFIG.TEMPLATE || []) out[k] = [t, d || ''];
+  for (const blk of String(CFG.template || '').split(/\n\s*\n/)) {
+    const ls = blk.split('\n').map(l => l.trim()).filter(Boolean); if (!ls.length) continue;
+    const k = ls[0].split(/[\s·:|]+/).map(w => w.toUpperCase()).find(w => TPL_KEYS.includes(w)); if (k) out[k] = [ls[0], ls.slice(1).join(' ')];
+  }
+  return out;
+}
+function tplObjects(f) {
+  const T = tplWords(); const objs = []; const card = (kind, text, x, y, o) => { const c = textCard(f, uid(kind[0]), kind, text, x, y, o); objs.push(c); return c; };
+  const box = (k, x, y) => { const [t, d] = T[k] || [k, ''];
+    objs.push(new f.Rect({ left: x, top: y, width: 330, height: 400, fill: 'rgba(143,169,196,.07)', stroke: '#8FA9C4', strokeDashArray: [2, 4], rx: 2, ry: 2, daId: uid('s'), daKind: 'section' }));
+    card('note', t, x + 4, y - 44, { backgroundColor: 'transparent', fill: '#8FA9C4', fontSize: 24, width: 320 }); if (d) card('fig', d, x + 14, y + 14, { width: 236, fontSize: 10.5 }); };
+  /* the four boxes and the notes beside them fit a desk's screen beside the device */
+  box('W', 10, 60); box('I', 360, 60); box('S', 10, 520); box('H', 360, 520);
+  let y = 16; for (const k of ['HOW', 'NOTE', 'SECT', 'LINK', 'IMG', 'ZOOM', 'LOCK', 'OUT']) { const [t, d] = T[k] || []; if (!t) continue; const c = card(k === 'HOW' ? 'note' : 'codec', d ? `${t}\n${d}` : t, 712, y, k === 'HOW' ? { width: 220, fontSize: 18 } : { width: 220, fontSize: 16 }); y += c.getScaledHeight() + 10; }
+  return objs;
+}
+/* laid if it should be; true when it was. The board as kept is read after the wait for Fabric, and written in the same breath,
+   so a piece placed meanwhile is never lost */
+const tplDue = id => id === (BOARDS.find(b => !b.ex) || {}).id && !TPLD.has(id);
+async function ensureTemplate(id) {
+  if (!tplDue(id)) return false; const f = await loadFabric().catch(() => null); if (!f || !tplDue(id)) return false;
+  const k = boardOf(id) || {}; const objs = ((k.json || {}).objects || []).slice(); const done = () => { TPLD.add(id); store.set('da.tpl.v1', [...TPLD]); };
+  /* a board already written on stays as it is */
+  if (objs.some(o => !['receipt', 'print'].includes(o.daKind))) { done(); return false; }
+  const T = tplObjects(f).map(o => o.toObject(BOARD_PROPS));
+  /* what a first visit made sits in W, what we know, in a row */
+  objs.forEach((o, i) => { const sc = 96 / (o.width || 96); Object.assign(o, { left: 22 + (i % 3) * 104, top: 150 + Math.floor(i / 3) * 260, scaleX: sc, scaleY: sc }); });
+  store.set('da.board.' + id, { v: BOARD_V, json: { version: f.version, objects: [...T, ...objs] } }); done(); return true;
+}
 /* a card is one piece of editable text on its own clear plate: double-click to rewrite it */
 function textCard(f, id, kind, text, x, y, o = {}) {
   const look = { mix: { fill: '#0C0E0E', backgroundColor: '#F4F2EA', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 250 }, note: { fill: '#0C0E0E', backgroundColor: '#E6F84A', fontFamily: 'VT323, monospace', fontSize: 20, width: 180 },
     fig: { fill: '#0C0E0E', backgroundColor: '#DCEFEE', fontFamily: '"IBM Plex Mono", monospace', fontSize: 10.5, width: 180 },
     cell: { fill: '#0C0E0E', backgroundColor: '#FFFFFF', fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, width: 200 },
-    slip: { fill: '#141412', backgroundColor: '#FFFFFF', fontFamily: 'VT323, monospace', fontSize: 19, width: 230 } }[kind] || {};
+    slip: { fill: '#141412', backgroundColor: '#FFFFFF', fontFamily: 'VT323, monospace', fontSize: 19, width: 230 },
+    codec: { fill: '#9DFFB4', backgroundColor: '#06150D', fontFamily: 'VT323, monospace', fontSize: 17, width: 230 } }[kind] || {};
   return new f.Textbox(text, { left: x, top: y, padding: 12, lineHeight: 1.25, daId: id, daKind: kind, editable: true, borderColor: '#FF5A1F', cornerColor: '#FF5A1F', cornerSize: 8, transparentCorners: false, ...look, ...o });
 }
 const free = () => { const n = cv.getObjects().filter(o => o.daKind && o.daKind !== 'link').length % 6; const vt = cv.viewportTransform, z = vt[0] || 1; return { x: (cv.getWidth() * 0.3 - vt[4]) / z + (n % 3) * 30, y: (cv.getHeight() * 0.25 - vt[5]) / z + Math.floor(n / 3) * 30 }; };
@@ -148,11 +186,13 @@ function photoCard(url, id, x, y, w, to) {
 /* a picture made small enough to keep on a board in this browser */
 async function thumbOf(url, w = 240) { const im = await loadImage(url, /^https?:/.test(url) && !url.startsWith(location.origin)); const k = Math.min(1, w / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82); }
 async function addToBoard(url, kind = 'receipt', w = 220) {
-  await workBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
+  await workBoard(); if (await ensureTemplate(boardId) && cv) await loadBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
   if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
   const kept = boardOf(boardId) || {}; const json = kept.json || { version: '5.3.0', objects: [] }; json.objects = json.objects || [];
   const n = json.objects.filter(o => o.daKind && o.daKind !== 'link').length;
-  json.objects.push({ type: 'image', version: '5.3.0', originX: 'left', originY: 'top', left: 40 + (n % 4) * 270, top: 40 + Math.floor(n / 4) * 230, width: im.width, height: im.height, scaleX: k, scaleY: k, src: url, crossOrigin: null, daId: id, daKind: kind });
+  /* on the first board, laid with its template, what arrives before it is opened goes into W, what we know, in a row */
+  const inW = TPLD.has(boardId); const m = json.objects.filter(o => o.daKind && !['link', 'section', 'note', 'fig', 'codec'].includes(o.daKind)).length; const k2 = inW ? 96 / im.width : k;
+  json.objects.push({ type: 'image', version: '5.3.0', originX: 'left', originY: 'top', left: inW ? 22 + (m % 3) * 104 : 40 + (n % 4) * 270, top: inW ? 150 + Math.floor(m / 3) * 260 : 40 + Math.floor(n / 4) * 230, width: im.width, height: im.height, scaleX: k2, scaleY: k2, src: url, crossOrigin: null, daId: id, daKind: kind });
   store.set('da.board.' + boardId, { v: BOARD_V, json }); return id;
 }
 /* any board as a picture, drawn apart from the page, on white: for the press */

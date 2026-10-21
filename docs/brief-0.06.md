@@ -1,7 +1,7 @@
 # novel.global — brief 0.06: one bold journey
 
 Written 20 October 2026, from the owner's notes of the same day, sense-checked before building. Stage A is built, as the owner
-refined it on 21 October (below), with stages C and D; stage B and stage E are not built yet.
+refined it on 21 October (below), with stages C and D, and the parts of stage B still wanted; stage E is not built yet.
 Build it in the order of the stages at the end, one stage to a session, each one checked on staging before the next.
 
 ## Stage A as built (21 October 2026)
@@ -44,8 +44,20 @@ Stage D is built in full: SELECT an uncased OLED module on a pink jumper wire fr
 key and piece; the pixel icon (a 16 by 16 jellyfish, its bell the background's band reversed, four Game Boy Color tones, and
 a padded copy for phones that cut their own shape); the board the blueprint by day and night; novel.global's paper by day and
 a deep 1990s grey by night; DAY · DARK on the switch; the showcase holding still, its piece at about two thirds of its
-screen, zoomed in place by pinch, wheel or press, its cards beside it. Left for later: the heat wind-back (gate 0), the rig and
-pages of stage B, and stage E.
+screen, zoomed in place by pinch, wheel or press, its cards beside it.
+
+**The fourth pass (21 October, the owner's notes from a phone).** The sound no longer dies at the end of the first visit: it
+watches itself and is built again at the next touch if a phone leaves it broken. The jellyfish key is smaller and stays inside
+each device; W.I.S.H.'s tape is a stub LoRa antenna; the VU meter is sunk into the radio's board. The way through is a line:
+make clears W.I.S.H. as the receipt goes to PRINT, and print clears PRINT as the print goes to the wall, kept there, in SELECT
+and on the board. PRINT is the dongle for everyone, upgraded once open. The suggestions are half the size and never cut off.
+On a phone the showcase opens full screen; each poster's card stands beside it, turns over and back, and has its own key to
+open it.
+
+Stage B, as far as it still stands after the owner's later choices (the rig and a one-sided W.I.S.H. MAKER gave way to
+W.I.S.H. over the map and its blueprint): the first board's template, a box for each of W, I, S and H saying what research
+goes there and a codec note on each tool, its words rewritten on the approval page; and a choice of printer when more than one
+is online, each with its light and its place. Left for later: the heat wind-back (gate 0), and stage E.
 
 ## The idea in one line
 

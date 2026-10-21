@@ -1,9 +1,9 @@
 /* ════════════════════════════════════════════════════════════════════
    THE FRONTS — RADIO, W.I.S.H. and PRINT each have two faces, and each face is a piece of hardware. The front is the small
    device a first visit walks through, the same for everyone after it: a radio half its height, the intention device over the
-   map, a label maker with SELECT its hero. Each is old analogue kit, modded: smoked shells, odd screws, tape, a pin header, a
-   cable tie. Once everything is open each front shows its upgrade, a LoRa module with its antenna and wires, and the jellyfish
-   key on a board of its own: the mod that turns it over. The back is the same device opened: clear acrylic on standoffs, its
+   map, PRINT's dongle with SELECT its hero. Each is old analogue kit, modded: smoked shells, odd screws, a stub antenna, a pin
+   header, a cable tie. Once everything is open each front shows its upgrade, a LoRa module with its antenna and wires, and the
+   jellyfish key on a small board of its own: the mod that turns it over. The back is the same device opened: clear acrylic on standoffs, its
    board in view, a cable plugged in, its plate, holding the whole studio.
    ════════════════════════════════════════════════════════════════════ */
 const FACED = [0, 1, 2];
@@ -132,11 +132,11 @@ function wishDevice(back) {
     + `${flipBtn()}</div></form></section>`;
 }
 /* ───────── W.I.S.H., the front: the intention device, the radio's size, over the map: its screen that asks for the intention,
-   the key that opens the suggestions, and make. A handheld in smoked jade, its grip on one side, kapton tape over a corner, a
-   pin header at its foot ───────── */
+   the key that opens the suggestions, and make. A handheld in smoked jade, its grip on one side, a stub LoRa antenna at its
+   corner (the upgrade's own module takes its place once everything is open), a pin header at its foot ───────── */
 function wishFront() {
   const where = String(jSel().place || suburbAt(S.scan.lat, S.scan.lng) || '').toUpperCase();
-  return `<section class="sec front-w simple-w" id="sec-wish"><form class="wish-form visor jw" id="jw-form" autocomplete="off"><div class="dev vs-body jr-dev${upCls()}"><i class="vs-rib l" aria-hidden="true"></i><i class="hack h-tape" aria-hidden="true"></i>${SCREWS}<i class="hack h-pins" aria-hidden="true"></i>`
+  return `<section class="sec front-w simple-w" id="sec-wish"><form class="wish-form visor jw" id="jw-form" autocomplete="off"><div class="dev vs-body jr-dev${upCls()}"><i class="vs-rib l" aria-hidden="true"></i><i class="hack h-lora" aria-hidden="true"></i>${SCREWS}<i class="hack h-pins" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">INTENTION</b><span class="vs-now">${esc(where)} ${fmtClock(Date.now())}</span></div>`
     + `<label class="vs-i"><textarea id="jw-for" rows="1" maxlength="90" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
     /* where SELECT once was: the key that opens the suggestions beside the receipt */
@@ -171,31 +171,28 @@ viewEl.addEventListener('change', e => {
     WDRAFT.photo = c.toDataURL('image/jpeg', 0.8); if (!store.set('da.wish.v1', WDRAFT)) { WDRAFT.photo = c.toDataURL('image/jpeg', 0.55); store.set('da.wish.v1', WDRAFT); } refreshPanel(); tick(1800); buzz(6); }; im.src = rd.result; };
   rd.readAsDataURL(fl); e.target.value = '';
 });
-/* ───────── PRINT, the front. A first visit holds a dongle: SELECT its hero, a sheet of die-cut stickers to add some bling; a
-   key that types words on the receipt itself; a keycap from another machine that takes back; and the printer, its light its
-   state. Once everything is open it is the whole label maker in matte graphite, two-sided like the others: its paper out of
-   the slot at its head, its board under a smoked cap, the code on its screen and words typed there, four keys, the printer, and
-   its upgrade, the jellyfish key turning it over to the studio ───────── */
-const printFront = () => (simple() ? printDongle() : printFull());
-function printDongle() {
-  const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
+/* ───────── PRINT, the front, for everyone: a dongle. SELECT its hero, a sheet of die-cut stickers for some bling; a key that
+   types words on the receipt itself; a keycap from another machine that takes back; and the printer, its light its state.
+   Once everything is open it carries its upgrade, the jellyfish key turning it over to the studio ───────── */
+/* which printer a print goes to: the one chosen, while it is online; else the first online; else novel.global's own, where it
+   waits */
+const prnNow = () => { const on = printersOn(); return on.find(p => p.id === prefs.prn) || on[0] || MASTER; };
+const prnPlace = p => (p === MASTER ? 'NOVEL.GLOBAL' : String(p.sub ? title(p.sub) : p.addr || '').toUpperCase());
+function printFront() {
+  const s = pressStory(); const on = printersOn(); const p = prnNow();
+  /* more than one online: each with its light and its place, to choose from */
+  const info = on.length > 1 ? `<b>PRINT ON</b>${on.map(x => `<button type="button" class="jp-prn${x === p ? ' on' : ''}" data-prn-pick="${esc(x.id)}" aria-pressed="${x === p}"><i class="tp-led"></i><b>${esc(String(x.n).toUpperCase())}</b><small>${esc(prnPlace(x))}</small></button>`).join('')}`
+    : `<b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small>`;
   const stk = radiusSpecies(3).map((sp, i) => `<i class="jp-stk s${i}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy"></i>`).join('');
-  return `<section class="sec front-p simple-p" id="sec-out"><div class="dev tepra jr-dev"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i>`
+  return `<section class="sec front-p simple-p" id="sec-out"><div class="dev tepra jr-dev${upCls()}"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i>`
     + `<div class="jp-row"><button type="button" class="jp-sel" data-pick="strip" aria-label="Select: stickers, lives"><span class="jp-sheet" aria-hidden="true">${stk}<i class="jp-stk jelly">${M.jellySVG('#0F3B40', 'rgba(127,255,224,.55)', 30)}</i><i class="jp-peel"></i></span><i class="jp-plus" aria-hidden="true">${icon('plus')}</i></button>`
     + `<span class="jp-keys"><button type="button" class="tp-k jp-aa" data-jwords aria-label="Words on the receipt"><b>Aa</b></button><button type="button" class="tp-k jp-undo" data-tp="undo" aria-label="Undo: or take off what is chosen">${icon('undo')}</button></span>`
     + `<button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button></div>`
-    + `<button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button><span class="tp-info jp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span>`
-    + `</div></section>`;
-}
-const TP_KEYS = [['text', '', 'teal', 'Words'], ['pick', 'plus', 'green', 'Select: art, songs, stickers, lives'], ['image', 'camera', 'orange', 'A photograph'], ['undo', 'undo', 'grey', 'Undo: or take off what is chosen']];
-function printFull() {
-  const s = pressStory(); const on = printersOn(); const p = on[0] || MASTER;
-  return `<section class="sec front-p full-p" id="sec-out"><div class="dev tepra jr-dev${upCls()}"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i><div class="tp-lid" aria-hidden="true"><i class="tp-latch"></i></div>`
-    + `<label class="tp-lcd"><span class="tp-l1">${s ? esc(s.code) : '80 MM'}</span><span class="tp-info" id="tp-info" hidden><b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small></span><input id="tp-words" maxlength="80" spellcheck="true" autocomplete="off" placeholder=" " aria-label="Words for the strip"><i class="tp-cur" aria-hidden="true"></i></label>`
-    + `<div class="tp-keys">${TP_KEYS.map(([k, ic, c, w]) => `<button type="button" class="tp-k tk-${c}" data-tp="${k}" aria-label="${w}">${k === 'text' ? '<b>Aa</b>' : icon(ic)}</button>`).join('')}</div>`
-    + `<div class="tp-foot"><button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button><button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button></div>`
+    + `<button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button><span class="tp-info jp-info${on.length > 1 ? ' many' : ''}" id="tp-info" hidden>${info}</span>`
     + `${upMods()}${flipBtn()}</div></section>`;
 }
+/* a printer chosen from those online: kept, and the list stays open on it */
+viewEl.addEventListener('click', e => { const b = e.target.closest('[data-prn-pick]'); if (!b) return; prefs.prn = b.dataset.prnPick; savePrefs(); $$('#view [data-prn-pick]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); snd.tick(1800); buzz(5); });
 /* the dongle's words key: the caret on the receipt, and the keyboard types onto the paper */
 viewEl.addEventListener('click', e => { if (e.target.closest('[data-jwords]')) { jEdit(); snd.tick(1500); } });
 viewEl.addEventListener('click', e => { const o = e.target.closest('[data-outs]'); if (!o) return; const sec = o.closest('#sec-out'); const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); o.setAttribute('aria-expanded', String(on)); tick(on ? 1500 : 1000); });

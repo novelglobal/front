@@ -6,7 +6,8 @@ class Ladder extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [{ name: 'cutoff', defaultValue: 1000, minValue: 20, maxValue: 20000 }, { name: 'resonance', defaultValue: 0.1, minValue: 0, maxValue: 1.2 }, { name: 'drive', defaultValue: 1, minValue: 0.1, maxValue: 10 }];
   }
-  constructor() { super(); this.s = new Float64Array(5); this.d = new Float64Array(4); this.seen = false; this.idle = 0; this.lc = -1; this.lr = -1; this.g = 0; this.gr = 0; }
+  /* keep: one ladder shared by many voices stays when nothing feeds it for a while */
+  constructor(o) { super(); this.keep = !!(o && o.processorOptions && o.processorOptions.keep); this.s = new Float64Array(5); this.d = new Float64Array(4); this.seen = false; this.idle = 0; this.lc = -1; this.lr = -1; this.g = 0; this.gr = 0; }
   coef(c, r) {
     if (c === this.lc && r === this.lr) return; this.lc = c; this.lr = r;
     const wc = 2 * Math.PI * Math.min(c, sampleRate * 0.45) / sampleRate, w2 = wc * wc, w3 = w2 * wc, w4 = w3 * wc;
@@ -16,7 +17,7 @@ class Ladder extends AudioWorkletProcessor {
   process(inputs, outputs, p) {
     const inp = inputs[0], out = outputs[0]; if (!out || !out.length) return true;
     /* a voice played once: when nothing feeds it any more and its tail has rung out, it goes */
-    if (!inp || !inp.length) { if (this.seen && ++this.idle > 200) return false; } else { this.seen = true; this.idle = 0; }
+    if (!inp || !inp.length) { if (!this.keep && this.seen && ++this.idle > 200) return false; } else { this.seen = true; this.idle = 0; }
     const x = inp && inp[0], o = out[0], n = o.length, s = this.s, d = this.d;
     const C = p.cutoff, R = p.resonance, D = p.drive;
     for (let i = 0; i < n; i++) {

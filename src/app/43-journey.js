@@ -347,7 +347,7 @@ function jActs() { const [a, b] = jKinds(jSel()); const out = []; for (const t o
 const jChosen = () => (JR.acts || []).map(k => TIP_BY[k]).filter(Boolean);
 let jrEl = null;
 /* the suggestions wait behind a tab at the receipt's side, closed, until it or the key on the intention device is pressed;
-   the tab carries how many are taken up */
+   the key carries how many are taken up */
 let jrOpen = false;
 function jrTabs() {
   const n = (JR.acts || []).length;
@@ -359,7 +359,7 @@ function jrShow() {
   const on = wishOverMap() && (!simple() || (prefs.journey >= 2 && !!JR.sel));
   if (!jrEl) { if (!on) { jHeld(); return; } jrEl = document.createElement('div'); jrEl.className = 'jr'; jrEl.id = 'jr'; document.body.appendChild(jrEl); }
   jrEl.hidden = !on; jHeld(); if (!on) return;
-  if (!jrEl.firstChild) jrEl.innerHTML = `<figure class="jr-r"><img alt="" data-zoom></figure><div class="jr-sg"><button type="button" class="jr-tab" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<b class="jt-n" aria-hidden="true"></b><i class="jt-c" aria-hidden="true">${icon('next', 'sm')}</i></button><ol class="jr-acts" aria-label="Suggestions to take up" hidden></ol></div>`;
+  if (!jrEl.firstChild) jrEl.innerHTML = `<figure class="jr-r"><img alt="" data-zoom></figure><div class="jr-sg"><button type="button" class="jr-tab" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<i class="jt-c" aria-hidden="true">${icon('next', 'sm')}</i></button><ol class="jr-acts" aria-label="Suggestions to take up" hidden></ol></div>`;
   jrEl.querySelector('.jr-acts').innerHTML = jActs().map(a => { const on2 = (JR.acts || []).includes(a.k); return `<li><button type="button" class="jr-act${on2 ? ' on' : ''}" data-jact="${a.k}" aria-pressed="${on2}"><i class="act-ic">${M.ICONS[a.ic] ? icon(a.ic) : glyphSVG(a.ic)}</i><b>${esc(a.w)}</b></button></li>`; }).join('');
   jrTabs(); jPreview();
 }
@@ -412,7 +412,8 @@ document.addEventListener('click', e => {
 viewEl.addEventListener('input', e => { if (e.target.id !== 'jw-for') return; JR.want = e.target.value; jWantSave(); growTA(e.target); jMakeLit(); jrTabs(); jPreview(); });
 viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'jw-for') { e.preventDefault(); $('#jw-form').requestSubmit ? $('#jw-form').requestSubmit() : jMake(); } });
 viewEl.addEventListener('submit', e => { if (e.target.id !== 'jw-form') return; e.preventDefault(); jMake(); });
-/* make: the receipt is made, kept here as a signal waiting to print, and flies to PRINT, which opens for it */
+/* make: the receipt is made, kept here as a signal waiting to print, and flies to PRINT, which opens for it; W.I.S.H. is
+   cleared behind it */
 let jMaking = false;
 async function jMake() {
   if (jMaking) return; const f = $('#jw-for'); const want = String(f ? f.value : JR.want || '').trim();
@@ -425,6 +426,8 @@ async function jMake() {
     const ev = await ledgerAdd({ type: 'signal', lat: sig.pin.lat, lng: sig.pin.lng, who: sig.who, data: sig }); JR.key = ev.key; saveJR();
     tie(1); snd.printer(700); jBoard(sig);
     const im = $('#jr .jr-r img'); const first = simple() && prefs.journey < 3;
+    /* handed on, as on a line: the receipt goes to PRINT, and W.I.S.H. is left clear for what is noticed next */
+    JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; clearK = ''; saveJR();
     PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = 0; jFresh = true; if (!simple()) setFace(2, 'front');
     if (first) jGo(3); if (im) flyToTab(2, im);
     setTimeout(() => { setView(2); if (phone()) setPane('page'); }, reduced() ? 0 : 560);

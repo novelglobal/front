@@ -112,7 +112,9 @@ setInterval(() => { if (!document.hidden && Object.values(SENT).some(v => v.id &
 /* the site's own settings, as they are now */
 async function loadSettings() {
   try { const j = await apiJSON('/settings'); if (j && typeof j.exampleEdit === 'boolean' && j.exampleEdit !== !!CFG.exampleEdit) { CFG.exampleEdit = j.exampleEdit; store.set('da.cfg.v1', CFG); if (cv && boardId === 'b00') exFrame(); }
-    if (j && typeof j.lifeLock === 'boolean' && j.lifeLock !== CFG.lifeLock) { CFG.lifeLock = j.lifeLock; store.set('da.cfg.v1', CFG); if (S.view === 0) refreshPanel(); if (S.mapReady) { life.redraw(); life.moved(); } } } catch (e) { /* as last heard */ }
+    if (j && typeof j.lifeLock === 'boolean' && j.lifeLock !== CFG.lifeLock) { CFG.lifeLock = j.lifeLock; store.set('da.cfg.v1', CFG); if (S.view === 0) refreshPanel(); if (S.mapReady) { life.redraw(); life.moved(); } }
+    /* the first board's words, as rewritten on the approval page */
+    if (j && typeof j.template === 'string' && j.template !== (CFG.template || '')) { CFG.template = j.template; store.set('da.cfg.v1', CFG); } } catch (e) { /* as last heard */ }
 }
 /* the printers, as they are now */
 async function loadPartners() {
