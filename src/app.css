@@ -2771,8 +2771,7 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .simple-w .h-pins{left:44px;bottom:6px;width:38px}
 .simple-w .h-screw.a{right:9px;top:9px}.simple-w .h-screw.b{left:26px;bottom:8px}
 .h-lora{top:-24px;left:26px;width:14px;height:30px;transform:rotate(-7deg);transform-origin:50% 100%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 30'%3E%3Crect x='4' y='0' width='6' height='20' rx='3' fill='%2316191B'/%3E%3Cpath d='M4.6 5h4.8M4.6 9h4.8M4.6 13h4.8' stroke='%233C4247' stroke-width='.9'/%3E%3Crect x='3' y='19' width='8' height='5' rx='1' fill='%23C9A24C'/%3E%3Cpath d='M5 19v5M7 19v5M9 19v5' stroke='%238C6C26' stroke-width='.6'/%3E%3Crect x='2' y='24' width='10' height='6' rx='1.2' fill='%238C6C26'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
-/* upgraded, the first visit's small mods give way to the upgrade's own: no jumper beside the LoRa module, no tie beside the cable */
-.jr-dev.upg .h-lora,.jr-dev.upg .h-jump,.jr-dev.upg .h-tie{display:none}
+.jr-dev.upg .h-lora{display:none}
 
 /* W.I.S.H.'s screen, over the map itself: the receipt, as intel, and the stories to take up, few and clear */
 .jr{position:fixed;z-index:5;top:0;left:0;bottom:0;right:var(--page);display:flex;align-items:center;justify-content:center;gap:30px;padding:28px 24px;pointer-events:none}
