@@ -80,7 +80,7 @@
   function printerCard(p) {
     const seen = p.seen ? `HEARD ${when(p.seen)}` : 'NOT HEARD YET'; const card = el('section', { class: 'printer' });
     /* TURN OFF shows only while its receiver is listening and says it can: the Pi prints a slip, then shuts down safely */
-    const fresh = t => t && Date.now() - t < 2 * 60e3; const canOff = p.paired && fresh(p.seen) && /\boff\b/.test(p.can || '');
+    const fresh = t => t && Date.now() - t < 2 * 60e3; const canOff = p.paired && /\boff\b/.test(p.can || ''), listening = fresh(p.seen);
     const tok = el('div', { class: 'token', hidden: true });
     card.append(el('h3', { text: p.name || p.id }),
       el('div', { class: 'note', text: `${p.id.toUpperCase()} · ${p.paper} MM · ${p.paired ? 'PAIRED' : 'NOT PAIRED'} · ${seen} · ${p.held} WAITING APPROVAL · ${p.queued} IN QUEUE · ${p.printed} PRINTED · ${p.failed} FAILED` }),
@@ -93,7 +93,8 @@
         el('button', { type: 'button', class: p.live ? 'on' : '', text: p.live ? 'ONLINE ON THE MAP' : 'NOT YET ONLINE ON THE MAP', onclick: async () => { await setP(p.id, { action: 'live', on: !p.live }); show('printers'); } }),
         el('button', { type: 'button', text: `PAPER ${p.paper === '80' ? '58' : '80'} MM`, onclick: async () => { await setP(p.id, { action: 'paper', paper: p.paper === '80' ? '58' : '80' }); show('printers'); } }),
         p.paired ? el('button', { type: 'button', text: 'TEST PRINT', onclick: async () => { await setP(p.id, { action: 'test' }); show('printers'); } }) : null,
-        canOff ? el('button', { type: 'button', class: 'no', text: fresh(p.off) ? 'TURNING OFF' : 'TURN OFF', onclick: async () => { if (!confirm('Turn this printer off? It prints a slip, then shuts down. Unplug it once its green light stops.')) return; await setP(p.id, { action: 'off' }); show('printers'); } }) : null),
+        canOff && !listening ? el('button', { type: 'button', disabled: true, text: 'OFF OR OUT OF WI-FI' }) : null,
+        canOff && listening ? el('button', { type: 'button', class: 'no', text: fresh(p.off) ? 'TURNING OFF' : 'TURN OFF', onclick: async () => { if (!confirm('Turn this printer off? It prints a slip, then shuts down. Unplug it once its green light stops.')) return; await setP(p.id, { action: 'off' }); show('printers'); } }) : null),
       tok);
     return card;
   }

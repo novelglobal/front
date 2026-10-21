@@ -35,6 +35,7 @@ MINE = 'setup: '     # and the start of the name of each Wi-Fi added from the pa
 ADDR = '10.42.0.1'
 DEMO = '--demo' in sys.argv
 slipped = False      # the setup slip prints once a start, however often the setup Wi-Fi opens
+failed = ''          # why the setup Wi-Fi last failed to open, printed once a start
 
 
 def log(*a):
@@ -98,15 +99,24 @@ def make_setup():
                    'ipv6.method', 'disabled', 'wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', PASS,
                    'wifi-sec.proto', 'rsn', 'wifi-sec.pairwise', 'ccmp', 'wifi-sec.group', 'ccmp', timeout=20)
     if code:
-        log('the setup Wi-Fi could not be made:', out.strip()[:300])
+        log('the setup Wi-Fi could not be made:', out.strip()[:300]); fail(out)
     return code == 0
 
 
 def setup_wifi(on):
-    code, out = nm('connection', 'up' if on else 'down', CON, timeout=60)
+    code, out = nm('--wait', '50', 'connection', 'up' if on else 'down', CON, timeout=60)
     if on and code:
-        log('the setup Wi-Fi did not open:', out.strip()[:300])
+        log('the setup Wi-Fi did not open:', out.strip()[:300]); fail(out)
     return code == 0
+
+
+def fail(out):
+    """the first time a start the setup Wi-Fi cannot open, the printer says so, with nmcli's reason"""
+    global failed
+    if failed or not SLIPS:
+        return
+    failed = ' '.join(out.split())[:160] or 'no reason given'
+    send(slip(NAME, ['NO WI-FI', 'THE SETUP WI-FI DID NOT OPEN', '', failed, '', stamp()]))
 
 
 def join(name, pw, hidden):

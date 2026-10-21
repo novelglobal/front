@@ -140,7 +140,7 @@ def turn_off():
     """an OFF stick: a slip to say so, then the Pi turns off safely, so its card is never cut off mid-write"""
     log('an OFF stick: turning off')
     try:
-        send(header() + text_bytes('Turning off.\nUnplug once the green light stops.') + cut())
+        send(header() + text_bytes('Turning off.\nUnplug once the green light stops.\nTo start: plug it back in.') + cut())
     except OSError as e:
         log('no slip:', e)
     subprocess.run(['systemctl', 'poweroff'])

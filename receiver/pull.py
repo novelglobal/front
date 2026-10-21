@@ -127,7 +127,7 @@ def wifi_name():
 def turn_off():
     """TURN OFF from the approval page: a slip to say so, then the note that has systemd turn the Pi off safely"""
     try:
-        print_bytes(text_slip(['DIRECT ACTION', 'TURNING OFF', PRINTER.upper(), 'UNPLUG ONCE THE GREEN LIGHT STOPS', datetime.now().strftime('%d.%m.%y %H:%M')]))
+        print_bytes(text_slip(['DIRECT ACTION', 'TURNING OFF', PRINTER.upper(), 'UNPLUG ONCE THE GREEN LIGHT STOPS', 'TO START: PLUG IT BACK IN', datetime.now().strftime('%d.%m.%y %H:%M')]))
     except Exception as e:  # turned off all the same
         log.warning('no TURNING OFF slip: %s', e)
     with open(OFF_FILE, 'w') as f:
