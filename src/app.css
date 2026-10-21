@@ -2426,23 +2426,11 @@ html.night .visor.mod .vs-body{background:var(--grain),linear-gradient(180deg,rg
    three keys; one key, the printer, prints; its light shows its name and state */
 .front-p{margin:0 var(--gut)}
 .dev.tepra:not(.mod){max-width:340px;margin:0 auto;padding:14px 18px 20px;border-radius:12px;background-color:#2C2F32;background-image:var(--grain);color:#E9ECEE;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 -3px 6px rgba(0,0,0,.35),0 18px 36px rgba(0,0,0,.26)}
-.tp-lid{position:relative;height:46px;margin:0 0 12px;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,rgba(255,176,90,.52),rgba(214,116,40,.66)),var(--board) left 8px top 4px/auto 26px no-repeat,linear-gradient(#1E5A44,#1A4E3B);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(0,0,0,.35)}
-.tp-win{position:absolute;left:12px;right:12px;bottom:6px;height:9px;border-radius:2px;background:#0E0F10;box-shadow:inset 0 1px 1px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.14)}
-.tp-win::after{content:"";position:absolute;left:8px;right:8px;top:3px;height:3px;background:#F6F4EC}
-.tp-latch{display:none}
-.tp-lcd{position:relative;display:grid;gap:3px;padding:10px 12px;border-radius:5px;background:#B8C2AE;color:#1E241B;font:400 18px/1.05 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),inset 0 3px 8px rgba(0,0,0,.22)}
-.tp-l1{font-size:20px;letter-spacing:.06em}
 .tp-info{font-size:15px;letter-spacing:.04em;opacity:.8}
 .tp-info b,.tp-info small{display:block;font:inherit}
-#tp-words{height:32px;margin-top:2px;padding:4px 0 0;border:0;border-top:1px dashed rgba(30,36,27,.4);outline:none;background:transparent;color:#1E241B;font:400 22px/1 VT323,ui-monospace,monospace}
-.tp-cur{position:absolute;left:12px;bottom:11px;width:9px;height:17px;background:#1E241B;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none;display:none}
-#tp-words:placeholder-shown:not(:focus)~.tp-cur{display:block}
-.tp-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 16px}
 .tp-k{display:grid;place-items:center;height:44px;padding:0;border:0;border-radius:7px;color:#FFFFFF;font:700 16px/1 var(--sans);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.22),0 2px 3px rgba(0,0,0,.35)}
 .tp-k .i{width:19px;height:19px}
 .tp-k:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
-.tk-teal{background:#16A89A}.tk-green{background:#2E9E57}.tk-orange{background:#E8792A}.tk-grey{background:#5A6066}
-.tp-foot{position:relative;display:grid;justify-items:center}
 .dev.tepra .tp-prn.print-k{position:relative;display:grid;place-items:center;width:82px!important;height:82px!important;padding:0;border:0!important;border-radius:50%!important;color:#EEF2F6!important;cursor:pointer;background:radial-gradient(circle,#3F72D2 0 62%,#3567C4 63%)!important;backdrop-filter:none!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 5px rgba(0,0,0,.28),0 0 0 4px rgba(255,255,255,.06),0 6px 10px rgba(0,0,0,.4)!important}
 .dev.tepra .tp-prn.print-k .i{width:36px;height:36px;color:#EEF2F6!important}
 .dev.tepra .tp-prn.print-k:active{transform:scale(.97)}
@@ -2458,7 +2446,7 @@ html.night .dev.tepra.mod{background:var(--grain),linear-gradient(180deg,rgba(56
 .dev.tepra.mod .ps-printer{padding:0;border:0;cursor:pointer}
 .dev.tepra.mod .ps-hl[hidden]{display:none}
 @media (max-width:759px){.sheetbar .sb-t{display:none}}
-@media (prefers-reduced-motion:reduce){#view.flip-in,#view.flip-out,.vs-cur,.tp-cur{animation:none!important}}
+@media (prefers-reduced-motion:reduce){#view.flip-in,#view.flip-out,.vs-cur{animation:none!important}}
 
 /* RADIO, W.I.S.H. and PRINT on a wide screen: no sheet. Each device stands on the big screen itself, the map, the board, the
    strip, the receipt as it will print; what the screen holds keeps clear of the device. novel.global keeps its page, and a life
@@ -2753,8 +2741,6 @@ html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
 /* small mods, one to a device: quiet, made by hand */
 .hack{position:absolute;z-index:3;pointer-events:none;display:block}
 .h-jump{top:-9px;right:46px;width:46px;height:20px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 20'%3E%3Cpath d='M5 17C7 2 39 2 41 17' fill='none' stroke='%23D9342B' stroke-width='2.2' stroke-linecap='round'/%3E%3Crect x='1.5' y='14' width='7' height='6' rx='1' fill='%2321262A'/%3E%3Crect x='37.5' y='14' width='7' height='6' rx='1' fill='%2321262A'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
-.h-tape{top:-6px;left:34px;width:52px;height:16px;transform:rotate(-6deg);background:repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 2px,transparent 2px 5px),rgba(244,236,206,.86);box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.h-tape::after{content:"";position:absolute;right:-16px;top:3px;width:14px;height:14px;border-radius:50%;background:#E8450F;box-shadow:inset 0 0 0 2px #FFFFFF,0 1px 2px rgba(0,0,0,.25);transform:rotate(12deg)}
 .h-tie{top:40%;right:-7px;width:16px;height:46px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 46'%3E%3Cpath d='M4 2c10 4 10 10 0 14s-10 10 0 14 10 10 0 14' fill='none' stroke='%23F4CC2A' stroke-width='2.6' stroke-linecap='round'/%3E%3Crect x='1' y='20' width='14' height='5' rx='1' fill='%23191B1C'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
 /* the card's own keys, a fourth one for the board */
 .card-view .tv-card{cursor:zoom-in}
@@ -2830,7 +2816,6 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .pk-link input{flex:1;min-width:0;height:38px;padding:0 10px;border:0;border-radius:8px;background:#13171A;color:#BFFFEF;font:400 16px/1 VT323,ui-monospace,monospace}
 .pk-link .ib{color:#E9EEF0;background:#3A4146}
 @media (min-width:760px){.sel{left:24px;right:calc(var(--page) + 24px);bottom:24px;justify-content:flex-start}.sel-in{width:min(560px,100%);max-height:70vh;border-radius:18px}}
-.tk-green .i{width:20px;height:20px}
 @media (max-width:759px){#cover .act-b small:last-of-type{display:none}#cover .act-b b{font-size:12px}}
 
 /* PRINT: on a phone the other ways out fold behind one small key */
@@ -2860,6 +2845,25 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .gc-b i{margin-top:auto;font-style:normal;opacity:.6}
 @keyframes gcdrift{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-6px) rotate(1.2deg)}}
 @media (prefers-reduced-motion:reduce){.gc{animation:none}}
+/* a card turned over carries a small key of its own that opens it; pressed anywhere else, the card turns back */
+.gl-cards li,.gl-pair{position:relative}
+.gc-go{position:absolute;z-index:3;right:6px;bottom:6px;display:none;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#06110F;background:#7FFFE0;box-shadow:0 0 0 2px rgba(6,9,9,.8),0 3px 8px rgba(0,0,0,.4)}
+.gc-go .i{width:14px;height:14px}
+.gc.over+.gc-go{display:grid}
+/* each poster's own card, tucked in at its side, a little over its foot */
+.gl-pair{position:relative;z-index:3;flex:0 0 auto;align-self:flex-end;width:clamp(58px,14%,104px);margin:0 0 7% -18px;transform:rotate(5deg)}
+.gl-pair .gc{animation:none;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55))}
+.gl-pair .gc-b{padding:7px 6px;gap:3px;font-size:11px}.gl-pair .gc-b b{font-size:12px}.gl-pair .gc-b small{font-size:10px}
+.gl-track.zooming .gl-pair{visibility:hidden}
+/* full screen on a phone: the piece over everything, nothing else but its keys */
+body.gl-full .gallery.full{visibility:visible!important}
+.gallery.full{position:fixed!important;inset:0!important;z-index:95!important;padding:0!important;background:#050708!important;grid-template-columns:none!important;grid-template-rows:minmax(0,1fr)!important}
+.gallery.full .gl-deck{border-radius:0;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));background:#050708}
+.gallery.full .gl-screen{border-radius:6px}
+.gallery.full .gl-slide{padding:6px}
+.gallery.full .gl-slide .gl-hero img{max-height:100%!important;max-width:100%!important}
+.gallery.full .gl-cards,.gallery.full .gl-pair{display:none}
+.gallery.full [data-gl="zoom"]{color:#06110F;background:#7FFFE0}
 @media (max-width:759px){.gallery.with-cards{grid-template-columns:none!important;grid-template-rows:minmax(0,1fr) auto!important}.gl-cards ol{display:flex;gap:10px;overflow-x:auto}.gl-cards li{flex:0 0 92px}}
 /* clear of the rail, cards or not */
 @media (min-width:760px){.gallery{padding-right:84px!important}}
@@ -3041,25 +3045,27 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .simple-w .upg .vs-make{align-self:start}
 .simple-w .h-pins{left:44px;bottom:6px;width:38px}
 .simple-w .h-screw.a{right:9px;top:9px}.simple-w .h-screw.b{left:26px;bottom:8px}
-.h-tape{top:-5px;left:34px;width:50px;height:15px;background:linear-gradient(180deg,rgba(255,200,104,.82),rgba(228,152,44,.76));box-shadow:0 1px 2px rgba(60,30,0,.28),inset 0 1px 0 rgba(255,255,255,.45);transform:rotate(-6deg);clip-path:polygon(0 8%,4% 0,9% 12%,14% 2%,86% 0,91% 10%,96% 0,100% 12%,100% 88%,95% 100%,90% 90%,84% 100%,12% 100%,7% 90%,2% 100%,0 92%)}
+.h-lora{top:-24px;left:26px;width:14px;height:30px;transform:rotate(-7deg);transform-origin:50% 100%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 30'%3E%3Crect x='4' y='0' width='6' height='20' rx='3' fill='%2316191B'/%3E%3Cpath d='M4.6 5h4.8M4.6 9h4.8M4.6 13h4.8' stroke='%233C4247' stroke-width='.9'/%3E%3Crect x='3' y='19' width='8' height='5' rx='1' fill='%23C9A24C'/%3E%3Cpath d='M5 19v5M7 19v5M9 19v5' stroke='%238C6C26' stroke-width='.6'/%3E%3Crect x='2' y='24' width='10' height='6' rx='1.2' fill='%238C6C26'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.jr-dev.upg .h-lora{display:none}
 
 /* W.I.S.H.'s screen, over the map itself: the receipt, as intel, and the stories to take up, few and clear */
 .jr{position:fixed;z-index:5;top:0;left:0;bottom:0;right:var(--page);display:flex;align-items:center;justify-content:center;gap:30px;padding:28px 24px;pointer-events:none}
 .jr[hidden]{display:none}
 .jr>*{pointer-events:auto}
 .jr-r{margin:0;flex:0 1 auto;min-height:0;max-height:100%;display:flex;align-items:flex-start}
-.jr-r img{display:block;width:min(320px,32vw);height:auto;max-height:calc(100vh - 56px);object-fit:contain;object-position:top;background:#fff;transform:rotate(-1.2deg);box-shadow:0 26px 54px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.25);cursor:zoom-in;animation:hang .7s cubic-bezier(.3,1.4,.5,1)}
+.jr-r img{display:block;width:min(290px,28vw);height:auto;max-height:calc(100vh - 56px);object-fit:contain;object-position:top;background:#fff;transform:rotate(-1.2deg);box-shadow:0 26px 54px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.25);cursor:zoom-in;animation:hang .7s cubic-bezier(.3,1.4,.5,1)}
 .jr-r img:not([src]){visibility:hidden}
 .jr-sg{display:flex;align-items:center;gap:12px;min-height:0}
-.jr-tab{position:relative;display:grid;justify-items:center;align-content:center;gap:8px;width:52px;height:132px;padding:0;border:0;border-radius:0 16px 16px 0;cursor:pointer;color:#0E8F84;background:rgba(255,255,255,.95);box-shadow:0 8px 22px rgba(0,0,0,.32);transition:transform .15s}
-.jr-tab .i{width:22px;height:22px}
+.jr-tab{position:relative;display:grid;justify-items:center;align-content:center;gap:6px;width:40px;height:96px;padding:0;border:0;border-radius:0 16px 16px 0;cursor:pointer;color:#0E8F84;background:rgba(255,255,255,.95);box-shadow:0 8px 22px rgba(0,0,0,.32);transition:transform .15s}
+.jr-tab .i{width:18px;height:18px}
 .jr-tab .jt-c{display:grid;transition:transform .25s}
 .jr-tab.open .jt-c{transform:rotate(180deg)}
 .jr-tab .jt-n{top:8px;right:6px}
 .jr-tab:hover{transform:translateX(2px)}
 .jr-tab.next::after{content:"";position:absolute;inset:-5px;border-radius:0 20px 20px 0;border:2px solid rgba(111,227,207,.95);pointer-events:none;animation:nextring 2.2s ease-out infinite}
 html.night .jr-tab{background:rgba(18,28,30,.94);color:#7FE8D4}
-.jr-acts{list-style:none;margin:0;padding:0;display:grid;gap:10px;width:262px}
+/* half the size they were: small chips, all of them in view */
+.jr-acts{list-style:none;margin:0;padding:0;display:grid;gap:6px;width:214px}
 .jr-acts[hidden]{display:none}
 .jr-sg .jr-acts:not([hidden]){animation:jsgin .3s cubic-bezier(.2,1.2,.4,1) both}
 @keyframes jsgin{0%{opacity:0;transform:translateX(-14px)}100%{opacity:1;transform:none}}
@@ -3072,24 +3078,24 @@ html.night .jr-tab{background:rgba(18,28,30,.94);color:#7FE8D4}
 .jr-held .h2{fill:none;stroke:rgba(127,255,224,.5);stroke-width:1.5;transform-box:fill-box;transform-origin:center;animation:jheld 2.6s ease-in-out infinite}
 @keyframes jheld{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:.9;transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){.jr-held .h2{animation:none}}
-.jr-act{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:12px;align-items:center;width:100%;height:60px;padding:0 14px 0 10px;border:0;border-radius:16px;text-align:left;cursor:pointer;background:rgba(255,255,255,.95);color:#14201B;box-shadow:0 8px 22px rgba(0,0,0,.32);transition:transform .15s,box-shadow .2s}
+.jr-act{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:8px;align-items:center;width:100%;height:34px;padding:0 10px 0 5px;border:0;border-radius:10px;text-align:left;cursor:pointer;background:rgba(255,255,255,.95);color:#14201B;box-shadow:0 4px 12px rgba(0,0,0,.28);transition:transform .15s,box-shadow .2s}
 .jr-act:hover{transform:translateY(-1px)}
 .jr-act:active{transform:translateY(1px)}
-.jr-act .act-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#E3F3EE;color:#0E8F84}
-.jr-act .act-ic .i{width:21px;height:21px}
+.jr-act .act-ic{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#E3F3EE;color:#0E8F84}
+.jr-act .act-ic .i{width:13px;height:13px}
 /* every card the same size: its words on two lines at most */
-.jr-act b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:600 15px/1.2 var(--sans);letter-spacing:-.005em}
-.jr-act.on{box-shadow:inset 0 0 0 3px #0E8F84,0 8px 22px rgba(0,0,0,.32)}
+.jr-act b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:600 12px/1.12 var(--sans);letter-spacing:-.005em}
+.jr-act.on{box-shadow:inset 0 0 0 2px #0E8F84,0 4px 12px rgba(0,0,0,.28)}
 .jr-act.on .act-ic{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
 /* a narrower wide screen: the stories in a row under the receipt */
-@media (min-width:760px) and (max-width:1199px){.jr{flex-direction:column;gap:14px;overflow:auto;justify-content:flex-start;padding-top:36px}.jr-r img{width:min(300px,calc(100vw - var(--page) - 64px));max-height:calc(100vh - 230px)}.jr-sg{flex-direction:column}.jr-tab{width:132px;height:44px;border-radius:0 0 16px 16px;grid-auto-flow:column}.jr-tab .jt-c{transform:rotate(90deg)}.jr-tab.open .jt-c{transform:rotate(-90deg)}.jr-tab.next::after{border-radius:0 0 20px 20px}.jr-acts{display:flex;flex-wrap:wrap;justify-content:center;width:auto;max-width:100%}.jr-act{width:206px}.jr-act b{font-size:14px}}
+@media (min-width:760px) and (max-width:1199px){.jr{flex-direction:column;gap:14px;overflow:auto;justify-content:flex-start;padding-top:36px}.jr-r img{width:min(300px,calc(100vw - var(--page) - 64px));max-height:calc(100vh - 230px)}.jr-sg{flex-direction:column}.jr-tab{width:132px;height:44px;border-radius:0 0 16px 16px;grid-auto-flow:column}.jr-tab .jt-c{transform:rotate(90deg)}.jr-tab.open .jt-c{transform:rotate(-90deg)}.jr-tab.next::after{border-radius:0 0 20px 20px}.jr-acts{display:flex;flex-wrap:wrap;justify-content:center;width:auto;max-width:100%}.jr-act{width:176px}}
 html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-act .act-ic{background:#183A36;color:#7FE8D4}
 @media (prefers-reduced-motion:reduce){.jr-r img{animation:none}}
 
 /* PRINT, the front: the label maker at half its size, its paper out of the slot at its head. SELECT its hero, a sheet of
    die-cut stickers; a keycap from another machine that takes back; print */
 .simple-p .dev.tepra:not(.mod){max-width:330px;padding:14px 16px 18px}
-.simple-p .dev.tepra.upg:not(.mod){padding-bottom:36px}
+.simple-p .dev.tepra.upg:not(.mod){padding-right:40px}
 .tp-slot{position:relative;height:12px;margin:2px 6px 14px 30px;border-radius:6px;background:#0C0E0F;box-shadow:inset 0 2px 3px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.14)}
 .tp-paper{position:absolute;left:18px;right:18px;bottom:6px;height:30px;background:repeating-linear-gradient(180deg,transparent 0 9px,rgba(20,24,28,.22) 9px 10.5px) 0 4px/62% 100% no-repeat,linear-gradient(180deg,#FFFFFF,#F1EFE8);box-shadow:0 -1px 3px rgba(0,0,0,.18);clip-path:polygon(0 18%,5% 8%,10% 18%,15% 6%,20% 16%,25% 5%,30% 15%,35% 6%,40% 17%,45% 7%,50% 16%,55% 5%,60% 15%,65% 7%,70% 17%,75% 6%,80% 16%,85% 6%,90% 17%,95% 7%,100% 16%,100% 100%,0 100%)}
 .jp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px}
@@ -3101,7 +3107,7 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .jp-sheet{position:absolute;inset:0;overflow:hidden;border-radius:inherit}
 .jp-stk{position:absolute;top:12px;display:grid;place-items:center;width:42px;height:42px;padding:3px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.28);outline:1.5px dashed rgba(60,50,30,.28);outline-offset:3px}
 .jp-stk img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;background:#DCEDE7;color:transparent}
-.jp-stk.s0{left:10px;transform:rotate(-8deg)}.jp-stk.s1{left:58px;top:24px;transform:rotate(7deg)}.jp-stk.s2{left:104px;top:8px;transform:rotate(-4deg)}
+.jp-stk.s0{left:6%;transform:rotate(-8deg)}.jp-stk.s1{left:34%;top:24px;transform:rotate(7deg)}.jp-stk.s2{left:61%;top:8px;transform:rotate(-4deg)}
 .jp-stk.jelly{left:auto;right:12px;top:auto;bottom:10px;width:30px;height:30px;padding:2px;background:#DFFFF6;transform:rotate(9deg)}
 .jp-stk.jelly svg{display:block;width:100%;height:100%}
 .jp-peel{position:absolute;right:0;top:0;width:20px;height:20px;background:linear-gradient(225deg,rgba(0,0,0,0) 50%,#E4DCC8 50%);box-shadow:-2px 2px 4px rgba(0,0,0,.18)}
@@ -3116,22 +3122,22 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .simple-p .tp-i .tp-led{width:7px;height:7px}
 .simple-p .jp-info{position:absolute;z-index:3;left:14px;right:14px;top:42px;display:grid;gap:2px;padding:8px 10px;border-radius:5px;background:#B8C2AE;color:#1E241B;font:400 16px/1.05 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.35)}
 .simple-p .jp-info[hidden]{display:none}
+/* more than one printer online: a short list, each its light and its place */
+.jp-info.many{gap:4px}
+.jp-prn{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:7px;align-items:center;width:100%;padding:4px 6px;border:0;border-radius:4px;text-align:left;cursor:pointer;color:inherit;background:rgba(30,36,27,.08);font:inherit}
+.jp-prn .tp-led{grid-row:1 / 3;width:8px;height:8px;border-radius:50%;background:#7CFF6B;box-shadow:0 0 6px rgba(124,255,107,.8)}
+.jp-prn b{font-weight:400}.jp-prn small{font-size:13px;opacity:.75}
+.jp-prn.on{background:#1E241B;color:#B8C2AE}
 .simple-p .h-screw.a{right:62px;bottom:8px}.simple-p .h-screw.b{left:7px;bottom:7px}
 .simple-p .h-tie{top:auto;bottom:16px;left:-11px;right:auto;transform:none!important}
 
-/* PRINT once everything is open: the whole label maker, its paper out of the slot at its head and no window that reads as a slider */
-.full-p .tp-slot{margin:0 8px 12px}
-.full-p .tp-lid{height:34px}
-.full-p .h-screw.a{left:7px;top:7px}.full-p .h-screw.b{left:7px;bottom:7px}
-.full-p .h-tie{top:auto;bottom:96px;left:-11px;right:auto;transform:none!important}
-.full-p .dev.tepra.upg:not(.mod){padding-bottom:30px}
 
 /* the radio's studio side, enhanced: an analogue VU meter, cream face behind glass, its needle kicking with every cell the
    sweep plays (vuKick), the antenna, wires and the jellyfish key of the upgrade with it */
-.vu{position:absolute;z-index:3;top:16px;right:62px;width:66px;height:42px;border-radius:5px;overflow:hidden;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 42'%3E %3Crect width='66' height='42' fill='%23F2E9CF'/%3E %3Cpath d='M12.2 21.3A28 28 0 0 1 46.5 15.5' fill='none' stroke='%232A2620' stroke-width='1'/%3E %3Cpath d='M46.5 15.5A28 28 0 0 1 53.8 21.3' fill='none' stroke='%23C2372B' stroke-width='2.2'/%3E %3Cpath d='M15.9 24.6L12.2 21.3' stroke='%232A2620' stroke-width='1.4'/%3E%3Cpath d='M17.5 20.4L15.6 18.1' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M21.0 18.1L19.5 15.5' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M24.8 16.4L23.8 13.6' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M28.8 15.4L28.3 12.4' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M33.0 17.0L33.0 12.0' stroke='%232A2620' stroke-width='1.4'/%3E%3Cpath d='M37.2 15.4L37.7 12.4' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M41.2 16.4L42.2 13.6' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M45.0 18.1L46.5 15.5' stroke='%23C2372B' stroke-width='1'/%3E%3Cpath d='M48.5 20.4L50.4 18.1' stroke='%23C2372B' stroke-width='1'/%3E%3Cpath d='M50.1 24.6L53.8 21.3' stroke='%23C2372B' stroke-width='1.4'/%3E %3C/svg%3E") 0 0/100% 100% no-repeat;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25),0 0 0 3px #26292C,0 0 0 4px rgba(255,255,255,.18),0 3px 8px rgba(0,0,0,.35)}
+.vu{position:absolute;z-index:3;top:15px;right:44px;width:36px;height:20px;border-radius:2px;box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.18);overflow:hidden;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 42'%3E %3Crect width='66' height='42' fill='%23F2E9CF'/%3E %3Cpath d='M12.2 21.3A28 28 0 0 1 46.5 15.5' fill='none' stroke='%232A2620' stroke-width='1'/%3E %3Cpath d='M46.5 15.5A28 28 0 0 1 53.8 21.3' fill='none' stroke='%23C2372B' stroke-width='2.2'/%3E %3Cpath d='M15.9 24.6L12.2 21.3' stroke='%232A2620' stroke-width='1.4'/%3E%3Cpath d='M17.5 20.4L15.6 18.1' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M21.0 18.1L19.5 15.5' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M24.8 16.4L23.8 13.6' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M28.8 15.4L28.3 12.4' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M33.0 17.0L33.0 12.0' stroke='%232A2620' stroke-width='1.4'/%3E%3Cpath d='M37.2 15.4L37.7 12.4' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M41.2 16.4L42.2 13.6' stroke='%232A2620' stroke-width='1'/%3E%3Cpath d='M45.0 18.1L46.5 15.5' stroke='%23C2372B' stroke-width='1'/%3E%3Cpath d='M48.5 20.4L50.4 18.1' stroke='%23C2372B' stroke-width='1'/%3E%3Cpath d='M50.1 24.6L53.8 21.3' stroke='%23C2372B' stroke-width='1.4'/%3E %3C/svg%3E") 0 0/100% 100% no-repeat;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25),0 0 0 3px #26292C,0 0 0 4px rgba(255,255,255,.18),0 3px 8px rgba(0,0,0,.35)}
 .vu::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,0) 46%)}
-.vu::after{content:"";position:absolute;z-index:1;left:50%;bottom:-5px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#2A2722}
-.vu-n{position:absolute;left:50%;bottom:2px;width:1.6px;height:31px;margin-left:-.8px;background:#1C1A16;transform-origin:50% 100%;transform:rotate(calc(-48deg + var(--v,0) * 96deg));transition:transform .16s cubic-bezier(.2,.9,.3,1)}
+.vu::after{content:"";position:absolute;z-index:1;left:50%;bottom:-3px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:#2A2722}
+.vu-n{position:absolute;left:50%;bottom:1px;width:1.1px;height:15px;margin-left:-.55px;background:#1C1A16;transform-origin:50% 100%;transform:rotate(calc(-48deg + var(--v,0) * 96deg));transition:transform .16s cubic-bezier(.2,.9,.3,1)}
 body:not(.on-air) .vu-n{transform:rotate(-48deg)}
 @media (prefers-reduced-motion:reduce){.vu-n{transition:none}}
 
@@ -3143,9 +3149,12 @@ body:not(.on-air) .vu-n{transform:rotate(-48deg)}
    shell; a yellow run of cable down the side; the jellyfish key on a small board of its own, stuck on at the corner */
 .up-lora{top:-31px;right:-14px;width:60px;height:46px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 46'%3E %3Cpath d='M10 37C5 40 4 43 5 46' fill='none' stroke='%23D9342B' stroke-width='2' stroke-linecap='round'/%3E %3Cpath d='M13 38C10 41 10 44 11 46' fill='none' stroke='%23F4CC2A' stroke-width='2' stroke-linecap='round'/%3E %3Cpath d='M16 39C15 42 16 44 17 46' fill='none' stroke='%2316191B' stroke-width='2' stroke-linecap='round'/%3E %3Crect x='7' y='27' width='42' height='15' rx='1.5' fill='%231E4F8F'/%3E %3Crect x='7.5' y='27.5' width='41' height='14' rx='1.2' fill='none' stroke='%23FFFFFF' stroke-opacity='.2'/%3E %3Crect x='13' y='30' width='13' height='9' rx='1' fill='%230E1113'/%3E %3Cpath d='M14.5 41.5h1.6M17.5 41.5h1.6M20.5 41.5h1.6M23.5 41.5h1.6' stroke='%23D8B26A' stroke-width='1.4'/%3E %3Cpath d='M29 31h7M29 34.5h7M29 38h7' stroke='%23D8B26A' stroke-width='1.1'/%3E %3Ccircle cx='43' cy='35' r='1.9' fill='%237CFF6B'/%3E %3Crect x='39' y='21' width='12' height='7' rx='1' fill='%23C9A24C'/%3E %3Cpath d='M41 21v7M44.5 21v7M48 21v7' stroke='%238C6C26' stroke-width='.8'/%3E %3Crect x='41.5' y='0' width='7' height='23' rx='3.5' fill='%231C1F22'/%3E %3Cpath d='M42 5h6M42 9h6M42 13h6M42 17h6' stroke='%233C4247' stroke-width='1'/%3E %3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
 .simple-p .up-lora{top:-36px}
-.up-run{top:16px;bottom:40px;right:-8px;width:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 100' preserveAspectRatio='none'%3E %3Cpath d='M6 0C11 14 1 28 6 42S11 70 6 84 3 96 6 100' fill='none' stroke='%23F4CC2A' stroke-width='2.4' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E %3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
-.up-plate{right:-12px;bottom:-12px;width:54px;height:54px;border-radius:6px;background:radial-gradient(circle at 6px 6px,#D8B26A 0 2px,transparent 2.6px),radial-gradient(circle at calc(100% - 6px) 6px,#D8B26A 0 2px,transparent 2.6px),radial-gradient(circle at 6px calc(100% - 6px),#D8B26A 0 2px,transparent 2.6px),radial-gradient(circle at calc(100% - 6px) calc(100% - 6px),#D8B26A 0 2px,transparent 2.6px),linear-gradient(135deg,#235C46,#1A4736);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 3px 6px rgba(0,0,0,.35)}
-.dev.upg .flip-b,.dev.upg.vs-body .flip-b{left:auto!important;top:auto!important;right:-3px!important;bottom:-3px!important;z-index:5}
+.up-run{top:16px;bottom:44px;right:-8px;width:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 100' preserveAspectRatio='none'%3E %3Cpath d='M6 0C11 14 1 28 6 42S11 70 6 84 3 96 6 100' fill='none' stroke='%23F4CC2A' stroke-width='2.4' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E %3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+.up-plate{right:-8px;bottom:5px;width:38px;height:38px;border-radius:5px;background:radial-gradient(circle at 5px 5px,#D8B26A 0 1.5px,transparent 2px),radial-gradient(circle at calc(100% - 5px) 5px,#D8B26A 0 1.5px,transparent 2px),radial-gradient(circle at 5px calc(100% - 5px),#D8B26A 0 1.5px,transparent 2px),radial-gradient(circle at calc(100% - 5px) calc(100% - 5px),#D8B26A 0 1.5px,transparent 2px),linear-gradient(135deg,#235C46,#1A4736);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 3px 6px rgba(0,0,0,.35)}
+/* the jellyfish key on its little board: small, and inside the device's foot so it never reaches the tabs */
+.dev.upg .flip-b,.dev.upg.vs-body .flip-b{left:auto!important;top:auto!important;right:-3px!important;bottom:10px!important;z-index:5;width:28px;height:28px}
+.dev.upg .flip-b .i{width:16px;height:16px}
+.dev.upg .flip-b.hint::after{inset:-4px}
 .jr-dev.upg .up-lora,.jr-dev.upg .up-run,.jr-dev.upg .up-plate{animation:upin .8s cubic-bezier(.2,1.3,.4,1) both}
 @keyframes upin{0%{opacity:0;transform:translateY(-8px) scale(.9)}100%{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.jr-dev.upg .up-lora,.jr-dev.upg .up-run,.jr-dev.upg .up-plate{animation:none}}
@@ -3213,15 +3222,15 @@ body.simple #tag .hide{display:none}
 @media (max-width:759px){
   .jr{right:0;bottom:max(var(--dock,70px),calc(100dvh - var(--dev-top,50dvh) + 8px));flex-direction:column;justify-content:flex-end;align-items:stretch;gap:10px;padding:calc(var(--top,0px) + 44px) 0 0}
   .jr-r{flex:1 1 auto;justify-content:center}
-  .jr-r img{width:auto;max-width:min(72vw,300px);max-height:100%}
-  .jr-sg{flex-direction:column;align-items:stretch;gap:8px}
-  .jr-tab{justify-self:center;align-self:center;grid-auto-flow:column;width:auto;height:40px;padding:0 18px;border-radius:20px}
+  .jr-r img{width:auto;max-width:min(60vw,250px);max-height:100%}
+  .jr-sg{flex:0 0 auto;flex-direction:column;align-items:stretch;gap:6px}
+  .jr-tab{justify-self:center;align-self:center;grid-auto-flow:column;width:auto;height:28px;padding:0 14px;border-radius:14px}
   .jr-tab .jt-c{transform:rotate(90deg)}.jr-tab.open .jt-c{transform:rotate(-90deg)}.jr-tab.next::after{border-radius:24px}.jr-tab .jt-n{top:-6px;right:-6px}
-  .jr-acts{display:flex;width:100%;overflow-x:auto;padding:4px 14px 8px;scroll-padding-inline:14px;scroll-snap-type:x mandatory;scrollbar-width:none}
-  .jr-acts::-webkit-scrollbar{display:none}
-  .jr-acts li{flex:0 0 auto;scroll-snap-align:start}
-  .jr-act{width:184px;height:54px;padding:0 12px 0 8px;border-radius:14px}
-  .jr-act b{font-size:13.5px}
-  .jr-act .act-ic{width:36px;height:36px}
+  .jr-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;padding:0 12px 4px}
+  .jr-acts li{min-width:0}
+  .jr-act{height:34px;padding:0 8px 0 5px;grid-template-columns:22px minmax(0,1fr);column-gap:6px;border-radius:9px}
+  .jr-act b{font-size:11.5px;line-height:1.1}
+  .jr-act .act-ic{width:22px;height:22px}
+  .jr-act .act-ic .i{width:12px;height:12px}
   .simple-r .dev.radio:not(.mod),.simple-w .vs-body,.simple-p .dev.tepra:not(.mod){max-width:none}
 }

@@ -15,7 +15,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 0.03 | Four destinations on one thread; TRACKS; time on the radar; the CONNECTION receipt; the portfolio | Built, on staging |
 | 0.06 A | The first visit: the map, RADIO, W.I.S.H. and PRINT as one simple way through, gated until the first print (`docs/brief-0.06.md`) | Built, on staging |
 | 0.06 A+C | The small devices as everyone's fronts, upgraded once open; six suggestions; the veil; sound in one deep key at 120 BPM | Built, on staging |
-| 0.06 D | The sense-checked way through (the held life kept in sight, suggestions behind a tab, PRINT a dongle then the whole label maker); the OLED SELECT and its wire; the pixel icon; light and dark per page; the showcase zoomed in place | Built, live |
+| 0.06 D | The sense-checked way through (the held life kept in sight, suggestions behind a tab, PRINT a dongle); the OLED SELECT and its wire; the pixel icon; light and dark per page; the showcase zoomed in place | Built, live |
+| 0.06 B | Sound that heals itself; the line from W.I.S.H. to PRINT to the wall; PRINT a dongle for everyone; smaller suggestions; the showcase full screen on a phone, each card beside its poster; the first board's W.I.S.H. template, rewritten on the approval page; a choice of printer | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |

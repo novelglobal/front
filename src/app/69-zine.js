@@ -6,7 +6,10 @@
    ════════════════════════════════════════════════════════════════════ */
 const FORMATS = { r80: { dots: 512, w: 320, ic: 'receipt', n: '80' }, r58: { dots: 384, w: 240, ic: 'receipt', n: '58' }, gb: { dots: 160, w: 160, levels: 4, ic: 'gb', n: '' }, zine: { w: 420, h: 595, ic: 'base', n: 'A5' } };
 const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1, drawer: null };   /* every visit opens on the 80 mm receipt, the drawers shut */
-const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !/^PRINTED/.test(sentWord(s)));
+/* the stories made here that have not yet gone through the press: once one is printed, or sent to print, the press is done
+   with it (PRESSED) and it lives on in the portfolio, in SELECT and on the board */
+const PRESSED = new Set(store.get('da.pressed.v1', []));
+const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !PRESSED.has(s.key) && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
 const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode'];
@@ -164,7 +167,7 @@ async function baseSet(force) {
     zc.add(im); zc.sendToBack(im); const need = Math.ceil(top0 + im.getScaledHeight()) + 160; if (zc.getHeight() < need) { zc.setHeight(need); fitZ(); } zc.renderAll(); saveZine(); res();
   }));
 }
-const words = () => ((($('#tp-words') || {}).value || '').trim() || ($('#zine-words').value || '').trim());
+const words = () => ($('#zine-words').value || '').trim();
 const rnd = (a, b) => a + Math.random() * (b - a);
 function cutOut(f, text, x, y) {
   const faces = ['VT323, monospace', 'Poppins, sans-serif', '"IBM Plex Mono", monospace', '"Playfair Display", serif', 'UnifrakturMaguntia, serif', '"Sedgwick Ave Display", cursive']; const papers = ['#FFFFFF', '#0C0E0E', '#E6F84A', '#A9F0EC', '#D9D4C7'];
@@ -510,8 +513,18 @@ function stripSignal() {
 }
 /* what is on the strip, as the printer's head will lay it down */
 async function stripOut() { if (!zc) return null; zc.discardActiveObject(); zc.renderAll(); const F = FORMATS[PRESS.fmt]; const url = zc.toDataURL({ format: 'png', multiplier: F.dots ? F.dots / F.w : 3 }); return { url, F }; }
+/* printed, or on its way: the press is done with it, as on a line. The strip is cleared for the next one, or for the next story
+   waiting; the print itself is kept as a poster on the wall, in SELECT and on the board */
+function pressDone(s) {
+  if (s && s.key) { PRESSED.add(s.key); store.set('da.pressed.v1', [...PRESSED].slice(-300)); }
+  PRESS.story = null; jFresh = false; if (!zc) return; const F = FORMATS[PRESS.fmt];
+  zc.clear(); zc.setBackgroundColor(PRESS.fmt === 'zine' ? '#F4F1EA' : '#FFFFFF', () => {}); zc.setHeight(F.h || 520); ZHIST.length = 0; saveZine(); fitZ(); zc.renderAll();
+}
 async function pressOut(k) {
-  const s = pressStory(); const out = await stripOut(); if (!out) return; const { url, F } = out;
+  const s = pressStory();
+  /* nothing on the paper and no story at its head: nothing to print */
+  if (k === 'send' && !s && zc && !zc.getObjects().length) { tick(600); return; }
+  const out = await stripOut(); if (!out) return; const { url, F } = out;
   if (k === 'print' || k === 'send') feedAnim(url);
   const kept = k === 'print' || k === 'send' || k === 'png' ? savePoster(true).catch(() => null) : null;
   if (k === 'print' || k === 'send' || k === 'poster') thumbOf(url, 240).then(u => addToBoard(u, 'print', 170)).catch(() => {});
@@ -540,7 +553,7 @@ async function pressOut(k) {
   if (k === 'send') {
     const btn = document.querySelector('#view .print-k'); if (btn) btn.classList.add('busy');
     const first = simple();
-    try { const v = await directAction(sg, MASTER ? MASTER.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); refreshPanel(); }
+    try { const to = prnNow(); const v = await directAction(sg, to ? to.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); await kept; pressDone(sg); refreshPanel(); }
     catch (e) { toast(e.status === 429 ? 'TOO MANY · TRY AGAIN SOON' : e.status === 503 ? 'THE QUEUE IS FULL' : /escpos|story/.test(e.message || '') ? 'TOO LONG TO SEND' : 'NOT SENT'); }
     finally { if (btn) btn.classList.remove('busy'); }
     /* a first visit: printed, or waiting to, it is the showcase's hero, and everything opens (43-journey.js) */

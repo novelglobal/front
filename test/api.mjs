@@ -84,6 +84,14 @@ try {
   await call('/api/admin/settings', { method: 'POST', key: KEY, body: { lifeLock: true } }); const st3 = await call('/api/settings');
   check('the nature station is locked on for everyone until unlocked on the approval page; nobody else can', st0.json.lifeLock === true && stx.status === 401 && st1.json.lifeLock === false && st2.json.lifeLock === false && st3.json.lifeLock === true, JSON.stringify({ st0: st0.json, stx: stx.status, st2: st2.json, st3: st3.json }));
 
+  /* the first board's template, in words: rewritten on the approval page and served to everyone; nobody else can; too long is cut */
+  const tw = 'W · WHAT WE SAW\nCounts and maps.\n\n140.85 · NOTE\nA note.';
+  const tpx = await call('/api/admin/settings', { method: 'POST', body: { template: 'no' } });
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { template: tw } }); const tp1 = (await call('/api/settings')).json.template;
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { template: 'x'.repeat(7000) } }); const tp2 = (await call('/api/settings')).json.template.length;
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { template: '' } }); const tp3 = (await call('/api/settings')).json.template;
+  check('the first board\'s words are rewritten on the approval page and served to everyone; nobody else can; too long is cut; emptied, the site\'s own stand', tpx.status === 401 && tp1 === tw && tp2 === 6000 && tp3 === '', JSON.stringify({ tpx: tpx.status, tp1, tp2, tp3 }));
+
   /* online on the map: switched on the approval page, with or without a Pi listening */
   const lv0 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
   const lvx = await call('/api/admin/printers/elsie', { method: 'POST', body: { action: 'live', on: true } });

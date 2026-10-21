@@ -134,16 +134,37 @@ const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: redu
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
 const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
+  /* ───────── the sound watched over. A phone can leave its sound "running" with its clock stopped, or give it back silent
+     after something else took it; a voice can blow the mix up. Any of these, and the whole of it is built again at the next
+     touch, as a reload would, instead of staying quiet until one ───────── */
+  let sick = false, ctSeen = -1, ctAt = 0; const MONB = new Float32Array(512);
+  function clockOK() {
+    if (!ctx || ctx.state !== 'running') return false; const now = performance.now();
+    if (ctx.currentTime !== ctSeen) { ctSeen = ctx.currentTime; ctAt = now; return true; } return now - ctAt < 1500;
+  }
+  function rebuild() {
+    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear();
+    try { if (old && old.state !== 'closed') old.close().catch(() => {}); } catch (e) { /* gone */ }
+  }
+  setInterval(() => {
+    if (!ctx || document.hidden || sick) return;
+    if (ctx.state === 'running' && !clockOK()) sick = true;
+    else if (mon && ctx.state === 'running') { mon.getFloatTimeDomainData(MONB); for (let i = 0; i < MONB.length; i += 8) if (!Number.isFinite(MONB[i])) { sick = true; break; } }
+    /* broken while the radio plays: built again now (a phone still waits for a touch to let it sound) */
+    if (sick && S.radio) ready();
+  }, 1000);
   function ready() {
     if (!prefs.sound || !active()) return null;
     try {
+      if (ctx && (sick || ctx.state === 'closed')) rebuild();
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
         /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
         heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2; bus.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
+        mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
@@ -268,8 +289,8 @@ const snd = (() => {
     const a = ctx.createGain(); lp.connect(a); a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 2.2), t + 0.05); a.gain.exponentialRampToValueAtTime(0.0001, t + L); out(a, pan, 2.4);
   }
   /* ───────── the ladder: a Moog filter, its cutoff and resonance as params (a biquad stands in until it has loaded) ───────── */
-  function ladder(cut, res = 0.3, drive = 1) {
-    if (hasLadder) { try { const n = new AudioWorkletNode(ctx, 'ladder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] }); const c = n.parameters.get('cutoff'), r = n.parameters.get('resonance'), d = n.parameters.get('drive'); c.value = cut; r.value = res; d.value = drive; return { node: n, cut: c, res: r, drive: d }; } catch (e) { /* the biquad */ } }
+  function ladder(cut, res = 0.3, drive = 1, keep = false) {
+    if (hasLadder) { try { const n = new AudioWorkletNode(ctx, 'ladder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { keep } }); const c = n.parameters.get('cutoff'), r = n.parameters.get('resonance'), d = n.parameters.get('drive'); c.value = cut; r.value = res; d.value = drive; return { node: n, cut: c, res: r, drive: d }; } catch (e) { /* the biquad */ } }
     const b = ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = cut; b.Q.value = 0.7 + res * 14; return { node: b, cut: b.frequency, res: b.Q, drive: null };
   }
   /* dust on a record: sparse clicks, high and dry */
@@ -329,12 +350,22 @@ const snd = (() => {
     const s0 = ctx.createBufferSource(); s0.buffer = noise(0.72); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(c * 2, t); bp.frequency.exponentialRampToValueAtTime(c, t + 0.5); bp.Q.value = bright ? 9 : 6;
     const g = ctx.createGain(); env(g, t, 0.06, v * 2.6, 0.08, 0.5); s0.connect(bp); bp.connect(g); out(g, pan, 1.6); s0.start(t); s0.stop(t + 0.74);
   }
+  /* one ladder for every stab, kept for as long as the sound lives: a phone building and dropping a worklet for each stab is
+     what tired its sound out. Built again as the real ladder once ladder.js has loaded */
+  function stabLadder() {
+    if (stabLad && (stabLad.wk || !hasLadder)) return stabLad;
+    if (stabLad) try { stabLad.node.disconnect(); } catch (e) { /* gone */ }
+    const lf = ladder(650, 0.35, 1.1, true); lf.wk = hasLadder; const o = ctx.createGain(); lf.node.connect(o); out(o, 0, 0.6); o.connect(dubEcho());
+    stabLad = lf; return lf;
+  }
   /* POLLUTION: a low stab, saws pulled apart, through the ladder, cut short into the echo; more of them in danger */
   function stabV(f, t, v, pan, bright, danger) {
     let b = f; while (b > 165) b /= 2; while (b < 82) b *= 2;
-    const lf = ladder(bright ? 1300 : 650, danger ? 0.55 : 0.35, prefs.nino ? 2.2 : 1.1); lf.cut.setValueAtTime(bright ? 1300 : 650, t); lf.cut.exponentialRampToValueAtTime(200, t + 0.28);
-    for (const dt of danger ? [-26, 0, 26] : [-17, 17]) { const o = osc('sawtooth', b, t, t + 0.34); o.detune.value = dt; o.connect(lf.node); }
-    const e = ctx.createGain(); lf.node.connect(e); env(e, t, 0.005, v * 1.9, 0.06, 0.22); out(e, pan, 0.6); e.connect(dubEcho());
+    const lf = stabLadder(); const r = danger ? 0.55 : 0.35;
+    lf.cut.cancelScheduledValues(t); lf.cut.setValueAtTime(bright ? 1300 : 650, t); lf.cut.exponentialRampToValueAtTime(200, t + 0.28);
+    lf.res.setValueAtTime(lf.wk ? r : 0.7 + r * 14, t); if (lf.drive) lf.drive.setValueAtTime(prefs.nino ? 2.2 : 1.1, t);
+    const e = ctx.createGain(); env(e, t, 0.005, v * 1.9, 0.06, 0.22); e.connect(lf.node);
+    for (const dt of danger ? [-26, 0, 26] : [-17, 17]) { const o = osc('sawtooth', b, t, t + 0.34); o.detune.value = dt; o.connect(e); }
   }
   /* what a knot sounds like, as a word and notes: for its sound, and for the little score on its card */
   function describe(spec = {}) {
@@ -354,7 +385,9 @@ const snd = (() => {
     /* El Niño: the same tempo, more heat: the mix opened and driven harder */
     heat(on) { if (ctx && mixLP) heatSet(!!on); },
     /* sounding now, or waiting for a touch to be given its sound back */
-    running: () => !!ctx && ctx.state === 'running',
+    running: () => !!ctx && !sick && clockOK(),
+    /* for the checks: the sound as a phone can leave it, running with nothing coming out */
+    __sicken() { sick = true; },
     /* a dry click for a press */
     tick(f = 1700) {
       buzz(3); if (!ready()) return;

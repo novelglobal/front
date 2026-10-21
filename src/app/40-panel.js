@@ -495,7 +495,7 @@ const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.pa
 const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
 const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
 function showGallery(on) {
-  const g = $('#gallery'); if (!g) return; gzReset(); g.hidden = !on; if (!on) return; const ps = wallOf();
+  const g = $('#gallery'); if (!g) return; gzReset(); g.hidden = !on; if (!on) { g.classList.remove('full'); document.body.classList.remove('gl-full'); return; } const ps = wallOf();
   /* what was just printed comes first */
   if (galleryFocus) { const at = ps.findIndex(x => x.id === galleryFocus); if (at >= 0) galleryAt = at; galleryFocus = null; }
   galleryAt = clamp(galleryAt, 0, Math.max(0, ps.length - 1));
@@ -503,25 +503,38 @@ function showGallery(on) {
   /* the example's zine is made once a visit; until then the muse waits in its place */
   if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
   const art = x => (x.img ? `<img src="${x.img}" alt="" draggable="false">` : `<i class="gl-wait" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 48)}</i>`);
+  /* each poster's own card, tucked beside it */
+  const pair = x => { const c = !x.ex && deck().find(v => v.id === 'p:' + x.id); return c ? `<div class="gl-pair">${cardBtn(c)}</div>` : ''; };
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
-  g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
+  g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}${pair(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
     + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
-  g.classList.toggle('with-cards', deck().length > 0); galleryCards();
+  g.classList.toggle('with-cards', deck().some(c => c.kind !== 'poster')); galleryCards(); cardImgs();
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
-  /* slid to another: its number and its card change in place; the screen itself is never drawn again while it moves */
-  let q = 0, qt = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { gzReset(); galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); clearTimeout(qt); qt = setTimeout(galleryCards, 300); } }); }, { passive: true });
+  /* slid to another: its number changes in place, its card slides with it; the screen itself is never drawn again while it moves */
+  let q = 0; tr.addEventListener('scroll', () => { cancelAnimationFrame(q); q = requestAnimationFrame(() => { const i = Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)); if (i !== galleryAt) { gzReset(); galleryAt = clamp(i, 0, ps.length - 1); galleryRead(); tick(1500); } }); }, { passive: true });
 }
-/* the cards beside the screen: the one made from the poster in view first, then the lives and the constellations */
+/* a card as it stands in the showcase: its face, its back (pressed, it turns over; pressed again, back), and a small key of its
+   own, on its back, that opens it */
+const cardKindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || (c.kind === 'poster' ? 'POSTER' : 'LIFE')).toUpperCase());
+const cardBack = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${cardKindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}${c.kind === 'poster' && cardIntel(c) ? `<small>${esc(cardIntel(c))}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
+const cardBtn = c => `<button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${cardBack(c)}</span></span></button><button type="button" class="gc-go" data-gc-open="${esc(c.id)}" aria-label="Open the card">${icon('next', 'sm')}</button>`;
+function cardImgs() { (async () => { for (const im of $$('#gallery img[data-card-g]:not([src])')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })(); }
+/* the cards beside the screen: the lives and the constellations (a poster's own card stands with it, in the screen) */
 function galleryCards() {
-  const g = $('#gallery'); if (!g || g.hidden) return; const ps = wallOf(); const cur = ps[galleryAt];
-  const cs = [...deck().filter(c => cur && !cur.ex && c.id === 'p:' + cur.id), ...deck().filter(c => c.kind !== 'poster')].slice(0, 16);
+  const g = $('#gallery'); if (!g || g.hidden) return;
+  const cs = deck().filter(c => c.kind !== 'poster').slice(0, 16);
   let aside = g.querySelector('.gl-cards'); if (!g.classList.contains('with-cards')) { if (aside) aside.remove(); return; }
   if (!aside) { aside = document.createElement('aside'); aside.className = 'gl-cards'; aside.setAttribute('aria-label', 'Cards'); g.appendChild(aside); }
-  const kindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || (c.kind === 'poster' ? 'POSTER' : 'LIFE')).toUpperCase());
-  const back = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${kindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}${c.kind === 'poster' && cardIntel(c) ? `<small>${esc(cardIntel(c))}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
-  aside.innerHTML = `<ol>${cs.map((c, i) => `<li style="--i:${i}"><button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${back(c)}</span></span></button></li>`).join('')}</ol>`;
-  (async () => { for (const im of $$('#gallery img[data-card-g]')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })();
+  aside.innerHTML = `<ol>${cs.map((c, i) => `<li style="--i:${i}">${cardBtn(c)}</li>`).join('')}</ol>`;
+  cardImgs();
 }
+/* on a phone the close-up key opens the piece full screen, over everything; there, a pinch or a press brings it closer */
+function galleryFull(on) {
+  const g = $('#gallery'); if (!g) return; on = on == null ? !g.classList.contains('full') : !!on; gzReset();
+  g.classList.toggle('full', on); document.body.classList.toggle('gl-full', on); const k = g.querySelector('[data-gl="zoom"]'); if (k) k.setAttribute('aria-pressed', String(on));
+  const tr = g.querySelector('.gl-track'); if (tr) requestAnimationFrame(() => { tr.scrollLeft = galleryAt * tr.clientWidth; });
+}
+addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('gl-full')) galleryFull(false); });
 /* the small display under the screen: which one, of how many; the keys that do not apply to it go quiet */
 function galleryRead() {
   const g = $('#gallery'); const ps = wallOf(); const p = ps[galleryAt]; if (!g || !p) return;
@@ -558,11 +571,13 @@ function zoomArt(src, host, at) {
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('#gallery'); if (!g) return;
-  const gc = e.target.closest('[data-gc]'); if (gc) { if (!gc.classList.contains('over')) { $$('#gallery .gc.over').forEach(x => x.classList.remove('over')); gc.classList.add('over'); tick(1700); return; } const c = deck().find(v => v.id === gc.dataset.gc); if (c) openCard(c); return; }
+  const go = e.target.closest('[data-gc-open]'); if (go) { const c = deck().find(v => v.id === go.dataset.gcOpen); if (c) openCard(c); return; }
+  const gc = e.target.closest('[data-gc]'); if (gc) { const on = !gc.classList.contains('over'); $$('#gallery .gc.over').forEach(x => x.classList.remove('over')); if (on) gc.classList.add('over'); tick(on ? 1700 : 1100); return; }
   if (e.target.closest('.gl-hero img')) return;   /* a press on the piece is its close-up, in place (gz) */
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
+  if (a.dataset.gl === 'zoom' && phone()) { galleryFull(); tick(1600); return; }
   if (a.dataset.gl === 'zoom' && p.img) { const im = gzIm(); if (im) { if (GZ.im === im && GZ.s > 1.001) gzReset(true); else gzTo(im, 2, null, null, true); tick(1600); } return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
