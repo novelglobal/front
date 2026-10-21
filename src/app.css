@@ -23,12 +23,12 @@
 /* night: the page darkens, the ground dims under it. A slip, a receipt, stays paper, as it would in the hand */
 html.night{color-scheme:dark;--white:#15122A;--paper:#221D40;--grey:#3B3566;--grey-text:#A49ED0;--navy:#F2EFFF;--cobalt:#8FD3FF;--teal-wash:#1E2A3C;--ground:#0D0B1C}
 /* night: buttons and controls carry a clear edge, so nothing sinks into the charcoal */
-html.night .pill,html.night .tog,html.night .mood,html.night .tk,html.night .docs button,html.night .src-dl a,html.night .pack-up label,html.night .more-sigs summary,html.night .gigs a,html.night .ib{box-shadow:inset 0 0 0 1px #5A5A5A}
+html.night .pill,html.night .tog,html.night .mood,html.night .tk,html.night .docs button,html.night .pack-up label,html.night .gigs a,html.night .ib{box-shadow:inset 0 0 0 1px #5A5A5A}
 html.night .rail .tab{box-shadow:0 0 0 1px #5A5A5A}
 html.night .tab:not([aria-pressed="true"]){background:rgba(21,21,21,.94)}
 html.night .maplibregl-canvas{filter:brightness(.52) saturate(.72) contrast(1.06)}
 html.night .band{--slip:#1C1C1C;--ink:#EDEDED;box-shadow:inset 0 0 0 1px var(--grey)}
-html.night .eq-c i.t4,html.night .b-count .sun.d4{box-shadow:inset 0 0 0 1px rgba(227,233,231,.32)}
+html.night .eq-c i.t4{box-shadow:inset 0 0 0 1px rgba(227,233,231,.32)}
 html.night .eq-c i:not(.l){background:rgba(227,233,231,.07)}
 html.night .mo.d4 .eq-c i.pk::after{color:#E3E9E7}
 html.night .s-acts .tty-b[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--white)}
@@ -133,8 +133,7 @@ html.night .maplibregl-ctrl-attrib.maplibregl-compact{background:rgba(252,251,24
 button.pk-nm,a.pk-nm{text-decoration:underline;text-decoration-color:var(--grey);text-decoration-thickness:1px;text-underline-offset:3px}
 button.pk-nm:hover,a.pk-nm:hover{text-decoration-color:var(--navy)}
 button.pk-nm:active,a.pk-nm:active{transform:none}
-.pk-on{padding:1px 4px;background:var(--navy);color:var(--white);font-weight:600}
-.pk-snd{flex:none;align-self:center;width:44px;height:14px;color:var(--navy);opacity:.75}
+
 .score{display:block;width:44px;height:14px}
 .pk-top>.fm{width:13px;height:13px;margin:0 12px 0 14px}
 .pk-harm{display:flex;align-items:center;gap:7px;margin:7px 2px 0;font-size:9.5px;letter-spacing:.08em}
@@ -143,12 +142,11 @@ button.pk-nm:active,a.pk-nm:active{transform:none}
 .pk-line{margin:8px 2px 0;font-size:12px;line-height:1.4}
 .pk-line.mono{font-size:9.5px;letter-spacing:.08em;color:var(--grey-text)}
 .pk-acts{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
-.pk-main,.pk-b{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 11px;font:600 10px var(--mono);letter-spacing:.1em;text-decoration:none;white-space:nowrap}
+.pk-main{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 11px;font:600 10px var(--mono);letter-spacing:.1em;text-decoration:none;white-space:nowrap}
 .pk-main{flex:1;background:var(--navy);color:var(--white)}
 .pk-main:hover{background:#13355F}
 .pk-main.cut{background:var(--white);color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red)}
-.pk-b{border:1px solid var(--navy)}
-.pk-b:hover{background:var(--navy);color:var(--white)}
+
 .pk-new{display:flex;flex-direction:column;gap:7px;margin-top:10px}
 .pk-new input{height:38px;padding:0 10px;border:1px solid var(--navy);background:var(--white);font-size:14px}
 .pk-new input:focus{box-shadow:0 0 0 2px var(--teal-wash)}
@@ -227,25 +225,18 @@ details.sec[open]>summary .lab::after{content:" –"}
 .row .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .row .nm b{font-weight:600;font-size:13.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .nm small{font:500 10px var(--mono);letter-spacing:.04em;color:var(--grey-text);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.rows.tribes li,.alarms li{display:flex;align-items:center}
+.rows.tribes li{display:flex;align-items:center}
 .src{width:36px;height:36px;display:grid;place-items:center;color:var(--grey-text)}
 .src:hover{color:var(--navy)}
 
 /* NOW */
 /* the outlook: the months ahead on paper, each in its danger, from orange to black; every kind of life under it, us too */
 .band{margin:0 var(--gut);padding:12px 14px 10px;background:var(--slip);color:var(--ink);box-shadow:inset 0 0 0 1px #E2E0D8}
-.b-top{display:flex;align-items:center;justify-content:space-between;font:600 10px var(--mono);letter-spacing:.12em}
-.b-top .el{font:600 15px/1 var(--mono);letter-spacing:.06em}
+
 .band{container-type:inline-size}
-.b-head{margin:14px 0 8px;font:400 34px/.9 'VT323',ui-monospace,monospace;font-size:min(42px,10.8cqi);letter-spacing:.01em;white-space:nowrap;color:var(--ink)}
-.b-count{display:flex;align-items:center;gap:10px;margin:0 0 12px}
-.b-count .cd{font:400 26px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:var(--ink)}
-.b-count .sun{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--deg1);color:var(--ink)}
-.b-count .sun .i{width:16px;height:16px}
-.b-count .sun.d2{background:var(--deg2)}.b-count .sun.d3{background:var(--deg3);color:#FCFBF7}.b-count .sun.d4{background:var(--deg4);color:#FCFBF7}
-.b-count.now .sun{animation:sun 2.4s ease-in-out infinite}
+
 @keyframes sun{0%,100%{box-shadow:0 0 0 0 rgba(255,106,0,.45)}50%{box-shadow:0 0 0 7px rgba(255,106,0,0)}}
-.still .b-count.now .sun{animation:none}
+
 .mstrip{display:grid;gap:4px}
 .ms-m{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px}
 /* every month at full colour, extreme in black; the chosen three stand taller; no outlook yet is hatched, not faded */
@@ -278,31 +269,24 @@ details.sec[open]>summary .lab::after{content:" –"}
 .eq-read .dg{font-size:9px}
 .eq-read .hz{color:#9C9A92}
 .eq-read .why{margin-top:5px;font:400 11.5px/1.4 var(--sans);color:#CFCDC4}
-.eq-read .eq-k{display:flex;gap:9px;margin-top:7px}
-.eq-read .eq-k .i{width:18px;height:18px;color:#E9E7DF}
-.eq-read .eq-k .us .i{color:#7FB8EA}
+
 .b-span{margin-top:8px;font-size:10px;letter-spacing:.06em;color:var(--grey-text)}
 .b-span b{color:var(--ink);font-weight:600}
-.b-off{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:10px;letter-spacing:.08em;color:var(--cobalt);text-decoration:none}
+
 /* every kind of life the months ahead reach, us among them: each kind's mark over its danger */
-/* the five: a strip of five, each its photograph with its mark, its danger and the days until it lands */
-.hero-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.hero-row{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:4px 2px 6px;text-align:center}
-.hero-row:hover{background:var(--paper)}
+
 .h-pic{position:relative;display:block;width:52px;height:52px;flex:none}
 .h-pic img,.h-pic .hero-cv{display:block;width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--paper)}
 .h-pic .i{position:absolute;right:-3px;bottom:-3px;width:20px;height:20px;padding:2px;border-radius:50%;background:var(--white);color:var(--ink);box-shadow:0 0 0 1px #E2E0D8}
-.hero-row .nm{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;width:100%}
+
 /* the five as small polaroids: a white frame, deeper at the foot, a little askew */
 .five .h-pic{width:54px;height:62px;padding:3px 3px 11px;background:#FCFBF7;box-shadow:0 1px 3px rgba(0,0,0,.28);transform:rotate(var(--tilt,0deg))}
 .five .h-pic img,.five .h-pic .hero-cv{width:48px;height:48px;border-radius:0}
 .five .h-pic .i{right:-6px;bottom:-4px}
 .five li:nth-child(odd) .h-pic{--tilt:-2deg}.five li:nth-child(even) .h-pic{--tilt:1.6deg}
-.hero-row b{font-weight:600;font-size:10.5px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.hero-row .chips{justify-content:center;gap:2px}
-.hero-row .chips i{font-size:8px;padding:2px 3px}
+
 .chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
-.alarms .row{flex:1}
+
 .callb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:56px;height:50px;background:var(--red);color:var(--white);text-decoration:none;flex:none}
 .callb small{font:600 8.5px var(--mono);letter-spacing:.08em}
 .callb.deadb{background:var(--black)}
@@ -311,10 +295,6 @@ details.sec[open]>summary .lab::after{content:" –"}
 .gigs a{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--navy);font-size:10.5px;letter-spacing:.08em;text-decoration:none}
 .gigs a:hover{background:var(--navy);color:var(--white)}
 .gig{display:inline-flex;align-items:center;gap:4px;color:var(--cobalt)}
-.calls2{display:flex;gap:6px;flex-wrap:wrap}
-.calls2 a{font-size:10.5px;letter-spacing:.06em;padding:6px 8px;background:var(--paper);text-decoration:none}
-.calls2 a:first-child{background:var(--red);color:var(--white)}
-.calls2 a:hover{background:var(--navy);color:var(--white)}
 
 /* NOW: the constellations, newest first */
 .cons-l li{display:flex;align-items:center;flex-wrap:wrap;border-top:1px solid var(--paper)}
@@ -344,12 +324,11 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .sig-row:hover{background:var(--paper)}
 .sig-row .pg{width:34px;height:34px;flex:none}
 .sg small.st{color:var(--navy);font-weight:600}
-.sig-row.sh .sg-t b{color:var(--cobalt)}
+
 .sg{display:flex;flex-direction:column;gap:4px;min-width:0}
-.sg-t{font-weight:600;font-size:13.5px;line-height:1.25}
-.sg-t b{font-size:11px;font-weight:600;color:var(--teal-deep);margin-right:7px;letter-spacing:.04em}
+
 .sg small{font-size:9.5px;letter-spacing:.06em;color:var(--grey-text);display:flex;align-items:center;gap:3px;flex-wrap:wrap}
-.sig-row.ex .sg-t{color:var(--grey-text);font-weight:500}
+
 .rx{display:flex;gap:6px;margin:0 0 10px;animation:wipe .25s var(--ease)}
 .rx textarea{flex:1;min-height:44px;text-transform:uppercase;resize:vertical;padding:8px;border:1px solid var(--navy);font:12px/1.4 var(--mono);background:var(--slip)}
 .rx .ib{background:var(--navy);color:var(--white);height:auto}
@@ -376,10 +355,7 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .tk-see i{width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 1.3px var(--navy);transition:background .25s,box-shadow .25s}
 .tk.seen .tk-see i{background:var(--navy);box-shadow:inset 0 0 0 1.3px var(--navy),0 0 0 3px rgba(11,37,69,.08)}
 .tk-see:hover i{box-shadow:inset 0 0 0 1.3px var(--navy),0 0 0 3px rgba(11,37,69,.12)}
-/* a fader: a hairline track, the level drawn along it, a small square cap */
-.tk-lvl{grid-column:3;grid-row:1 / 3;-webkit-appearance:none;appearance:none;width:64px;height:18px;background:linear-gradient(var(--navy),var(--navy)) 0 50%/var(--v,70%) 2px no-repeat,linear-gradient(var(--grey),var(--grey)) 0 50%/100% 1px no-repeat;cursor:pointer}
-.tk-lvl::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;background:var(--white);border:1.3px solid var(--navy);border-radius:1px}
-.tk-lvl::-moz-range-thumb{width:8px;height:14px;background:var(--white);border:1.3px solid var(--navy);border-radius:1px}
+
 .moods{display:flex;gap:2px}
 .mood{width:26px;height:24px;display:grid;place-items:center;color:var(--grey-text);border-radius:2px}
 .mood[aria-pressed="true"]{color:var(--navy);background:var(--paper)}
@@ -390,17 +366,7 @@ li.con.fresh .nm b::after{content:"";display:inline-block;width:6px;height:6px;m
 .tk-play{position:relative}
 .tk-play.muted::after{content:"";position:absolute;width:15px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
 .tk-see:disabled{opacity:1;cursor:default}
-.vox{grid-column:2;display:flex;align-items:center;gap:8px;min-width:0;min-height:15px;overflow:hidden}
-.vox .v{display:grid;place-items:center;flex:none;opacity:.35;transition:opacity .2s,transform .2s}
-.vox .v .i{width:14px;height:14px}
-.tk.seen .vox .v{opacity:.62}
-.tk.on .vox .v{opacity:.8}
-.vox .v.hit{opacity:1;transform:translateY(-1px)}
-.tk .beat{grid-column:2;display:block;height:12px;overflow:hidden;color:var(--navy)}
-.tk .beat svg{display:block;width:200%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.2}
-.tk.on .beat svg{opacity:.6;animation:feed 2.4s linear infinite}
-@keyframes feed{to{transform:translateX(-50%)}}
-.still .tk.on .beat svg{animation:none}
+
 .pack{margin-top:8px}
 .pack-up{display:flex;justify-content:space-between;gap:8px;margin:0;font-size:9.5px;letter-spacing:.08em}
 .pack-up label,.pack-up a{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px dashed var(--navy);color:var(--navy);text-decoration:none;cursor:pointer}
@@ -493,11 +459,7 @@ q.said{display:block;width:100%;margin-bottom:4px;font-size:14px;font-style:ital
 .ss .now b{color:var(--navy);font-weight:600}
 @keyframes grow{from{transform:scaleY(0)}}
 .needs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:14px var(--gut) 0;background:var(--paper);border:1px solid var(--paper)}
-.nd{position:relative;display:flex;flex-direction:column;gap:3px;padding:9px 10px;background:var(--white)}
-.nd b{font:500 17px/1 var(--mono)}
-.nd small{font:500 8.5px var(--mono);letter-spacing:.08em;color:var(--grey-text)}
-.nd .st{position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--teal)}
-.nd-low .st{background:var(--deg2)}.nd-none .st{background:var(--red)}.nd-near .st{background:var(--neon);box-shadow:0 0 0 1px var(--navy)}.nd-risk .st{background:var(--orange)}
+
 .r-do{display:flex;flex-direction:column;gap:6px;margin:14px var(--gut) 0}
 .r-do:empty{display:none}
 .do{display:flex;align-items:center;gap:10px;padding:12px;background:var(--paper);text-decoration:none;text-align:left}
@@ -898,12 +860,6 @@ body.nosignal .rail::after{content:"";position:absolute;left:50%;bottom:-14px;wi
   #press .sl-fig.blank{border-color:#000}
 }
 
-/* the groups, small, low on the stories page */
-.tribes-s{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px}
-.tribes-s li{min-width:0}
-.tribes-s .row{display:flex;align-items:center;gap:7px;width:100%;min-width:0;padding:5px 0;text-align:left;font-size:11px;line-height:1.2}
-.tribes-s .row b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tribes-s .patch{width:9px;height:9px;flex:none}
 /* the board is the page's first thing: its heading carries more weight */
 .board .lab-row .lab{font-size:11.5px;color:var(--navy)}
 
@@ -940,11 +896,7 @@ html:not(.night) .sigs.cards .st{box-shadow:0 0 0 2px #EFECE3}
 .sigs.cards .t2{border-color:#F2C14E;box-shadow:inset 0 0 0 2px #F2C14E}
 .mood.mute{position:relative;margin-left:6px}
 .mood.mute.muted::after{content:"";position:absolute;width:14px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
-.more-sigs{margin-top:8px}
-.more-sigs summary{display:inline-flex;align-items:center;gap:6px;list-style:none;cursor:pointer;padding:6px 10px;border:1px solid var(--paper);font-size:10px;color:var(--grey-text)}
-.more-sigs summary::-webkit-details-marker{display:none}
-.more-sigs[open] summary .i{transform:rotate(90deg)}
-.more-sigs .sigs{margin-top:8px}
+
 html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 1px var(--grey)}
 
 /* ───────── 0.03: four destinations on one thread; TRACKS as keys; time on the radar; the connection receipt ───────── */
@@ -953,43 +905,26 @@ html.night .h-pic .i{background:var(--paper);color:var(--navy);box-shadow:0 0 0 
 .tab .knot{position:absolute;left:-12px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;border:1px solid rgba(255,255,255,.7);background:rgba(11,11,11,.55);pointer-events:none;transition:background .4s var(--ease),transform .4s var(--ease)}
 .tab.tied .knot{background:var(--clay);border-color:var(--clay);transform:scale(1.15)}
 .tab.apart{margin-top:10px}
-/* the radio: the one question, until something is noticed today */
-.b-ask{margin:-2px 0 12px;font:400 17px/1.15 'VT323',ui-monospace,monospace;letter-spacing:.02em;color:var(--ink);opacity:.82}
+
 /* time: hold or play, beside the months */
 .t-play{width:24px;height:24px;display:grid;place-items:center;color:var(--ink);border:1px solid currentColor;border-radius:50%;opacity:.7}
 .t-play:hover,.t-play[aria-pressed="true"]{opacity:1}
 .t-play .i{width:11px;height:11px}
-.eq-read .hy{display:inline-block;margin-right:7px;padding:0 4px;border:1px solid #6E6C66;font:400 12px/1.25 'VT323',ui-monospace,monospace;letter-spacing:.08em;color:#BDBBB2;vertical-align:1px}
+
 /* TRACKS: four keys, as a radio's presets; the mood and the sound beside them */
 .t4{display:flex;align-items:stretch;gap:3px;margin-top:10px}
-.t4k{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 5px;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);color:var(--ink);opacity:.62;transition:opacity .2s,background .2s}
-.t4k small{font:400 13px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.t4k .i{width:14px;height:14px}
-.t4k:hover{opacity:.9}
-.t4k[aria-pressed="true"]{opacity:1;background:var(--ink);color:var(--slip);border-color:var(--ink)}
-.t4s{display:flex;flex-direction:column;gap:3px;margin-left:3px}
-.t4m{position:relative;flex:1;width:26px;display:grid;place-items:center;color:var(--ink);opacity:.7}
-.t4m:hover{opacity:1}
-.t4m .i{width:13px;height:13px}
-.t4m.muted::after{content:"";position:absolute;width:14px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
+
 /* SIGNALS */
 .quiet{display:grid;place-items:center;padding:40px 0}
-.to-radar{width:64px;height:64px;display:grid;place-items:center;border:1px solid var(--grey);border-radius:50%;color:var(--navy)}
-.to-radar:hover{border-color:var(--navy)}
-.to-radar .i{width:26px;height:26px}
+
 .wishes li,.slips-l li,.prn-l li{border-top:1px solid var(--paper)}
 .wishes li:first-child,.slips-l li:first-child,.prn-l li:first-child{border-top:0}
-.wish-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;text-align:left}
-.wish-row .w-chart{flex:none;width:40px;height:40px;display:grid;place-items:center;background:#FCFBF7;color:#141412}
-.wish-row .w-chart svg{width:40px;height:40px}
-.wish-row .w-chart .i{width:20px;height:20px}
-.wish-row .nm,.slip-row .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
-.wish-row small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
+
+.slip-row .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+
 /* SIGNS */
 .styles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.sty{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border:1px solid var(--grey);font:500 10px var(--mono);letter-spacing:.08em;color:var(--navy)}
-.sty.tty-b span{font:400 20px/1 'VT323',ui-monospace,monospace}
-.sty[aria-pressed="true"]{background:var(--navy);color:var(--white);border-color:var(--navy)}
+
 .slip-row{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;width:100%;padding:8px 0;text-align:left;align-items:baseline}
 .slip-row b{font-size:10px;letter-spacing:.06em}
 .slip-row small{grid-column:2;font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
@@ -1019,8 +954,7 @@ a.sig-line{text-decoration:none;color:inherit}
 /* ───────── the radio as instructions: four steps; live layers to mix; the mix shared on ───────── */
 .steps{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:14px}
 .st{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start}
-.st .sn{display:grid;place-items:center;width:20px;height:20px;border:1px solid currentColor;border-radius:50%;font:400 14px/1 'VT323',ui-monospace,monospace;color:var(--ink);opacity:.75}
-.st.done .sn{background:var(--clay);border-color:var(--clay);color:#FCFBF7;opacity:1}
+
 .st .sw{margin:1px 0 8px;font:400 20px/1 'VT323',ui-monospace,monospace;letter-spacing:.02em;color:var(--ink)}
 .st.done[data-step="1"] .sw{opacity:.6}
 .radio-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
@@ -1029,8 +963,7 @@ a.sig-line{text-decoration:none;color:inherit}
 .radio-b.on{background:var(--clay);border-color:var(--clay);color:#FCFBF7;animation:onair 2.4s ease-in-out infinite}
 .radio-b:disabled{opacity:.3}
 @keyframes onair{50%{box-shadow:0 0 0 6px rgba(127,209,194,.25)}}
-.mood-b{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 9px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);color:var(--ink);font:400 15px/1 'VT323',ui-monospace,monospace;letter-spacing:.06em}
-.mood-b .i{width:13px;height:13px}
+
 .lyrs{list-style:none;margin:0;padding:0;display:grid;gap:3px}
 .lyr{display:grid;grid-template-columns:118px 1fr 30px 70px;gap:8px;align-items:center;opacity:.55;transition:opacity .2s}
 .lyr.on{opacity:1}
@@ -1041,20 +974,9 @@ a.sig-line{text-decoration:none;color:inherit}
 .lyr .lv i{background:color-mix(in srgb,var(--ink) 14%,transparent);transition:background .35s}
 .lyr .lv i.hit{background:var(--clay);transition:none}
 .lyr .n{font:400 15px/1 'VT323',ui-monospace,monospace;color:var(--ink);text-align:right}
-.lyr-lvl{width:100%;accent-color:var(--clay)}
-.share-b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--ink);color:var(--ink);font:400 16px/1 'VT323',ui-monospace,monospace;letter-spacing:.08em}
-.share-b:disabled{opacity:.3}
-.share-b .i{width:13px;height:13px}
+
 .mixes li{border-top:1px solid var(--paper)}
 .mixes li:first-child{border-top:0}
-.mix-row{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;width:100%;padding:9px 0;text-align:left}
-.mix-row .nm{display:flex;flex-direction:column;gap:2px}
-.mix-row small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
-.mx-l{display:flex;gap:4px;color:var(--grey-text)}
-.mx-l i{display:inline-flex;align-items:center;gap:2px;opacity:.3;font:500 9px var(--mono)}
-.mx-l i.on{opacity:1;color:var(--navy)}
-.mx-l .i{width:13px;height:13px}
-#sec-five .hero-row .nm b{font-size:11px}
 
 /* each layer's own mood, an icon; the equaliser lifts while the radio plays */
 .lyr{grid-template-columns:112px 26px 1fr 26px 64px}
@@ -1070,19 +992,10 @@ body.shut #board{display:none}
 #board canvas{display:block}
 @media (max-width:760px){#board{right:0;bottom:50vh}}
 .book .bk-h{display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}
-.book .bk-t{margin:0;font-size:28px}
+
 .pages{list-style:none;margin:0;padding:0}
 .page{padding:10px 0;border-top:1px solid var(--paper)}
 .page:first-child{border-top:0}
-.pg-h{display:flex;align-items:baseline;gap:8px}
-.pg-h b{font-size:12px;letter-spacing:.08em}
-.pg-h small{font-size:9px;letter-spacing:.06em;color:var(--grey-text)}
-.pg-a{margin-left:auto;display:flex;gap:2px}
-.pg-l{list-style:none;display:flex;gap:10px;margin:6px 0 0;padding:0}
-.pg-l li{display:flex;align-items:center;gap:2px;opacity:.3}
-.pg-l li.on{opacity:1}
-.pg-l .i{width:13px;height:13px}
-.pg-l span{font:400 14px/1 'VT323',ui-monospace,monospace}
 
 /* ───────── only RADIO shows the ground; SIGNALS and SIGNS are their own surfaces ───────── */
 .cover{display:none;position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);background:#141412}
@@ -1098,7 +1011,7 @@ body.off-map:not(.shut) .cover{display:block}
 #zine .desk{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;display:grid;place-items:start center;padding:28px 0}
 #zine .desk .canvas-container{box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
 #zine-words{height:34px;width:150px;padding:0 8px;margin-right:6px;background:#1E1E1C;color:#EDEDED;border:1px solid rgba(255,255,255,.18);font:400 16px 'VT323',ui-monospace,monospace}
-.zt-page{margin-left:auto;display:flex;gap:4px}
+
 @media (max-width:760px){.cover,#zine{right:0;bottom:50vh}}
 /* the radio: El Niño's countdown in orange; one analogue button; layers with a three-step volume */
 .b-emerg{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0 0 12px;color:var(--deg2)}
@@ -1111,12 +1024,12 @@ body.off-map:not(.shut) .cover{display:block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .hero-play:active{transform:translateY(1px)}
 .lyr{grid-template-columns:1fr 28px 1fr 34px}
-.lyr .n,.lyr-lvl{display:none}
+.lyr .n{display:none}
 .lyr-v{display:flex;align-items:flex-end;gap:2px;height:28px;padding:0 6px;justify-content:center}
 .lyr-v i{width:4px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
 .lyr-v i:nth-child(1){height:6px}.lyr-v i:nth-child(2){height:11px}.lyr-v i:nth-child(3){height:16px}
 .lyr-v[data-v="0"] i:nth-child(1),.lyr-v[data-v="1"] i:nth-child(-n+2),.lyr-v[data-v="2"] i{background:var(--ink)}
-.band .share-b{display:flex;justify-content:center;width:100%;margin-top:14px;height:36px}
+
 .posters{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .poster-b{display:block;width:100%;background:#fff;padding:4px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .poster-b img{display:block;width:100%}
@@ -1143,46 +1056,38 @@ html:not(.night) .hero-play{background:radial-gradient(circle at 34% 28%,rgba(25
 .hw-label{position:absolute;left:0;right:0;bottom:0;height:26px;margin:0;padding:0 14px;display:flex;align-items:center;font-size:8.5px;letter-spacing:.14em;color:rgba(190,225,230,.6);border-top:1px solid rgba(190,225,230,.18);background:rgba(190,220,225,.05);white-space:nowrap;overflow:hidden}
 #zine .desk{bottom:26px}
 .roll{display:grid;justify-items:center;padding:6px 0 30px}
-.roll-img{display:block;width:302px;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.55);image-rendering:pixelated}
-.roll-img.r58{width:228px}.roll-img.gb{width:320px}
-.roll-blank{display:block;width:302px;height:420px;background:repeating-linear-gradient(#F6F5F0 0 22px,#EDEBE3 22px 23px);opacity:.25}
+
 /* SIGNALS' page: the W.I.S.H. form; the boards, each with its signals and constellations */
 .wish-form{display:grid;gap:8px;padding:14px;border:1px solid color-mix(in srgb,var(--navy) 22%,transparent);background:linear-gradient(180deg,rgba(190,220,225,.07),transparent)}
 .wf-t{margin:0;font-size:30px}
 .wish-form select,.wf-l input{width:100%;height:34px;padding:0 8px;background:transparent;color:var(--navy);border:1px solid color-mix(in srgb,var(--navy) 28%,transparent);font:400 17px 'VT323',ui-monospace,monospace}
 .wf-l{display:grid;gap:3px}
 .wf-l span{font-size:8.5px;letter-spacing:.14em;color:var(--grey-text)}
-.send-b{display:flex;align-items:center;justify-content:center;gap:8px;height:40px;margin-top:4px;background:var(--navy);color:var(--white);font:400 18px/1 'VT323',ui-monospace,monospace;letter-spacing:.1em}
-.send-b .i{width:14px;height:14px}
+
 .bk-a{display:flex;gap:2px}
 .bk-a label.ib{cursor:pointer}
-.bgroups{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+
 .bgroup{border:1px solid color-mix(in srgb,var(--navy) 16%,transparent);padding:8px 10px}
 .bgroup.on{border-color:#7FD1C2}
-.bg-h{display:flex;align-items:baseline;justify-content:space-between;width:100%;text-align:left}
-.bg-h b{font-size:11px;letter-spacing:.12em}
-.bg-h small{font-size:9px;color:var(--grey-text)}
+
 .g-sigs,.g-figs{list-style:none;margin:6px 0 0;padding:0}
 .g-sig{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--paper)}
 .g-sig > span.mono{font-size:10px;letter-spacing:.06em}
-.g-sig .pg-l{display:flex;gap:6px;margin:0}
-.g-sig .pg-l i{display:flex;opacity:.3}.g-sig .pg-l i.on{opacity:1}
-.g-sig .pg-l .i{width:12px;height:12px}
+
 .g-figs li{display:flex;align-items:center;gap:6px;padding:3px 0 3px 10px;font-size:10px;letter-spacing:.04em}
 .g-figs .i{width:12px;height:12px}
 .bgroup .cons{margin-top:8px}
 /* SIGNS' page */
 .seg{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-.seg .sty{flex:1 1 auto;height:34px;padding:0 8px;font-size:9px}
-.seg.outs .sty{background:rgba(127,209,194,.08)}
+
 .slip-row.on{background:rgba(127,209,194,.12)}
 .stickers{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
 .stk{display:block;width:100%;padding:2px;border-radius:6px}
 .stk:hover{background:rgba(127,209,194,.15)}
 .stk img{display:block;width:100%}
 
-.bk-t,.wf-t{color:var(--navy)}
-#sec-slips .bk-t{display:block;margin:0 0 10px;font-size:24px}
+.wf-t{color:var(--navy)}
+
 .lkind{flex:1 1 140px;height:30px;padding:0 8px;background:transparent;color:var(--navy);border:1px solid var(--grey);font:400 16px "VT323",ui-monospace,monospace}
 .s-acts{flex-wrap:nowrap}.s-acts .pill{flex:0 0 auto;justify-content:center;height:30px}.s-acts .pill.sq{width:34px;padding:0}.s-acts .pill[data-sa="conn"][aria-pressed="true"]{background:var(--navy);color:var(--white);border-color:var(--navy)}
 /* the equaliser as clear plastic: every month in its own colour, the months with no outlook yet as clear segments outlined */
@@ -1190,8 +1095,7 @@ html:not(.night) .hero-play{background:radial-gradient(circle at 34% 28%,rgba(25
 .mo.hp .eq-c i.l,.mo.on.hp .eq-c i.l{opacity:1;background:rgba(255,255,255,.04)!important;box-shadow:inset 0 0 0 1px rgba(127,209,194,.55)}
 html:not(.night) .mo.hp .eq-c i.l{box-shadow:inset 0 0 0 1px rgba(11,37,69,.35)}
 @keyframes arcblink{50%{opacity:.15}}
-/* WISH MAKER: what was made here, to lay on the board; the active board's name, rewritable */
-.as-l{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px}
+
 .as-b{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 8px;border:1px solid color-mix(in srgb,var(--navy) 22%,transparent);border-radius:15px;color:var(--navy);background:rgba(127,209,194,.06)}
 .as-b img{width:18px;height:18px}.as-b .i{width:12px;height:12px}
 .as-b span{font-size:9px;letter-spacing:.06em;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1199,13 +1103,9 @@ html:not(.night) .mo.hp .eq-c i.l{box-shadow:inset 0 0 0 1px rgba(11,37,69,.35)}
 .bg-n{flex:1;min-width:0;height:26px;padding:0 6px;background:transparent;color:var(--navy);border:1px dashed rgba(127,209,194,.6);font-size:11px;letter-spacing:.12em}
 /* PRINT SHOP: its name at the head, the sun as a circuit's arc rising; the pieces made here; a colour of one's own */
 .ps-h{position:relative;margin:0 var(--gut) 14px;padding:18px 0 10px;border-bottom:1px solid rgba(127,209,194,.35);overflow:hidden}
-.ps-t{margin:0;font-size:40px;color:var(--navy);letter-spacing:.04em}
-.ps-sun{position:absolute;right:-8px;top:-34px;width:150px;height:150px;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 9px,rgba(212,175,95,.45) 9px 10px);-webkit-mask:linear-gradient(#000 0 50%,transparent 50%);mask:linear-gradient(#000 0 50%,transparent 50%);opacity:.8}
-.ps-sun::after{content:"";position:absolute;inset:44%;border-radius:50%;background:#7FD1C2;box-shadow:0 0 18px rgba(127,209,194,.8)}
+
 .pieces{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.pc-b{display:grid;justify-items:center;gap:3px;width:100%;padding:8px 2px;border:1px dashed color-mix(in srgb,var(--navy) 25%,transparent);border-radius:6px;color:var(--navy)}
-.pc-b img{width:28px;height:28px}.pc-b .i{width:22px;height:22px}
-.pc-b small{font-size:8px;letter-spacing:.04em;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
 .zcol{position:relative;cursor:pointer}
 .zcol input{width:22px;height:18px;padding:0;border:0;background:none;cursor:pointer}
 /* a print sent: a small clear printer, hand-drawn, the paper feeding out, then torn */
@@ -1258,30 +1158,21 @@ html:not(.night) .hero-play{border-color:#2A2550!important;box-shadow:0 5px 0 #2
 .lyr-v[data-v="0"] i:nth-child(1),.lyr-v[data-v="1"] i:nth-child(-n+2),.lyr-v[data-v="2"] i{background:var(--lc,var(--navy))}
 /* the clues: three small LCD screens. One lit and waiting, done ones ticked, the rest locked */
 .clues{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:8px}
-.clue-b{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),inset 0 3px 8px rgba(44,51,36,.25);text-align:left}
+
 .clue .ci{display:flex;gap:4px;align-items:center}
 .clue .ci .i{width:20px;height:20px}
-.clue .cq{font:400 24px/1 "VT323",ui-monospace,monospace}
+
 .clue .cw{font:400 19px/1.05 "VT323",ui-monospace,monospace;letter-spacing:.03em}
 .clue .ck{position:absolute;right:10px;top:50%;margin-top:-9px;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:var(--lcd-ink);color:var(--lcd)}
 .clue .ck .i{width:11px;height:11px}
 .clue .lk{position:absolute;right:12px;top:50%;width:12px;height:9px;margin-top:-2px;border-radius:2px;background:rgba(44,51,36,.5)}
 .clue .lk::before{content:"";position:absolute;left:2px;top:-6px;width:8px;height:7px;border:2px solid rgba(44,51,36,.5);border-bottom:0;border-radius:5px 5px 0 0}
-.clue.done .clue-b{opacity:.55}
-.clue.locked .clue-b{opacity:.3;filter:grayscale(1)}
-.clue.now .clue-b{animation:cluein 1.6s ease-in-out infinite}
-.clue.now[data-clue="3"] .clue-b{background:var(--sun);cursor:pointer}
+
 .clue.now[data-clue="3"] .cw{font-size:22px}
-.clue.go .clue-b{animation:cluego .42s ease-in forwards}
+
 @keyframes cluein{50%{box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),0 0 0 4px rgba(255,210,63,.45)}}
 @keyframes cluego{to{transform:translateX(30px);opacity:0}}
-/* the first clue, floating on the ground until the radar is put down; it lets every touch through */
-.clue-map{position:fixed;z-index:6;left:50%;bottom:34px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 2px rgba(44,51,36,.35),0 10px 30px rgba(0,0,0,.4);pointer-events:none;animation:cluein 1.6s ease-in-out infinite}
-body:not(.shut) .clue-map{left:calc((100% - var(--page)) / 2)}
-.clue-map[hidden]{display:none}
-.clue-map .ci{display:flex;gap:4px}.clue-map .i{width:22px;height:22px}
-.clue-map .cq{font:400 26px/1 "VT323",ui-monospace,monospace}
-.clue-map .cw{font:400 22px/1 "VT323",ui-monospace,monospace}
+
 /* the air over the ground */
 .wx-fx{position:absolute;inset:0;z-index:2;pointer-events:none;mix-blend-mode:screen}
 /* the rail: acrylic keycaps */
@@ -1292,19 +1183,16 @@ html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
 .wish-form{border-radius:14px;background:linear-gradient(160deg,rgba(255,126,176,.12),rgba(107,79,192,.08));box-shadow:inset 0 0 0 1px var(--edge)}
 .wf-keys{display:flex;gap:6px;margin-bottom:4px}
 .wk{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;font:400 26px/1 "VT323",ui-monospace,monospace;color:#15122A;box-shadow:0 3px 0 rgba(0,0,0,.35)}
-.wk-w{background:#7FD1C2}.wk-i{background:#FFD23F}.wk-s{background:#FF7EB0}.wk-h{background:#FF8A1F}
+
 .wf-l{grid-template-columns:34px 1fr;align-items:center;gap:8px}
 .wf-i{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:#15122A}
-.wl-w .wf-i{background:#7FD1C2}.wl-i .wf-i{background:#FFD23F}.wl-s .wf-i{background:#FF7EB0}.wl-h .wf-i{background:#FF8A1F}.wf-l.by .wf-i{background:var(--acryl);color:var(--navy);box-shadow:inset 0 0 0 1px var(--edge)}
+.wf-l.by .wf-i{background:var(--acryl);color:var(--navy);box-shadow:inset 0 0 0 1px var(--edge)}
 .wf-i .i{width:18px;height:18px}
 .wish-form select,.wf-l input{border-radius:8px;background:var(--lcd);color:var(--lcd-ink);border:0;box-shadow:inset 0 2px 5px rgba(44,51,36,.3)}
 .wf-l input::placeholder{color:rgba(44,51,36,.55)}
-.send-b{position:relative;height:46px;border-radius:12px;background:var(--magenta);color:#fff;box-shadow:0 4px 0 #15122A;overflow:hidden}
-.send-b .i{width:22px;height:22px}
-.send-b:active{transform:translateY(3px);box-shadow:0 1px 0 #15122A}
-.sb-arrow{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent) -100% 0/40% 100% no-repeat;animation:sweepbtn 2.4s ease-in-out infinite}
+
 @keyframes sweepbtn{to{background-position:200% 0}}
-.bk-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:8px;color:var(--navy);box-shadow:inset 0 0 0 1px var(--edge)}
+
 .bgroup{border-radius:12px;border:1px solid var(--edge);background:var(--acryl)}
 .bgroup.on{border-color:var(--sun);box-shadow:0 0 0 1px var(--sun)}
 .as-b{border-radius:10px;background:var(--acryl);border-color:var(--edge)}
@@ -1335,7 +1223,7 @@ html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
 .stickers{grid-template-columns:repeat(6,1fr)}
 .stk.add{display:grid;place-items:center;aspect-ratio:1;border:2px dashed var(--edge);border-radius:10px;color:var(--navy);cursor:pointer}
 .stk.add .i{width:20px;height:20px}
-.pc-b{border-radius:10px;border-color:var(--edge)}
+
 .swatches{display:flex;gap:3px;margin-left:8px;align-items:center}
 .sw{width:22px;height:22px;border-radius:50%;background:var(--c);border:2px solid rgba(255,255,255,.35);box-shadow:0 2px 0 rgba(0,0,0,.35)}
 .sw.on{border-color:#fff;transform:scale(1.15)}
@@ -1356,7 +1244,6 @@ html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
 /* the hardware's labels: there for whoever lingers */
 .hw-label{opacity:0;transition:opacity .4s}
 .hw-label:hover{opacity:.75;transition-delay:1s}
-@media (prefers-reduced-motion:reduce){.clue.now .clue-b,.clue-map,.sb-arrow{animation:none}}
 
 /* ═════════ species cards, the pixel menu, the checklist, the readings as strips, the posters ═════════ */
 /* the card's way on: a card and a string, a little arrow running between */
@@ -1379,28 +1266,14 @@ html:not(.night) .tab{background:rgba(255,255,255,.85)!important;color:#2A2550}
 /* the clues, trimmed */
 .clue[data-clue="1"] .cw{display:none}
 .clue[data-clue="3"] .cw{font-size:24px;letter-spacing:.12em}
-.clue-map{padding:12px}
-.clue-map .i{width:28px;height:28px}
+
 /* the checklist: a tile and its mark, the line, the box */
 .checks{list-style:none;margin:18px 0 0;padding:12px;display:grid;gap:8px;border-radius:12px;background:linear-gradient(180deg,rgba(107,79,192,.28),rgba(107,79,192,.12));box-shadow:inset 0 0 0 2px var(--edge)}
-.chk-b{display:grid;grid-template-columns:44px 1fr 24px;align-items:center;gap:10px;width:100%;text-align:left;color:var(--navy);cursor:pointer}
-.chk-ic{display:grid;place-items:center;grid-auto-flow:column;gap:1px;width:44px;height:44px;border-radius:10px;background:var(--cc);color:#15122A;box-shadow:0 3px 0 rgba(0,0,0,.35)}
-.chk-ic .i{width:22px;height:22px}.chk-ic .i.sm{width:13px;height:13px}
-.cl-wk{font:400 26px/1 "VT323",ui-monospace,monospace}
-.chk-w{font:400 19px/1.05 "VT323",ui-monospace,monospace;letter-spacing:.03em}
-.chk-box{display:grid;place-items:center;width:22px;height:22px;border-radius:5px;border:2px solid var(--edge);color:#15122A}
-.chk.ok .chk-box{background:var(--cc);border-color:var(--cc)}
-.chk.ok .chk-w{text-decoration:line-through;text-decoration-thickness:1px;opacity:.75}
-.chk-box .i{width:13px;height:13px}
-.chk.nope .chk-b{animation:nope .45s}
+
 @keyframes nope{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
-.start-k{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:12px;border-radius:12px;background:var(--sun);color:#15122A;font:400 22px/1 "VT323",ui-monospace,monospace;letter-spacing:.14em;box-shadow:0 4px 0 #15122A}
-.start-k:active{transform:translateY(3px);box-shadow:0 1px 0 #15122A}
-.start-k .i{width:18px;height:18px}
-/* the three readings, each a small strip of the story */
-.seg.thumbs .key{height:96px;padding:4px;align-items:flex-start;overflow:hidden}
+
 .thumb{display:block;width:56px;max-height:86px;object-fit:cover;object-position:top;background:#fff;image-rendering:pixelated;box-shadow:0 2px 4px rgba(0,0,0,.3)}
-.key.thumb-k[aria-pressed="true"]{background:var(--sun)}
+
 /* the posters made here, at the head of the portfolio */
 .posters-hero{display:grid;gap:10px}
 .ph-hero{margin:0;padding:10px;border-radius:14px;background:var(--acryl);box-shadow:inset 0 0 0 1px var(--edge)}
@@ -1451,15 +1324,9 @@ html .hero-play:not(.on){border-color:var(--edge)!important;box-shadow:inset 0 0
 .lyr-k{border-radius:4px;border:1px solid var(--edge);background:transparent}
 .lyr.on .lyr-k{color:var(--white)}
 .lyr-m{border-radius:4px}
-/* the clues and the checklist: readouts in the archive's green, the boxes ticked in their colour */
-.clue-b{border-radius:4px}
-.clue.now[data-clue="3"] .clue-b{background:var(--acid);color:#06090B}
+
 .checks{border-radius:4px;background:transparent;box-shadow:inset 0 0 0 1px var(--edge)}
-.chk-ic{border-radius:4px;color:var(--white);box-shadow:none}
-html:not(.night) .chk-ic{color:#F4F3EE}
-.chk[data-check="3"] .chk-ic,.chk[data-check="3"].ok .chk-box{color:#06090B}
-.chk-box{border-radius:2px;border-width:1px;color:var(--white)}
-.start-k{border-radius:4px;background:var(--acid);color:#06090B;box-shadow:none;border:1px solid #06090B}
+
 .b-emerg .sun{border-radius:2px;color:#06090B}
 .fly{background:var(--acid);box-shadow:0 0 0 1px #06090B,0 8px 20px rgba(0,0,0,.4)}
 /* the WISH MAKER's form: the letters as stamped keys, R&D in red beside them, each line on its own rule */
@@ -1468,13 +1335,12 @@ html:not(.night) .chk-ic{color:#F4F3EE}
 .wf-keys{margin:0}
 .wk{border-radius:3px;background:var(--navy)!important;color:var(--white)!important;box-shadow:none;width:36px;height:36px}
 .rnd{display:inline-grid;place-items:center;height:30px;padding:0 10px;border:1.5px solid var(--haz);color:var(--haz);font:700 13px/1 var(--mono);letter-spacing:.18em;transform:rotate(-4deg);opacity:.92}
-.wf-i,.wl-w .wf-i,.wl-i .wf-i,.wl-s .wf-i,.wl-h .wf-i{background:transparent!important;color:var(--navy)!important;box-shadow:inset 0 0 0 1px var(--edge);border-radius:3px}
+.wf-i{background:transparent!important;color:var(--navy)!important;box-shadow:inset 0 0 0 1px var(--edge);border-radius:3px}
 .wish-form select,.wf-l input{border-radius:3px}
 .wf-l input::placeholder{color:var(--grey-text)}
 html.night .wish-form select,html.night .wf-l input{box-shadow:inset 0 0 0 1px var(--edge)}
-.send-b{border-radius:4px;background:var(--navy);color:var(--white);box-shadow:none}
-.send-b:active{transform:translateY(2px);box-shadow:none}
-.bgroup,.as-b,.bk-ic,.key,.pc-b{border-radius:4px}
+
+.bgroup,.as-b,.key{border-radius:4px}
 .bgroup.on{border-color:var(--glow);box-shadow:0 0 0 1px var(--glow)}
 .bg-n{border-color:var(--edge)}
 /* keys everywhere: a hairline, pressed in ink */
@@ -1482,8 +1348,7 @@ html.night .wish-form select,html.night .wf-l input{box-shadow:inset 0 0 0 1px v
 .key[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--white)}
 .seg.outs .key{background:transparent}
 .seg.outs .key[data-pout="send"]{background:var(--haz);border-color:var(--haz);color:#fff}
-.ps-sun{background:repeating-radial-gradient(circle,transparent 0 9px,var(--edge) 9px 10px)}
-.ps-sun::after{background:var(--glow);box-shadow:0 0 18px var(--glow)}
+
 .ps-printer,.lcd{border-radius:4px}
 /* the surfaces beside the page: the board as drafting paper, blueprint by night and a lightbox by day; the press on a dark
    desk; the screws of an earlier build gone */
@@ -1506,18 +1371,11 @@ html:not(.night) #zine,html:not(.night) .cover{background:#E6E4DD url("data:imag
 .sw.pick{background:conic-gradient(#A9F0EC,#E6F84A,#FF5A1F,#8A1C1C,#7FB8D6,#A9F0EC)}
 /* the packs: a key each, its emblem as a sticker; the lives in the radar as round photographs */
 .seg.packs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:0 0 10px}
-.pk-k{display:grid;place-items:center;aspect-ratio:1;border-radius:4px;border:1px solid var(--edge)}
-.pk-k img{width:78%;height:78%}
-.pk-k[aria-pressed="true"]{background:var(--glass);border-color:var(--glow)}
+
 .stickers.words{grid-template-columns:repeat(2,1fr)}
 .stickers.words .stk img{height:46px;object-fit:contain}
 .near{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.nr-b{display:block;width:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px var(--white),0 0 0 3px var(--edge)}
-.nr-b img{display:block;width:100%;height:100%;object-fit:cover;filter:grayscale(.15)}
-.nr-b:hover{box-shadow:0 0 0 2px var(--white),0 0 0 3px var(--glow)}
-/* the first clue over the ground */
-.clue-map{border-radius:4px;gap:10px;padding:10px 14px}
-.clue-map .cw{font:400 22px/1 "VT323",ui-monospace,monospace;letter-spacing:.06em}
+
 .clue[data-clue="1"] .cw{display:inline}
 /* a poster turned over: the card, large, pixel for pixel */
 .card-view{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(3,6,8,.74);backdrop-filter:blur(4px);perspective:900px}
@@ -1535,23 +1393,12 @@ html:not(.night) #zine,html:not(.night) .cover{background:#E6E4DD url("data:imag
    fun. The W.I.S.H.es are filed; the posters hang on a wall ═════════ */
 /* RADIO: the checklist, a protocol. Numbered, ruled, mono; each step stamped when done */
 .checks{gap:0;padding:4px 0 0;margin-top:20px;box-shadow:none;border-top:2px solid var(--navy);border-bottom:1px solid var(--navy);background:transparent}
-.chk+.chk{border-top:1px solid var(--edge)}
-.chk-b{grid-template-columns:22px 26px 1fr 22px;gap:10px;padding:9px 2px}
-.chk-n{font-size:10px;letter-spacing:.08em;color:var(--grey-text)}
-.chk-ic{width:26px;height:26px;border-radius:0;background:transparent!important;color:var(--navy)!important;box-shadow:none}
-.chk-ic .i{width:17px;height:17px}.cl-wk{font:600 17px/1 var(--mono)}
-.chk-w{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}
-.chk.ok .chk-w{text-decoration:none;opacity:.55}
-.chk-box{border:1px solid var(--navy);border-radius:0;color:var(--haz);background:transparent!important}
-.chk.ok .chk-box{border-color:var(--haz);transform:rotate(-6deg);box-shadow:inset 0 0 0 1px var(--haz)}
-.chk.ok .chk-box .i{width:14px;height:14px;stroke-width:2}
-.chk:not(.ok) .chk-b:hover .chk-w{text-decoration:underline;text-underline-offset:3px}
-.chk:not(.ok)+.chk:not(.ok){opacity:.62}
+
 /* RADIO: the layers, toys. Round keys that jump when pressed, meters that dance in their colour */
 .lyr-k{border-radius:999px!important;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
 .lyr-k:active{transform:scale(.9)}
-.lyr.on .lyr-k{animation:pop .32s cubic-bezier(.3,1.6,.5,1)}
-@keyframes pop{40%{transform:scale(1.12) rotate(-3deg)}}
+.lyr.on .lyr-k{animation:keypop .32s cubic-bezier(.3,1.6,.5,1)}
+@keyframes keypop{40%{transform:scale(1.12) rotate(-3deg)}}
 .lyr-m{border-radius:999px!important}
 .lyr .lv i{border-radius:3px}
 .lyr .lv i.hit{transform:scaleY(1.5);transition:transform .1s}
@@ -1567,24 +1414,14 @@ html:not(.night) #zine,html:not(.night) .cover{background:#E6E4DD url("data:imag
 .wf-keys{gap:6px;align-items:baseline}
 .rnd{background:transparent}
 .wf-l{grid-template-columns:22px 1fr;gap:10px}
-.wf-i,.wl-w .wf-i,.wl-i .wf-i,.wl-s .wf-i,.wl-h .wf-i{width:22px;height:22px;box-shadow:none!important;color:#16140F!important;opacity:.7}
+.wf-i{width:22px;height:22px;box-shadow:none!important;color:#16140F!important;opacity:.7}
 .wf-i .i{width:15px;height:15px}
 .wish-form select,.wf-l input{height:32px;padding:0 2px;border-radius:0!important;background:transparent!important;color:#16140F!important;box-shadow:none!important;border:0;border-bottom:1px solid rgba(22,20,15,.4);font:400 14px var(--mono)}
 .wf-l input::placeholder{color:#8C877A!important;font:italic 400 15px 'Playfair Display',Georgia,serif}
 .wf-l input:focus,.wish-form select:focus{outline:none;border-bottom:1.5px solid #16140F}
-.send-b{margin-top:12px;height:44px;border-radius:2px;background:#16140F!important;color:#F3F0E6!important}
-.send-b .sb-arrow{display:none}
+
 html.night .wish-form{box-shadow:inset 0 0 0 1px rgba(22,20,15,.55),inset 0 0 0 4px #F3F0E6,inset 0 0 0 5px rgba(22,20,15,.3),0 0 0 1px rgba(169,240,236,.25),0 24px 60px rgba(0,0,0,.6)}
-/* WISH MAKER: the pieces, stickers. Photographs cut round, charts, marks; each tilts under the hand */
-.pcs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.pc-t{display:grid;place-items:center;width:100%;aspect-ratio:1;border-radius:10px;color:var(--navy);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
-.pc-t:hover{transform:rotate(-6deg) scale(1.08)}
-.pc-t.sp{border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px var(--white),0 0 0 3px var(--edge)}
-.pc-t.sp img{width:100%;height:100%;object-fit:cover}
-.pc-t img{width:72%;height:72%}.pc-t.sp img{width:100%;height:100%}
-.pc-t .chart{width:88%;height:88%}
-.pc-t.slip,.pc-t.fig{box-shadow:inset 0 0 0 1px var(--edge)}
-.pc-t .i{width:20px;height:20px}.pc-t .i.k{width:26px;height:26px}
+
 /* WISH MAKER: the boards, a row of tabs; the active one named in place; its signals as their lives */
 .book .bk-h{gap:8px}
 .b-keys{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
@@ -1610,8 +1447,7 @@ html.night .wish-form{box-shadow:inset 0 0 0 1px rgba(22,20,15,.55),inset 0 0 0 
 .fl-l{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px}
 .fl-l li{display:grid;grid-template-columns:16px 1fr;gap:6px;font:400 11.5px/1.35 var(--mono)}
 .fl-l b{color:var(--grey-text)}
-.filed-none{display:grid;place-items:center;width:100%;height:84px;border:1px dashed var(--edge);color:var(--grey-text)}
-.filed-none .i{width:22px;height:22px}
+
 /* PORTFOLIO: the posters on a wall beside the page, the newest as the hero */
 .gallery{position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);display:grid;grid-template-rows:1fr auto auto;justify-items:center;gap:14px;padding:40px 24px 24px;overflow:auto;background:#070B0D url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22rgba%28169%2C240%2C236%2C.02%29%22%2F%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M28.6%2022.6q3.4-2.6%206.8%200l.6%209.6q-4%202.2-8%200z%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M23.4%2021q-1.6%208%20.2%2016.6M40.6%2021q1.6%208-.2%2016.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2222.8%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2241.2%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2225.4%22%20cy%3D%2219.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2216.8%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2235.6%22%20cy%3D%2217.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2239.2%22%20cy%3D%2222.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2227.4%22%20cy%3D%2227.4%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2237%22%20cy%3D%2228.4%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2224.6%22%20cy%3D%2225.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234.6%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2238.4%22%20cy%3D%2234%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2226.2%22%20cy%3D%2234.2%22%20r%3D%22.75%22%20fill%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%28221%2C246%2C242%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3C%2Fsvg%3E") right 40px bottom 50px/240px no-repeat}
 html:not(.night) .gallery{background:#E6E4DD url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22rgba%2812%2C14%2C14%2C.02%29%22%2F%3E%3Cpath%20d%3D%22M18.6%2031.4C16.6%2010.4%2047.4%2010.4%2045.4%2031.4l1.9%205.6Q32%2041%2016.7%2037z%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M28.6%2022.6q3.4-2.6%206.8%200l.6%209.6q-4%202.2-8%200z%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.6%22%2F%3E%3Cpath%20d%3D%22M23.4%2021q-1.6%208%20.2%2016.6M40.6%2021q1.6%208-.2%2016.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2222.8%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2241.2%22%20cy%3D%2232.4%22%20r%3D%221.5%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%2F%3E%3Ccircle%20cx%3D%2225.4%22%20cy%3D%2219.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2216.8%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2235.6%22%20cy%3D%2217.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2239.2%22%20cy%3D%2222.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2227.4%22%20cy%3D%2227.4%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2237%22%20cy%3D%2228.4%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2224.6%22%20cy%3D%2225.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234.6%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2238.4%22%20cy%3D%2234%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Ccircle%20cx%3D%2226.2%22%20cy%3D%2234.2%22%20r%3D%22.75%22%20fill%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20opacity%3D%22.55%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M17.6%2037.4q-2.6%206.4-.2%2010.2t-1.6%208.6q-1.4%203.6.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M25%2039.6q-1.2%207.6%201.4%2012.2t-.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M39%2039.6q1.2%207.6-1.4%2012.2t.6%2010.8%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%220.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M46.4%2037.4q2.6%206.4.2%2010.2t1.6%208.6q1.4%203.6-.4%206.6%22%20fill%3D%22none%22%20stroke%3D%22rgba%2812%2C14%2C14%2C.06%29%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-dasharray%3D%22.01%203.2%22%2F%3E%3C%2Fsvg%3E") right 40px bottom 50px/240px no-repeat}
@@ -1621,12 +1457,7 @@ body.shut .gallery,.gallery[hidden]{display:none}
 .gl-hero img{display:block;max-width:min(100%,560px);max-height:calc(100vh - 230px);background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.2);transform:rotate(-1.2deg);animation:hang .7s cubic-bezier(.3,1.4,.5,1)}
 @keyframes hang{0%{transform:translateY(-14px) rotate(-4deg);opacity:0}100%{transform:rotate(-1.2deg);opacity:1}}
 .gl-hero figcaption{font-size:10px;letter-spacing:.14em;color:var(--grey-text)}
-.gl-acts{display:flex;gap:8px}.gl-acts .key{width:46px;flex:none}
-.gl-wall{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
-.gl-t{display:block;width:62px;padding:3px;background:#fff;transform:rotate(var(--r));box-shadow:0 6px 14px rgba(0,0,0,.35);transition:transform .18s}
-.gl-t:hover,.gl-t.on{transform:rotate(0) translateY(-4px) scale(1.06)}
-.gl-t.on{outline:2px solid var(--haz);outline-offset:2px}
-.gl-t img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top}
+
 .gl-none{display:grid;place-items:center;width:min(70%,360px);aspect-ratio:3/4;align-self:center;border:1px dashed var(--edge)}
 /* PORTFOLIO: start again, with its warning */
 .rst{color:var(--haz)}
@@ -1635,7 +1466,7 @@ body.shut .gallery,.gallery[hidden]{display:none}
 .rst-a{display:flex;gap:6px;justify-content:flex-end}.rst-a .key{flex:0 0 auto;padding:0 12px}
 .rst-yes{background:var(--haz)!important;border-color:var(--haz)!important;color:#fff!important;gap:6px}
 @media (prefers-reduced-motion:reduce){.lyr.on .lyr-k,.gl-hero img{animation:none}}
-.chk.ok .chk-box{color:var(--haz)!important}
+
 .wk{display:inline-block!important}
 .wf-keys{flex-wrap:nowrap;white-space:nowrap}
 
@@ -1662,22 +1493,16 @@ body.off-map:not(.shut) .panel::after{animation:wm-a 22s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:skewX(0)}35%{transform:skewX(4deg) scaleY(.97)}70%{transform:skewX(-3deg)}}
 /* PRINT: the last step, under its own heading. Each key a final act, solid, with the mark of something leaving */
 #sec-out{margin-top:6px}
-.out-h{display:flex;align-items:center;gap:10px;margin:0 0 10px;font:600 11px/1 var(--mono);letter-spacing:.32em;color:var(--navy)}
-.out-h::before,.out-h::after{content:"";flex:1;height:1px;background:var(--navy)}
-.out-h::before{flex:0 0 14px}
+
 .seg.outs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0}
 .seg.outs .key{position:relative;height:56px;background:var(--navy)!important;border-color:var(--navy)!important;color:var(--white)!important;border-radius:3px;box-shadow:0 3px 0 rgba(0,0,0,.3)}
 .seg.outs .key .i{width:22px;height:22px}
 .seg.outs .key[data-pout="send"]{background:var(--haz)!important;border-color:var(--haz)!important;color:#fff!important}
 .seg.outs .key:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
-.out-go{position:absolute;top:6px;right:7px;width:8px;height:8px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;opacity:.7}
-.out-go::after{content:"";position:absolute;top:-1px;right:-1px;width:10px;height:1.5px;background:currentColor;transform-origin:right;transform:rotate(-45deg)}
-/* the pieces: constellations as their charts */
-.pc-b .chart{width:34px;height:34px;color:var(--navy)}
+
 @media (prefers-reduced-motion:reduce){.lk-mark .jb,.lk-mark .jt,body.off-map:not(.shut)::after,body.off-map:not(.shut) .panel::after{animation:none}}
 body:not(.off-map) .gallery{display:none}
-/* the checklist with no marks of its own: numbers, words, boxes. The receive key square and level with its label */
-.chk-b{grid-template-columns:24px 1fr 22px}
+
 #rx-open{display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:3px;flex:none}
 #rx-open .i{width:15px;height:15px;margin:0}
 
@@ -1689,8 +1514,8 @@ html.night{--ac:rgba(214,236,236,.07);--ac-on:rgba(169,240,236,.20);--ac-hi:rgba
 .tab[aria-pressed="true"]{background:var(--ac-on)!important;color:var(--navy)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--glow),0 0 18px color-mix(in srgb,var(--glow) 30%,transparent)!important}
 .tab[aria-pressed="true"]::after{content:"";position:absolute;top:5px;right:5px;width:4px;height:4px;border-radius:50%;background:var(--glow);box-shadow:0 0 6px var(--glow)}
 html.night .tab:not([aria-pressed="true"]){background:var(--ac)!important}
-.key,.tools .bt,.ib,.lyr-m,.dk,.pk-k,.b-key{background:var(--ac);box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--ac-edge);border-color:transparent!important}
-.key[aria-pressed="true"],.tools .bt.on,.pk-k[aria-pressed="true"]{background:var(--ac-on)!important;color:var(--navy)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--glow)!important}
+.key,.tools .bt,.ib,.lyr-m,.dk,.b-key{background:var(--ac);box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--ac-edge);border-color:transparent!important}
+.key[aria-pressed="true"],.tools .bt.on{background:var(--ac-on)!important;color:var(--navy)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--glow)!important}
 /* the layers: clear coloured plastic, as the old see-through handhelds were */
 .lyr-k{background:var(--ac)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--ac-edge)}
 .lyr.on .lyr-k{background:color-mix(in srgb,var(--lc) 34%,transparent)!important;color:var(--navy)!important;border-color:transparent!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px color-mix(in srgb,var(--lc) 75%,transparent),0 0 16px color-mix(in srgb,var(--lc) 30%,transparent)}
@@ -1737,7 +1562,7 @@ body.rec .ph{display:none}
 .ps-hl small{display:flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.12em;color:var(--grey-text)}
 .ps-dot{width:7px;height:7px;border-radius:50%;background:rgba(127,127,127,.4)}
 .ps-h.on .ps-dot{background:#7CFF6B;box-shadow:0 0 6px #7CFF6B}
-.ps-sun{display:none}
+
 /* PRINT RECEIPT: the one act, plain; the other ways out small beneath it */
 .print-k{position:relative;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:58px;border-radius:6px;background:var(--haz);color:#fff;font:700 15px/1 var(--sans);letter-spacing:.16em;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 rgba(0,0,0,.3)}
 .print-k:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 1px 0 rgba(0,0,0,.3)}
@@ -1752,11 +1577,7 @@ body.rec .ph{display:none}
 .photo-k{margin-top:8px}
 .ph-k{height:34px}
 .ph-sw{display:block;width:30px;height:18px;border-radius:2px;background-color:#fff;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
-.ph-atk{background-image:radial-gradient(#111 .7px,transparent 1px),radial-gradient(#111 .7px,transparent 1px);background-size:4px 4px,5px 3px;background-position:0 0,2px 1px}
-.ph-dots{background-image:radial-gradient(#111 1.5px,transparent 1.7px);background-size:5px 5px}
-.ph-bayer{background-image:conic-gradient(#111 25%,transparent 0 50%,#111 0 75%,transparent 0);background-size:4px 4px}
-.ph-lines{background-image:repeating-linear-gradient(#111 0 1.5px,transparent 1.5px 4px)}
-.ph-hard{background-image:linear-gradient(90deg,#111 50%,#fff 50%)}
+
 /* uploads and downloads say what they are */
 .ib.io{display:grid;place-items:center;align-content:center;gap:0;width:40px;height:40px}.ib.io small{font-size:7px;letter-spacing:.08em;line-height:1}
 .stk.add small{display:block;font-size:7px;letter-spacing:.06em;color:var(--grey-text)}.stk.add{align-content:center;gap:2px}
@@ -1855,7 +1676,7 @@ html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
 .eq-c i.up{background:#C42A17!important}
 /* the clue waiting, alone */
 .clue[data-clue="3"] .cw{text-transform:none;letter-spacing:.06em}
-.start-k span{text-transform:none;letter-spacing:.06em}
+
 /* the quick print: blank paper, a cursor blinking where the words will go */
 .qp-paper{position:relative}
 .qp-caret{position:absolute;left:16px;top:20px;width:2px;height:20px;background:#141412;animation:arcblink 1.05s steps(2,end) infinite;pointer-events:none}
@@ -1866,7 +1687,7 @@ html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
 .wf-head{display:grid;gap:4px}
 .wf-poem{font:italic 400 14px/1 'Playfair Display',Georgia,serif;color:#5D594E;letter-spacing:.01em}
 /* the rail: each tab names itself. Beside the key on a wide screen; under it on a phone */
-.tab-w{position:absolute;right:calc(100% + 8px);top:50%;transform:translateY(-50%);padding:4px 7px;border-radius:4px;font:600 8.5px/1 var(--mono);letter-spacing:.12em;white-space:nowrap;color:var(--navy);background:var(--ac);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px var(--ac-edge);pointer-events:none;opacity:.8}
+.tab-w{position:absolute;right:calc(100% + 8px);top:50%;transform:translateY(-50%);padding:4px 7px;border-radius:4px;font:600 9px/1 var(--mono);letter-spacing:.12em;white-space:nowrap;color:var(--navy);background:var(--ac);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px var(--ac-edge);pointer-events:none;opacity:.8}
 .tab[aria-pressed="true"] .tab-w{opacity:1;box-shadow:inset 0 0 0 1px var(--glow)}
 .tab .sq{display:grid;place-items:center}
 /* the press: the longer paper key */
@@ -1880,7 +1701,7 @@ html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
   html:not(.night) .rail{background:rgba(244,243,238,.92)}
   .tab,.tab.apart{width:auto!important;height:54px!important;margin:0!important;display:grid!important;grid-template-rows:26px 14px;align-content:center;justify-items:center;gap:2px;background:transparent!important;box-shadow:none!important;border-radius:10px!important}
   .tab .i{width:20px;height:20px}
-  .tab-w{position:static;transform:none;padding:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;font-size:8.5px;opacity:.6}
+  .tab-w{position:static;transform:none;padding:0;background:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;font-size:9px;opacity:.6}
   .tab[aria-pressed="true"]{background:var(--ac-on)!important;box-shadow:inset 0 0 0 1px var(--glow)!important}
   .tab[aria-pressed="true"] .tab-w{opacity:1;box-shadow:none}
   .tab[aria-pressed="true"]::after{display:none}
@@ -1899,10 +1720,7 @@ html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
 .tab-w{right:calc(100% + 18px)}@media (max-width:759px){.tab-w{right:auto}}
 /* the rail clear of the toolbars of the board and the press */
 @media (min-width:760px){body.off-map:not(.shut) .rail{top:calc(var(--top) + 66px)}}
-/* the clue: its words alone */
-.clue-b{grid-template-columns:1fr auto}
-/* the keys for any animal, and the newest */
-.nr-k{display:grid;place-items:center;color:var(--navy);background:var(--ac)}.nr-k .i{width:22px;height:22px}
+
 .seg.packs{grid-template-columns:repeat(9,1fr)}
 
 /* ═════════ v0.05: care in the details ═════════ */
@@ -1934,12 +1752,11 @@ html.night .eq-c i.t4{background:#9E1B12!important;box-shadow:none!important}
 .fig-new{place-items:center;align-content:center;min-height:100%}.fig-new .i{width:20px;height:20px}
 .fig-make{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:48px;border-radius:6px;border:1px dashed var(--edge);color:var(--navy);font:500 12px/1 var(--mono);letter-spacing:.06em}
 .fig-make .i{width:18px;height:18px}
-/* the press: more animals coming in */
-.nr-k.busy .i{animation:spin 1.2s linear infinite}
+
 /* a step met: a line of light across the head, and the stamp pressed into its box */
 body.won .ph{animation:wonline 1.4s ease-out}
 @keyframes wonline{0%{box-shadow:inset 0 -1px 0 var(--edge)}30%{box-shadow:inset 0 -2px 0 var(--glow),0 6px 30px color-mix(in srgb,var(--glow) 25%,transparent)}100%{box-shadow:inset 0 -1px 0 var(--edge)}}
-.chk.won .chk-box{animation:stamp .6s cubic-bezier(.3,1.6,.5,1)}
+
 @keyframes stamp{0%{transform:scale(2.2) rotate(-18deg);opacity:0}60%{transform:scale(.92) rotate(-4deg);opacity:1}100%{transform:scale(1) rotate(-6deg)}}
 /* the sheet's bar: on a phone only */
 .sheetbar{display:none}
@@ -1960,7 +1777,7 @@ body.won .ph{animation:wonline 1.4s ease-out}
   #board,#zine,.cover,.gallery{bottom:calc(var(--dock) + 44px)!important}
   .ph{padding-top:6px}
 }
-@media (prefers-reduced-motion:reduce){.wf-poem,body.won .ph,.chk.won .chk-box{animation:none}}
+@media (prefers-reduced-motion:reduce){.wf-poem,body.won .ph{animation:none}}
 #board.drop{box-shadow:inset 0 0 0 3px var(--glow)}
 #zine .desk{position:absolute!important;top:52px;left:0;right:0;bottom:26px;overflow:auto;z-index:1}
 
@@ -1968,28 +1785,19 @@ body.won .ph{animation:wonline 1.4s ease-out}
    met lights red going in and blue coming out ═════════ */
 :root{--in:#E8450F;--out:#2F6E94}
 html.night{--in:#FF5A1F;--out:#7FB8D6}
-/* the steps: a row each, numbered; a light for what went in, the words, a light for what came out */
-.chk-b{grid-template-columns:24px 12px 1fr 12px;gap:10px}
+
 i.io{display:block;width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--edge);transition:background .4s,box-shadow .4s}
 .io.io-in.on{background:var(--in);box-shadow:0 0 0 3px color-mix(in srgb,var(--in) 22%,transparent)}
 .io.io-out.on{background:var(--out);box-shadow:0 0 0 3px color-mix(in srgb,var(--out) 22%,transparent)}
-.chk.ok .chk-w{opacity:.5}
-.chk-box{display:none}
+
 .checks.clues{margin-top:18px}
-.clue .clue-b{display:grid;background:transparent;box-shadow:none;border-radius:0;padding:9px 2px;color:var(--navy);animation:none}
-.clue .chk-w{font:500 11.5px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}
-.clue.now[data-clue="3"] .clue-b{background:var(--haz)!important;color:#fff;padding:9px 10px;border-radius:4px;cursor:pointer}
-.clue.now[data-clue="3"] .chk-n{color:#fff}
-.clue.now .chk-w{animation:cluepulse 1.8s ease-in-out infinite}
+
 @keyframes cluepulse{50%{opacity:.55}}
-/* every last act: orange, solid, a light at its left */
-.start-k,.send-b{background:var(--haz)!important;color:#fff!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 rgba(0,0,0,.25)!important;border-radius:4px}
-.send-b .i{color:#fff}
-.start-k span{font:700 13px/1 var(--sans);letter-spacing:.18em;text-transform:uppercase}
+
 /* every small input a screen: the board's name, the words for the strip, what a W.I.S.H. is for */
 .bg-n,#zine-words{background:var(--lcd)!important;color:var(--lcd-ink)!important;border:0!important;box-shadow:inset 0 0 0 1px var(--ac-edge),inset 0 2px 5px rgba(0,0,0,.2)!important;font:400 17px/1 "VT323",ui-monospace,monospace!important;letter-spacing:.06em}
 /* every key clear plastic */
-.pill,.docs button,.tog,.as-b,.pc-b,.nr-k{background:var(--ac)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--ac-edge)!important;border-color:transparent!important;border-radius:4px}
+.pill,.docs button,.tog,.as-b{background:var(--ac)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--ac-edge)!important;border-color:transparent!important;border-radius:4px}
 .tog[aria-pressed="true"]{background:var(--ac-on)!important;box-shadow:inset 0 1px 0 var(--ac-hi),inset 0 0 0 1px var(--glow)!important}
 /* the W.I.S.H.: PRAXIS POEM in the letters' own type and size, in red */
 .wf-poem{font:600 24px/1 var(--mono)!important;letter-spacing:.06em;color:var(--in)!important;animation:none!important;margin-top:6px}
@@ -2001,14 +1809,14 @@ html.night .wf-poem{color:#E8450F!important}
 .card-b img{display:block;width:100%;height:100%;image-rendering:pixelated}
 .tv-name{margin:0;font:600 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#DCE7EA}
 .tv-intel{margin:0;font:500 10px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:rgba(220,231,234,.72);text-align:center}
-@media (prefers-reduced-motion:reduce){.clue.now .chk-w{animation:none}}
+
 i.io{align-self:center;justify-self:center;width:10px!important;height:10px!important}
 
 /* ═════════ every main key as clear electronics: a smoked, translucent body, a lit top edge, a fine rim; the colour lives in
    its mark, not its body. Play, the layers, the W.I.S.H.'s send, PRINT RECEIPT, PRINT MESSAGE, start ═════════ */
 :root{--clear:rgba(255,255,255,.42);--clear-on:rgba(255,255,255,.62);--rim:rgba(12,14,14,.22);--lit:rgba(255,255,255,.95)}
 html.night{--clear:rgba(214,236,236,.06);--clear-on:rgba(214,236,236,.12);--rim:rgba(190,235,235,.28);--lit:rgba(255,255,255,.28)}
-.hero-play,.lyr-k,.lyr.on .lyr-k,.send-b,.print-k,.qp-go,.start-k,.clue.now[data-clue="3"] .clue-b{background:var(--clear)!important;backdrop-filter:blur(12px) saturate(1.4);-webkit-backdrop-filter:blur(12px) saturate(1.4);border:0!important;box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px var(--rim),inset 0 -2px 0 rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.14)!important}
+.hero-play,.lyr-k,.lyr.on .lyr-k,.print-k,.qp-go{background:var(--clear)!important;backdrop-filter:blur(12px) saturate(1.4);-webkit-backdrop-filter:blur(12px) saturate(1.4);border:0!important;box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px var(--rim),inset 0 -2px 0 rgba(0,0,0,.08),0 8px 22px rgba(0,0,0,.14)!important}
 /* the play key: its mark in the glow; on air, the disc a little brighter and the mark lit */
 .hero-play{color:var(--glow)!important}
 .hero-play .i{filter:drop-shadow(0 0 6px color-mix(in srgb,var(--glow) 45%,transparent))}
@@ -2019,15 +1827,13 @@ html.night{--clear:rgba(214,236,236,.06);--clear-on:rgba(214,236,236,.12);--rim:
 .lyr.on .lyr-k{box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1.5px var(--lc),0 0 16px color-mix(in srgb,var(--lc) 25%,transparent)!important}
 .lyr.on .lyr-k .i{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--lc) 55%,transparent))}
 /* the last acts: clear keys, their words and marks in orange, a light at the left */
-.send-b,.print-k,.qp-go,.start-k,.clue.now[data-clue="3"] .clue-b{color:var(--in)!important}
-.send-b .i,.print-k .i,.start-k .i{color:var(--in)!important}
-.print-k b,.qp-go b,.start-k span{color:var(--in)}
-.clue.now[data-clue="3"] .chk-n{color:var(--in)!important}
-.send-b:hover,.print-k:hover,.qp-go:hover,.start-k:hover{background:var(--clear-on)!important;box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px var(--in),0 8px 22px rgba(0,0,0,.16)!important}
+.print-k,.qp-go{color:var(--in)!important}
+.print-k .i{color:var(--in)!important}
+.print-k b,.qp-go b{color:var(--in)}
+
+.print-k:hover,.qp-go:hover{background:var(--clear-on)!important;box-shadow:inset 0 1px 0 var(--lit),inset 0 0 0 1px var(--in),0 8px 22px rgba(0,0,0,.16)!important}
 .print-k.sent{color:var(--out)!important}
-/* on the W.I.S.H.'s paper, the key is clear over cream */
-.wish-form .send-b{background:rgba(22,20,15,.05)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(22,20,15,.28)!important;color:#E8450F!important}
-.wish-form .send-b .i{color:#E8450F!important}
+
 /* the outlook's tallest months climb in order: pale orange, orange, red, and black at the very top. At night the top is the
    deepest ember, its edge lit so it reads against the dark */
 .eq-c i.up{background:var(--deg4)!important;opacity:1!important;box-shadow:none!important}
@@ -2073,7 +1879,6 @@ button.st-b:hover .st-w{opacity:1;text-decoration:underline;text-underline-offse
 /* a month read: a short piece, set as a page of a magazine is, under a rule */
 .eq-read{margin:16px 0 6px!important;padding:14px 0 2px!important;background:none!important;color:var(--navy)!important;border:0!important;border-top:1px solid var(--navy)!important;border-radius:0!important;box-shadow:none!important}
 .eq-read.d3,.eq-read.d4{border-top-width:2px!important}
-.eq-read .eq-p{margin:0;font:400 15px/1.62 'Playfair Display',Georgia,'Times New Roman',serif;letter-spacing:.003em;color:var(--navy);text-wrap:pretty}
 
 /* the Country: on the radio only, fading slowly over a minute; it comes back under the pointer */
 .ctry{animation:ctryfade 60s ease-in forwards}
@@ -2120,13 +1925,12 @@ html.night #sec-quick .qp-go b{color:#6FE3CF;animation-name:shim-n}
    stickers in drawers, shut until pressed */
 .seg.keys .key.cap-k{flex-direction:column;gap:5px;height:auto!important;min-height:56px;padding:8px 2px 7px}
 .cap{display:block;font:500 8.5px/1 var(--mono);letter-spacing:.06em;text-transform:lowercase;opacity:.72;white-space:nowrap}
-.cap2{display:block;font:400 9px/1.15 var(--sans);opacity:.55;white-space:nowrap}
+
 .ph-k.cap-k .ph-sw{display:block;width:100%;max-width:60px;height:auto;aspect-ratio:84/48;background:none;image-rendering:pixelated;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
 .seg.outs .key.cap-k{height:auto!important;min-height:52px}
 .seg.outs .cap{white-space:normal;text-align:center;line-height:1.15}
 .seg.packs{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(46px,1fr))!important;gap:6px}
-.seg.packs .pk-k.cap-k{display:grid;justify-items:center;align-content:center;gap:4px;aspect-ratio:auto;padding:7px 0 6px}
-.seg.packs .pk-k img{width:28px;height:28px}
+
 #sec-photo{margin-top:14px}
 
 /* a card turned over: large, between the poster it came from and the constellation it belongs to; keys with their words */
@@ -2150,16 +1954,6 @@ html.night #sec-quick .qp-go b{color:#6FE3CF;animation-name:shim-n}
 
 /* the W.I.S.H.: an archival submission form. The letters in boxes, PRAXIS POEM, the stamp; then ruled lines, each with its
    letter in a margin column. No marks, no numbers */
-.rec-form{gap:0!important}
-.rec-form .wf-h{margin-bottom:14px}
-.rec-form .wf-l{grid-template-columns:30px 1fr!important;gap:0!important;align-items:stretch!important;border-bottom:1px solid rgba(22,20,15,.38)}
-.rec-form .wf-m{display:grid;place-items:center;font:600 11px/1 var(--mono);letter-spacing:.06em;color:#16140F;border-right:1px solid rgba(22,20,15,.38)}
-.rec-form .wf-l input{height:38px;padding-left:12px!important;border-bottom:0!important}
-.rec-form .wf-for{border-bottom:0;margin-bottom:12px;align-items:center!important}
-.rec-form .wf-for .wf-m{border-right:0;justify-items:start}
-.rec-form .wl-w{border-top:1px solid rgba(22,20,15,.6)}
-.rec-form .by{margin-top:10px;border-top:0}
-.rec-form .send-b{margin-top:16px}
 
 /* a row that scrolls sideways fades where there is more of it */
 #board .tools.fade-r,#zine .tools.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
@@ -2181,7 +1975,7 @@ html.night #sec-quick .qp-go b{color:#6FE3CF;animation-name:shim-n}
   .maplibregl-ctrl-bottom-left{bottom:calc(var(--dock) + 44px)!important}
   .maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0 0 8px 10px!important}
   .maplibregl-ctrl-attrib.maplibregl-compact-show{max-width:calc(100vw - 20px)}
-  .eq-read .eq-p{font-size:15.5px}
+
 }
 /* the loops kept: four to a row, each its picture, its place and its day */
 .loops-l{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
@@ -2223,10 +2017,7 @@ html.night .steps .st.done .st-d{background-color:#6FE3CF}
 .stickers.words{grid-template-columns:repeat(3,1fr)!important;gap:6px 4px}
 .stickers.words .stk img{height:30px!important;max-width:100%;object-fit:contain}
 .stk.add{min-height:56px}
-.pl-pick{position:relative;display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-radius:4px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 1px var(--ac-edge),inset 0 2px 5px rgba(0,0,0,.18)}
-.pl-pick .i{width:16px;height:16px;flex:none}
-.pl-pick select{flex:1;min-width:0;height:100%;border:0;background:transparent;color:inherit;font:400 18px/1 "VT323",ui-monospace,monospace;letter-spacing:.04em;appearance:none;-webkit-appearance:none;cursor:pointer}
-.pl-pick select:focus{outline:none}
+
 .pl-link{display:flex;gap:6px;margin-top:8px}
 .pl-link input{flex:1;min-width:0;height:44px;padding:0 12px;border:0;border-radius:4px;background:var(--lcd);color:var(--lcd-ink);box-shadow:inset 0 0 0 1px var(--ac-edge),inset 0 2px 5px rgba(0,0,0,.18);font:400 18px/1 "VT323",ui-monospace,monospace;letter-spacing:.04em}
 .pl-link input::placeholder{color:color-mix(in srgb,var(--lcd-ink) 45%,transparent)}
@@ -2342,7 +2133,7 @@ html.night #sec-quick .qp-go .i{color:#6FE3CF!important}
 .mod-label{position:absolute;z-index:2;left:26px;bottom:12px;display:grid;grid-template-columns:auto auto;align-items:center;column-gap:10px;height:30px;padding:0 10px;border-radius:3px;pointer-events:none;background:#151718;color:#E7EAEA;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 1px 2px rgba(0,0,0,.28)}
 .mod-label::before,.mod-label::after{grid-column:1;display:block;font-family:var(--mono);white-space:nowrap}
 .mod-label::before{content:attr(data-n);grid-row:1;align-self:end;font-size:9px;font-weight:600;line-height:1.15;letter-spacing:.16em}
-.mod-label::after{content:attr(data-st);grid-row:2;align-self:start;font-size:7.5px;line-height:1.2;letter-spacing:.14em;opacity:.68}
+.mod-label::after{content:attr(data-st);grid-row:2;align-self:start;font-size:9px;line-height:1.2;letter-spacing:.12em;opacity:.8}
 .mod-label i{grid-column:2;grid-row:1/3;display:block;width:40px;height:14px;background:var(--barcode) center/100% 100% no-repeat}
 
 /* RADIO, the front: a smoked radio. A speaker behind the grille, one key, play, and a knob for each track, matte */
@@ -2350,7 +2141,7 @@ html.night #sec-quick .qp-go .i{color:#6FE3CF!important}
 .band.front-r::before{display:none!important}
 .dev.radio:not(.mod){max-width:340px;margin:6px auto 0;padding:18px 18px 18px;border-radius:22px;color:#13303A;--guts:var(--guts-r);background:var(--grain),linear-gradient(180deg,rgba(178,204,214,.88),rgba(146,178,191,.92));box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 0 0 1px rgba(255,255,255,.2),inset 0 -2px 6px rgba(10,40,50,.12),0 18px 34px rgba(16,48,60,.18)}
 html.night .dev.radio:not(.mod){color:#D5ECF2;--gv:.4;background:var(--grain),linear-gradient(180deg,rgba(70,96,108,.8),rgba(46,68,80,.86));box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 18px 34px rgba(0,0,0,.42)}
-.rd-top{display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;margin:0 4px 18px}
+
 .rd-grille{display:block;width:100%;max-width:116px;aspect-ratio:1;justify-self:center;border-radius:50%;background:radial-gradient(circle,rgba(12,36,44,.5) 0 1.4px,transparent 1.9px) 0 0/8px 8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),inset 0 2px 6px rgba(10,40,50,.16)}
 html.night .rd-grille{background-image:radial-gradient(circle,rgba(0,0,0,.55) 0 1.4px,transparent 1.9px)}
 .rd-play{position:relative;display:grid;place-items:center;width:96px;height:96px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#8FE8D6;background:radial-gradient(circle,#3D464C 0 60%,#353D42 61%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 4px rgba(0,0,0,.25),0 0 0 5px rgba(255,255,255,.28),0 8px 16px rgba(10,40,50,.24);transition:transform .15s,box-shadow .3s}
@@ -2358,7 +2149,7 @@ html.night .rd-grille{background-image:radial-gradient(circle,rgba(0,0,0,.55) 0 
 .rd-play .i{width:30px;height:30px}
 .rd-led{position:absolute;top:14px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#262C30;box-shadow:inset 0 1px 1px rgba(0,0,0,.5)}
 .rd-play.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 4px rgba(0,0,0,.25),0 0 0 5px rgba(143,232,214,.5),0 8px 16px rgba(10,40,50,.24)}
-.rd-play.on .rd-led{background:#7CFFB0;box-shadow:0 0 7px #7CFFB0}
+.rd-play.on .rd-led{background:#7CFF6B;box-shadow:0 0 7px #7CFF6B}
 .rd-knobs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .rd-k{display:grid;justify-items:center;gap:8px}
 .rd-knob{position:relative;width:50px;height:50px;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#40494F 0 62%,#363E43 63%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 3px rgba(0,0,0,.25),0 0 0 3px rgba(255,255,255,.24),0 4px 8px rgba(10,40,50,.22);transition:opacity .2s}
@@ -2413,14 +2204,11 @@ html.night .visor.mod .vs-body{background:var(--grain),linear-gradient(180deg,rg
 .vs-phx{position:absolute;top:-8px;right:-8px;display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#1F2A20;color:#CBD4C3;cursor:pointer}
 .vs-phx .i{width:11px;height:11px}
 .vs-keys{display:flex;align-items:center;justify-content:center;gap:16px;margin:18px 0 0}
-.vs-btn{display:grid;place-items:center;width:46px;height:46px;padding:0;border:0;border-radius:50%;color:#33433D;cursor:pointer;background:radial-gradient(circle,#EEF1F0 0 62%,#E2E7E5 63%);box-shadow:inset 0 1px 0 #FFFFFF,inset 0 -2px 3px rgba(0,0,0,.1),0 3px 6px rgba(0,60,50,.22)}
-.vs-btn .i{width:18px;height:18px}
+
 .vs-make{position:relative;display:grid;place-items:center;width:96px;height:56px;padding:0;border:0;border-radius:28px;cursor:pointer;background:linear-gradient(180deg,#F2F4F3,#E2E7E5);box-shadow:inset 0 1px 0 #FFFFFF,inset 0 -2px 3px rgba(0,0,0,.1),0 4px 8px rgba(0,60,50,.24)}
-.vs-make:active,.vs-btn:active{transform:translateY(1px)}
+.vs-make:active{transform:translateY(1px)}
 .vs-make b{font:600 16px/1 var(--sans)!important;letter-spacing:-.01em;color:#E8450F!important;text-transform:none}
 .vs-oval{display:none}
-#cover .wpv{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:34px;overflow:auto}
-#cover .wpv img{display:block;width:min(300px,70%);height:auto;transform:rotate(-1.4deg);box-shadow:0 24px 50px rgba(0,0,0,.42);image-rendering:pixelated}
 
 /* PRINT, the front: a label maker in matte graphite, its board seen through a smoked amber cap. The screen holds the words;
    three keys; one key, the printer, prints; its light shows its name and state */
@@ -2459,7 +2247,7 @@ html.night .dev.tepra.mod{background:var(--grain),linear-gradient(180deg,rgba(56
   body:not([data-view="portfolio"]) .cover,body:not([data-view="portfolio"]) #board,body:not([data-view="portfolio"]) #zine{right:0}
   body:not([data-view="portfolio"]) #board{padding-right:var(--page)}
   body:not([data-view="portfolio"]) #board .tools,body:not([data-view="portfolio"]) #zine .tools,body:not([data-view="portfolio"]) #zine .desk,body:not([data-view="portfolio"]) .hw-label{right:var(--page)}
-  body:not([data-view="portfolio"]) #cover .wpv{right:var(--page)}
+
   body:not([data-view="portfolio"]) #board .tools{width:auto}
   /* over the map, the name, the Country and the steps in light */
   body[data-view="radio"]:not(.rec) .panel .ph,body[data-view="radio"]:not(.rec) .panel .front-r .steps{color:#F4F7F8;text-shadow:0 1px 10px rgba(0,0,0,.55)}
@@ -2479,11 +2267,9 @@ html.night .dev.tepra.mod{background:var(--grain),linear-gradient(180deg,rgba(56
 /* the studio's blueprint behind both faces of W.I.S.H. */
 html:not(.night) body[data-view="signals"] .cover{background:linear-gradient(rgba(40,120,140,.08) 1px,transparent 1px) 0 0/26px 26px,linear-gradient(90deg,rgba(40,120,140,.08) 1px,transparent 1px) 0 0/26px 26px,radial-gradient(ellipse at 50% 45%,#FFFFFF 0%,#F4F8F8 55%,#E4ECEC 100%),#F4F8F8!important}
 html.night body[data-view="signals"] .cover{background:linear-gradient(rgba(220,235,255,.10) 1px,transparent 1px) 0 0/26px 26px,linear-gradient(90deg,rgba(220,235,255,.10) 1px,transparent 1px) 0 0/26px 26px,#123A66!important}
-/* the print key: the printer alone, its colour its light; green when a printer is online, amber when prints wait */
-#sec-out .print-k.pk-ic{height:72px;gap:0}
-#sec-out .print-k.pk-ic .i{width:38px;height:38px}
-#sec-out .print-k.pk-ic .i,.dev.tepra .tp-prn.print-k .i{color:#E9A93A!important;transition:color .4s,filter .4s}
-#sec-out .print-k.pk-ic.on .i,.dev.tepra .tp-prn.print-k.on .i{color:#5FF29A!important;filter:drop-shadow(0 0 6px rgba(95,242,154,.6))}
+
+.dev.tepra .tp-prn.print-k .i{color:#E9A93A!important;transition:color .4s,filter .4s}
+.dev.tepra .tp-prn.print-k.on .i{color:#7CFF6B!important;filter:drop-shadow(0 0 6px rgba(95,242,154,.6))}
 
 /* the El Niño switch: a red toggle in the radio's corner; on, the radio runs at 120 BPM and its shell warms */
 .rd-nino{position:absolute;z-index:2;top:12px;left:14px;width:34px;height:18px;padding:0;border:0;border-radius:9px;cursor:pointer;background:#2A3034;box-shadow:inset 0 1px 3px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.28)}
@@ -2518,9 +2304,7 @@ body.nino .dev.radio:not(.mod){box-shadow:inset 0 1px 0 rgba(255,255,255,.55),in
   body[data-view]:not([data-view="portfolio"]) #board,body[data-view]:not([data-view="portfolio"]) #zine,body[data-view]:not([data-view="portfolio"]) .cover{bottom:var(--dock)!important;visibility:visible!important}
   body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph{height:0!important;min-height:0!important;padding:0!important;border:0!important;overflow:visible}
   body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph .lockup,body[data-view]:not([data-view="portfolio"]):not(.rec) .panel .ph .ctry{display:none!important}
-  /* the receipt as it will print, and the strip, in the screen above the device */
-  body[data-view="signals"] #cover .wpv{bottom:max(0px,calc(100dvh - var(--dock) - var(--dev-top,50dvh) + 6px));padding:14px 16px}
-  body[data-view="signals"] #cover .wpv img{width:auto;max-width:min(260px,72%);max-height:100%;object-fit:contain}
+
   body[data-view="signs"] #zine .desk{padding-bottom:max(62px,calc(100dvh - var(--dock) - var(--dev-top,40dvh) + 24px))!important}
   /* frosted, so what is behind them blurs */
   body:not([data-view="portfolio"]) .dev.radio,body:not([data-view="portfolio"]) .vs-body,body:not([data-view="portfolio"]) .dev.tepra.mod{-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1)}
@@ -2593,7 +2377,7 @@ body[data-view="portfolio"] #view>.sec:nth-child(4n+2){--m:#6CCDB0;background:va
 body[data-view="portfolio"] #view>.sec:nth-child(4n+3){--m:#E8A33A;background:var(--grain),linear-gradient(180deg,rgba(244,242,236,.97),rgba(232,230,223,.93))!important}
 body[data-view="portfolio"] #view>.sec:nth-child(4n+4){--m:#A9B3B8;background:var(--grain),linear-gradient(180deg,rgba(255,255,255,.9),rgba(244,246,247,.86))!important}
 body[data-view="portfolio"] #view>.sec::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--m);opacity:.9;pointer-events:none}
-body[data-view="portfolio"] #view>.sec::after{content:counter(mod,decimal-leading-zero);position:absolute;top:10px;left:14px;padding:3px 6px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 7.5px/1 var(--mono);letter-spacing:.16em;box-shadow:0 1px 1px rgba(0,0,0,.25),12px 0 0 -12px transparent;pointer-events:none}
+body[data-view="portfolio"] #view>.sec::after{content:counter(mod,decimal-leading-zero);position:absolute;top:10px;left:14px;padding:3px 6px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 9px/1 var(--mono);letter-spacing:.12em;box-shadow:0 1px 1px rgba(0,0,0,.25),12px 0 0 -12px transparent;pointer-events:none}
 body[data-view="portfolio"] #view>.sec>:first-child{position:relative}
 body[data-view="portfolio"] #view>.sec{background-position:0 0}
 /* novel.global by night: the deep dark grey of 1990s hardware, its modules a shade lighter (brief 0.06, stage D) */
@@ -2651,7 +2435,7 @@ html.night body[data-view="portfolio"] #view>.sec{background:var(--grain),linear
 /* the label maker's printer light moves to the left, the turn-over key at its right */
 .dev.tepra:not(.mod) .tp-i{right:auto;left:16px}
 /* the El Niño switch's label: a strip of embossed label tape, stuck on by hand */
-.rn-tag{position:absolute;z-index:2;top:15px;left:54px;padding:3px 5px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 7.5px/1 var(--mono);letter-spacing:.16em;text-shadow:0 -.5px 0 rgba(255,255,255,.35),0 .5px 0 rgba(0,0,0,.6);transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
+.rn-tag{position:absolute;z-index:2;top:15px;left:54px;padding:3px 5px 2px;border-radius:1.5px;background:#1A1B1C;color:#F2F2F0;font:700 9px/1 var(--mono);letter-spacing:.12em;text-shadow:0 -.5px 0 rgba(255,255,255,.35),0 .5px 0 rgba(0,0,0,.6);transform:rotate(-4deg);box-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none}
 body.nino .rn-tag{background:#3A0F0A}
 
 /* the intention: a line that wraps as it is written, all of it in view; the usual beginnings under it as it is typed */
@@ -2665,26 +2449,6 @@ body.nino .rn-tag{background:#3A0F0A}
 .vs-clr .i{width:14px;height:14px}
 .vs-poem textarea.need,.vs-i textarea.need{background:rgba(232,69,15,.12)!important;box-shadow:inset 2px 0 0 #E8450F}
 
-/* beside the quick W.I.S.H.: the steps, the receipt, the lives near */
-#cover .wpv{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:16px}
-#cover .wpv-flow{list-style:none;display:flex;align-items:center;gap:26px;margin:0;padding:0;position:relative}
-#cover .wpv-flow::before{content:"";position:absolute;left:14px;right:14px;top:50%;height:1px;background:rgba(20,40,50,.25)}
-#cover .wpv-flow li{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#F4F8F8;color:rgba(20,40,50,.45);box-shadow:inset 0 0 0 1px rgba(20,40,50,.18)}
-#cover .wpv-flow li .i{width:15px;height:15px}
-#cover .wpv-flow li.done{color:#0E8F84;box-shadow:inset 0 0 0 1.5px #0E8F84}
-#cover .wpv-flow li.now{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF;box-shadow:0 0 0 4px rgba(20,184,156,.2)}
-#cover .wpv-r{margin:0;min-height:0;flex:0 1 auto;display:flex;justify-content:center;max-height:62%}
-#cover .wpv-r img{width:auto!important;max-width:min(300px,72vw)!important;max-height:100%;object-fit:contain;cursor:zoom-in}
-#cover .wpv-eco{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:0;padding:0;max-width:420px}
-#cover .wpv-eco li{position:relative}
-#cover .eco-b{display:block;width:46px;height:46px;padding:0;border:0;border-radius:50%;overflow:hidden;cursor:pointer;box-shadow:0 0 0 2px #FFFFFF,0 4px 10px rgba(0,0,0,.22);transform:rotate(-3deg)}
-#cover .wpv-eco li:nth-child(even) .eco-b{transform:rotate(4deg)}
-#cover .eco-b img{width:100%;height:100%;object-fit:cover;display:block}
-#cover .eco-l{position:absolute;right:-5px;bottom:-5px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#1F2A20;color:#CBD4C3}
-#cover .eco-l .i{width:10px;height:10px}
-html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
-@media (max-width:759px){#cover .wpv{gap:10px;justify-content:space-evenly}#cover .wpv-r{max-height:56%}#cover .eco-b{width:40px;height:40px}}
-
 /* PRINT's back, close set: half the room it took; keys one size, no key larger than it needs */
 .dev.tepra.mod{padding:44px 0 50px!important}
 .dev.tepra.mod .ps-h{margin:0 14px 6px!important;padding:0 0 8px!important;min-height:0!important}
@@ -2696,15 +2460,12 @@ html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
 .dev.tepra.mod .key,.dev.tepra.mod .cap-k,.dev.tepra.mod .dr-k{height:42px!important;min-height:0!important;padding:4px 2px!important}
 .dev.tepra.mod .cap-k .i,.dev.tepra.mod .dr-k .i,.dev.tepra.mod .key .i{width:15px!important;height:15px!important}
 .dev.tepra.mod .cap{font-size:7.5px!important;margin-top:2px!important}
-.dev.tepra.mod #sec-out .print-k.pk-ic{height:50px!important;margin:4px 0 6px!important}
-.dev.tepra.mod #sec-out .print-k.pk-ic .i{width:28px!important;height:28px!important}
+
 .dev.tepra.mod .seg.outs .key{height:38px!important}
 .dev.tepra.mod .drawer{margin-top:6px!important}
 /* what has been made: three rows that slide sideways, each piece a small picture, one touch onto the strip */
 .made{display:grid;gap:6px}
-.made-r{list-style:none;display:flex;gap:6px;margin:0;padding:2px 0 4px;overflow-x:auto;scrollbar-width:none}
-.made-r::-webkit-scrollbar{display:none}
-.made-r li{flex:none}
+
 .mk{display:block;height:58px;padding:0;border:0;background:#FFFFFF;cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.14)}
 .mk img{display:block;height:100%;width:auto;max-width:96px;object-fit:cover}
 .mk.card{border-radius:4px;overflow:hidden}
@@ -2753,27 +2514,11 @@ html.night #cover .wpv-flow li{background:#14202A;color:rgba(220,240,240,.5)}
 .band.dev.radio.mod .b-emerg{position:relative;z-index:2;margin:0 0 4px!important}
 .band.dev.radio.mod .b-emerg .cd.stp{font-size:17px!important;letter-spacing:.06em;cursor:pointer}
 .band.dev.radio.mod .b-emerg .cd:empty{display:none}
-/* the W.I.S.H. big screen: the actions in a row that slides, the receipt larger, the lives most at risk under it */
-#cover .wpv{justify-content:flex-start!important;padding:22px 24px!important;overflow:auto}
-#cover .wpv-acts{list-style:none;display:flex;gap:10px;width:100%;max-width:760px;margin:0;padding:2px 2px 8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
-#cover .wpv-acts::-webkit-scrollbar{display:none}
-#cover .wpv-acts li{flex:0 0 auto;scroll-snap-align:start}
-#cover .act-b{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;row-gap:2px;width:220px;padding:10px 12px;border:0;border-radius:10px;text-align:left;cursor:pointer;background:#FFFFFF;color:#1F2A20;box-shadow:inset 0 0 0 1px rgba(20,40,50,.12),0 3px 8px rgba(20,40,50,.08)}
-#cover .act-b .act-ic{grid-row:1/4;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#E6F3EF;color:#0E8F84}
-#cover .act-b .act-ic .i{width:17px;height:17px}
-#cover .act-b b{font:600 13px/1.2 var(--sans)}
-#cover .act-b small{font:400 10.5px/1.25 var(--mono);color:rgba(31,42,32,.7)}
-#cover .act-b.on{box-shadow:inset 0 0 0 2px #0E8F84,0 3px 8px rgba(20,40,50,.12)}
-#cover .act-b.on .act-ic{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
-#cover .wpv-r{max-height:none!important;flex:1 1 auto;min-height:0}
-#cover .wpv-r img{max-width:min(380px,80%)!important;max-height:min(60vh,640px)!important}
-html.night #cover .act-b{background:#14202A;color:#DFF3EE}
-html.night #cover .act-b small{color:rgba(223,243,238,.7)}
-@media (max-width:759px){#cover .wpv{padding:12px 12px!important;gap:8px}#cover .act-b{width:190px;padding:8px 10px}#cover .wpv-r img{max-height:100%!important}}
+
 /* close up within a screen */
 .zoomv.in{position:absolute;inset:0;z-index:20;border-radius:inherit}
 .zoomv.in .zv-keys{position:absolute;bottom:14px}
-.vs-sugk[aria-pressed="true"],.vs-clr[aria-pressed="true"]{background:#1F2A20;color:#CBD4C3}
+.vs-clr[aria-pressed="true"]{background:#1F2A20;color:#CBD4C3}
 /* the quick handheld's mods: a whip antenna, a pin header under the screen */
 .h-ant{top:-34px;left:30px;width:22px;height:40px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 40'%3E%3Cpath d='M15 38L7 6' stroke='%232B3034' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='6.5' cy='4.5' r='3.2' fill='%23E8450F'/%3E%3Crect x='11' y='30' width='9' height='9' rx='2' fill='%23B9C0C4'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
 .h-pins{bottom:10px;left:30px;width:44px;height:9px;border-radius:1.5px;background:radial-gradient(circle,#D8B26A 0 1.3px,transparent 1.6px) 0 0/5.5px 4.5px,#1B1F22;box-shadow:0 1px 1px rgba(0,0,0,.3)}
@@ -2816,11 +2561,8 @@ body[data-view="portfolio"] #view>.sec:nth-child(5)::before{background:repeating
 .pk-link input{flex:1;min-width:0;height:38px;padding:0 10px;border:0;border-radius:8px;background:#13171A;color:#BFFFEF;font:400 16px/1 VT323,ui-monospace,monospace}
 .pk-link .ib{color:#E9EEF0;background:#3A4146}
 @media (min-width:760px){.sel{left:24px;right:calc(var(--page) + 24px);bottom:24px;justify-content:flex-start}.sel-in{width:min(560px,100%);max-height:70vh;border-radius:18px}}
-@media (max-width:759px){#cover .act-b small:last-of-type{display:none}#cover .act-b b{font-size:12px}}
 
-/* PRINT: on a phone the other ways out fold behind one small key */
-#sec-out .outs-k{display:none}
-@media (max-width:759px){#sec-out .outs-k{display:grid;margin:0 auto 4px}#sec-out:not(.open) .seg.outs{display:none}}
+@media (max-width:759px){#sec-out:not(.open) .seg.outs{display:none}}
 /* a card turned over: with its poster, with its song */
 .tv-with{display:flex;justify-content:center;gap:8px;margin:6px 0 10px}
 .tv-w{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:0;border-radius:15px;cursor:pointer;background:rgba(255,255,255,.12);color:#E9EEF0;font:500 11px/1 var(--mono);letter-spacing:.04em}
@@ -2875,11 +2617,9 @@ body.gl-full .gallery.full{visibility:visible!important}
 .dev.tepra.mod .seg.outs .key{height:auto!important;min-height:46px!important;padding:6px 2px 5px!important;display:grid!important;justify-items:center;align-content:center;gap:3px;overflow:visible}
 .dev.tepra.mod .seg.outs .cap{display:block;font-size:7px!important;line-height:1.15!important;letter-spacing:.06em!important;white-space:normal;text-align:center}
 .dev.tepra.mod #sec-out{display:grid;justify-items:center;gap:8px}
-.dev.tepra.mod #sec-out .print-k.pk-ic{width:64px!important;height:64px!important;border-radius:50%!important;margin:2px auto!important}
+
 .dev.tepra.mod #sec-out .seg.outs{width:100%}
-#sec-out .outs-k{width:30px!important;height:30px!important;border-radius:50%!important;padding:0!important}
-#sec-out .outs-k .i{width:14px;height:14px}
-#sec-out.open .outs-k{transform:rotate(45deg)}
+
 .dev.tepra.mod{padding-bottom:60px!important}
 /* every plate as the radio's: DIRECT ACTION, and the device's name small and grey */
 .mod-label::after{color:#9AA3A8;opacity:1!important}
@@ -2892,19 +2632,6 @@ body.gl-full .gallery.full{visibility:visible!important}
 /* SELECT on a wide screen: in the middle of the big screen, beside the device */
 @media (min-width:760px){.sel{left:0;right:var(--page);bottom:auto;top:50%;transform:translateY(-50%);justify-content:center}.sel-in{width:min(600px,calc(100% - 48px))}}
 
-/* the quick W.I.S.H.'s screen: the receipt alone; one small key opens a showcase of examples to remix, the actions and the lives */
-#cover .wpv{position:absolute}
-#cover .wpv-ex{position:absolute;z-index:3;top:14px;right:14px;display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:50%;cursor:pointer;background:#FFFFFF;color:#33403F;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-#cover .wpv-ex[aria-pressed="true"]{background:linear-gradient(135deg,#14B89C,#2463D6);color:#FFFFFF}
-#cover .wpv-ex .i{width:17px;height:17px}
-#cover .wpv-show{display:none;position:absolute;z-index:2;top:62px;right:14px;width:min(380px,calc(100% - 28px));max-height:calc(100% - 80px);overflow:auto;padding:12px;border-radius:14px;background:var(--grain),linear-gradient(180deg,#2B2F33,#202326);box-shadow:0 20px 40px rgba(0,0,0,.3)}
-#cover .wpv.show-ex .wpv-show{display:grid;gap:12px}
-#cover .wpv-show .wpv-acts{flex-direction:column;overflow:visible;padding:0;max-width:none}
-#cover .wpv-show .act-b{width:100%;background:#F4F6F6}
-#cover .wpv-show .wpv-eco{justify-content:flex-start;max-width:none}
-#cover .wpv-show .eco-b{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
-@media (min-width:760px){#cover .wpv-ex{right:84px}#cover .wpv-show{right:84px}}
-
 .h-tie{transform:none!important;right:-14px}
 /* PRINT's back at half the room: one compact row each, the ways out folded behind EXPORT on every screen */
 .dev.tepra.mod{padding:40px 0 54px!important}
@@ -2916,12 +2643,9 @@ body.gl-full .gallery.full{visibility:visible!important}
 .dev.tepra.mod .fmt-k .cap{display:none!important}
 .dev.tepra.mod .dr-k{height:34px!important}
 .dev.tepra.mod #sec-out{grid-template-columns:auto auto;justify-content:center;align-items:center;gap:12px!important}
-.dev.tepra.mod #sec-out .print-k.pk-ic{width:52px!important;height:52px!important}
+
 .dev.tepra.mod #sec-out .seg.outs{grid-column:1/-1}
-#sec-out .outs-k{display:inline-flex!important;align-items:center;gap:5px;width:auto!important;height:30px!important;padding:0 10px!important;border:0;border-radius:15px!important;cursor:pointer;background:#2B3034;color:#E9EEF0}
-#sec-out .outs-k b{font:600 9px/1 var(--mono);letter-spacing:.12em}
-#sec-out .outs-k .i{width:13px;height:13px}
-#sec-out.open .outs-k{transform:none;background:linear-gradient(135deg,#14B89C,#2463D6)}
+
 #sec-out:not(.open) .seg.outs{display:none!important}
 
 /* 1. the step on the countdown's screen: reversed, two short lines at most, within the same size */
@@ -2947,16 +2671,16 @@ body.gl-full .gallery.full{visibility:visible!important}
 .dev.tepra.mod .fmt-k .key b{font-size:10px;line-height:1}
 .dev.tepra.mod #sec-out{display:block!important}
 .dev.tepra.mod #sec-out .seg.outs{display:grid!important}
-.prn-l{list-style:none;margin:0 0 6px;padding:6px 8px;border-radius:6px;background:#B8C2AE;color:#1E241B;font:400 14px/1.15 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.35)}
+.prn-l{list-style:none;margin:0 0 6px;padding:6px 8px;border-radius:6px;background:#CBD4C3;color:#1F2A20;font:400 14px/1.15 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.35)}
 .prn-l li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px}
 .prn-led{width:7px;height:7px;border-radius:50%;background:#E9A93A}
-.prn-l li.on .prn-led{background:#3FD27A;box-shadow:0 0 5px #3FD27A}
+.prn-l li.on .prn-led{background:#7CFF6B;box-shadow:0 0 5px #7CFF6B}
 .prn-l b{font-weight:400;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .prn-l small{font-size:12px;opacity:.75}
 /* the label maker as a modded receipt printer: a LoRa whip and a little mesh node board */
 .h-lora{top:-30px;right:34px;width:8px;height:34px;border-radius:4px 4px 1px 1px;background:linear-gradient(90deg,#1A1C1E,#3A3F43 50%,#1A1C1E);box-shadow:0 1px 2px rgba(0,0,0,.4)}
 .h-lora::after{content:"";position:absolute;bottom:-4px;left:-3px;width:14px;height:6px;border-radius:1px;background:#C9A24C}
-.h-node{top:12px;left:-10px;width:16px;height:26px;border-radius:2px;background:radial-gradient(circle,#7CFF6B 0 1.6px,transparent 2.2px) 50% 5px/6px 6px no-repeat,#1E5A44;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 1px 2px rgba(0,0,0,.4)}
+
 .band.dev.radio.mod .b-emerg .cd.stp{display:inline-flex!important;align-items:center;justify-content:center;place-items:normal!important}
 
 /* a life's receipt: its two keys side by side, W.I.S.H. (the board) and PRINT */
@@ -3002,7 +2726,8 @@ body.veiled .jr-sonar{display:none}
 /* the device that has just come up rises into place */
 body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 @keyframes jup{0%{transform:translateY(48px) scale(.92);opacity:0}100%{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){.jr-sonar b{animation:none;opacity:.75;transform:scale(.7)}.jr-sonar b+b{display:none}#rail .tab.arrive .sq,body.jr-in .jr-dev{animation:none;box-shadow:0 0 0 3px rgba(111,227,207,.6)}.jr-j{animation:none;bottom:38%;opacity:.55}.jr-light{animation-duration:.01s}}
+/* held still (the Motion switch or the system's reduced motion): each cue at rest where it would have moved */
+.still .jr-sonar b{opacity:.75;transform:scale(.7)}.still .jr-sonar b+b{display:none}.still #rail .tab.arrive .sq,.still body.jr-in .jr-dev{box-shadow:0 0 0 3px rgba(111,227,207,.6)}.still .jr-j{bottom:38%;opacity:.55}.still .jr-light{display:none}
 
 /* RADIO, the front: the smoked radio at half its height. Its switch, its grille, play, a knob for each layer, in one row */
 .simple-r .dev.radio:not(.mod){display:grid;grid-template-columns:64px 70px minmax(0,1fr);align-items:center;column-gap:12px;max-width:340px;padding:40px 14px 26px}
@@ -3039,14 +2764,15 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .vs-sg.next::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(14,143,132,.85);pointer-events:none;animation:nextring 2.2s ease-out infinite}
 .jt-n{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#0E8F84;color:#fff;font:600 10px/16px var(--sans);text-align:center}
 .jt-n:empty{display:none}
-@media (prefers-reduced-motion:reduce){.vs-sg.next::after,.jr-tab.next::after{animation:none;opacity:.8}}
+@media (prefers-reduced-motion:reduce){.vs-sg.next::after{animation:none;opacity:.8}}
 .simple-w .vs-cur{top:10px}
 .simple-w .vs-make{width:72px;height:72px;border-radius:50%}
 .simple-w .upg .vs-make{align-self:start}
 .simple-w .h-pins{left:44px;bottom:6px;width:38px}
 .simple-w .h-screw.a{right:9px;top:9px}.simple-w .h-screw.b{left:26px;bottom:8px}
 .h-lora{top:-24px;left:26px;width:14px;height:30px;transform:rotate(-7deg);transform-origin:50% 100%;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 30'%3E%3Crect x='4' y='0' width='6' height='20' rx='3' fill='%2316191B'/%3E%3Cpath d='M4.6 5h4.8M4.6 9h4.8M4.6 13h4.8' stroke='%233C4247' stroke-width='.9'/%3E%3Crect x='3' y='19' width='8' height='5' rx='1' fill='%23C9A24C'/%3E%3Cpath d='M5 19v5M7 19v5M9 19v5' stroke='%238C6C26' stroke-width='.6'/%3E%3Crect x='2' y='24' width='10' height='6' rx='1.2' fill='%238C6C26'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
-.jr-dev.upg .h-lora{display:none}
+/* upgraded, the first visit's small mods give way to the upgrade's own: no jumper beside the LoRa module, no tie beside the cable */
+.jr-dev.upg .h-lora,.jr-dev.upg .h-jump,.jr-dev.upg .h-tie{display:none}
 
 /* W.I.S.H.'s screen, over the map itself: the receipt, as intel, and the stories to take up, few and clear */
 .jr{position:fixed;z-index:5;top:0;left:0;bottom:0;right:var(--page);display:flex;align-items:center;justify-content:center;gap:30px;padding:28px 24px;pointer-events:none}
@@ -3062,7 +2788,6 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .jr-tab.open .jt-c{transform:rotate(180deg)}
 .jr-tab .jt-n{top:8px;right:6px}
 .jr-tab:hover{transform:translateX(2px)}
-.jr-tab.next::after{content:"";position:absolute;inset:-5px;border-radius:0 20px 20px 0;border:2px solid rgba(111,227,207,.95);pointer-events:none;animation:nextring 2.2s ease-out infinite}
 html.night .jr-tab{background:rgba(18,28,30,.94);color:#7FE8D4}
 /* half the size they were: small chips, all of them in view */
 .jr-acts{list-style:none;margin:0;padding:0;display:grid;gap:6px;width:214px}
@@ -3120,17 +2845,16 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .dev.tepra .jp-row .tp-prn.print-k .i{width:28px;height:28px}
 .simple-p .tp-i{position:absolute;top:10px;left:12px;right:auto;margin:0;width:20px;height:20px;z-index:4;background:#1A1C1E;box-shadow:inset 0 1px 2px rgba(0,0,0,.6),0 0 0 1.5px rgba(255,255,255,.18)}
 .simple-p .tp-i .tp-led{width:7px;height:7px}
-.simple-p .jp-info{position:absolute;z-index:3;left:14px;right:14px;top:42px;display:grid;gap:2px;padding:8px 10px;border-radius:5px;background:#B8C2AE;color:#1E241B;font:400 16px/1.05 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.35)}
+.simple-p .jp-info{position:absolute;z-index:3;left:14px;right:14px;top:42px;display:grid;gap:2px;padding:8px 10px;border-radius:5px;background:#CBD4C3;color:#1F2A20;font:400 16px/1.05 VT323,ui-monospace,monospace;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.35),0 6px 14px rgba(0,0,0,.35)}
 .simple-p .jp-info[hidden]{display:none}
 /* more than one printer online: a short list, each its light and its place */
 .jp-info.many{gap:4px}
 .jp-prn{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:7px;align-items:center;width:100%;padding:4px 6px;border:0;border-radius:4px;text-align:left;cursor:pointer;color:inherit;background:rgba(30,36,27,.08);font:inherit}
 .jp-prn .tp-led{grid-row:1 / 3;width:8px;height:8px;border-radius:50%;background:#7CFF6B;box-shadow:0 0 6px rgba(124,255,107,.8)}
 .jp-prn b{font-weight:400}.jp-prn small{font-size:13px;opacity:.75}
-.jp-prn.on{background:#1E241B;color:#B8C2AE}
+.jp-prn.on{background:#1F2A20;color:#CBD4C3}
 .simple-p .h-screw.a{right:62px;bottom:8px}.simple-p .h-screw.b{left:7px;bottom:7px}
 .simple-p .h-tie{top:auto;bottom:16px;left:-11px;right:auto;transform:none!important}
-
 
 /* the radio's studio side, enhanced: an analogue VU meter, cream face behind glass, its needle kicking with every cell the
    sweep plays (vuKick), the antenna, wires and the jellyfish key of the upgrade with it */
@@ -3167,7 +2891,7 @@ body[data-face="front"][data-view="signs"] #zine .tools,body[data-face="front"][
 
 /* novel.global: a print waiting to print, its light amber and blinking, where it has got to beside it; printed, green */
 .gl-st{display:inline-block;width:8px;height:8px;margin:0 9px 1px 0;border-radius:50%;background:#FFB23A;box-shadow:0 0 8px #FFB23A;vertical-align:middle;animation:arcblink 1.1s steps(2,end) infinite}
-.gl-st.done{background:#5FF29A;box-shadow:0 0 8px #5FF29A;animation:none}
+.gl-st.done{background:#7CFF6B;box-shadow:0 0 8px #7CFF6B;animation:none}
 .gl-sw{color:#FFC86A;text-shadow:0 0 6px rgba(255,178,58,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 @media (prefers-reduced-motion:reduce){.gl-st{animation:none}}
 
@@ -3202,7 +2926,7 @@ body[data-face="front"][data-view="signs"] #zine .tools,body[data-face="front"][
 .sel-pins{position:absolute;z-index:2;top:-8px;left:18px;width:54px;height:6px;background:radial-gradient(circle,#E8C676 0 1.5px,transparent 1.9px) 0 0/6px 6px;pointer-events:none}
 @media (max-width:759px){.sel-in{border-radius:6px 6px 0 0!important;border-bottom-width:0!important}}
 .pk-tab{height:42px!important;grid-template-rows:auto auto;align-content:center;gap:2px}
-.pk-tab .pk-w,.pk-x .pk-w,.pk-kw{display:block;font:400 9.5px/1 VT323,ui-monospace,monospace;letter-spacing:.08em;color:inherit;pointer-events:none}
+.pk-tab .pk-w,.pk-x .pk-w,.pk-kw{display:block;font:400 12px/1 VT323,ui-monospace,monospace;letter-spacing:.02em;color:inherit;pointer-events:none}
 .pk-tab .pk-tl{bottom:1px}
 .sel-h .pk-x{display:grid;grid-template-rows:auto auto;gap:2px;width:44px!important;height:42px!important;border-radius:8px!important}
 .pk-it .pk-kw{position:absolute;left:0;right:0;bottom:0;padding:2px 0 1px;background:rgba(4,6,7,.82);color:#9FFFE6;text-align:center;text-shadow:0 0 4px rgba(127,255,224,.55)}
@@ -3225,7 +2949,7 @@ body.simple #tag .hide{display:none}
   .jr-r img{width:auto;max-width:min(60vw,250px);max-height:100%}
   .jr-sg{flex:0 0 auto;flex-direction:column;align-items:stretch;gap:6px}
   .jr-tab{justify-self:center;align-self:center;grid-auto-flow:column;width:auto;height:28px;padding:0 14px;border-radius:14px}
-  .jr-tab .jt-c{transform:rotate(90deg)}.jr-tab.open .jt-c{transform:rotate(-90deg)}.jr-tab.next::after{border-radius:24px}.jr-tab .jt-n{top:-6px;right:-6px}
+  .jr-tab .jt-c{transform:rotate(90deg)}.jr-tab.open .jt-c{transform:rotate(-90deg)}.jr-tab .jt-n{top:-6px;right:-6px}
   .jr-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%;padding:0 12px 4px}
   .jr-acts li{min-width:0}
   .jr-act{height:34px;padding:0 8px 0 5px;grid-template-columns:22px minmax(0,1fr);column-gap:6px;border-radius:9px}
@@ -3233,4 +2957,23 @@ body.simple #tag .hide{display:none}
   .jr-act .act-ic{width:22px;height:22px}
   .jr-act .act-ic .i{width:12px;height:12px}
   .simple-r .dev.radio:not(.mod),.simple-w .vs-body,.simple-p .dev.tepra:not(.mod){max-width:none}
+}
+
+/* ───────── the fifth pass: one cue at a time, SELECT a tray on the dongle, words that can be read, type that does not zoom ───────── */
+/* Fabric's hidden field for typing on the receipt or a board note: 16px, so an iPhone does not zoom the page in on it */
+textarea[data-fabric-hiddentextarea]{font-size:16px!important}
+@media (max-width:759px){
+  /* PRINT's SELECT on a phone: a tray of one row sitting on the dongle, the receipt above it and the print key in reach below */
+  body[data-view="signs"][data-face="front"] #pick:not(.moved){bottom:calc(100dvh - var(--dev-top,60dvh) + 4px)}
+  body[data-view="signs"][data-face="front"] #pick .sel-in{max-height:none!important;border-radius:6px!important;border-bottom-width:8px!important;padding-bottom:10px!important}
+  body[data-view="signs"][data-face="front"] #pick .pk-grid{grid-auto-flow:column;grid-template-columns:none!important;grid-auto-columns:64px;overflow-x:auto;overscroll-behavior-x:contain}
+  /* W.I.S.H.: one key for the suggestions, the device's own, under the thumb, a finger wide */
+  .jr-tab{display:none!important}
+  .vs-sg{width:40px;height:40px}
+  .vs-sg::before{content:"";position:absolute;inset:-4px}
+  .simple-w .vs-i textarea{padding-right:46px}
+  /* PRINT's strip starts below a notch or the status bar */
+  body[data-view="signs"][data-face="front"] #zine .desk{padding-top:calc(var(--top,0px) + 12px)!important}
+  /* the four places named so they can be read */
+  .tab-s{font-size:10px!important;letter-spacing:.06em;opacity:.8}
 }

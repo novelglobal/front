@@ -18,7 +18,7 @@ const toBoardFace = () => { if (!simple()) setFace(1, 'back'); };
 const FLIP_SVG = '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9V6.4C3 3.6 5.2 2 8 2s5 1.6 5 4.4V9c-1.5.6-3.2.9-5 .9S4.5 9.6 3 9z" fill="currentColor"/><path d="M4.8 10.6c-.6 1.3.6 2.1 0 3.4M7 10.9c-.6 1.5.6 2.3 0 3.8M9 10.9c-.6 1.5.6 2.3 0 3.8M11.2 10.6c-.6 1.3.6 2.1 0 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 const flipBtn = () => { const f = faceOf(S.view); return FACED.includes(S.view) && !simple() ? `<button type="button" class="flip-b${(prefs.flipped || {})[S.view] ? '' : ' hint'}" data-flip data-face="${f}" aria-label="${f === 'front' ? 'Turn over: the studio' : 'Turn back: the quick way'}">${FLIP_SVG}</button>` : ''; };
 function flip() {
-  const i = S.view; if (!FACED.includes(i) || S.mode || simple()) return; const to = faceOf(i) === 'front' ? 'back' : 'front'; snd.tick(to === 'back' ? 1250 : 1750); buzz(6);
+  const i = S.view; if (!FACED.includes(i) || S.mode || simple()) return; const to = faceOf(i) === 'front' ? 'back' : 'front'; snd.tick(to === 'back' ? 1250 : 1750);
   prefs.flipped = { ...(prefs.flipped || {}), [i]: 1 };
   const go = () => { setFace(i, to); headBar(); renderView(); viewEl.scrollTop = 0; };
   if (reduced()) { go(); return; }
@@ -61,7 +61,7 @@ function railEnd(e) {
   const d = RAIL.drag; if (!d || e.pointerId !== d.id) return; RAIL.drag = null; if (!d.on) return;
   document.body.classList.remove('railing');
   /* a slide is not a press: the click that ends it is let go */
-  if (e.type === 'pointerup') { const stop = ev => { ev.stopPropagation(); ev.preventDefault(); }; addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 400); }
+  if (e.type === 'pointerup') { const stop = ev => { if (!ev.isTrusted) return; ev.stopPropagation(); ev.preventDefault(); removeEventListener('click', stop, { capture: true }); }; addEventListener('click', stop, { capture: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 400); }
   pane = RAIL.y >= RAIL.lo - 8 ? 'main' : 'page'; syncDock();
 }
 addEventListener('pointerup', railEnd); addEventListener('pointercancel', railEnd);
@@ -95,7 +95,7 @@ function turnKnob(k, d, stop) {
   const p0 = knobPos(k); let p = p0 + d; p = stop ? clamp(p, 0, 3) : (p + 4) % 4; if (p === p0) { tick(600); return; }
   if (!p) setTrack4(k, false); else { prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[p - 1] }; savePrefs(); if (!trackOn(k)) setTrack4(k, true); }
   const b = $(`#view [data-knob="${k}"]`); if (b) { b.style.setProperty('--a', `${KNOB_A[p]}deg`); b.setAttribute('aria-valuenow', String(p)); const li = b.closest('.rd-k'); li.classList.toggle('on', !!p); li.querySelectorAll('.kn-ticks b').forEach((x, n) => x.classList.toggle('on', n < p)); }
-  snd.tick(800 + p * 320); buzz(4);
+  snd.tick(800 + p * 320);
 }
 viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'); if (k) turnKnob(k.dataset.knob, 1, false); });
 /* the red switch: El Niño. Everything is at 120 BPM already, so it changes heat, not speed: the sound opened and harder, the
@@ -138,7 +138,7 @@ function wishFront() {
   const where = String(jSel().place || suburbAt(S.scan.lat, S.scan.lng) || '').toUpperCase();
   return `<section class="sec front-w simple-w" id="sec-wish"><form class="wish-form visor jw" id="jw-form" autocomplete="off"><div class="dev vs-body jr-dev${upCls()}"><i class="vs-rib l" aria-hidden="true"></i><i class="hack h-lora" aria-hidden="true"></i>${SCREWS}<i class="hack h-pins" aria-hidden="true"></i>`
     + `<div class="vs-screen"><div class="vs-bar"><b class="vs-tab">INTENTION</b><span class="vs-now">${esc(where)} ${fmtClock(Date.now())}</span></div>`
-    + `<label class="vs-i"><textarea id="jw-for" rows="1" maxlength="90" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
+    + `<label class="vs-i"><textarea id="jw-for" rows="1" maxlength="90" enterkeyhint="go" autocomplete="off" spellcheck="true" aria-label="Intention" placeholder=" ">${esc(JR.want || '')}</textarea><i class="vs-cur" aria-hidden="true"></i></label>`
     /* where SELECT once was: the key that opens the suggestions beside the receipt */
     + `<button type="button" class="vs-sg" data-jtab aria-expanded="false" aria-label="Suggestions">${icon('stories')}<b class="jt-n" aria-hidden="true"></b></button></div>`
     + `<button type="submit" class="vs-make make-b${jWants() ? ' next' : ''}" aria-label="Make the W.I.S.H."><b>make</b></button>`
@@ -168,7 +168,7 @@ viewEl.addEventListener('click', e => {
 viewEl.addEventListener('change', e => {
   if (e.target.id !== 'wf-photo') return; const fl = e.target.files && e.target.files[0]; if (!fl) return;
   const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-    WDRAFT.photo = c.toDataURL('image/jpeg', 0.8); if (!store.set('da.wish.v1', WDRAFT)) { WDRAFT.photo = c.toDataURL('image/jpeg', 0.55); store.set('da.wish.v1', WDRAFT); } refreshPanel(); tick(1800); buzz(6); }; im.src = rd.result; };
+    WDRAFT.photo = c.toDataURL('image/jpeg', 0.8); if (!store.set('da.wish.v1', WDRAFT)) { WDRAFT.photo = c.toDataURL('image/jpeg', 0.55); store.set('da.wish.v1', WDRAFT); } refreshPanel(); tick(1800); }; im.src = rd.result; };
   rd.readAsDataURL(fl); e.target.value = '';
 });
 /* ───────── PRINT, the front, for everyone: a dongle. SELECT its hero, a sheet of die-cut stickers for some bling; a key that
@@ -192,11 +192,11 @@ function printFront() {
     + `${upMods()}${flipBtn()}</div></section>`;
 }
 /* a printer chosen from those online: kept, and the list stays open on it */
-viewEl.addEventListener('click', e => { const b = e.target.closest('[data-prn-pick]'); if (!b) return; prefs.prn = b.dataset.prnPick; savePrefs(); $$('#view [data-prn-pick]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); snd.tick(1800); buzz(5); });
+viewEl.addEventListener('click', e => { const b = e.target.closest('[data-prn-pick]'); if (!b) return; prefs.prn = b.dataset.prnPick; savePrefs(); $$('#view [data-prn-pick]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); snd.tick(1800); });
 /* the dongle's words key: the caret on the receipt, and the keyboard types onto the paper */
 viewEl.addEventListener('click', e => { if (e.target.closest('[data-jwords]')) { jEdit(); snd.tick(1500); } });
 viewEl.addEventListener('click', e => { const o = e.target.closest('[data-outs]'); if (!o) return; const sec = o.closest('#sec-out'); const on = !sec.classList.contains('open'); sec.classList.toggle('open', on); o.setAttribute('aria-expanded', String(on)); tick(on ? 1500 : 1000); });
 viewEl.addEventListener('click', e => {
   const k = e.target.closest('[data-tp]'); if (k) { if (k.dataset.tp === 'pick') { openPick('strip'); return; } if (k.dataset.tp === 'undo') { const sel = zc ? zc.getActiveObjects().filter(o => !ZFIXED.includes(o.daKind)) : []; zineTool(sel.length ? 'delete' : 'undo'); return; } zineTool(k.dataset.tp); return; }
-  const pr = e.target.closest('[data-prn]'); if (pr) { const i = $('#tp-info') || $('#ps-info'); if (!i) return; i.hidden = !i.hidden; pr.setAttribute('aria-expanded', String(!i.hidden)); snd.tick(i.hidden ? 1100 : 1800); buzz(5); }
+  const pr = e.target.closest('[data-prn]'); if (pr) { const i = $('#tp-info') || $('#ps-info'); if (!i) return; i.hidden = !i.hidden; pr.setAttribute('aria-expanded', String(!i.hidden)); snd.tick(i.hidden ? 1100 : 1800); }
 });

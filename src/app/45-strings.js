@@ -249,7 +249,7 @@ const strings = (() => {
       if (!inFig(fig.end)) fig.end = 'pin';
       snd.snap(panOf(k)); save(); changed(); return;
     }
-    if (inFig(k)) { fig.end = k; snd.tick(2300); buzz(4); save(); changed(); return; }
+    if (inFig(k)) { fig.end = k; snd.tick(2300); save(); changed(); return; }
     tieTo(k, fig.end); save(); changed();
   }
   /* every place that does one thing, joined to the life at once: a fan of strings, plucked one after another */

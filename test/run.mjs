@@ -613,10 +613,12 @@ async function walkJourney(page, tag, phoneSize) {
 if (run('journey')) try {
   /* at a desk's width */
   const ctx = await newCtx(); await wire(ctx, { first: true, journey: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'journey');
+  /* the veil's own life, timed in the page: when the test first sees it depends on how long the page takes to load */
+  await ctx.addInitScript(() => { window.__veil = {}; new MutationObserver(() => { const on = !!document.getElementById('jr-veil'); const t = performance.now(); if (on && !window.__veil.add) window.__veil.add = t; if (!on && window.__veil.add && !window.__veil.rm) window.__veil.rm = t; }).observe(document, { childList: true, subtree: true }); });
   await page.goto('https://oan.test/index.html'); const v0 = Date.now();
   /* the veil first: small words alone over the map as it loads, gone by themselves */
   const vq = await page.waitForSelector('#jr-veil .jv-q', { timeout: 40000 }).then(el => el.textContent()).catch(() => ''); const v1 = Date.now();
-  await page.waitForSelector('#jr-veil', { state: 'detached', timeout: 20000 }).catch(() => {}); const vt = Date.now() - v1;
+  await page.waitForSelector('#jr-veil', { state: 'detached', timeout: 20000 }).catch(() => {}); const vt = await page.evaluate(() => Math.round((window.__veil.rm || 0) - (window.__veil.add || 0)));
   check('a first visit opens on a veil over the map: small words alone, What have you noticed?, held a few seconds and gone by itself', vq === 'What have you noticed?' && vt >= 3000 && vt < 12000, JSON.stringify({ vq, vt, load: v1 - v0 }));
   await ready(page); await settle(page); await sleep(1200);
   const d = await walkJourney(page, 'j-');

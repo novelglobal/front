@@ -62,7 +62,7 @@ function openPick(to) {
     el.innerHTML = `<div class="sel-in"><i class="sel-pins" aria-hidden="true"></i><header class="sel-h"><i class="sel-grip" aria-hidden="true"></i><div class="pk-tabs"></div><button type="button" class="ib pk-x" data-pk-x aria-label="Close">${icon('close')}<small class="pk-w" aria-hidden="true">CLOSE</small></button></header><div class="sel-b"></div></div>`;
     document.body.appendChild(el);
   }
-  el.dataset.to = to; el.hidden = false; pickRender(); snd.tick(1600); buzz(5); requestAnimationFrame(selWire);
+  el.dataset.to = to; el.hidden = false; pickRender(); snd.tick(1600); requestAnimationFrame(selWire);
 }
 const closePick = () => { const el = $('#pick'); if (el) el.hidden = true; selWire(); };
 /* the jumper wire: from the key SELECT was opened by, sagging, to the header on the module's board */
@@ -117,7 +117,7 @@ async function pickPut(k, id, btn) {
     if (PICK.to === 'board') await addToBoard(big ? await thumbOf(u, 360) : u, k === 'stk' || k === 'pk' ? 'sticker' : 'art', big ? 200 : 110);
     else { WDRAFT.photo = await thumbOf(u, 700); store.set('da.wish.v1', WDRAFT); refreshPanel(); }
   }
-  tick(1500); buzz(5);
+  tick(1500);
 }
 document.addEventListener('click', e => {
   const opener = e.target.closest('[data-pick]'); if (opener) { openPick(opener.dataset.pick === 'wish' ? (faceOf(1) === 'back' ? 'board' : 'photo') : opener.dataset.pick); return; }

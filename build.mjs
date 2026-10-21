@@ -15,6 +15,10 @@ const git = cmd => { try { return execSync(`git ${cmd}`, { cwd: root, stdio: ['i
 const sha = (process.env.WORKERS_CI_COMMIT_SHA || git('rev-parse HEAD') || 'local').slice(0, 7);
 const branch = (process.env.WORKERS_CI_BRANCH || '').replace(/[^\w./-]/g, '');
 const preview = !!branch && branch !== 'main';
+/* lighter over the wire: the app, its style, the QR code and the marks go out minified when esbuild is at hand (it comes with
+   wrangler); the commented sources stay in src/. config.js and the other data files go out as written. DA_NOMIN=1 to read them */
+let min = code => code;
+try { const { transformSync } = await import('esbuild'); if (!process.env.DA_NOMIN) min = (code, loader) => transformSync(code, { loader, minify: true, legalComments: 'none' }).code; } catch { /* plain files */ }
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'vendor/fonts'), { recursive: true });
@@ -22,7 +26,7 @@ fs.cpSync(path.join(root, 'repo-static'), out, { recursive: true });
 copy(path.join(root, 'README.md'), path.join(out, 'README.md'));
 copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.js'), path.join(out, 'vendor/maplibre-gl.js'));
 copy(path.join(nm, 'maplibre-gl/dist/maplibre-gl.css'), path.join(out, 'vendor/maplibre-gl.css'));
-copy(path.join(nm, 'qrcode-generator/qrcode.js'), path.join(out, 'vendor/qrcode.js'));
+fs.writeFileSync(path.join(out, 'vendor/qrcode.js'), '/* qrcode-generator 1.4.4, (c) 2009 Kazuhiko Arase, MIT licence: vendor/LICENSES.md */\n' + min(read(path.join(nm, 'qrcode-generator/qrcode.js')), 'js'));
 
 /* type: Poppins (display, labels, text), IBM Plex Mono (numbers, coordinates, codes), VT323 for the teletype slip, and four faces for the press */
 const fonts = [['Poppins', 200, 'normal', 'poppins'], ['Poppins', 400, 'normal', 'poppins'], ['Poppins', 400, 'italic', 'poppins'],
@@ -38,10 +42,11 @@ for (const [fam, w, st, pkg] of fonts) {
   copy(path.join(nm, `@fontsource/${pkg}/files/${file}`), path.join(out, 'vendor/fonts', file));
   faces.push(`@font-face{font-family:'${fam}';font-style:${st};font-weight:${w};font-display:swap;src:url(vendor/fonts/${file}) format('woff2')}`);
 }
-fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins, IBM Plex Mono, VT323, Playfair Display, UnifrakturMaguntia, Sedgwick Ave Display and Rubik Bubbles, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + read(path.join(src, 'app.css')));
+fs.writeFileSync(path.join(out, 'style.css'), '/* Type: Poppins, IBM Plex Mono, VT323, Playfair Display, UnifrakturMaguntia, Sedgwick Ave Display and Rubik Bubbles, SIL Open Font License, kept in vendor/fonts */\n' + faces.join('\n') + '\n\n' + min(read(path.join(src, 'app.css')), 'css'));
 /* the app: every file in src/app, in name order, as one script */
-fs.writeFileSync(path.join(out, 'app.js'), fs.readdirSync(path.join(src, 'app')).filter(f => f.endsWith('.js')).sort().map(f => read(path.join(src, 'app', f))).join('\n'));
-for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
+fs.writeFileSync(path.join(out, 'app.js'), min(fs.readdirSync(path.join(src, 'app')).filter(f => f.endsWith('.js')).sort().map(f => read(path.join(src, 'app', f))).join('\n'), 'js'));
+for (const name of ['config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'field.html']) copy(path.join(src, name), path.join(out, name));
+fs.writeFileSync(path.join(out, 'marks.js'), min(read(path.join(src, 'marks.js')), 'js'));
 /* the guide reads the same marks and words as the app, in the same type */
 fs.writeFileSync(path.join(out, 'guide.html'), read(path.join(src, 'guide.html')).replace('/*FONTS*/', faces.join('\n')));
 fs.writeFileSync(path.join(out, 'portfolio.html'), read(path.join(src, 'portfolio.html')).replace('/*FONTS*/', faces.join('\n')));

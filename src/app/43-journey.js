@@ -23,6 +23,8 @@ function jMarks() {
 function jGo(st, quiet) {
   if (!simple() || st <= prefs.journey) return false;
   prefs.journey = Math.min(4, st); savePrefs(); jMarks(); jHint();
+  /* PRINT is next: its drawing engine is fetched now, so the strip opens at once */
+  if (st === 2) (window.requestIdleCallback || setTimeout)(() => loadFabric().catch(() => {}));
   if (prefs.journey >= 4) { jDone(quiet); return true; }
   if (quiet) return true;
   snd.gate(st + 1); jLight();
@@ -35,10 +37,10 @@ function jLight(big) {
   if (reduced() && !big) return; const el = document.createElement('i'); el.className = `jr-light${big ? ' big' : ''}`; el.setAttribute('aria-hidden', 'true');
   document.body.appendChild(el); setTimeout(() => el.remove(), big ? 2400 : 1300);
 }
-/* everything unlocked: the whole chord, the jellyfish fill the screen, and every page comes back as it is, its key to turn it over */
+/* everything unlocked: the rising figure brought home, the jellyfish rise, and every page comes back as it is, its key to turn it over */
 function jDone(quiet) {
   prefs.journey = 4; savePrefs(); stepsQuiet(); jMarks(); jHint(); jrShow();
-  if (!quiet) { snd.gate(5); jLight(true); jBurst(); dispatchEvent(new CustomEvent('da:muse')); }
+  if (!quiet) { snd.gate(5); jLight(true); jBurst(); }
   if (S.open && !S.mode) { headBar(); renderView(); }
 }
 function jBurst() {
@@ -72,7 +74,7 @@ function jHint() {
     if (hintIt) at = [hintIt.x + (hintIt.dx || 0), hintIt.y + (hintIt.dy || 0)];
   }
   /* on W.I.S.H., a life held and nothing tied to it yet: the place nearest it, to tie a string to */
-  else if (st === 2 && S.mapReady && S.view === 1 && !S.mode && JR.sel && JR.sel.k === 'life' && !((JR.sel.fig || {}).nodes || []).length) {
+  else if (st === 2 && !phone() && S.mapReady && S.view === 1 && !S.mode && JR.sel && JR.sel.k === 'life' && !((JR.sel.fig || {}).nodes || []).length) {
     let bd = 600; for (let i = 0; i < 600; i++) { const p = life.place(i); if (!p) break; if (p._x == null) continue; const d = haversine(JR.sel.lat, JR.sel.lng, p.lat, p.lng); if (d < bd) { bd = d; at = [p._x, p._y]; } }
   }
   if (at) { const r = map.getContainer().getBoundingClientRect(); const x = r.left + at[0], y = r.top + at[1]; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) at = null; else sonar.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; }
@@ -89,7 +91,7 @@ function jVeil() {
   document.body.appendChild(v); document.body.classList.add('veiled');
   let gone = false; const go = touched => { if (gone) return; gone = true; clearTimeout(t); if (touched) snd.gate(1); v.classList.add('out'); document.body.classList.remove('veiled'); setTimeout(() => { v.remove(); jHint(); }, reduced() ? 0 : 900); };
   const t = setTimeout(() => go(false), 5000);
-  v.addEventListener('pointerdown', e => { e.preventDefault(); go(true); });
+  v.addEventListener('click', e => { e.preventDefault(); go(true); });
 }
 
 /* ───────── the map, on a first visit: any tap puts the radar down there, and the radio comes up with it ───────── */
@@ -115,8 +117,9 @@ function jPick(sel, at) {
   const first = simple() && prefs.journey < 2; JR.sel = sel; if (first) JR.want = '';
   /* the suggestions taken up stay while they still fit what is held */
   JR.acts = first ? [] : (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); hintIt = null; life.hover(null); $('#tag').hidden = true;
-  snd.tick(1900); buzz(6);
-  if (first) { jGo(2); jFly(at, 1); setTimeout(() => setView(1), reduced() ? 0 : 560); }
+  /* in its own voice; the first time, the gate's note answers alone */
+  if (!first) { const pl = sel.k === 'place'; snd.knot(pl ? { fam: sel.fam } : { g: sel.g }, F0 * partialOf(pl ? sel.fam : sel.g), 0, 0.7, 0); }
+  if (first) { jGo(2); jFly(at, 1); setTimeout(() => { setView(1); if (phone()) setPane('page'); }, reduced() ? 0 : 560); }
   else { if (S.view !== 1) setView(1); else { jrShow(); jPreview(); } }
   return true;
 }
@@ -351,10 +354,10 @@ let jrEl = null;
 let jrOpen = false;
 function jrTabs() {
   const n = (JR.acts || []).length;
-  $$('[data-jtab]').forEach(b => { b.setAttribute('aria-expanded', String(jrOpen)); b.classList.toggle('open', jrOpen); b.classList.toggle('next', !jrOpen && !n && !String(JR.want || '').trim()); const c = b.querySelector('.jt-n'); if (c) c.textContent = n ? String(n) : ''; });
+  $$('[data-jtab]').forEach(b => { b.setAttribute('aria-expanded', String(jrOpen)); b.classList.toggle('open', jrOpen); b.classList.toggle('next', b.classList.contains('vs-sg') && !jrOpen && !n && !String(JR.want || '').trim()); const c = b.querySelector('.jt-n'); if (c) c.textContent = n ? String(n) : ''; });
   if (jrEl) { jrEl.classList.toggle('open', jrOpen); const l = jrEl.querySelector('.jr-acts'); if (l) l.hidden = !jrOpen; }
 }
-function jrToggle(on) { jrOpen = on == null ? !jrOpen : !!on; jrTabs(); snd.tick(jrOpen ? 1600 : 1000); buzz(4); }
+function jrToggle(on) { jrOpen = on == null ? !jrOpen : !!on; jrTabs(); snd.tick(jrOpen ? 1600 : 1000); }
 function jrShow() {
   const on = wishOverMap() && (!simple() || (prefs.journey >= 2 && !!JR.sel));
   if (!jrEl) { if (!on) { jHeld(); return; } jrEl = document.createElement('div'); jrEl.className = 'jr'; jrEl.id = 'jr'; document.body.appendChild(jrEl); }
@@ -406,7 +409,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-jtab]')) { jrToggle(); return; }
   const a = e.target.closest('#jr [data-jact]');
   if (a) { const k = a.dataset.jact; const on = !(JR.acts || []).includes(k); JR.acts = on ? [...(JR.acts || []), k] : JR.acts.filter(x => x !== k); saveJR();
-    a.classList.toggle('on', on); a.setAttribute('aria-pressed', String(on)); jMakeLit(); jrTabs(); jPreview(); snd.tick(on ? 1800 : 1000); buzz(5); return; }
+    a.classList.toggle('on', on); a.setAttribute('aria-pressed', String(on)); jMakeLit(); jrTabs(); jPreview(); snd.tick(on ? 1800 : 1000); return; }
   const z = e.target.closest('#jr [data-zoom]'); if (z && z.src) zoomArt(z.src);
 });
 viewEl.addEventListener('input', e => { if (e.target.id !== 'jw-for') return; JR.want = e.target.value; jWantSave(); growTA(e.target); jMakeLit(); jrTabs(); jPreview(); });
@@ -424,8 +427,9 @@ async function jMake() {
     JR.want = want; const at = Date.now(); const s0 = jSignal(null, at); const sig = { ...s0, code: codeFor(`${at}|${s0.pin.lat}|${s0.pin.lng}|${s0.for || ''}|${S.me.dev}`) };
     const sel = jSel(); if (sel.photo) { OWN[sig.code] = sel.photo; saveOwn(); sig.img = { k: 'own', a: '' }; }
     const ev = await ledgerAdd({ type: 'signal', lat: sig.pin.lat, lng: sig.pin.lng, who: sig.who, data: sig }); JR.key = ev.key; saveJR();
-    tie(1); snd.printer(700); jBoard(sig);
+    /* a first make is answered by the gate's note alone; the printer belongs to PRINT */
     const im = $('#jr .jr-r img'); const first = simple() && prefs.journey < 3;
+    tie(1); if (!first) snd.printer(700); jBoard(sig);
     /* handed on, as on a line: the receipt goes to PRINT, and W.I.S.H. is left clear for what is noticed next */
     JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; clearK = ''; saveJR();
     PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = 0; jFresh = true; if (!simple()) setFace(2, 'front');

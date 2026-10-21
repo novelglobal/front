@@ -132,7 +132,17 @@ const S = {
 const reduced = () => !prefs.motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ───────── touch answers: a short buzz where phones allow it, and small sounds made here, not loaded ───────── */
-const buzz = ms => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch (e) { /* no haptics */ } };
+/* an iPhone has no vibrate, but Safari gives a haptic when a switch is flipped inside a touch: a hidden one, made at the first
+   pattern and flipped for patterns only (the real moments: a gate, a set down, a print), never for every tick */
+let iosSw;
+const buzz = ms => { try {
+  if (!navigator.userActivation || navigator.userActivation.hasBeenActive) {
+    if (navigator.vibrate) navigator.vibrate(ms);
+    else if (Array.isArray(ms) && (!navigator.userActivation || navigator.userActivation.isActive) && document.body) {
+      if (iosSw === undefined) { iosSw = document.createElement('label'); iosSw.setAttribute('aria-hidden', 'true'); iosSw.style.cssText = 'position:fixed;left:-9px;top:0;width:1px;height:1px;opacity:0;pointer-events:none'; iosSw.innerHTML = '<input type="checkbox" switch tabindex="-1">'; document.body.appendChild(iosSw); }
+      iosSw.click();
+    }
+  } } catch (e) { /* no haptics */ } };
 const snd = (() => {
   let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
@@ -145,7 +155,7 @@ const snd = (() => {
     if (ctx.currentTime !== ctSeen) { ctSeen = ctx.currentTime; ctAt = now; return true; } return now - ctAt < 1500;
   }
   function rebuild() {
-    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear();
+    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear(); NZ.clear(); CK.clear();
     try { if (old && old.state !== 'closed') old.close().catch(() => {}); } catch (e) { /* gone */ }
   }
   setInterval(() => {
@@ -218,7 +228,9 @@ const snd = (() => {
     const s = ctx.createBufferSource(); s.buffer = buf; const g = ctx.createGain(); g.gain.value = gain; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cut;
     s.connect(lp); lp.connect(g); out(g, pan, 0.8); s.start(ctx.currentTime + at);
   }
-  function noise(dur) { const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded(dur); for (let i = 0; i < n; i++) d[i] = r() * 2 - 1; return b; }
+  /* the same seed gives the same samples, so each length is made once */
+  const NZ = new Map(), CK = new Map();
+  function noise(dur) { if (NZ.has(dur)) return NZ.get(dur); const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded(dur); for (let i = 0; i < n; i++) d[i] = r() * 2 - 1; NZ.set(dur, b); return b; }
   const env = (g, t, a, peak, hold, rel) => { const p = Math.max(0.0002, peak); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(p, t + a); g.gain.setValueAtTime(p, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); };
   const osc = (type, f, t, end) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(end + 0.05); return o; };
   const vib = (o, t, end, rate, depth, delay = 0) => { const l = ctx.createOscillator(); l.frequency.value = rate; const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(depth, t + delay + 0.08); l.connect(g); g.connect(o.frequency); l.start(t); l.stop(end + 0.05); };
@@ -295,8 +307,9 @@ const snd = (() => {
   }
   /* dust on a record: sparse clicks, high and dry */
   function crackle(t, dur, v, pan) {
-    const n = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); const r = seeded('dust' + dur);
-    for (let i = 0; i < n; i++) if (r() < 0.0016) { const a = (r() * 2 - 1); for (let k = 0; k < 6 && i + k < n; k++) d[i + k] = a * Math.pow(0.5, k); }
+    let b = CK.get(dur);
+    if (!b) { const n = Math.floor(ctx.sampleRate * dur), d = (b = ctx.createBuffer(1, n, ctx.sampleRate)).getChannelData(0); const r = seeded('dust' + dur);
+      for (let i = 0; i < n; i++) if (r() < 0.0016) { const a = (r() * 2 - 1); for (let k = 0; k < 6 && i + k < n; k++) d[i + k] = a * Math.pow(0.5, k); } CK.set(dur, b); }
     const s0 = ctx.createBufferSource(); s0.buffer = b; const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400; const g = ctx.createGain(); g.gain.value = v;
     s0.connect(hp); hp.connect(g); out(g, pan, 0.3); s0.start(t);
   }
@@ -388,11 +401,11 @@ const snd = (() => {
     running: () => !!ctx && !sick && clockOK(),
     /* for the checks: the sound as a phone can leave it, running with nothing coming out */
     __sicken() { sick = true; },
-    /* a dry click for a press */
+    /* a dry click for a press: at once, but on a note of the key, so a knob turned climbs the scale */
     tick(f = 1700) {
-      buzz(3); if (!ready()) return;
-      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'triangle'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.035);
+      buzz(8); if (!ready()) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(), q = qn(f);
+      o.type = 'triangle'; o.frequency.setValueAtTime(q, t); o.frequency.exponentialRampToValueAtTime(q * 0.45, t + 0.035);
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
       o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.06);
     },
@@ -421,13 +434,15 @@ const snd = (() => {
       if (spec.fam && md === 'fog') knotAt(spec, fq, t, v * 5, pan); else V(fq, t, v, pan, bright, opt.danger, opt.vi || 0);
       return true;
     },
-    /* a thermal head stepping: filtered noise in short strokes */
+    /* a thermal head stepping: filtered noise in short strokes (the square swings the level from nothing to full, 38 a second),
+       faded out at the end instead of cut */
     printer(ms = 1200) {
       buzz([18, 36, 18, 36, 18, 36, 40]); if (!ready()) return;
       const t = ctx.currentTime, d = ms / 1000; const s = ctx.createBufferSource(); s.buffer = noise(d);
       const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.4;
-      const g = ctx.createGain(); g.gain.value = 0; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
-      lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
+      const g = ctx.createGain(); g.gain.value = 0.04; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
+      const f = ctx.createGain(); f.gain.setValueAtTime(1, t + Math.max(0, d - 0.05)); f.gain.linearRampToValueAtTime(0, t + d);
+      lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(f); f.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
     },
     /* a poster put up: the low A as a dub stab, and the sub falling under it */
     horn() { buzz([40, 60, 120]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(55, t, 0.07, 0, true, false, 0); dropV(110, t + SIX * 2, 0.06, 0, false); },
@@ -443,11 +458,13 @@ const snd = (() => {
       for (let i = 0; i < k; i++) dubV(F[i], t + i * SIX * 2, 0.05, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2);
     },
     /* a gate passed on a first visit: one more note of a rising figure in A minor, the dub stab into its echo (the veil one,
-       the radar two, W.I.S.H. three, PRINT four); everything open, the whole chord at once and the sub falling under it */
+       the radar two, W.I.S.H. three, PRINT four); everything open, the figure run through on the sixteenths to the high A,
+       its home chord, and the sub falling under it */
     gate(n = 1) {
       buzz(n >= 5 ? [12, 40, 12, 40, 60] : [8, 30, 8]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.04); room(t, true); const F = [110, 130.81, 164.81, 196, 220];
-      if (n >= 5) { F.forEach((f, i) => dubV(f, t + i * 0.04, 0.06, (i - 2) * 0.3, true, false, i ? 1 : 0)); dropV(110, t + SIX * 2, 0.07, 0, true); return; }
-      for (let i = 0; i < n; i++) dubV(F[i], t + i * SIX * 2, 0.06, (i - (n - 1) / 2) * 0.3, true, false, i === n - 1 ? 0 : 2);
+      const k = Math.min(n, 5), step = n >= 5 ? SIX : SIX * 2;
+      for (let i = 0; i < k; i++) dubV(F[i], t + i * step, 0.06, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2);
+      if (n >= 5) dropV(110, t + step * k, 0.07, 0, true);
     },
     /* paper torn off */
     tear() {

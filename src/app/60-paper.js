@@ -321,7 +321,7 @@ $('#s-acts').addEventListener('click', async e => {
   if (a === 'remix') remixSignal(s);
   if (a === 'pin' && S.mapReady) map.easeTo({ center: [s.pin.lng, s.pin.lat], zoom: Math.max(map.getZoom(), 16), offset: sheetOffset(), duration: reduced() ? 0 : 600 });
   if (a === 'remove') { await ledgerAdd({ type: 'redact', ref: s.key }); snd.snap(0); closeRecord(); }
-  if (a === 'style' || a === 'conn') { prefs.slip = a === 'conn' ? (isConn() ? 'paper' : 'conn') : isTty() ? 'paper' : 'tty'; savePrefs(); snd.tick(1800); buzz(6);
+  if (a === 'style' || a === 'conn') { prefs.slip = a === 'conn' ? (isConn() ? 'paper' : 'conn') : isTty() ? 'paper' : 'tty'; savePrefs(); snd.tick(1800);
     $$('#s-acts [data-sa="style"]').forEach(x => x.setAttribute('aria-pressed', String(isTty()))); $$('#s-acts [data-sa="conn"]').forEach(x => x.setAttribute('aria-pressed', String(isConn())));
     const host = $('#s-slip'); host.classList.toggle('tty', isTty()); host.classList.toggle('conn', isConn());
     /* either style keeps its photograph: whichever was hidden when the slip was drawn is filled now */
@@ -332,7 +332,7 @@ async function copyText(t) { try { await navigator.clipboard.writeText(t); retur
 async function output(k, s, btn) {
   const pre = $('#s-text'); const show = t => { pre.hidden = false; pre.textContent = t; pre.dataset.n = k === 'mesh' ? `${bytes(t)} B` : `${t.length}`; };
   tie(2); if (k === 'print') { printSlip(s); return; }
-  if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); buzz(6); return; }
+  if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); return; }
   if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); try { if (navigator.share && url) { await navigator.share({ title: s.code, text: (s.lines || {}).h || '', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
   btn.classList.add('busy'); snd.printer(700);
   try {

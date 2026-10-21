@@ -94,7 +94,8 @@ function select(id, opt = {}) {
   life.hover(null); life.select();
   fillFront(o);
   if (opt.sig) { fillSignal(opt.sig); showFace('signal'); } else showFace('front');
-  if (was !== id) { snd.tick(1900); buzz(6); }
+  /* the life answers in its own voice, the one the sweep gives it */
+  if (was !== id) { const g = lifeOf(o); snd.knot({ g }, F0 * partialOf(g), 0, 0.7, 0); buzz(8); }
   if (!o.ob) placesAround(o.lat, o.lng, rangeOf(o) + 80);
   try { history.replaceState(null, '', '#' + (opt.sig ? opt.sig.code : hashOf(o) || '')); } catch (e) { /* file:// */ }
 }
@@ -490,7 +491,7 @@ $('#w-imgs').addEventListener('click', e => {
   const list = imgList(o); const c = imgChoice(o);
   if (a === 'none') IMGS[o.id] = c.k === 'none' ? (list[0] || { k: 'none' }) : { k: 'none' };
   else { if (!list.length) { toast('NO OPEN PHOTOGRAPH'); return; } let i = list.findIndex(x => sameImg(x, c)); i = i < 0 ? 0 : (i + (a === 'next' ? 1 : -1) + list.length) % list.length; IMGS[o.id] = list[i]; }
-  saveImgs(); fillWishFig(o); tick(a === 'none' ? 1100 : 1700); buzz(4);
+  saveImgs(); fillWishFig(o); tick(a === 'none' ? 1100 : 1700);
 });
 /* your own photograph, made small enough to keep on this device */
 $('#w-file').addEventListener('change', async e => {

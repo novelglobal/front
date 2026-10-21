@@ -112,7 +112,7 @@ function setTrack4(k, on) {
   if (k === 'water' && on) loadOverlays();
   syncTracks();
   document.querySelectorAll(`[data-t4="${k}"]`).forEach(b => { b.setAttribute('aria-pressed', String(on)); const row = b.closest('.lyr'); if (row) row.classList.toggle('on', on); });
-  life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200); buzz(4);
+  life.redraw(); life.moved(); snd.tick(on ? 1900 : 1200);
 }
 /* the radio on: the sound woken inside the touch, and every layer that is on played by the sweep. Off: quiet, and still */
 /* the first clue lived over the ground in an earlier build; it is in the page now */
@@ -133,7 +133,7 @@ function markConnect() {
   if (simple() && prefs.journey >= 1 && S.mode === 'ping') { const c = jSelConn(); if (c) setTimeout(() => { if (S.mode === 'ping') closeRecord('view'); jPick(c); }, reduced() ? 0 : 420); }
   if (S.connected) return; S.connected = true; markTweak(); if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
-function markTweak() { if (S.tweaked) return; S.tweaked = true; snd.knot({ fam: 'people' }, F0 * 5, 0, 0.6, 0); if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
+function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
   S.radio = on; if (!on && LOOP.on) setLoop(false);
@@ -175,10 +175,10 @@ $('#view').addEventListener('click', e => {
   const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
-  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); buzz(4); return; }
+  const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); return; }
   /* a layer's mood, turned: FOG, RAIN, WEIGHT */
   const lm = e.target.closest('[data-lmood]');
-  if (lm) { const k = lm.dataset.lmood; const ks = MOOD_ON; const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); if (typeof hideTip === 'function') hideTip(); snd.tick(1400); buzz(4); return; }
+  if (lm) { const k = lm.dataset.lmood; const ks = MOOD_ON; const nx = ks[(ks.indexOf(moodOfLayer(k)) + 1) % ks.length]; prefs.lm = { ...(prefs.lm || {}), [k]: nx }; savePrefs(); lm.innerHTML = icon(MOODS[nx].ic, 'sm'); lm.setAttribute('aria-label', `${k} mood: ${MOODS[nx].w}`); if (typeof hideTip === 'function') hideTip(); snd.tick(1400); return; }
   const t = e.target.closest('[data-t4]'); if (t) setTrack4(t.dataset.t4, !trackOn(t.dataset.t4));
 });
 /* 1 to 4 on a keyboard: the four layers */
@@ -309,7 +309,7 @@ function mixArt(m, url) {
 function openRadioLink() {
   if (!placed()) { toast('WHERE ARE YOU?'); return; }
   const m = LOOP.on && LOOP.m ? LOOP.m : mixNow(); const url = mixURL(m); const art = mixArt(m, url);
-  $$('.card-view').forEach(e => e.remove()); snd.jelly(0); tick(1500);
+  $$('.card-view').forEach(e => e.remove()); snd.jelly(0);
   const el = document.createElement('div'); el.className = 'card-view link-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'This sound as a link');
   el.innerHTML = `<div class="tv-in"><img class="lv-art" src="${art}" alt=""><div class="tv-acts">${[['copy', 'share', 'copy link', 'to send or keep'], ['strip', 'receipt', 'onto the strip', 'to print'], ['png', 'download', 'save', 'the picture'], ['x', 'close', 'close', '']].map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-lk="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
   document.body.appendChild(el);
