@@ -15,7 +15,7 @@ const PRESSED = new Set(store.get('da.pressed.v1', []));
 const waiting = () => S.signals.filter(s => !s.ex && !s.shared && !PRESSED.has(s.key) && !/^PRINTED/.test(sentWord(s)));
 const pressStory = () => S.signals.find(s => s.key === PRESS.story) || waiting()[0] || null;
 let zc = null, zFmt = null;
-const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode'];
+const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode', 'daMoved'];
 const ZHIST = []; let zLast = '';
 /* what stays on the strip whatever is taken off it: the story at its head; on a first visit, its words and its code too */
 const ZFIXED = ['base', 'words', 'code'];

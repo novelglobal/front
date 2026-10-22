@@ -613,7 +613,9 @@ const life = (() => {
     if (h && hoverH && h.kind === hoverH.kind && h.id === hoverH.id && h.key === hoverH.key) return;
     fxDirty = true; hoverAt = performance.now();
     if (h) { clearTimeout(tagHide); const html = tagHTML(h); if (!html) return; hoverH = h; tagEl.innerHTML = html; tagEl.classList.toggle('alarm', h.kind === 'cell' && isAlarm(S.byId.get(h.id))); tagEl.classList.toggle('node', h.kind === 'node'); tagEl.hidden = false; placeTag(); return; }
-    clearTimeout(tagHide); tagHide = setTimeout(() => { if (!tagEl.matches(':hover')) { tagEl.hidden = true; hoverH = null; fxDirty = true; } }, 260);
+    /* a place's name, a business, a printer: left up long enough to read, and kept while the pointer is on it */
+    const linger = hoverH && /^(place|partner|tribe)$/.test(hoverH.kind) ? 2200 : 260;
+    clearTimeout(tagHide); tagHide = setTimeout(() => { if (!tagEl.matches(':hover')) { tagEl.hidden = true; hoverH = null; fxDirty = true; } }, linger);
   }
   /* the tag under the pointer, rewritten when what it names has changed */
   function retag() { if (!hoverH || tagEl.hidden) return; const html = tagHTML(hoverH); if (!html) { tagEl.hidden = true; hoverH = null; fxDirty = true; return; } tagEl.innerHTML = html; placeTag(); }

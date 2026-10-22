@@ -88,7 +88,7 @@ function exFrame(keepView) {
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
 /* the board open, taken away, once asked: its pieces with it; the next of one's own opens, or a new empty one */
 function delBoard() {
-  const b = BOARDS.find(x => x.id === boardId); if (!b || b.ex) return; if (!confirm(`Take ${b.n} away, and everything on it?`)) return;
+  const b = BOARDS.find(x => x.id === boardId); if (!b || b.ex) return;
   BOARDS.splice(BOARDS.indexOf(b), 1); try { localStorage.removeItem('da.board.' + b.id); } catch (e) { /* gone anyway */ } store.set('da.boards.v1', BOARDS);
   const next = BOARDS.find(x => !x.ex); if (next) switchBoard(next.id); else newBoard(); snd.snap(0); buzz([10, 30, 10]);
 }
@@ -238,8 +238,10 @@ function sendSpecies(o) {
   return sp;
 }
 /* a small copy of the card flies to its tab on the rail */
-function flyToTab(i, from) {
-  const tab = $(`#rail .tab[data-i="${i}"]`); if (!tab || !from || reduced()) return; const a = from.getBoundingClientRect(), b = tab.getBoundingClientRect();
+function flyToTab(i, from) { flyToEl($(`#rail .tab[data-i="${i}"]`), from); }
+/* a copy flies from where it was touched to where it goes: a tab, or the receipt over the map */
+function flyToEl(tab, from) {
+  if (!tab || !from || reduced()) return; const a = from.getBoundingClientRect(), b = tab.getBoundingClientRect();
   const el = document.createElement('div'); el.className = 'fly'; el.style.cssText = `left:${a.left + a.width / 2 - 36}px;top:${a.top + a.height / 2 - 36}px`; document.body.appendChild(el);
   requestAnimationFrame(() => { el.style.transform = `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px,${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(.25) rotate(-12deg)`; el.style.opacity = '.2'; });
   setTimeout(() => { el.remove(); tab.classList.add('got'); setTimeout(() => tab.classList.remove('got'), 600); }, 650);
@@ -443,7 +445,7 @@ function viewSignals() {
 $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-book-md]')) { download(`field-notes-${isoDay(new Date())}.md`, bookMD(), 'text/markdown;charset=utf-8'); tick(1800); return; }
   if (e.target.closest('[data-new-board]')) { newBoard(); return; }
-  if (e.target.closest('[data-del-board]')) { delBoard(); return; }
+  { const d = e.target.closest('[data-del-board]'); if (d) { sure(d, delBoard); return; } }
   const bd = e.target.closest('[data-board]'); if (bd) { switchBoard(bd.dataset.board); return; }
   const bm = e.target.closest('[data-board-mix]'); if (bm) { const m = MIXES.find(x => x.id === bm.dataset.boardMix); if (m) placeMix(m); tick(1500); return; }
   const as = e.target.closest('[data-asset]'); if (as) placeAsset(as.dataset.asset, as.dataset.aid);

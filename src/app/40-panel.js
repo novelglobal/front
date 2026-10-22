@@ -76,7 +76,7 @@ const pinOf = o => badgeImg(life.badgeOf(o, 22));
 /* a partner's W.I.S.H. printer, small, for the page: its light on when the printer is listening */
 function printerImg(p, st = {}) { const key = `printer|${!!st.ready}`; if (imgCache.has(key)) return imgCache.get(key); const c = document.createElement('canvas'); c.width = c.height = 88; const x = c.getContext('2d'); x.scale(2, 2); M.printer(x, 22, 25, 32, 0, !!st.ready); const u = c.toDataURL(); imgCache.set(key, u); return u; }
 const lab = (t, cls = '') => `<h3 class="lab ${cls}">${t}</h3>`;
-const labI = (ic, tip, n) => `<h3 class="lab labi" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ic, 'sm')}${n != null ? `<b class="mono">${n}</b>` : ''}</h3>`;
+const labI = (ic, tip, n) => `<h3 class="lab labi" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${icon(ic, 'sm')}<span class="lab-w mono">${esc(String(tip).toUpperCase())}</span>${n != null ? `<b class="mono">${n}</b>` : ''}</h3>`;
 /* a degree of danger, in orange; and how long until it lands */
 const degChip = (deg, word = '') => (deg ? `<i class="dg d${deg}">${DEG[deg]}${word ? ` · ${word}` : ''}</i>` : '');
 const whenChip = w => (w ? `<i class="wn${w.now ? ' now' : ''}" data-tip="${esc(w.why)}">${w.now ? 'NOW' : `${daysTo(w.start)} D`} · ${esc(w.w)}</i>` : '');
@@ -211,19 +211,28 @@ const segTone = i => (i < 3 ? 0 : i < 5 ? 1 : i < 7 ? 2 : i < 9 ? 3 : 4);
    above it rises and falls back slowly, and every note of the sweep pulses the extreme months */
 let eqRaf = 0, eqNote = 0; const EQK = new WeakMap();
 function eqTick() {
-  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); if (c) c.style.transform = ''; const cp = m.querySelector('.eq-cap'); if (cp) cp.style.transform = ''; }); return; }
+  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); if (c) c.style.transform = ''; m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); const cp = m.querySelector('.eq-cap'); if (cp) cp.style.transform = ''; }); return; }
   const lv = snd.level(), nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt;
   for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, c = m.querySelector('.eq-c'), cp = m.querySelector('.eq-cap'); const up = lv * w; const k = EQK.get(m) || { cap: 0 }; k.cap = Math.max(up, k.cap - 0.012); EQK.set(m, k);
-    if (c) c.style.transform = `scaleY(${(1 + up * 0.35).toFixed(3)})`; if (cp) cp.style.transform = `translateY(${(-k.cap * 26).toFixed(1)}px)`;
+    if (c) c.style.transform = `scaleY(${(1 + up * 0.35).toFixed(3)})`;
+    /* and its colour: the music and El Niño drive the red further up the column */
+    m.style.setProperty('--hot', Math.min(1.4, (+m.dataset.heat || 0) + up * 0.9 + (prefs.nino ? 0.25 : 0)).toFixed(3)); if (cp) cp.style.transform = `translateY(${(-k.cap * 26).toFixed(1)}px)`;
     if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } }
   eqRaf = requestAnimationFrame(eqTick);
 }
 const eqWake = () => { if (!eqRaf) eqRaf = requestAnimationFrame(eqTick); };
 setInterval(eqWake, 1000);
+/* each month's heat for its colour: the outlook's level, eased, and after the coolest month rising again to the strip's end
+   (next September), as the next season comes on */
+function eqHeat() {
+  const lv = [...Array(OUT_N).keys()].map(k => outMonth(k).lv / 4);
+  const firstLo = lv.indexOf(Math.min(...lv)); const end = Math.min(0.62, Math.max(...lv)); const h = lv.map((v, k) => (k > firstLo ? Math.max(v, lv[firstLo] + (end - lv[firstLo]) * (k - firstLo) / Math.max(1, lv.length - 1 - firstLo)) : v));
+  return h.map((v, k) => (h[k - 1] == null ? v : h[k + 1] == null ? (v * 2 + h[k - 1]) / 3 : (h[k - 1] + v * 2 + h[k + 1]) / 4));
+}
 function monthStrip() {
-  const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
-  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = Mo.lv >= 4 ? '<i class="l t4 up"></i>'.repeat(3) : ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
-    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" data-lv="${Mo.lv}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s"><i class="eq-cap" aria-hidden="true"></i>${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
+  const ks = [...Array(OUT_N).keys()]; const HT = eqHeat(); const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
+  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = Mo.lv >= 4 ? [12, 11, 10].map(i => `<i class="l t4 up" style="--p:${(i / EQ_SEGS).toFixed(2)}"></i>`).join('') : ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}" style="--p:${(i / EQ_SEGS).toFixed(2)}"></i>`;
+    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" data-lv="${Mo.lv}" data-heat="${HT[k].toFixed(3)}" style="--hot:${HT[k].toFixed(3)}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s"><i class="eq-cap" aria-hidden="true"></i>${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
@@ -423,7 +432,7 @@ const sigRow = s => {
   const p = s.pin || {}; const st = sentWord(s); const tier = s.star ? 2 : printedOf(s) ? 1 : 0; const L = linesOf(s);
   const act = L[L.length - 1] || s.threat || p.cn || p.n || '';
   return `<li><button type="button" class="sig-row${s.ex ? ' ex' : ''}${s.shared ? ' sh' : ''}${tier ? ` t${tier}` : ''}" data-sig="${esc(s.key)}" data-tip="${esc([p.cn || p.n, s.threat].filter(Boolean).join(' · '))}"><b class="mono code">${esc(s.code)}</b>${sigArt(s)}`
-    + `<span class="cap"><strong class="act">${esc(act)}</strong></span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
+    + `<span class="cap"><strong class="act">${esc(act)}</strong><small class="tk-m mono">${[s.ex ? 'EXAMPLE' : s.shared ? '' : 'MINE', p.cn || p.n, p.place, s.at ? fmtStamp(s.at).split(' ')[0] : ''].filter(Boolean).map(esc).join(' · ')}</small></span>${st ? `<i class="st" aria-label="${esc(st)}"></i>` : ''}</button></li>`;
 };
 /* the board's order, behind the scenes: the four printed most, or held up on the approval page; then the newest */
 function boardOrder(sigs) {
@@ -529,7 +538,7 @@ function showGallery(on) {
   const pair = x => { const c = !x.ex && deck().find(v => v.id === 'p:' + x.id); return c ? `<div class="gl-pair">${cardBtn(c)}</div>` : ''; };
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}${pair(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
-    + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Close up')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
+    + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Closer')}${k('full', 'out', 'Full screen')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
   g.classList.toggle('with-cards', deck().some(c => c.kind !== 'poster')); galleryCards(); cardImgs();
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
   /* slid to another: its number changes in place, its card slides with it; the screen itself is never drawn again while it moves */
@@ -553,7 +562,7 @@ function galleryCards() {
 /* on a phone the close-up key opens the piece full screen, over everything; there, a pinch or a press brings it closer */
 function galleryFull(on) {
   const g = $('#gallery'); if (!g) return; on = on == null ? !g.classList.contains('full') : !!on; gzReset();
-  g.classList.toggle('full', on); document.body.classList.toggle('gl-full', on); const k = g.querySelector('[data-gl="zoom"]'); if (k) k.setAttribute('aria-pressed', String(on));
+  g.classList.toggle('full', on); document.body.classList.toggle('gl-full', on); const k = g.querySelector('[data-gl="full"]'); if (k) k.setAttribute('aria-pressed', String(on));
   const tr = g.querySelector('.gl-track'); if (tr) requestAnimationFrame(() => { tr.scrollLeft = galleryAt * tr.clientWidth; });
 }
 addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('gl-full')) galleryFull(false); });
@@ -599,8 +608,9 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
-  /* the close-up key: the pair full screen, on any screen; there the wheel, a pinch or a press brings the piece closer */
-  if (a.dataset.gl === 'zoom') { galleryFull(); tick(1600); return; }
+  /* the close-up key: the piece closer where it is, twice, three times, and back; the full key: the pair full screen */
+  if (a.dataset.gl === 'zoom') { const im = gzIm(); if (im && p.img) { const s1 = GZ.im === im && GZ.s > 2.5 ? 1 : GZ.im === im && GZ.s > 1.5 ? 3 : 2; if (s1 === 1) gzReset(true); else gzTo(im, s1, null, null, true); a.setAttribute('aria-pressed', String(s1 > 1)); tick(1200 + s1 * 200); } return; }
+  if (a.dataset.gl === 'full') { galleryFull(); tick(1600); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
@@ -645,20 +655,29 @@ function printerTop() {
     + `<svg class="pt-wire" viewBox="0 0 900 1200" preserveAspectRatio="none" aria-hidden="true"><path d="M478 360 C 455 470 420 500 400 545"/></svg>`
     + `<span class="pt-slot" aria-hidden="true"><span class="pt-paper">${PT.img ? `<img src="${PT.img}" alt="">` : ''}</span></span>`
     + `<figcaption class="pt-cap mono"><b>${esc(String(MASTER ? MASTER.n : 'novel.global').toUpperCase())}</b><span>${p.ready ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</span></figcaption>`
-    + `<span class="pt-over mono" aria-live="polite">${fresh ? `PRINTING · ${esc(PT.code || '')}` : ''}</span></figure></section>`;
+    + `<span class="pt-over mono" aria-live="polite">${fresh ? esc(PT.code || '') : ''}</span>`
+    /* how to make one: a handbook to download, to build a printer of one's own and join the network */
+    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR DIRECT ACTION PRINTER</a></figure></section>`;
 }
 /* something sent to print: kept (the last one hangs from the slot), and played out now if the page is open, else on arrival */
 function ptPrint(img, code, status) {
   PT.img = img; PT.code = code || ''; PT.at = Date.now(); PT.status = status || ''; store.set('da.pt.v1', { img: PT.img.length < 400000 ? PT.img : '', code: PT.code, at: PT.at });
   const f = $('#sec-printer .pt'); if (!f) return; const pp = f.querySelector('.pt-paper'); pp.innerHTML = `<img src="${img}" alt="">`;
   f.classList.remove('printing', 'fed'); void f.offsetWidth; f.classList.add('printing', 'fed');
-  const o = f.querySelector('.pt-over'); o.textContent = `${status === 'outbox' ? 'WAITING FOR A SIGNAL' : 'PRINTING'} · ${code || ''}`; setTimeout(() => { if (o.isConnected) o.textContent = status === 'outbox' ? 'WAITING FOR A SIGNAL' : 'WAITING FOR APPROVAL'; }, 6000);
+  /* the code of what is printing, small, on the printer's lid above its sticker */
+  const o = f.querySelector('.pt-over'); o.textContent = code || ''; o.classList.toggle('wait', status === 'outbox');
+}
+/* a short yes before what cannot be taken back: pressed once it asks SURE? for three seconds; pressed again, it is done */
+function sure(btn, fn) {
+  if (btn.classList.contains('sure')) { clearTimeout(btn.sureT); btn.classList.remove('sure'); fn(); return; }
+  btn.classList.add('sure'); snd.tick(700); buzz([10, 30, 10]); clearTimeout(btn.sureT); btn.sureT = setTimeout(() => btn.classList.remove('sure'), 3000);
 }
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
-  return printerTop() + quickHTML() + wishesSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  /* the W.I.S.H.es made here are among the stories, marked as one's own: one module, not two */
+  return printerTop() + quickHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
@@ -698,7 +717,7 @@ function bindPortfolio() {
   $('#ix-printers').addEventListener('click', e => { prefs.printers = !prefs.printers; e.currentTarget.setAttribute('aria-pressed', String(prefs.printers)); savePrefs(); life.redraw(); tick(); });
   const hb = $('#ix-hidden'); if (hb) hb.addEventListener('click', () => { const n = HIDE.size; showAllHidden(); life.data(); hb.remove(); toast(`${n} SHOWN`); snd.pluck(0.3, 0); });
   $('#ix-sign').addEventListener('input', e => { S.me.by = e.target.value.trim(); store.set('da.me', S.me); });
-  $('#ix-journey').addEventListener('click', () => jReplay());
+  $('#ix-journey').addEventListener('click', e => sure(e.currentTarget, jReplay));
   $('#ix-reset').addEventListener('click', () => { $('#rst-w').hidden = false; snd.tick(600); buzz([20, 40, 20]); $('#rst-w').scrollIntoView({ block: 'nearest' }); });
   $('#rst-no').addEventListener('click', () => { $('#rst-w').hidden = true; tick(1400); });
   $('#rst-yes').addEventListener('click', () => resetAll());
