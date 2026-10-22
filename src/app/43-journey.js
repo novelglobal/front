@@ -123,7 +123,8 @@ function jPick(sel, at) {
   if (!first) { const pl = sel.k === 'place'; snd.knot(pl ? { fam: sel.fam } : { g: sel.g }, F0 * partialOf(pl ? sel.fam : sel.g), 0, 0.7, 0); }
   /* something noticed from another page, or with the page away, comes as the hero */
   if (first || S.view !== 1 || !S.open) jrFold = false;
-  if (first) { jGo(2); jFly(at, 1); setTimeout(() => { setView(1); if (phone()) setPane('page'); }, reduced() ? 0 : 560); }
+  /* the first time, what was touched flies into the receipt that comes up over the map for it, not to a tab */
+  if (first) { jGo(2); setView(1); if (phone()) setPane('page'); if (at && !reduced()) { const r = map.getContainer().getBoundingClientRect(); const el = document.createElement('i'); el.style.cssText = `position:fixed;left:${Math.round(r.left + at[0])}px;top:${Math.round(r.top + at[1])}px;width:2px;height:2px`; document.body.appendChild(el); requestAnimationFrame(() => { flyToEl($('#jr:not([hidden]) .jr-r') || $('#jr'), el); el.remove(); }); } }
   else if (S.view !== 1 || !S.open) { setView(1); if (phone()) setPane('page'); } else { jrShow(); jPreview(); }
   return true;
 }
@@ -482,10 +483,10 @@ async function jStrip() {
   const base = jObj('base'); if (!base) return;
   let words = jObj('words');
   if (!words) {
-    words = new f.Textbox('', { left: 14, top: 0, width: W - 28, fontFamily: '"IBM Plex Mono", monospace', fontWeight: 500, fontSize: 15, lineHeight: 1.3, fill: '#0C0E0E', daKind: 'words', lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, borderColor: 'rgba(14,143,132,.55)', editingBorderColor: 'rgba(14,143,132,.9)', cursorColor: '#0C0E0E', cursorWidth: 3, hoverCursor: 'text' });
+    words = new f.Textbox('', { left: 14, top: 0, width: W - 28, fontFamily: '"IBM Plex Mono", monospace', fontWeight: 500, fontSize: 15, lineHeight: 1.3, fill: '#0C0E0E', daKind: 'words', lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, borderColor: 'rgba(14,143,132,.55)', editingBorderColor: 'rgba(14,143,132,.9)', cursorColor: '#0C0E0E', cursorWidth: 3, hoverCursor: 'text' });
     zc.add(words);
   }
-  words.set({ lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, hoverCursor: 'text' }); jWordsBind(words);
+  words.set({ lockMovementX: false, lockMovementY: false, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, hoverCursor: 'move' }); jWordsBind(words);
   let code = jObj('code');
   if (!code || code.daStory !== s.key) {
     if (code) zc.remove(code); const cv = await jCodeCanvas(s, FORMATS.r80.dots); if (!zc) return;
@@ -495,16 +496,20 @@ async function jStrip() {
 }
 function jLayout() {
   const base = jObj('base'), words = jObj('words'), code = jObj('code'); if (!base || !words) return;
-  words.set({ top: Math.round(base.top + base.getScaledHeight() + 12) }); words.setCoords();
-  const wh = Math.max(words.getScaledHeight(), 64);
-  if (code) { code.set({ top: Math.round(words.top + wh + 16) }); code.setCoords(); zc.bringToFront(code); }
+  /* the words sit under the picture until they are moved; moved, they stay where they were put, and the code keeps its place */
+  const wTop = Math.round(base.top + base.getScaledHeight() + 12); if (!words.daMoved) { words.set({ top: wTop }); words.setCoords(); }
+  const wh = Math.max(words.daMoved ? 64 : words.getScaledHeight(), 64);
+  if (code) { code.set({ top: Math.round((words.daMoved ? wTop : words.top) + wh + 16) }); code.setCoords(); zc.bringToFront(code); }
   const need = Math.ceil((code ? code.top + code.getScaledHeight() : words.top + wh) + 18); if (Math.abs(zc.getHeight() - need) > 2) { zc.setHeight(need); fitZ(); }
   zc.renderAll(); jCaret();
 }
 /* the words box: a press on it, or on the blinking caret, and the keyboard types onto the paper */
 function jWordsBind(w) {
-  if (w.__jr) return; w.__jr = true;
-  w.on('mousedown', () => { if (!w.isEditing) { zc.setActiveObject(w); w.enterEditing(); if (w.hiddenTextarea) w.hiddenTextarea.focus(); jCaret(); } });
+  if (w.__jr) return; w.__jr = true; w.set({ lockMovementX: false, lockMovementY: false, hoverCursor: 'move' });
+  w.on('moved', () => { w.daMoved = true; jLayout(); saveZine(); });
+  /* a press types on it; a drag moves it */
+  let dragged = false; w.on('mousedown', () => { dragged = false; }); w.on('moving', () => { dragged = true; });
+  w.on('mouseup', () => { if (!dragged && !w.isEditing) { zc.setActiveObject(w); w.enterEditing(); if (w.hiddenTextarea) w.hiddenTextarea.focus(); jCaret(); } });
   w.on('changed', () => { jLayout(); saveZine(); });
   w.on('editing:entered', jCaret); w.on('editing:exited', () => { jCaret(); saveZine(); });
 }

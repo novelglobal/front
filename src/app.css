@@ -2039,8 +2039,8 @@ html.night .steps .st.done .st-d{background-color:#6FE3CF}
 @keyframes flipin{from{transform:translateY(var(--rail,0px)) rotateY(-78deg);opacity:.15}to{transform:translateY(var(--rail,0px));opacity:1}}
 
 /* the strip on the front: the receipt alone, its keys on the label maker */
-body[data-face="front"][data-view="signs"] #zine .tools{display:none}
-body[data-face="front"][data-view="signs"] #zine .desk{top:0!important}
+body.simple[data-face="front"][data-view="signs"] #zine .tools{display:none}
+body.simple[data-face="front"][data-view="signs"] #zine .desk{top:0!important}
 
 /* the month, pressed: its data on a handheld's screen on a mission; scan lines, corner marks, a jellyfish in the glass */
 .eq-read.eq-hud{position:relative;margin:14px 0 6px!important;padding:10px 12px 12px!important;border:0!important;border-radius:4px!important;background:rgba(5,14,16,.92)!important;color:#A4F5E2!important;font:400 15px/1.08 VT323,ui-monospace,monospace;letter-spacing:.05em;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(127,255,224,.32),0 12px 26px rgba(0,0,0,.28)!important}
@@ -2840,8 +2840,8 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .simple-p .jp-reset{width:36px;height:36px;border-radius:9px;background:#C9472B;color:#fff}
 .simple-p .jp-reset .i,.simple-p .jp-zoom .i{width:16px;height:16px}
 .simple-p .jp-zoom{width:36px;height:36px;border-radius:9px}
-/* the tie on the left side loops outward, to the left */
-.simple-p .h-tie{transform:scaleX(-1)!important}
+/* the tie on the left: a yellow cable plugged into the device's side at both ends, looping out between them */
+.simple-p .h-tie{left:-17px!important;width:26px!important;height:64px!important;bottom:22px!important;transform:none!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 64'%3E%3Cpath d='M20 10C1 9 1 55 20 54' fill='none' stroke='%23A8860F' stroke-width='4.2' stroke-linecap='round'/%3E%3Cpath d='M20 10C1 9 1 55 20 54' fill='none' stroke='%23F4CC2A' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='17' y='5.5' width='9' height='9' rx='1.2' fill='%231E2124'/%3E%3Crect x='17' y='49.5' width='9' height='9' rx='1.2' fill='%231E2124'/%3E%3Cpath d='M19.5 10h4M19.5 54h4' stroke='%23F4CC2A' stroke-width='1.6'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat!important}
 .jp-sel{position:relative;display:block;height:78px;padding:0;border:0;border-radius:7px;cursor:pointer;background:#F7F2E6;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 1px 0 rgba(255,255,255,.6),0 6px 14px rgba(0,0,0,.4);transform:rotate(-1.4deg);transition:transform .12s}
 .jp-sel:hover{transform:rotate(-.6deg) translateY(-1px)}
 .jp-sel:active{transform:rotate(-1.4deg) translateY(2px)}
@@ -2900,7 +2900,7 @@ body:not(.on-air) .vu-n{transform:rotate(-48deg)}
 @media (prefers-reduced-motion:reduce){.jr-dev.upg .up-lora,.jr-dev.upg .up-run,.jr-dev.upg .up-plate{animation:none}}
 
 /* the strip, simple: no tools over it; a caret where the words go, that never prints */
-body[data-face="front"][data-view="signs"] #zine .tools,body[data-face="front"][data-view="signs"] #zine-label{display:none!important}
+body.simple[data-face="front"][data-view="signs"] #zine .tools,body[data-face="front"][data-view="signs"] #zine-label{display:none!important}
 .jr-caret{position:absolute;z-index:3;padding:0;border:0;background:#0C0E0E;cursor:text;animation:arcblink 1.05s steps(2,end) infinite}
 .jr-caret[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.jr-caret{animation:none}}
@@ -3065,6 +3065,83 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
 .pt-cap{position:absolute;left:10px;top:10px;display:grid;gap:2px;padding:6px 8px;border-radius:6px;background:rgba(6,9,11,.72);color:#E9EEF0;font-size:10px;letter-spacing:.1em}
 .pt-cap span{font-size:9px;color:#9FFFE6}
 .pt.off .pt-cap span{color:#FFC27A}
-.pt-over{position:absolute;left:28%;right:24%;top:68%;padding:5px 6px;text-align:center;font-size:10px;letter-spacing:.14em;color:#06110F;background:rgba(127,255,224,.92);border-radius:4px;opacity:0;transition:opacity .3s}
+.pt-over{position:absolute;left:47%;top:47.4%;transform:translateX(-50%);padding:2px 5px;text-align:center;font-size:8px;letter-spacing:.14em;color:#06110F;background:rgba(127,255,224,.92);border-radius:3px;opacity:0;transition:opacity .3s;white-space:nowrap}
+.pt-over.wait{background:rgba(255,194,122,.95)}
 .pt-over:not(:empty){opacity:1}
 .still .pt-paper,.still .pt-wire path,.still .pt-led{animation:none!important}
+/* SURE?: a key that asks once before what cannot be taken back */
+.sure{position:relative;outline:2px solid #E8450F!important;outline-offset:2px}
+.sure::after{content:"SURE?";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:3px 6px;border-radius:3px;background:#E8450F;color:#fff;font:600 10px/1 var(--mono);letter-spacing:.12em;white-space:nowrap;pointer-events:none;z-index:5}
+/* the dongle's three small keys, in a column: ZOOM, BACK, DELETE; grey caps, white marks, small but a finger's press each */
+.simple-p .jp-keys{grid-template-columns:24px!important;gap:5px!important}
+.simple-p .jp-keys .tp-k{position:relative;width:24px!important;height:24px!important;padding:0!important;border-radius:6px!important;background:#5B6166!important;color:#FFFFFF!important;box-shadow:0 2px 0 #34383B,inset 0 1px 0 rgba(255,255,255,.18)!important}
+.simple-p .jp-keys .tp-k .i{width:12px!important;height:12px!important}
+.simple-p .jp-keys .tp-k::before{content:"";position:absolute;inset:-5px -8px}
+.simple-p .jp-keys .tp-k:active{transform:translateY(1px);box-shadow:0 1px 0 #34383B!important}
+.pt-build{position:absolute;right:10px;top:10px;max-width:46%;padding:6px 8px;border-radius:6px;background:rgba(6,9,11,.72);color:#9FFFE6;font-size:9px;line-height:1.3;letter-spacing:.1em;text-align:right;text-decoration:none;box-shadow:inset 0 0 0 1px rgba(127,255,224,.35)}
+.pt-build:hover,.pt-build:focus-visible{background:#7FFFE0;color:#06110F}
+/* the equaliser's colour: yellow at the foot of a column to red at its head, the red reaching further down as a month is
+   hotter, and further up still with the music and El Niño (--hot, set as it plays); every month of the year in colour */
+.mo .eq-c i.l{background:hsl(calc(48 - 48 * min(1, var(--hot, .3) * 1.7 * (1.1 - var(--p, .5)) + var(--p, .5) * var(--hot, .3))) 96% calc(56% - var(--p, .5) * var(--hot, .3) * 18%))!important;transition:background-color .12s linear}
+.mo.d4 .eq-c i.l.up{background:hsl(0 90% calc(42% - var(--hot, .3) * 10%))!important}
+/* an extreme month still reaches black at its very top, over the red */
+.mo.d4 .eq-c .eq-cap+i.l.up{background:var(--deg4)!important}
+html.night .mo .eq-c i.l{filter:brightness(1.08)}
+/* ═════════ novel.global, 0.09: below the printer and its message form, one long 80 mm receipt, living, in a cyberdeck, in
+   full colour: a dark chassis with screws down both rails, the paper through it torn at each module's head and perforated at
+   its foot, each module headed like a page of a field manual, its number on a terminal tab, its name in the terminal's type,
+   a band of its colour ending in hazard stripes. The stories are tickets, their whole headline in view ═════════ */
+.lab-w{display:none}
+body[data-view="portfolio"] #view>:is(#sec-printer,#sec-quick){counter-increment:none}
+body[data-view="portfolio"] #view>:is(#sec-printer,#sec-quick)::after{display:none}
+body[data-view="portfolio"] #view>#sec-printer::before{display:none}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick){--m:#7FFFE0;--navy:#141412;--white:#FFFFFF;--paper:#F4F2EA;--grey:#E6E4DD;--grey-text:#5B6166;color:#141412;margin:0 8px!important;padding:12px 16px 30px!important;border:solid transparent!important;border-width:8px 18px 0!important;border-radius:0!important;overflow:visible;
+  background:
+    radial-gradient(circle at 9px 26px,#8E979C 0 2.4px,#3A3F43 2.6px 3.6px,transparent 3.8px) 0 0/18px 96px repeat-y border-box,
+    radial-gradient(circle at 9px 26px,#8E979C 0 2.4px,#3A3F43 2.6px 3.6px,transparent 3.8px) 100% 0/18px 96px repeat-y border-box,
+    conic-gradient(from -45deg at 50% 100%,transparent 90deg,#1A1F21 0) 0 0/12px 6px repeat-x padding-box,
+    conic-gradient(from 135deg at 50% 0,transparent 90deg,#1A1F21 0) 0 100%/12px 6px repeat-x padding-box,
+    repeating-linear-gradient(90deg,rgba(20,20,18,.55) 0 6px,transparent 6px 11px) 0 calc(100% - 16px)/100% 1px no-repeat padding-box,
+    linear-gradient(225deg,transparent 0 30px,var(--pp) 120px) padding-box,
+    radial-gradient(color-mix(in srgb,var(--m) 70%,#141412) 1.1px,transparent 1.5px) 0 0/7px 7px padding-box,
+    linear-gradient(var(--pp),var(--pp)) padding-box,
+    linear-gradient(90deg,#15191B,#1F2528 18px calc(100% - 18px),#15191B) border-box!important;
+  background-size:18px 96px,18px 96px,12px 6px,12px 6px,100% 1px,100% 100%,7px 7px,100% 100%,100% 100%!important;
+  background-repeat:repeat-y,repeat-y,repeat-x,repeat-x,no-repeat,no-repeat,repeat,no-repeat,no-repeat!important;
+  box-shadow:none!important;-webkit-mask:none;mask:none}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick){--pp:color-mix(in srgb,var(--m) 14%,#FDFCF6)}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick):nth-child(5n+2){--m:#FF9A2E}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick):nth-child(5n+3){--m:#8DB8FF}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick):nth-child(5n+4){--m:#FF7EB0}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick):nth-child(5n){--m:#E6F84A}
+/* where the paper comes out of the deck: a deeper rail and the mouth */
+body[data-view="portfolio"] #view>#sec-quick+.sec{margin-top:18px!important;border-top-width:16px!important}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick):last-child{border-bottom-width:12px!important;margin-bottom:12px!important}
+/* the head: a band of the module's colour, the terminal tab with its number, the name in VT323, hazard stripes at its end */
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)::before{display:none}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)::after{top:12px;left:0;width:44px;height:30px;padding:0;border-radius:0;display:grid;place-items:center;background:#141412;color:var(--m);box-shadow:none;font:400 22px/1 VT323,ui-monospace,monospace;letter-spacing:.04em;z-index:2;text-shadow:0 0 6px color-mix(in srgb,var(--m) 60%,transparent)}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)>:is(.lab-row,summary,h3.labi){position:relative;display:flex;align-items:center;gap:6px;min-height:30px;margin:0 -16px 14px!important;padding:0 10px 0 54px!important;
+  background:repeating-linear-gradient(-45deg,#141412 0 5px,transparent 5px 10px) 100% 0/46px 100% no-repeat,linear-gradient(90deg,var(--m),color-mix(in srgb,var(--m) 78%,#FFFFFF))!important;border-bottom:2px solid #141412;list-style:none;cursor:default}
+body[data-view="portfolio"] #view>details.sec:not(#sec-printer)>summary{cursor:pointer}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)>:is(.lab-row,summary,h3.labi)::-webkit-details-marker{display:none}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick) .labi{margin:0!important;color:#141412!important;display:flex;align-items:center;gap:6px}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick) .labi .i{width:13px;height:13px}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick) .lab-w{display:inline;font:400 21px/1 VT323,ui-monospace,monospace;letter-spacing:.08em;color:#141412}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick) .labi b{font:400 17px/1 VT323,ui-monospace,monospace;padding:1px 5px;background:#141412;color:var(--m);border-radius:2px}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)>:is(.lab-row,summary,h3.labi) .pill,body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)>:is(.lab-row,summary,h3.labi) .ib{margin-right:46px}
+body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick)>:is(.lab-row,summary,h3.labi)+*{position:relative}
+/* the stories as tickets: hard-edged, offset in the module's colour, the picture beside, the whole headline, what it is of and
+   where, and when */
+body[data-view="portfolio"] .sigs.cards.big{grid-template-columns:minmax(0,1fr)!important;gap:12px;padding-right:6px}
+body[data-view="portfolio"] .sigs.cards.big>li{min-width:0;max-width:100%}
+body[data-view="portfolio"] .sigs.cards .sig-row{position:relative;width:100%!important;min-width:0;max-width:100%;box-sizing:border-box;flex-direction:row!important;align-items:stretch;gap:10px;padding:8px 10px 10px 8px!important;border:2px solid #141412!important;border-radius:2px;background:#FFFFFF!important;box-shadow:4px 4px 0 var(--m),4px 4px 0 2px #141412!important;transform:perspective(700px) rotateX(3deg);transition:transform .2s,box-shadow .2s}
+body[data-view="portfolio"] .sigs.cards .sig-row:hover{transform:perspective(700px) rotateX(0) translate(-2px,-2px);box-shadow:6px 6px 0 var(--m),6px 6px 0 2px #141412!important}
+body[data-view="portfolio"] .sigs.cards .art{width:96px!important;flex:0 0 96px;aspect-ratio:1;border-radius:0;outline:2px solid #141412}
+body[data-view="portfolio"] .sigs.cards .cap{display:flex!important;flex-direction:column;justify-content:center;gap:4px;min-width:0;text-align:left}
+body[data-view="portfolio"] .sigs.cards .act{display:block!important;overflow-wrap:break-word;padding-right:52px;-webkit-line-clamp:unset!important;line-clamp:unset!important;overflow:visible!important;white-space:normal!important;text-overflow:clip!important;font:700 15px/1.18 var(--sans);text-transform:uppercase;letter-spacing:.01em;color:#141412}
+body[data-view="portfolio"] .sigs.cards .tk-m{white-space:normal!important;overflow-wrap:anywhere;font:400 14px/1.05 VT323,ui-monospace,monospace;letter-spacing:.06em;color:#3B4146}
+body[data-view="portfolio"] .sigs.cards .code{position:absolute;right:8px;top:6px;left:auto!important;font:400 15px/1 VT323,ui-monospace,monospace;color:#141412;background:var(--m)!important;padding:1px 4px}
+body[data-view="portfolio"] .sigs.cards .sig-row.ex{box-shadow:4px 4px 0 #E6E4DD,4px 4px 0 2px #141412!important}
+body[data-view="portfolio"] .sigs.list{border-top:2px dashed #141412;margin-top:14px;padding-top:8px}
+body[data-view="portfolio"] .sigs.list .code{font-family:VT323,ui-monospace,monospace;font-size:14px}
+@media (max-width:759px){body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick){margin:0 2px!important;border-left-width:14px!important;border-right-width:14px!important}}

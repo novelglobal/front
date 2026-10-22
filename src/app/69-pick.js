@@ -134,7 +134,8 @@ async function pickPut(k, id, btn) {
   tick(1500);
 }
 document.addEventListener('click', e => {
-  const opener = e.target.closest('[data-pick]'); if (opener) { openPick(opener.dataset.pick === 'wish' ? (faceOf(1) === 'back' ? 'board' : 'photo') : opener.dataset.pick); return; }
+  /* SELECT's key opens it, and pressed again while it hangs from that key, closes it */
+  const opener = e.target.closest('[data-pick]'); if (opener) { const sh = $('#pick'); if (sh && !sh.hidden && (pickFrom === opener || pickFrom === null)) { closePick(); tick(1000); return; } openPick(opener.dataset.pick === 'wish' ? (faceOf(1) === 'back' ? 'board' : 'photo') : opener.dataset.pick); return; }
   const el = e.target.closest('#pick'); if (!el) return;
   if (e.target === el || e.target.closest('[data-pk-x]')) { closePick(); tick(1000); return; }
   const tb = e.target.closest('[data-pk-tab]'); if (tb) { PICK.tab = tb.dataset.pkTab; pickRender(); snd.tick(1400); return; }
