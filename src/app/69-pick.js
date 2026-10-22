@@ -16,6 +16,8 @@ function pickBody() {
   const t = PICK.tab, strip = PICK.to === 'strip';
   const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-label="${esc(tip)}">${art}${t === 'made' && PICK_W[k] ? `<i class="pk-kw" aria-hidden="true">${PICK_W[k]}</i>` : ''}</button></li>`;
   const img = (src, extra = '') => `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer"${extra}>`;
+  /* first in every tab: words of one's own, and a photograph of one's own, onto whatever SELECT is wired to */
+  const own = `${it('txt', '', '<b class="pk-aa">Aa</b>', 'Words, of one\'s own', ' ic own')}${it('img', '', icon('camera'), 'A photograph of one\'s own', ' ic own')}`;
   if (t === 'made') {
     const mine = S.signals.filter(x => !x.ex && !x.shared);
     const items = [
@@ -29,18 +31,18 @@ function pickBody() {
       ...(strip ? BOARDS.map(b => it('b', b.id, `${icon('base')}<small>${esc(b.n)}</small>`, b.n, ' ic')) : []),
       ...(strip ? mine.slice(0, 12).map(x => it('q', x.key, `${icon('qr')}<small>${esc(x.code)}</small>`, `QR · ${x.code}`, ' ic')) : []),
     ];
-    return `<ol class="pk-grid">${items.join('')}</ol><form class="pk-link"><input type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code to scan"><button type="submit" class="ib" aria-label="The link as a code">${icon('qr')}<i class="pk-kw" aria-hidden="true">LINK</i></button></form>`;
+    return `<ol class="pk-grid">${own}${items.join('')}</ol><form class="pk-link"><input type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-label="A link, as a code to scan"><button type="submit" class="ib" aria-label="The link as a code">${icon('qr')}<i class="pk-kw" aria-hidden="true">LINK</i></button></form>`;
   }
   if (t === 'stick') {
     const pk = stickNow();
     return `<div class="pk-packs">${Object.keys(PACKS_ALL).map(k => `<button type="button" class="pk-pack" data-pk-pack="${k}" aria-pressed="${PRESS.pack === k}" aria-label="${PACK_W[k]}"><img src="${sticker({ ...PACK_FACE[k], col: PRESS.pack === k ? '#0C0E0E' : '#7F939B' })}" alt=""></button>`).join('')}</div>`
-      + `<ol class="pk-grid stk-g">${PRESS.pack === 'life' ? PACKS.map((u, i) => it('pk', i, img(u), 'Sticker')).join('') : ''}${pk.map((st, i) => it('stk', i, img(sticker({ ...st, col: ZCOL })), st.w || 'Sticker')).join('')}<li><label class="pk-it ic" aria-label="Stickers of your own: pictures from this device">${icon('plus')}<input type="file" class="pk-own" accept="image/*" multiple hidden></label></li></ol>`;
+      + `<ol class="pk-grid stk-g">${own}${PRESS.pack === 'life' ? PACKS.map((u, i) => it('pk', i, img(u), 'Sticker')).join('') : ''}${pk.map((st, i) => it('stk', i, img(sticker({ ...st, col: ZCOL })), st.w || 'Sticker')).join('')}<li><label class="pk-it ic" aria-label="Stickers of your own: pictures from this device">${icon('plus')}<input type="file" class="pk-own" accept="image/*" multiple hidden></label></li></ol>`;
   }
   const sps = radiusSpecies(18); const more = it('wild', 'more', icon('receive'), 'More animals, from further out', ` ic${wildBusy ? ' busy' : ''}`);
   const lives = [...sps.map(sp => ({ sp, k: 'L' })), ...WILD.map(sp => ({ sp, k: 'W' }))].slice(0, 30).map(({ sp, k }) => it(k, sp.id, img(photoURL(sp.ph, 'square')), sp.n)).join('');
   /* a first visit: the lives themselves, the nearest first, and more from further out last */
-  if (simple()) return `<ol class="pk-grid round">${lives}${more}</ol>`;
-  return `<ol class="pk-grid round">${it('wild', 'any', icon('die'), 'An animal, any', ' ic')}${it('wild', 'new', icon('star5'), 'The newest animal seen', ' ic')}${more}` + lives + '</ol>';
+  if (simple()) return `<ol class="pk-grid round">${own}${lives}${more}</ol>`;
+  return `<ol class="pk-grid round">${own}${it('wild', 'any', icon('die'), 'An animal, any', ' ic')}${it('wild', 'new', icon('star5'), 'The newest animal seen', ' ic')}${more}` + lives + '</ol>';
 }
 function pickRender() {
   const el = $('#pick'); if (!el) return;
@@ -113,6 +115,10 @@ const pickTo = () => (S.view === 2 ? 'strip' : S.view === 1 ? (faceOf(1) === 'ba
 async function pickPut(k, id, btn) {
   PICK.to = pickTo(); const sh = $('#pick'); if (sh) sh.dataset.to = PICK.to;
   if (k === 'wild' && id === 'more') { pullWild(); tick(1500); setTimeout(pickRender, 1600); return; }
+  /* one's own words: typed on the receipt (its own words box), a new line of words on a strip of art, a note on the board */
+  if (k === 'txt') { closePick(); if (PICK.to === 'strip') { if (typeof jObj === 'function' && jObj('words')) jEdit(); else await zineTool('text'); } else if (PICK.to === 'board') await boardTool('note'); else { const f = $('#jw-for') || $('#wf-for'); if (f) f.focus(); } snd.tick(1500); return; }
+  /* one's own photograph: chosen from the phone or the computer, onto the same */
+  if (k === 'img') { if (PICK.to === 'strip') $('#zine-file').click(); else if (PICK.to === 'board') $('#board-file').click(); else { const f = $('#wf-photo'); if (f) f.click(); else tick(600); } return; }
   if (btn) { btn.classList.add('put'); setTimeout(() => btn.classList.remove('put'), 500); if (PICK.to === 'strip') flyToStrip(btn); }
   if (PICK.to === 'strip') {
     if (k === 'stk') { const st = stickNow()[+id]; if (!st) return; if (st.w) await faceReady(FACES[st.f || 0]); placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.w ? 130 : st.j ? 90 : 70); if (st.j) snd.jelly(0.3); }

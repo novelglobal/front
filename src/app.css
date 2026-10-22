@@ -2835,10 +2835,10 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .tp-paper{position:absolute;left:18px;right:18px;bottom:6px;height:30px;background:repeating-linear-gradient(180deg,transparent 0 9px,rgba(20,24,28,.22) 9px 10.5px) 0 4px/62% 100% no-repeat,linear-gradient(180deg,#FFFFFF,#F1EFE8);box-shadow:0 -1px 3px rgba(0,0,0,.18);clip-path:polygon(0 18%,5% 8%,10% 18%,15% 6%,20% 16%,25% 5%,30% 15%,35% 6%,40% 17%,45% 7%,50% 16%,55% 5%,60% 15%,65% 7%,70% 17%,75% 6%,80% 16%,85% 6%,90% 17%,95% 7%,100% 16%,100% 100%,0 100%)}
 .jp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px}
 .jp-keys{display:grid;gap:8px}
-/* the keys: a photograph of one's own (words are typed on the receipt itself), take back, closer */
+/* the keys: start again, take back, closer (words and photographs come from SELECT, or are typed on the receipt itself) */
 .jp-keys{grid-template-columns:repeat(2,36px);gap:6px!important}
-.simple-p .jp-img{width:36px;height:36px;border-radius:9px;background:#16A89A;color:#fff}
-.simple-p .jp-img .i,.simple-p .jp-zoom .i{width:18px;height:18px}
+.simple-p .jp-reset{width:36px;height:36px;border-radius:9px;background:#C9472B;color:#fff}
+.simple-p .jp-reset .i,.simple-p .jp-zoom .i{width:16px;height:16px}
 .simple-p .jp-zoom{width:36px;height:36px;border-radius:9px}
 /* the tie on the left side loops outward, to the left */
 .simple-p .h-tie{transform:scaleX(-1)!important}
@@ -3030,3 +3030,41 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
 .sk-play.on .sk-ring{display:none}
 .sk-keep{display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#E9EEF0;background:#2B3135;box-shadow:0 4px 10px rgba(0,0,0,.4)}
 .still .sk-ring{animation:none;opacity:.8}
+.pk-it.own{background:#16A89A!important;color:#fff!important}
+.pk-aa{font:700 18px/1 var(--sans)}
+/* ───────── the printer at novel.global, from above: the owner's photograph, its lights lit as the printer is, and the paper
+   out of its own slot. Positions are fractions of the photograph (900 x 1200) ───────── */
+.pt-sec{padding-top:6px}
+.pt{position:relative;margin:0;border-radius:10px;overflow:hidden;aspect-ratio:3/4;background:#2A2118;box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.pt-ph{display:block;width:100%;height:100%;object-fit:cover}
+.pt-led{position:absolute;width:1.6%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:#3A3A36;box-shadow:none}
+.pt-pwr{left:54%;top:28.8%}
+.pt-act{left:52.6%;top:29.6%}
+.pt-prn{left:74.1%;top:56.7%;width:1.4%}
+.pt.on .pt-pwr{background:#FF3B2E;box-shadow:0 0 6px 2px rgba(255,59,46,.75)}
+.pt.on .pt-act{background:#7CFF6B;box-shadow:0 0 6px 2px rgba(124,255,107,.75);animation:ptact 2.4s steps(1) infinite}
+.pt.on .pt-prn{background:#7CFF6B;box-shadow:0 0 8px 3px rgba(124,255,107,.8)}
+.pt.off .pt-pwr{background:#FF3B2E;box-shadow:0 0 5px 1px rgba(255,59,46,.5)}
+.pt.off .pt-prn{background:#E9A93A;box-shadow:0 0 6px 2px rgba(233,169,58,.6);animation:ptwait 1.6s ease-in-out infinite}
+.pt.printing .pt-act{animation:ptact .18s steps(1) infinite}
+@keyframes ptact{0%{opacity:1}50%{opacity:.15}}
+@keyframes ptwait{50%{opacity:.35}}
+.pt-wire{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pt-wire path{fill:none;stroke:#7FFFE0;stroke-width:5;stroke-linecap:round;stroke-dasharray:8 22;opacity:0}
+.pt.printing .pt-wire path{animation:ptdata .9s linear 3;opacity:.95}
+@keyframes ptdata{to{stroke-dashoffset:-60}}
+/* the slot: the paper comes out under the cutter and down, the last print hanging */
+.pt-slot{position:absolute;left:35.6%;width:31.6%;top:82%;bottom:0;overflow:hidden;pointer-events:none}
+.pt-paper{position:absolute;left:4%;right:4%;top:0;height:260%;background:#FBFAF6;box-shadow:0 6px 14px rgba(0,0,0,.35);transform:translateY(-100%)}
+/* the print's top comes out first: its first lines hang furthest from the slot, upside down to someone at the front */
+.pt-paper{display:flex;align-items:flex-end;overflow:hidden}
+.pt-paper img{display:block;width:100%;height:auto;transform:rotate(180deg)}
+.pt.fed .pt-paper{transform:translateY(-62%)}
+.pt.printing .pt-paper{animation:ptfeed 3.6s steps(28) 1.2s both}
+@keyframes ptfeed{from{transform:translateY(-100%)}to{transform:translateY(-62%)}}
+.pt-cap{position:absolute;left:10px;top:10px;display:grid;gap:2px;padding:6px 8px;border-radius:6px;background:rgba(6,9,11,.72);color:#E9EEF0;font-size:10px;letter-spacing:.1em}
+.pt-cap span{font-size:9px;color:#9FFFE6}
+.pt.off .pt-cap span{color:#FFC27A}
+.pt-over{position:absolute;left:28%;right:24%;top:68%;padding:5px 6px;text-align:center;font-size:10px;letter-spacing:.14em;color:#06110F;background:rgba(127,255,224,.92);border-radius:4px;opacity:0;transition:opacity .3s}
+.pt-over:not(:empty){opacity:1}
+.still .pt-paper,.still .pt-wire path,.still .pt-led{animation:none!important}

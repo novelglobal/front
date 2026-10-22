@@ -272,6 +272,9 @@ function addPack(files) {
 }
 async function zineTool(k) {
   if (k === 'add') { openPick('strip'); return; }
+  /* start again: everything placed on the receipt taken off, its own words emptied; undo brings it back */
+  if (k === 'reset') { if (!zc) return; const extra = zc.getObjects().filter(o => !ZFIXED.includes(o.daKind)); const w = zc.getObjects().find(o => o.daKind === 'words'); if (!extra.length && !(w && w.text)) { tick(600); return; }
+    extra.forEach(o => zc.remove(o)); if (w) { w.set('text', ''); if (typeof jLayout === 'function') jLayout(); } zc.discardActiveObject(); zc.renderAll(); saveZine(); snd.tear(); return; }
   const c = await showZine(true); if (!c) return; const f = window.fabric; const W = c.getWidth(); const at = viewSpot(); const x = clamp(at.x - W * 0.2, 8, W * 0.55), y = Math.max(20, at.y);
   /* words: placed in the face shown on the key; pressed again while they are chosen, the next face */
   if (k === 'text' || k === 'head') {
@@ -577,7 +580,7 @@ async function pressOut(k) {
   if (k === 'send') {
     const btn = document.querySelector('#view .print-k'); if (btn) btn.classList.add('busy');
     const first = simple();
-    try { const to = prnNow(); const v = await directAction(sg, to ? to.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); await new Promise(r => setTimeout(r, Math.max(0, tearAt - performance.now()))); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); await kept; pressDone(sg); refreshPanel(); }
+    try { const to = prnNow(); const v = await directAction(sg, to ? to.id : '', PRESS.fmt === 'zine' ? null : await bytesOf()); ptPrint(url, sg.code, v && v.status); await new Promise(r => setTimeout(r, Math.max(0, tearAt - performance.now()))); tie(2); store.set('da.printed.v1', Date.now()); snd.tear(); if (!first) toast(v.status === 'outbox' ? 'NO SIGNAL · SENDS WHEN THERE IS ONE' : 'SENT · WAITING FOR APPROVAL'); await kept; pressDone(sg); refreshPanel(); }
     catch (e) { toast(e.status === 429 ? 'TOO MANY · TRY AGAIN SOON' : e.status === 503 ? 'THE QUEUE IS FULL' : /escpos|story/.test(e.message || '') ? 'TOO LONG TO SEND' : 'NOT SENT'); }
     finally { if (btn) btn.classList.remove('busy'); }
     /* a first visit: printed, or waiting to, it is the showcase's hero, and everything opens (43-journey.js) */
