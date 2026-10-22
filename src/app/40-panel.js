@@ -661,7 +661,7 @@ function printerTop() {
     + `<figcaption class="pt-cap mono"><b>${esc(String(MASTER ? MASTER.n : 'novel.global').toUpperCase())}</b><span>${p.ready ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</span></figcaption>`
     + `<span class="pt-over mono" aria-live="polite">${fresh ? esc(PT.code || '') : ''}</span>`
     /* how to make one: a handbook to download, to build a printer of one's own and join the network */
-    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR PRINTER</a></figure></section>`;
+    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR<br>THERMAL PRINTER</a></figure></section>`;
 }
 /* something sent to print: kept (the last one hangs from the slot), and played out now if the page is open, else on arrival */
 function ptPrint(img, code, status) {
