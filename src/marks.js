@@ -248,6 +248,126 @@
     ctx.restore();
   }
 
+  /* ───────── the creatures on the map, folded from paper: each kind its own flat shape and colours, faceted in a darker and a
+     lighter tone of its own colour, a fine ink edge so it holds on any ground, no glow and nothing see-through. f (0..1) is
+     the fold: a wing raised or lowered, wings opened or closed, legs drawn in or out; the map turns it slowly as each moves.
+     On a 16-unit grid, the creature facing right ───────── */
+  const KCOL = { bird: '#3D7BD9', parrot: '#2FA84F', waterbird: '#EEF1F2', raptor: '#7A4E2D', owl: '#A8845A', butterfly: '#FF8A2A', moth: '#8C6B4A', bee: '#F2B23A', wasp: '#F2B23A', fly: '#5E6B73', beetle: '#2E8B57', bug: '#C8402F', dragonfly: '#2FB5C9', grasshopper: '#7DB03A', mantis: '#7DB03A', ant: '#5A3A2A',
+    possum: '#8D9097', mammal: '#9A8670', flyingfox: '#4A3A30', bat: '#3A3A42', macropod: '#B07D52', fox: '#D9622B', cat: '#D99A4A', dog: '#B8875A', rabbit: '#C9B49A', rodent: '#8A7A6A', echidna: '#5A4A3A', paw: '#9A8670', ape: '#C8642A',
+    lizard: '#8C9A3A', snake: '#5C6B2E', turtle: '#6E7F4A', frog: '#4CB050', aquatic: '#2FA4C9', spider: '#6B5A8E', orb: '#C9A227', snail: '#B07CE8', segmented: '#C77A6A' };
+  const CREATURES = (() => {
+    const P = (pts, t) => ({ pts, t });
+    const lerpPt = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+    const bird = f => { const tip = lerpPt([6.5, 1.8], [7.5, 12.5], f); return [P([[3, 9], [0.4, 7.2], [1, 10.4]], 1), P([[3, 9], [9, 6], [13, 7], [11.4, 11], [6, 12]], 0), P([[6, 12], [11.4, 11], [9, 9.4]], 7), P([[10.6, 5], [13.6, 5.6], [13.4, 8], [10.6, 7.6]], 5), P([[13.6, 5.6], [15.8, 6.6], [13.5, 7.2]], 3), P([[5.6, 8.6], [10.2, 7.4], tip], 6), P([[5.6, 8.6], [10.2, 7.4], lerpPt([7.8, 8], tip, 0.5)], 2), { eye: [12.3, 6.4] }]; };
+    const parrot = f => { const tip = lerpPt([3.4, 4], [4.6, 11], f); return [P([[6.2, 12.4], [8.2, 12.8], [5, 16], [3.4, 15.2]], 1), P([[6.2, 4.2], [10.4, 5], [11.2, 10], [8.2, 13], [5, 10]], 0), P([[8, 8], [11.2, 10], [8.2, 13]], 7), P([[6.8, 1.6], [11, 2.6], [10.4, 5.4], [6.2, 4.8]], 5), P([[11, 2.6], [13.4, 3.8], [10.6, 4.8]], 3), P([[6, 5.6], [9.8, 6.6], tip], 6), { eye: [9.6, 3.4] }]; };
+    const waterbird = f => [P([[2, 10], [12, 9.2], [14.6, 11], [11, 13.2], [4, 13]], 0), P([[4, 10.4], [10.4, 9.6], [8, 12]], 6), P([[11, 9.6], [12.2, 4], [13.6, 4], [13.2, 10]], 0), P([[12, 3], [14.8, 3.4], [15, 4.8], [13.4, 5]], 5), P([[14.8, 3.6], [16, 4.4], [15, 4.8]], 3), { eye: [13.4, 3.8] }, { line: [[1, 14.2 + f * 0.6], [15, 14.2 + f * 0.6]] }];
+    const raptor = f => { const y = 3 + f * 3; return [P([[8, 6], [0.4, y], [2.6, 8.4], [8, 9]], 0), P([[8, 6], [15.6, y], [13.4, 8.4], [8, 9]], 1), P([[8, 7], [2.6, 8.4], [5.4, 9]], 2), P([[7, 4.6], [9, 4.6], [9.4, 11], [8, 13.2], [6.6, 11]], 1), P([[7.2, 3.4], [8.8, 3.4], [9, 5], [7, 5]], 0), P([[6.4, 12], [9.6, 12], [8, 15.4]], 0)]; };
+    const owl = f => [P([[4, 4], [5.2, 1.6], [6.4, 4.2]], 1), P([[9.6, 4.2], [10.8, 1.6], [12, 4]], 1), P([[4, 4], [8, 5.6], [12, 4], [12.6, 11], [8, 14.6], [3.4, 11]], 0), P([[5, 6], [8, 7], [11, 6], [10, 10], [8, 11], [6, 10]], 2), P([[3.4, 11], [8, 14.6], [5, 12]], 1), { eye: [6.6, 7.8], eye2: [9.4, 7.8], shut: f > 0.85, eyeCol: '#F2B23A' }];
+    /* wings open and close about the body, as a folded butterfly does */
+    const wings = (f, body) => { const w = 0.3 + 0.7 * (1 - f); const L = (pts, t) => P(pts.map(([x, y]) => [8 - (8 - x) * w, y]), t), R = (pts, t) => P(pts.map(([x, y]) => [8 + (8 - x) * w, y]), t);
+      return [L([[8, 7], [1, 2.4], [2.6, 9]], 0), R([[8, 7], [1, 2.4], [2.6, 9]], 1), L([[8, 9], [2.6, 13.6], [6, 13]], 1), R([[8, 9], [2.6, 13.6], [6, 13]], 0), L([[8, 7], [3.4, 5], [4, 8]], 2), R([[8, 7], [3.4, 5], [4, 8]], 2), P(body, 4)]; };
+    const butterfly = f => wings(f, [[7.4, 4], [8.6, 4], [8.5, 13.4], [7.5, 13.4]]);
+    const moth = f => { const w = 0.55 + 0.45 * (1 - f); return [P([[8, 5], [8 - 7 * w, 11.6], [8 - 2 * w, 12.4]], 0), P([[8, 5], [8 + 7 * w, 11.6], [8 + 2 * w, 12.4]], 1), P([[8, 6.4], [8 - 4.6 * w, 10.4], [8 - 3 * w, 11]], 2), P([[8, 6.4], [8 + 4.6 * w, 10.4], [8 + 3 * w, 11]], 2), P([[7.3, 3.6], [8.7, 3.6], [8.6, 12], [7.4, 12]], 4)]; };
+    const bee = f => { const a = 1 + f * 2.4; return [P([[6.2, 6.6], [3, 6.6 - a], [5, 7.8]], 2), P([[8.4, 6.4], [6, 6.4 - a], [8.6, 7.6]], 2), P([[3.4, 9], [5.6, 6], [10.6, 6], [13, 9], [10.6, 12], [5.6, 12]], 0), P([[6.8, 6], [8.2, 6], [8.2, 12], [6.8, 12]], 4), P([[9.6, 6], [10.8, 6.3], [10.8, 11.7], [9.6, 12]], 4), P([[13, 9], [15.6, 8.2], [15.6, 9.8]], 4)]; };
+    const beetle = f => [P([[8, 2.4], [10, 3.6], [8, 5], [6, 3.6]], 4), P([[8, 4.4], [12.4, 6.6], [12, 12.4], [8, 14.4]], 1), P([[8, 4.4], [3.6, 6.6], [4, 12.4], [8, 14.4]], 0), P([[8, 4.4], [6, 6.4], [8, 9]], 2), ...[5.4, 8.4, 11.4].map(y => P([[3.8, y], [1.6 - f, y - 1.4], [3.8, y + 0.8]], 4)), ...[5.4, 8.4, 11.4].map(y => P([[12.2, y], [14.4 + f, y - 1.4], [12.2, y + 0.8]], 4))];
+    const dragonfly = f => { const a = 2 + f * 2; return [P([[8, 5], [1, 5 - a], [1.6, 6.4]], 2), P([[8, 5], [15, 5 - a], [14.4, 6.4]], 2), P([[8, 7], [1.4, 8.4 + a * 0.4], [2.4, 9.2]], 1), P([[8, 7], [14.6, 8.4 + a * 0.4], [13.6, 9.2]], 1), P([[7.2, 3], [8.8, 3], [8.5, 15.4], [7.5, 15.4]], 0)]; };
+    const quad = (f, o = {}) => { const t = o.tail || [[2.4, 11.6], [0.4, 8.6 - f], [1.4, 5.8 - f], [2.6, 8.8]]; return [P(t, 1), P([[2, 12.4], [3.6, 7.4], [9, 6.2], [12, 8], [12.2, 12.4]], 0), P([[3.6, 7.4], [9, 6.2], [7, 9.4]], 2), P([[9, 6], [13, 4.4], [15.6, 8], [12.2, 9.2]], 0), P(o.ear || [[11, 4.8], [12, 2 - f * 0.6], [13, 4.6]], 1), P([[3.4, 12.4], [5, 12.4], [4.2, 14.6]], 1), P([[9.6, 12.4], [11.2, 12.4], [10.4, 14.6]], 1), { eye: [13.2, 6.4] }]; };
+    const bat = f => { const y = 3.4 + f * 3.2; return [P([[8, 6], [0.4, y], [1.8, 9.4], [3.8, 8.4], [5.4, 11], [8, 10]], 0), P([[8, 6], [15.6, y], [14.2, 9.4], [12.2, 8.4], [10.6, 11], [8, 10]], 1), P([[6.8, 4.4], [9.2, 4.4], [9.4, 10.6], [8, 12], [6.6, 10.6]], 4), P([[6.8, 4.4], [7.2, 2.6], [7.8, 4.4]], 4), P([[8.2, 4.4], [8.8, 2.6], [9.2, 4.4]], 4)]; };
+    const lizard = f => { const z = (f - 0.5) * 2.4; return [P([[1, 8 + z * 0.3], [5, 6.8 - z], [9, 8 + z], [13, 6.8 - z * 0.5], [15.6, 8], [13, 9.4 - z * 0.5], [9, 10 + z], [5, 9.2 - z], [1, 8.6 + z * 0.3]], 0), P([[5, 6.8 - z], [9, 8 + z], [5, 9.2 - z]], 1), P([[9, 8 + z], [13, 6.8 - z * 0.5], [13, 9.4 - z * 0.5]], 2), ...[[4.6, 8], [10.4, 8.6]].flatMap(([x, y]) => [P([[x, y], [x - 1.4, y - 3.4], [x + 0.6, y]], 1), P([[x, y], [x - 1.4, y + 3.4], [x + 0.6, y]], 1)]), { eye: [14.2, 7.8] }]; };
+    const snake = f => { const z = (f - 0.5) * 2; return [P([[0.6, 10], [4, 6 + z], [8, 10 - z], [12, 6 + z], [15.6, 7.6], [12.4, 8.6 + z], [8, 12.6 - z], [4, 8.6 + z], [1.4, 12]], 0), P([[4, 6 + z], [8, 10 - z], [4, 8.6 + z]], 1), P([[8, 10 - z], [12, 6 + z], [8, 12.6 - z]], 2), { eye: [14.4, 7.4] }]; };
+    const turtle = f => { const l = f * 1.2; return [...[[4, 5], [12, 5], [4, 11.4], [12, 11.4]].map(([x, y]) => P([[x - 1.2, y], [x + 1.2, y], [x + (x < 8 ? -1.6 - l : 1.6 + l), y + (y < 8 ? -1.8 : 1.8)]], 1)), P([[13, 7], [16, 7.6], [16, 9], [13, 9.6]], 1), P([[3, 8.2], [5, 3.6], [11, 3.6], [13, 8.2], [11, 12.8], [5, 12.8]], 0), P([[5.8, 8.2], [7, 5.8], [9, 5.8], [10.2, 8.2], [9, 10.6], [7, 10.6]], 2), P([[3, 8.2], [5.8, 8.2], [7, 10.6], [5, 12.8]], 1), { eye: [15, 8] }]; };
+    const frog = f => { const k = f * 2.2; return [P([[4, 10], [0.6, 13 + k], [4.4, 12.4]], 1), P([[12, 10], [15.4, 13 + k], [11.6, 12.4]], 1), P([[8, 3.6], [13.2, 9], [8, 13.4], [2.8, 9]], 0), P([[8, 3.6], [13.2, 9], [8, 9.6]], 2), P([[8, 9.6], [13.2, 9], [8, 13.4]], 1), P([[5, 6.4], [5.8, 3.4], [7, 5.8]], 0), P([[11, 6.4], [10.2, 3.4], [9, 5.8]], 0), { eye: [5.9, 4.8], eye2: [10.1, 4.8] }]; };
+    const fish = f => { const t = (f - 0.5) * 3; return [P([[12.4, 8], [16, 4.6 + t], [16, 11.4 + t]], 1), P([[1, 8], [8.4, 4], [13, 8], [8.4, 12]], 0), P([[1, 8], [8.4, 4], [8.4, 8]], 2), P([[6.4, 4.6], [9.6, 2], [10, 5]], 1), { eye: [4.4, 7.4] }]; };
+    const spider = f => [...[-1, 1].flatMap(sx => [4.4, 7, 9.6, 12.2].map((y, i) => P([[8, 8.4], [8 + sx * (6.6 + (i % 2 ? f : -f)), y - 2.4], [8 + sx * 7.4, y], [8 + sx * 1.6, 8.8]], 1))), P([[8, 4.6], [10.4, 7.4], [8, 10.2], [5.6, 7.4]], 4), P([[8, 8.8], [11.4, 11.4], [8, 15], [4.6, 11.4]], 0), P([[8, 8.8], [11.4, 11.4], [8, 12]], 2)];
+    const snail = f => [P([[1, 13.4], [3, 11], [13, 11], [15.6, 12.4 - f], [14.4, 13.4]], 4), P([[13, 11], [14.6, 7.6 - f], [15.2, 7.8 - f], [14.2, 11]], 4), P([[3.4, 11], [4, 5.4], [8, 3.4], [12, 5.4], [12, 11]], 0), P([[8, 3.4], [12, 5.4], [8, 8]], 2), P([[4, 5.4], [8, 8], [3.4, 11]], 1)];
+    const echidna = f => [...[3, 5, 7, 9, 11].map(x => P([[x - 1.2, 8], [x + (f - 0.5), 3.6], [x + 1.2, 8]], 1)), P([[1.4, 12], [2.6, 7.4], [12, 7.4], [15.6, 11], [12, 12.4]], 0), P([[12, 9.6], [16, 11.2], [12, 11.4]], 4), { eye: [12.8, 9.2] }];
+    const rabbit = f => quad(f, { ear: [[10.6, 5], [10.2, 0.4 + f], [12.4, 4.6]], tail: [[2.4, 9], [0.8, 8.4], [1.2, 10.6]] });
+    /* the larger lives, drawn larger and with more to them: each its own */
+    const platypus = f => { const t = (f - 0.5) * 1.6; return [P([[0.4, 8.6 + t], [3.4, 7.6], [4, 10.4], [1, 10.8 + t]], 1), P([[3, 8], [7, 6.4], [12, 7], [13, 9.4], [9, 10.8], [4, 10.4]], 0), P([[4, 10.4], [9, 10.8], [8, 9.2]], 7), P([[12.6, 7.4], [16, 7.8], [16, 9.2], [13, 9.4]], 3), P([[6, 10.6], [4.8, 12.4 - t], [7.4, 11.2]], 4), P([[10, 10.6], [9.6, 12.4 + t], [11.6, 11]], 4), { eye: [12.2, 7.9] }, { line: [[0, 12.8], [16, 12.8]] }]; };
+    const fox = f => { const w = (f - 0.5) * 1.4; return [P([[3, 9], [0.2, 6.6 - w], [0.6, 10.2], [2.6, 11.2]], 0), P([[0.2, 6.6 - w], [0.5, 8.2], [1.4, 7.4 - w * 0.5]], 7), P([[3, 8.4], [10, 7.4], [12, 9], [10.6, 11.4], [4, 11.2]], 0), P([[4, 11.2], [10.6, 11.4], [8, 10]], 7), P([[10.6, 7.6], [13, 5.4], [16, 8.6], [13.6, 9.6], [11.6, 9.4]], 0), P([[15, 8.2], [16, 8.6], [15.2, 9.2]], 4), P([[11.4, 6.6], [11.6, 3.6], [12.8, 5.6]], 1), P([[12.6, 5.8], [13.6, 3.4], [14, 6.2]], 1), ...[[4.4, 11.2], [6, 11.2], [9, 11.4], [10.4, 11.2]].map(([x, y], i) => P([[x, y], [x + 0.9, y], [x + 0.4 + (i % 2 ? w : -w) * 0.6, 14.4]], 4)), { eye: [13.6, 7.2] }]; };
+    const koala = f => [P([[4, 6], [11, 6], [13, 10], [11, 14.6], [5, 14.6], [3, 10]], 0), P([[6, 10], [10, 10], [9.6, 14.4], [6.4, 14.4]], 7), P([[5, 2.6], [11, 2.6], [12.4, 6.2], [8, 8.4], [3.6, 6.2]], 0), P([[1.8, 1.2 + f * 0.6], [5.4, 2.6], [3.6, 5.2], [1, 4]], 7), P([[14.2, 1.2 + f * 0.6], [10.6, 2.6], [12.4, 5.2], [15, 4]], 7), P([[7.1, 4.4], [8.9, 4.4], [8.6, 6.8], [7.4, 6.8]], 4), P([[3, 10], [1.4, 13], [4, 12.4]], 1), { eye: [5.9, 4.4], eye2: [10.1, 4.4] }, { line: [[0, 15.4], [16, 13.6]], col: '#6A4A30' }];
+    const wombat = f => [P([[1.4, 13], [2, 8], [6, 5.6], [11, 6], [14.4, 9], [15, 12.6], [13, 13.4]], 0), P([[2, 8], [6, 5.6], [7, 9]], 2), P([[11, 6], [12, 4.4 - f * 0.4], [12.8, 6.4]], 1), P([[14.4, 9], [16, 10.4], [15, 12.6]], 4), ...[3, 6, 10, 12.6].map(x => P([[x, 12.8], [x + 1.6, 12.8], [x + 0.8, 14.6]], 4)), { eye: [13.2, 8.4] }];
+    const roo = f => { const h = f * 1.4; return [P([[3.6, 12], [0.2, 15.4], [1.4, 15.6], [5, 13]], 1), P([[4, 11], [6, 5.6], [9, 4.4], [10.6, 8], [9.4, 12.4], [6, 13]], 0), P([[5, 12], [9.6, 12.4], [11.2, 15.4 - h], [5.6, 15.4 - h]], 1), P([[6.2, 7], [9.8, 6.8], [9, 11]], 7), P([[8.6, 4.6], [10, 2], [13, 3], [12.2, 4.8], [9.6, 5.6]], 0), P([[9.4, 2.6], [9.2, 0.2], [10.4, 2]], 1), P([[13, 3], [13.8, 3.8], [12.6, 4]], 4), P([[9.6, 7], [11.6, 8.6], [10.8, 9.2]], 4), { eye: [11, 3.2] }]; };
+    const glider = f => { const w = 0.85 + 0.15 * f; return [P([[8 - 6 * w, 5], [8, 3.6], [8 + 6 * w, 5], [8 + 5 * w, 11], [8, 12.6], [8 - 5 * w, 11]], 0), P([[8, 3.6], [8 + 6 * w, 5], [8 + 5 * w, 11], [8, 12.6]], 2), P([[7.2, 3], [8.8, 3], [8.6, 12], [7.4, 12]], 4), P([[7, 1], [8, 0], [9, 1], [9, 3.4], [7, 3.4]], 0), P([[7.6, 12.4], [8.4, 12.4], [8.6, 16], [7.4, 16]], 1), { eye: [7.4, 1.8], eye2: [8.6, 1.8] }]; };
+    const rakali = f => { const t = (f - 0.5) * 1.4; return [P([[0.2, 8.4 + t], [3.6, 8.2], [3.6, 9.4], [0.2, 9.4 + t]], 7), P([[3, 8.6], [3.6, 8.2], [4, 9.6]], 1), P([[3.4, 8], [8, 6.2], [12.4, 7], [15.8, 8.6], [12.4, 10.2], [8, 10.8], [4, 10.2]], 0), P([[4, 10.2], [8, 10.8], [8, 9]], 7), P([[11, 6.8], [11.6, 5.6], [12.2, 6.9]], 1), { eye: [13.2, 7.8] }, { line: [[0, 12.4], [16, 12.4]] }]; };
+    const neck = f => { const n = f * 1.6; return [...[[5, 11.4], [10, 11.4]].map(([x, y]) => P([[x - 1.2, y], [x + 1.2, y], [x, y + 2.6]], 1)), P([[11, 8.6], [14 + n, 6.4], [15.8 + n, 6.8], [15.6 + n, 8], [12, 10]], 1), P([[2, 10.6], [4, 6.4], [10, 6.2], [12.6, 10.4], [10, 11.6], [4, 11.6]], 0), P([[4, 6.4], [10, 6.2], [7, 8.8]], 2), { eye: [15 + n, 7.2] }]; };
+    const antechinus = f => quad(f, { tail: [[2.4, 11], [0, 12.6 - f], [0.4, 13.2 - f], [2.6, 11.8]], ear: [[11.4, 4.8], [12, 3.2], [12.8, 4.8]] });
+    const brushtail = f => quad(f, { tail: [[2.6, 11.6], [0, 8.6 - f], [0.4, 4.4 - f], [2.4, 5.6 - f], [3.6, 8.6]] });
+    const cat = f => quad(f, { tail: [[2.6, 8.4], [0.8 + f, 1.8], [2, 1.4 + f * 0.6], [3.6, 7.6]], ear: [[11, 4.8], [11.4, 1.6 - f * 0.4], [12.6, 4.2]] });
+    const dog = f => { const p = quad(f, { tail: [[2.6, 8.4], [0.6, 5 - f * 1.4], [1.6, 4.6 - f * 1.4], [3.4, 7.8]], ear: [[11.2, 4.8], [10.4, 8.4], [12.4, 6.2]] }); return p; };
+    const rodent = f => quad(f, { tail: [[2.4, 11], [0, 13.4 - f], [0.3, 14 - f], [2.6, 11.8]], ear: [[11.2, 5], [11.6, 3], [13, 3.4], [12.8, 5]] });
+    const ape = f => { const s1 = (f - 0.5) * 1.2; return [P([[4, 5.4], [1.4 + s1, 13.8], [2.8, 14.2], [5.2, 8]], 1), P([[12, 5.4], [14.6 - s1, 13.8], [13.2, 14.2], [10.8, 8]], 1), P([[5, 4], [11, 4], [12, 10], [10, 13], [6, 13], [4, 10]], 0), P([[6, 13], [5, 15.6], [7.4, 15.6], [7.6, 13]], 1), P([[10, 13], [11, 15.6], [8.6, 15.6], [8.4, 13]], 1), P([[5.6, 0.8], [10.4, 0.8], [11, 4.6], [5, 4.6]], 0), P([[6.6, 1.8], [9.4, 1.8], [9.6, 4.2], [6.4, 4.2]], 7), { eye: [7.2, 2.6], eye2: [8.8, 2.6] }]; };
+    return { platypus, fox, koala, wombat, roo, glider, rakali, neck, antechinus, brushtail, bird, parrot, waterbird, raptor, owl, butterfly, moth, bee, wasp: bee, fly: bee, beetle, bug: beetle, dragonfly, grasshopper: lizard, mantis: dragonfly, ant: beetle, possum: brushtail, mammal: quad, paw: quad, cat, dog, rodent, ape, macropod: rabbit, rabbit,
+      flyingfox: bat, bat, lizard, snake, turtle, frog, aquatic: fish, spider, orb: spider, snail, segmented: snake, echidna };
+  })();
+  /* the accent tones: [beak or bill, belly, head, wing, legs and body] by kind */
+  const ACC = { parrot: ['#FF8A2A', '#F2C14E', '#E8402A', '#2F6FD8'], flyingfox: [null, null, null, null, '#D9822B'], bee: [null, null, null, null, '#141412'], wasp: [null, null, null, null, '#141412'], moth: [null, null, null, null, '#3A2A1E'], butterfly: [null, null, null, null, '#141412'] };
+  /* the kinds within each kind, by the name they are known by: each a few colours of its own, as a handheld's sprites were,
+     and a mark that tells it (a crest, spots, bands). [pattern, shape, base, accents [beak, belly, head, wing, body], extra] */
+  const VARIANTS = [
+    [/black.?cockatoo/, 'parrot', '#26262A', ['#B8B8B8', '#26262A', '#26262A', '#3A3A3E', '#E8402A'], { crest: '#26262A', tail: '#E8402A' }], [/cockatoo|corella/, 'parrot', '#F2F1EC', ['#2A2A2A', '#F2F1EC', '#F2F1EC', '#DCDAD2'], { crest: '#F2D24A' }],
+    [/galah/, 'parrot', '#B9BCC4', ['#F2F1EC', '#F28AA8', '#F28AA8', '#9EA2AC'], { crest: '#F7C6D4' }], [/rosella/, 'parrot', '#D8322A', ['#F2F1EC', '#F2C14E', '#D8322A', '#2F6FD8']], [/lorikeet|parrot|king.?parrot/, 'parrot', null],
+    [/magpie|peewee|lark|butcherbird/, 'bird', '#1C1C1E', ['#C9C9C9', '#1C1C1E', '#F2F1EC', '#F2F1EC']], [/raven|crow|currawong|blackbird|chough/, 'bird', '#24242A', ['#3A3A40', '#3A3A40', '#24242A', '#3A3A40']],
+    [/wren|fairy/, 'bird', '#2F6FD8', ['#24242A', '#C9C2B4', '#7FD4FF', '#2A4A9A']], [/honeyeater|wattlebird|miner|pardalote|silvereye|thornbill|spinebill/, 'bird', '#8A9A3A', ['#2A2A2A', '#E6D84A', '#6E7D2A', '#5E6B22']],
+    [/pigeon|dove/, 'bird', '#9AA0B0', ['#C9757A', '#C9B7D4', '#7A8090', '#6E7486']], [/kookaburra|kingfisher/, 'bird', '#8A6A48', ['#3A2A1E', '#F0E6D0', '#F0E6D0', '#4A7AC8']], [/robin/, 'bird', '#3A3A3A', ['#2A2A2A', '#E8402A', '#3A3A3A', '#F2F1EC']],
+    [/sparrow|finch|myna|starling/, 'bird', '#8A6A48', ['#3A2A1E', '#D9C9A8', '#6A4A30', '#5A3E28']], [/swallow|martin/, 'bird', '#25336B', ['#2A2A2A', '#F2F1EC', '#C8402F', '#1A244E']],
+    [/black swan|swan/, 'waterbird', '#1E1E22', ['#D8322A', '#2E2E34', '#1E1E22', '#F2F1EC']], [/duck|teal|grebe/, 'waterbird', '#8A6A48', ['#3A3A2A', '#B89A70', '#2E6B4A', '#6A4E34']], [/ibis/, 'waterbird', '#F2F1EC', ['#1C1C1E', '#E6E4DC', '#1C1C1E', '#E6E4DC']],
+    [/heron|egret|spoonbill/, 'waterbird', '#B8C4CC', ['#F2B23A', '#DDE4E8', '#9AA8B2', '#9AA8B2']], [/cormorant|darter/, 'waterbird', '#26262A', ['#F2B23A', '#F2F1EC', '#26262A', '#3A3A40']], [/coot|moorhen|swamphen|hen/, 'waterbird', '#2F3A6B', ['#D8322A', '#24305A', '#1E2440', '#24305A']],
+    [/frogmouth|nightjar/, 'owl', '#8A8A88', ['#3A3A3A', '#B4B2AC', '#8A8A88', '#6E6E6C']], [/boobook|owl/, 'owl', null],
+    [/eagle|kite|hawk|goshawk|falcon|kestrel|harrier/, 'raptor', null],
+    [/cabbage white|white/, 'butterfly', '#F2F1EC', [null, null, null, null, '#24242A']], [/admiral/, 'butterfly', '#D8322A', [null, null, null, null, '#141412']], [/jezebel/, 'butterfly', '#F2D24A', [null, null, null, null, '#D8322A']], [/blue/, 'butterfly', '#5A8AE8', [null, null, null, null, '#141412']], [/skipper|brown/, 'butterfly', '#9A6A3A', [null, null, null, null, '#3A2A1E']],
+    [/bogong/, 'moth', null], [/hawk.?moth|moth/, 'moth', '#B8A88A', [null, null, null, null, '#5A4A3A']],
+    [/blue.?banded/, 'bee', '#3A3A40', [null, null, null, null, '#5AA8E8']], [/ladybird|ladybug/, 'bug', '#D8322A', [null, null, null, null, '#141412']], [/christmas beetle|scarab/, 'beetle', '#C9A227', [null, null, null, null, '#5A4A1A']],
+    [/damselfly/, 'dragonfly', '#3A6AE8'],
+    [/brushtail/, 'possum', '#6E7178'], [/ringtail/, 'possum', '#8A6A58', null, { tip: '#F2F1EC' }], [/flying.?fox/, 'flyingfox', null], [/kangaroo|wallaby/, 'macropod', '#9A6A42'], [/rat|mouse/, 'rodent', '#7A7470'], [/rakali|water.?rat/, 'rodent', '#4A3A30'],
+    [/blue.?tongue|shingleback|skink/, 'lizard', '#8A7A5A', null, { spots: '#3A3A2A' }], [/dragon/, 'lizard', '#A8946A', null, { spots: '#6A5A3A' }], [/tiger snake/, 'snake', '#3A3A2A', null, { bands: '#C9B24A' }], [/brown snake/, 'snake', '#8A6A48'], [/red.?bellied/, 'snake', '#1C1C1E', null, { bands: '#D8322A' }],
+    [/tree.?frog|bell frog/, 'frog', '#3FB34F', null, { spots: '#E6D84A' }], [/banjo|pobblebonk|marsh frog/, 'frog', '#8A6A48', null, { spots: '#4A3A2A' }], [/froglet/, 'frog', '#A8946A', null, { spots: '#5A4A3A' }], [/toad/, 'frog', '#7A6A4A', null, { spots: '#4A3E2A' }],
+    [/eel/, 'aquatic', '#3A3A2A'], [/huntsman/, 'spider', '#7A5A3A'], [/redback/, 'spider', '#1C1C1E', [null, null, null, null, '#D8322A']], [/wolf spider/, 'spider', '#6A5A4A'],
+  ];
+  /* the larger lives seen in the last three months, each drawn as itself and larger: [pattern, shape, base, accents, extra] */
+  const HERO_ART = [
+    [/platypus/, 'platypus', '#6A4A30', ['#2A2A2A', '#A88A68']], [/flying.?fox/, 'flyingfox', '#4A3A30', [null, null, null, null, '#D9822B']], [/red fox|\bfox\b/, 'fox', '#D9622B', [null, '#F2F1EC', null, null, '#1C1C1E']], [/koala/, 'koala', '#8A8C92', [null, '#E6E1D6', null, null, '#1C1C1E']],
+    [/bush rat|swamp rat|native rat/, 'antechinus', '#7A6650'], [/rakali|water.?rat/, 'rakali', '#4A3A30', [null, '#F2F1EC']], [/echidna/, 'echidna', '#5A4A3A', [null, null, null, null, '#2A1E16']],
+    [/wombat/, 'wombat', '#7A6E62', [null, null, null, null, '#3A322A']], [/kangaroo/, 'roo', '#9A7A5A', [null, '#D9C9A8', null, null, '#2A2420']], [/wallaby/, 'roo', '#5A4A3E', [null, '#C98A4A', null, null, '#2A2420']],
+    [/sugar glider|glider/, 'glider', '#9A9CA4', [null, null, null, null, '#2A2A2E']], [/brushtail/, 'brushtail', '#6E7178', [null, null, null, null, '#2A2A2E']], [/ringtail/, 'possum', '#8A6A58', null, { tip: '#F2F1EC' }],
+    [/flying.?fox/, 'flyingfox', '#4A3A30', [null, null, null, null, '#D9822B']], [/microbat|free.?tailed|wattled bat|bent.?wing/, 'bat', '#3A3A42'], [/antechinus|dunnart/, 'antechinus', '#8A7458'],
+    [/blue.?tongue/, 'lizard', '#8A7A5A', null, { bands: '#4A3E2A' }], [/long.?necked turtle|turtle/, 'neck', '#5E6B3E'], [/tiger snake/, 'snake', '#3A3A2A', null, { bands: '#C9B24A' }],
+    [/tawny frogmouth|frogmouth/, 'owl', '#8A8A88', ['#3A3A3A', '#B4B2AC', '#8A8A88', '#6E6E6C']], [/powerful owl/, 'owl', '#6A4A30', null, { bands: '#E6D8B8' }],
+  ];
+  /* a name's hero drawing, if it is one of the twenty: its index, else -1 */
+  const HBY = new Map();
+  function heroArtOf(name) { const n = String(name || '').toLowerCase(); if (!n) return -1; if (HBY.has(n)) return HBY.get(n); const i = HERO_ART.findIndex(([re]) => re.test(n)); HBY.set(n, i); return i; }
+  /* made by hand: every corner a little off true, the same each time, as paper folded and cut by hand is */
+  const wobble = (parts, g) => { let seed = 0; for (const ch of g) seed = (seed * 31 + ch.charCodeAt(0)) % 997; return parts.map((p, i) => (p.pts ? { ...p, pts: p.pts.map(([x, y], j) => { const v = Math.sin((i * 7 + j * 13 + seed) * 12.9898) * 43758.5453; const w = Math.sin((i * 11 + j * 5 + seed) * 78.233) * 12543.123; return [x + ((v - Math.floor(v)) - 0.5) * 0.55, y + ((w - Math.floor(w)) - 0.5) * 0.55]; }) } : p)); };
+  const VBY = new Map();
+  /* a name's variant: its index in the table, kept; only where the shape is the kind's own (a cockatoo is never drawn as a frog) */
+  function variantOf(g, name) { const n = String(name || '').toLowerCase(); if (!n) return -1; const key = `${g}|${n}`; if (VBY.has(key)) return VBY.get(key); let v = -1; for (let i = 0; i < VARIANTS.length; i++) { const [re, sh] = VARIANTS[i]; if (re.test(n) && (sh === g || (CREATURES[sh] && CREATURES[sh] === CREATURES[g]))) { v = i; break; } } VBY.set(key, v); return v; }
+  function creature(ctx, g, x, y, size, col, f = 0.5, vi = -1, solid = null, pix = 0) {
+    if (vi >= 1000) { const H = HERO_ART[vi - 1000]; if (H) g = H[1]; }
+    const make = CREATURES[g]; if (!make) return false; const V = solid && vi < 1000 ? null : vi >= 1000 ? HERO_ART[vi - 1000] : VARIANTS[vi]; const ex = (V && V[4]) || {}; if (V && V[2]) col = V[2]; const parts = wobble(make(f), g); const k = size / 16; const a = (V && V[3]) || ACC[g] || [];
+    const tone = t => (solid ? solid : t === 0 ? col : t === 1 ? mixHex(col, -0.28) : t === 2 ? mixHex(col, 0.32) : t === 3 ? (a[0] || '#F2B23A') : t === 4 ? (a[4] || mixHex(col, -0.55)) : t === 5 ? (a[2] || (g === 'parrot' || g === 'waterbird' ? col : mixHex(col, -0.28))) : t === 6 ? (a[3] || mixHex(col, -0.28)) : t === 7 ? (a[1] || mixHex(col, 0.32)) : col);
+    ctx.save(); ctx.translate(x - size / 2, y - size / 2); ctx.scale(k, k); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    /* an ink edge round the whole, under the facets: the creature holds on any ground */
+    if (!pix) { ctx.strokeStyle = solid || 'rgba(12,14,14,.9)'; ctx.lineWidth = 1.6 / Math.max(0.6, k); } for (const p of parts) if (p.pts && !pix) { ctx.beginPath(); p.pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); ctx.stroke(); }
+    for (const p of parts) {
+      if (p.pts) { ctx.beginPath(); p.pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.closePath(); ctx.fillStyle = tone(p.t); ctx.fill(); }
+      else if (solid) continue;
+      else if (p.line) { ctx.beginPath(); ctx.moveTo(...p.line[0]); ctx.lineTo(...p.line[1]); ctx.strokeStyle = p.col || '#7FC6F0'; ctx.lineWidth = 0.9; ctx.stroke(); }
+      else if (p.eye) { for (const e of [p.eye, p.eye2].filter(Boolean)) { ctx.beginPath(); if (p.shut) { ctx.moveTo(e[0] - 0.9, e[1]); ctx.lineTo(e[0] + 0.9, e[1]); ctx.strokeStyle = '#141412'; ctx.lineWidth = 0.6; ctx.stroke(); } else if (pix) { if (pix < 0.9) { ctx.fillStyle = '#F4F2EA'; ctx.fillRect(e[0] - pix, e[1] - pix, pix * 2, pix * 2); ctx.fillStyle = p.eyeCol || '#141412'; ctx.fillRect(e[0], e[1] - pix, pix, pix); } else { ctx.fillStyle = p.eyeCol || '#141412'; ctx.fillRect(e[0] - pix / 2, e[1] - pix / 2, pix, pix); } } else { ctx.arc(e[0], e[1], p.eyeCol ? 0.95 : 0.7, 0, TAU); ctx.fillStyle = p.eyeCol || '#141412'; ctx.fill(); } } }
+    }
+    /* what tells the kind within the kind: a crest raised on the head, spots down the back, bands across the body */
+    if (solid) { ctx.restore(); return true; }
+    if (ex.crest && (g === 'parrot')) { ctx.beginPath(); ctx.moveTo(7.2, 2); ctx.lineTo(6 - f * 0.8, -0.4); ctx.lineTo(8.4, 1.4); ctx.lineTo(8.2, -0.8 + f * 0.6); ctx.lineTo(9.6, 2.2); ctx.closePath(); ctx.fillStyle = ex.crest; ctx.fill(); ctx.lineWidth = 0.5; ctx.strokeStyle = 'rgba(12,14,14,.9)'; ctx.stroke(); }
+    if (ex.tail) { ctx.beginPath(); ctx.moveTo(5.6, 14); ctx.lineTo(4.4, 15.4); ctx.lineTo(5.4, 15.6); ctx.closePath(); ctx.fillStyle = ex.tail; ctx.fill(); }
+    if (ex.spots) { ctx.fillStyle = ex.spots; for (const [sx, sy] of (g === 'frog' ? [[6.6, 8.6], [9.4, 8.6], [8, 11]] : [[4.8, 8], [7.4, 8.8], [10, 8], [12.2, 8.4]])) ctx.fillRect(sx - 0.55, sy - 0.55, 1.1, 1.1); }
+    if (ex.bands) { ctx.strokeStyle = ex.bands; ctx.lineWidth = 0.9; for (const bx of [3, 6, 9, 12]) { ctx.beginPath(); ctx.moveTo(bx, 6.4); ctx.lineTo(bx + 0.6, 11.6); ctx.stroke(); } }
+    if (ex.tip) { ctx.beginPath(); ctx.moveTo(1.4, 5.8 - f); ctx.lineTo(0.4, 8.6 - f); ctx.lineTo(1.2, 8.2 - f); ctx.closePath(); ctx.fillStyle = ex.tip; ctx.fill(); }
+    ctx.restore(); return true;
+  }
+  /* how fast each kind folds: wings beat, insects flutter, the rest breathe slowly */
+  const FOLD_RATE = { platypus: 1.2, rakali: 1.2, fox: 1.4, roo: 0.9, glider: 0.8, neck: 0.4, bird: 2.2, parrot: 2.6, waterbird: 0.6, raptor: 0.5, owl: 0.4, butterfly: 3.2, moth: 2.6, bee: 9, wasp: 9, fly: 9, beetle: 1.2, bug: 1.2, dragonfly: 6, flyingfox: 1.6, bat: 2.4, frog: 0.5, lizard: 1.1, snake: 1.3, aquatic: 1.4, spider: 0.8, orb: 0.8 };
+  const foldRate = g => FOLD_RATE[g] || 0.7;
+
   /* ───────── the pin: one record as a composition of primitives ─────────
      p = {
        f:     form — 'fauna' point · 'flora' square · 'need' cross · 'offer' cross+point · 'event' registration mark ·
@@ -480,14 +600,45 @@
     for (const pt of parts) { ctx.lineWidth = (pt.f ? 0 : pt.w) + (px * 2) / k; ctx.stroke(pt.p); if (pt.f) ctx.fill(pt.p, pt.rule || 'nonzero'); }
     ctx.restore();
   }
+  /* a creature as a mark: its folded shape at its size; several seen together a small pile of the same; in danger in the
+     months ahead a crisp ring, red when severe, ink at the extreme; one of the five a fine gold ring; rare a gold spark; new a
+     red point. Seen long ago, the same shape in grey */
+  /* as a handheld drew them: the folded creature set on a small grid of pixels, each pixel one colour, hard at its edge, an
+     ink pixel round it, and its shadow a pixel down and right; then set large without smoothing, so the pixels show */
+  const PIX = new Map();
+  function pixelSprite(g, col, f, vi, G) {
+    const key = `${g}|${col}|${f}|${vi}|${G}`; if (PIX.has(key)) return PIX.get(key); const T = G + 4;
+    const c = document.createElement('canvas'); c.width = c.height = T; const x = c.getContext('2d', { willReadFrequently: true }); creature(x, g, T / 2, T / 2, G, col, f, vi, null, 16 / G);
+    const d = x.getImageData(0, 0, T, T); const A = d.data;
+    for (let i = 0; i < T * T; i++) A[i * 4 + 3] = A[i * 4 + 3] > 120 ? 255 : 0;
+    /* a ring of pixels round what is there: ink first, then the paper it was cut from */
+    const ring = (r, g2, b) => { const on = new Uint8Array(T * T); for (let i = 0; i < T * T; i++) on[i] = A[i * 4 + 3] ? 1 : 0;
+      for (let yy = 0; yy < T; yy++) for (let xx = 0; xx < T; xx++) { const i = yy * T + xx; if (on[i]) continue; if ((xx > 0 && on[i - 1]) || (xx < T - 1 && on[i + 1]) || (yy > 0 && on[i - T]) || (yy < T - 1 && on[i + T])) { A[i * 4] = r; A[i * 4 + 1] = g2; A[i * 4 + 2] = b; A[i * 4 + 3] = 255; } } };
+    ring(12, 14, 14); ring(244, 242, 234);
+    x.putImageData(d, 0, 0);
+    const sh = document.createElement('canvas'); sh.width = sh.height = T; const sx = sh.getContext('2d'); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#0C0E0E'; sx.fillRect(0, 0, T, T);
+    const out = { c, sh, T }; PIX.set(key, out); if (PIX.size > 600) PIX.delete(PIX.keys().next().value); return out;
+  }
+  function creatureMark(ctx, b, x, y) {
+    const s = Math.max(9, Math.round((b.d || 22) * 1.22)); const quiet = b.tone === 'cold'; const col = quiet ? '#A9AFAA' : KCOL[b.g] || '#9A8670'; const f = b.fold == null ? 0.5 : b.fold;
+    ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;
+    const vi = quiet ? -1 : b.v == null ? -1 : b.v; const G = vi >= 1000 ? 24 : Math.max(14, Math.min(20, Math.round(s / 1.45))); const P0 = pixelSprite(b.g, col, f, vi, G); const u = s / G, S2 = s * P0.T / G; ctx.imageSmoothingEnabled = false;
+    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) ctx.drawImage(P0.sh, x - S2 / 2 + k * 2.6, y - S2 / 2 - k * 2.6, S2, S2);
+    const dz = b.dz || (b.hot ? 3 : 0);
+    if (dz >= 3 && !quiet) { ctx.beginPath(); ctx.arc(x, y, s * 0.62, 0, TAU); if (dz >= 4) { ctx.lineWidth = 3.4; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); } ctx.lineWidth = dz >= 4 ? 1.8 : 1.4; ctx.strokeStyle = dz >= 4 ? '#141412' : '#E8402A'; ctx.stroke(); }
+    if (b.tone === 'hero') { ctx.beginPath(); ctx.arc(x, y, s * 0.62 + (dz >= 3 ? 3 : 0), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = GOLD; ctx.stroke(); }
+    /* its shadow a pixel down and right, hard, as a paper cut-out stands off the ground */
+    ctx.drawImage(P0.sh, x - S2 / 2 + u, y - S2 / 2 + u * 1.4, S2, S2); ctx.drawImage(P0.c, x - S2 / 2, y - S2 / 2, S2, S2); ctx.imageSmoothingEnabled = true;
+    if (b.tier >= 1 && !quiet) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); };
+      sp(x - s * 0.5, y - s * 0.46, Math.max(2.2, s * 0.13)); }
+    if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.44, y - s * 0.44, Math.max(2, s * 0.1), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = C.white; ctx.stroke(); }
+    ctx.restore();
+  }
   function sticker(ctx, b, x, y, col) {
+    if (/^k-|^hero$|^cold$|^fauna$/.test(b.tone || '') && CREATURES[b.g]) { creatureMark(ctx, b, x, y); return; }
     const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)); const parts = b.i ? paths()[b.i] : gpaths()[b.g] || gpaths().paw; const quiet = b.tone === 'cold' || b.tone === 'hist';
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (b.tone === 'hist') ctx.globalAlpha *= 0.55;
-    /* a bird or an animal carries a soft light of its own colour under it, as the five in greatest need carry gold: it reads on
-       any ground, at a glance, without a disc */
     const vert = VERT.has(GROUP[b.g]) && /^k-/.test(b.tone || '') && !quiet;
-    if (vert && b.tier < 2) { const R = s * 0.5 + 5, g1 = ctx.createRadialGradient(x, y, s * 0.12, x, y, R); g1.addColorStop(0, rgbaOf(col, 0.55)); g1.addColorStop(0.55, rgbaOf(col, 0.22)); g1.addColorStop(1, rgbaOf(col, 0)); ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill(); }
-    if (b.tier >= 2) { const g0 = ctx.createRadialGradient(x, y, s * 0.3, x, y, s * 0.5 + 8); g0.addColorStop(0, 'rgba(242,193,78,.34)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(x, y, s * 0.5 + 8, 0, TAU); ctx.fill(); }
     /* the pile: the same mark twice more behind it, deeper in colour */
     for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) { ctx.save(); ctx.globalAlpha *= 0.85; ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 3; draw16(ctx, parts, x + k * 2.6, y - k * 2.6, s, mixHex(col, -0.38), 1); ctx.restore(); }
     const dz = b.dz || (b.hot ? 3 : 0);
@@ -501,6 +652,8 @@
     ctx.restore();
   }
   function badge(ctx, b, x, y) {
+    /* seen in years past: a small grey point, no more, so the living are what is seen */
+    if (b.tone === 'hist') { ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; ctx.beginPath(); ctx.arc(x, y, Math.max(1.6, (b.d || 8) * 0.2), 0, TAU); ctx.fillStyle = '#C9CFCB'; ctx.fill(); ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(12,14,14,.8)'; ctx.stroke(); ctx.restore(); return; }
     const d = b.d || 22, r = d / 2; let [bg, fg] = TONES[b.tone] || TONES.fauna;
     if (/^k-/.test(b.tone) && b.g && /^#/.test(bg)) bg = mixHex(bg, shadeOf(b.g));
     if (b.g || b.i) { sticker(ctx, b, x, y, MARK_COL[b.tone] && !/^k-/.test(b.tone) ? MARK_COL[b.tone] : STICK.test(b.tone || 'fauna') ? bg : C.cobalt); return; }
@@ -540,11 +693,11 @@
   /* each icon drawn once into a bitmap, then placed: hundreds can move at once */
   const SPR = new Map();
   function badgeSprite(b, dpr = 1) {
-    const key = [b.g, b.i, b.tone, b.d, b.tier || 0, b.fresh ? 1 : 0, b.n > 1 ? Math.min(3, b.n) : 0, b.carried ? 1 : 0, b.hot ? 1 : 0, b.dz || 0, dpr].join('|');
+    const key = [b.g, b.i, b.tone, b.d, b.tier || 0, b.fresh ? 1 : 0, b.n > 1 ? Math.min(3, b.n) : 0, b.carried ? 1 : 0, b.hot ? 1 : 0, b.dz || 0, b.fold == null ? '' : b.fold, b.v == null ? '' : b.v, dpr].join('|');
     let sp = SPR.get(key); if (sp) return sp;
     const size = Math.ceil((b.d || 22) + (b.tier ? 34 : 26)); const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(size * dpr);
     const x = cv.getContext('2d'); x.scale(dpr, dpr); badge(x, { ...b, a: 1 }, size / 2, size / 2);
-    sp = { cv, size }; SPR.set(key, sp); while (SPR.size > 320) SPR.delete(SPR.keys().next().value);   /* bounded: a phone's memory is small, and every zoom makes new sizes */
+    sp = { cv, size }; SPR.set(key, sp); while (SPR.size > 640) SPR.delete(SPR.keys().next().value);   /* bounded: a phone's memory is small, and every zoom makes new sizes */
     return sp;
   }
   /* how each kind of life moves: small, true to its kind, never far from where it was seen.
@@ -676,5 +829,5 @@
     ctx.setLineDash([]); ctx.restore(); ctx.restore();
   }
 
-  window.DA_MARKS = { C, ICONS, GLYPHS, WORDS, KINDS, KEY, TONES, STILL, GROUP, GROUP_WORDS, toneOf, sprite, icon, glyph, pin, printer, pulse, cluster, label, lattice, badge, badgeSprite, motion, heroMotion, radar, jelly, jellySVG };
+  window.DA_MARKS = { C, ICONS, GLYPHS, WORDS, KINDS, KEY, TONES, STILL, GROUP, GROUP_WORDS, toneOf, sprite, icon, glyph, pin, printer, pulse, cluster, label, lattice, badge, badgeSprite, creature, pixelSprite, foldRate, CREATURES, KCOL, HERO_N: 20, variantOf, heroArtOf, motion, heroMotion, radar, jelly, jellySVG };
 })();

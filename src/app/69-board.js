@@ -12,7 +12,7 @@ function loadFabric() {
   if (!fabLoad) fabLoad = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'vendor/fabric.min.js'; s.onload = () => res(window.fabric); s.onerror = () => { fabLoad = null; rej(new Error('fabric')); }; document.head.appendChild(s); });
   return fabLoad;
 }
-const BOARD_PROPS = ['daId', 'daFrom', 'daTo', 'daKind', 'daMix'];
+const BOARD_PROPS = ['daId', 'daFrom', 'daTo', 'daKind', 'daMix', 'daTpl', 'daPick'];
 const uid = p => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 /* the boards: the first carries over a board kept before there were several */
 const BOARDS = (() => { const b = store.get('da.boards.v1', null); if (Array.isArray(b) && b.length) return b; const old = store.get('da.board.v1', null); if (old && old.json) store.set('da.board.b1', old); const first = [{ id: 'b1', n: 'BOARD 01', at: Date.now() }]; store.set('da.boards.v1', first); return first; })();
@@ -29,10 +29,10 @@ function saveBoard(say) {
   if (!store.set('da.board.' + boardId, { v: BOARD_V, json, ...(boardId === 'b00' ? { ex: 'edit', at: Date.now() } : {}) })) saveFull(); else if (say) toast('SAVED');
 }
 /* one step back: the board as it was before the last change */
-async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
+async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); tplFix(); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['zoom', 'search', 'ZOOM'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['lock', 'anchor', 'LOCK'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -60,7 +60,7 @@ async function showBoard(on) {
 async function loadBoard() {
   if (boardId === 'b00') await ensureExample(); else if (tplDue(boardId)) await ensureTemplate(boardId);
   cv.clear(); HIST.length = 0; const k = boardOf(boardId); histLast = k && k.json ? JSON.stringify(k.json) : ''; if (k && k.json) await new Promise(r => cv.loadFromJSON(k.json, r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' });
-  exFrame(); cv.renderAll();
+  tplFix(); exFrame(); cv.renderAll();
 }
 /* BOARD 00 is looked at, not moved, unless the approval page has it open to editing; and it is framed whole in the view */
 /* the board's view: three sizes (the key, or the wheel between them); its bare ground dragged moves it about, the page never
@@ -139,6 +139,8 @@ function tplObjects(f) {
   /* the four boxes and the notes beside them fit a desk's screen beside the device */
   box('W', 10, 60); box('I', 360, 60); box('S', 10, 520); box('H', 360, 520);
   let y = 16; for (const k of ['HOW']) { const [t, d] = T[k] || []; if (!t) continue; const c = card(k === 'HOW' ? 'note' : 'codec', d ? `${t}\n${d}` : t, 712, y, k === 'HOW' ? { width: 220, fontSize: 18 } : { width: 220, fontSize: 16 }); y += c.getScaledHeight() + 10; }
+  /* the template is the board's ground: it cannot be moved or deleted, only shown or hidden with its key */
+  objs.forEach(o => o.set({ daTpl: true, selectable: false, evented: false, hoverCursor: 'default' }));
   return objs;
 }
 /* laid if it should be; true when it was. The board as kept is read after the wait for Fabric, and written in the same breath,
@@ -153,6 +155,18 @@ async function ensureTemplate(id) {
   /* what a first visit made sits in W, what we know, in a row */
   objs.forEach((o, i) => { const sc = 96 / (o.width || 96); Object.assign(o, { left: 22 + (i % 3) * 104, top: 150 + Math.floor(i / 3) * 260, scaleX: sc, scaleY: sc }); });
   store.set('da.board.' + id, { v: BOARD_V, json: { version: f.version, objects: [...T, ...objs] } }); done(); return true;
+}
+/* the template on a board as it was kept: fixed in place, and shown or hidden as that board was left. A template laid before
+   this knew itself is found by its dashed blue boxes and their titles, and the words written in them */
+const TPLHIDE = new Set(store.get('da.tplhide.v1', []));
+function tplFix() {
+  if (!cv) return 0; const T = tplWords(); const words = new Set(Object.values(T).flatMap(([t, d]) => [t, d, d ? `${t}\n${d}` : t]).filter(Boolean)); let n = 0;
+  for (const o of cv.getObjects()) {
+    const was = o.daTpl || (o.daKind === 'section' && o.stroke === '#8FA9C4') || (o.fill === '#8FA9C4' && o.type === 'textbox') || (o.type === 'textbox' && words.has(o.text));
+    if (!was) continue; n++; o.set({ daTpl: true, selectable: false, evented: false, hoverCursor: 'default', visible: !TPLHIDE.has(boardId) });
+  }
+  const b = $('#board [data-bt="tpl"]'); if (b) { b.setAttribute('aria-pressed', String(!!n && !TPLHIDE.has(boardId))); b.disabled = !n; }
+  return n;
 }
 /* a card is one piece of editable text on its own clear plate: double-click to rewrite it */
 function textCard(f, id, kind, text, x, y, o = {}) {
@@ -188,14 +202,20 @@ function photoCard(url, id, x, y, w, to) {
 /* a picture laid on the active board from anywhere: onto the canvas if it is drawn, else into the board as kept */
 /* a picture made small enough to keep on a board in this browser */
 async function thumbOf(url, w = 240) { const im = await loadImage(url, /^https?:/.test(url) && !url.startsWith(location.origin)); const k = Math.min(1, w / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82); }
-async function addToBoard(url, kind = 'receipt', w = 220) {
+/* what SELECT has put on the board, by its key; and one of them taken off again, with its strings */
+const boardPicks = () => new Set(cv ? cv.getObjects().map(o => o.daPick).filter(Boolean) : ((boardOf(boardId) || {}).json || { objects: [] }).objects.map(o => o.daPick).filter(Boolean));
+function boardUnpick(key) {
+  if (!cv) return false; const os = cv.getObjects().filter(o => o.daPick === key); if (!os.length) return false;
+  for (const o of os) { cv.remove(o); for (const l of cv.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) cv.remove(l); } cv.discardActiveObject(); cv.renderAll(); saveBoard(false); return true;
+}
+async function addToBoard(url, kind = 'receipt', w = 220, pick = '') {
   await workBoard(); if (await ensureTemplate(boardId) && cv) await loadBoard(); const id = uid('a'); const im = await loadImage(url, false); const k = w / im.width;
-  if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
+  if (cv) { await new Promise(res => window.fabric.Image.fromURL(url, img => { const p = free(); img.set({ left: p.x, top: p.y, daId: id, daKind: kind, ...(pick ? { daPick: pick } : {}) }); img.scaleToWidth(w); cv.add(img); cv.renderAll(); saveBoard(false); res(); })); return id; }
   const kept = boardOf(boardId) || {}; const json = kept.json || { version: '5.3.0', objects: [] }; json.objects = json.objects || [];
   const n = json.objects.filter(o => o.daKind && o.daKind !== 'link').length;
   /* on the first board, laid with its template, what arrives before it is opened goes into W, what we know, in a row */
   const inW = TPLD.has(boardId); const m = json.objects.filter(o => o.daKind && !['link', 'section', 'note', 'fig', 'codec'].includes(o.daKind)).length; const k2 = inW ? 96 / im.width : k;
-  json.objects.push({ type: 'image', version: '5.3.0', originX: 'left', originY: 'top', left: inW ? 22 + (m % 3) * 104 : 40 + (n % 4) * 270, top: inW ? 150 + Math.floor(m / 3) * 260 : 40 + Math.floor(n / 4) * 230, width: im.width, height: im.height, scaleX: k2, scaleY: k2, src: url, crossOrigin: null, daId: id, daKind: kind });
+  json.objects.push({ type: 'image', version: '5.3.0', originX: 'left', originY: 'top', left: inW ? 22 + (m % 3) * 104 : 40 + (n % 4) * 270, top: inW ? 150 + Math.floor(m / 3) * 260 : 40 + Math.floor(n / 4) * 230, width: im.width, height: im.height, scaleX: k2, scaleY: k2, src: url, crossOrigin: null, daId: id, daKind: kind, ...(pick ? { daPick: pick } : {}) });
   store.set('da.board.' + boardId, { v: BOARD_V, json }); return id;
 }
 /* any board as a picture, drawn apart from the page, on white: for the press */
@@ -304,6 +324,8 @@ async function notesIn(md) {
 }
 async function boardTool(k) {
   if (k === 'exsend') { sendExample(); return; }
+  /* the template shown or hidden, and kept so for this board */
+  if (k === 'tpl') { const c0 = await showBoard(true); if (!c0) return; if (!c0.getObjects().some(o => o.daTpl)) { tick(600); return; } if (TPLHIDE.has(boardId)) TPLHIDE.delete(boardId); else TPLHIDE.add(boardId); store.set('da.tplhide.v1', [...TPLHIDE]); c0.discardActiveObject(); tplFix(); c0.renderAll(); snd.tick(TPLHIDE.has(boardId) ? 900 : 1500); return; }
   if (k === 'zoom' || k === 'lock') { const c0 = await showBoard(true); if (!c0) return; if (k === 'zoom') boardZoomStep(); else { bLock = !bLock; exFrame(true); $('#board').classList.toggle('pinned', bLock); const b = $('#board [data-bt="lock"]'); if (b) b.setAttribute('aria-pressed', String(bLock)); } tick(bLock ? 900 : 1500); return; }
   if (exLocked() && k !== 'out') { await workBoard(); }
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();
@@ -315,7 +337,7 @@ async function boardTool(k) {
   if (k === 'pencil') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = '#F2F6FF'; c.freeDrawingBrush.width = 2; $('#board [data-bt="pencil"]').classList.toggle('on', c.isDrawingMode); snd.tick(1500); return; }
   if (k === 'out') { pickMenu($('#board [data-bt="out"]'), [{ k: 'png', n: 'PNG', ic: icon('camera', 'sm') }, { k: 'pdf', n: 'PDF', ic: icon('note', 'sm') }], it => boardOut(it.k)); return; }
   if (k === 'add') { openPick('board'); return; }
-  if (k === 'delete') { const all = c.getActiveObjects(); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
+  if (k === 'delete') { const all = c.getActiveObjects().filter(o => !o.daTpl); if (!all.length) return; for (const o of all) { c.remove(o); for (const l of c.getObjects('line')) if (l.daFrom === o.daId || l.daTo === o.daId) c.remove(l); } c.discardActiveObject(); }
   if (k === 'save') { saveBoard(true); return; }
   if (k === 'undo') { undoBoard(); return; }
   c.renderAll(); saveSoon(); snd.tick(1500);

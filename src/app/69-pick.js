@@ -14,7 +14,9 @@ const PICK_W = { X: 'EXAMPLE', S: 'STORY', p: 'POSTER', R: 'SONG', T: 'CARD', c:
 const pickTabs = () => (simple() ? [PICK_TABS[2], PICK_TABS[1]] : PICK_TABS);
 function pickBody() {
   const t = PICK.tab, strip = PICK.to === 'strip';
-  const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-label="${esc(tip)}">${art}${t === 'made' && PICK_W[k] ? `<i class="pk-kw" aria-hidden="true">${PICK_W[k]}</i>` : ''}</button></li>`;
+  /* on the board, what is already on it shows as chosen; pressed again it comes off */
+  const onB = PICK.to === 'board' && typeof boardPicks === 'function' ? boardPicks() : new Set();
+  const it = (k, id, art, tip, cls = '') => `<li><button type="button" class="pk-it${cls}${onB.has(`${k}:${id}`) ? ' chosen' : ''}" data-pk-k="${k}" data-pk-id="${esc(String(id))}" aria-pressed="${onB.has(`${k}:${id}`)}" aria-label="${esc(tip)}">${art}${t === 'made' && PICK_W[k] ? `<i class="pk-kw" aria-hidden="true">${PICK_W[k]}</i>` : ''}</button></li>`;
   const img = (src, extra = '') => `<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer"${extra}>`;
   /* first in every tab: words of one's own, and a photograph of one's own, onto whatever SELECT is wired to */
   const own = `${it('txt', '', '<b class="pk-aa">Aa</b>', 'Words, of one\'s own', ' ic own')}${it('img', '', icon('camera'), 'A photograph of one\'s own', ' ic own')}`;
@@ -72,7 +74,8 @@ let pickFrom = null;
 const selWireEl = (() => { const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); el.setAttribute('class', 'sel-wire'); el.setAttribute('aria-hidden', 'true'); el.style.display = 'none'; document.body.appendChild(el); return el; })();
 /* SELECT is never open without its wire: when the key it hangs from is gone (the page drawn again, another page, the device
    turned over), the wire moves to the SELECT key of the device now in front; with no device that takes a piece, it closes */
-const PICK_KEYS = '#view [data-pick], #view [data-tp="pick"], #board:not([hidden]) [data-bt="add"], #zine:not([hidden]) [data-zt="add"]';
+/* it hangs only from the main device's own key: the toolbars' ADD keys open it, but its wire goes to the device */
+const PICK_KEYS = '#view [data-pick], #view [data-tp="pick"]';
 const seen = el => !!el && el.isConnected && el.offsetParent !== null;
 function selWire() {
   const sh = $('#pick'); const box = sh && $('#pick .sel-in'); const open = !!box && !sh.hidden;
@@ -87,8 +90,8 @@ function selWire() {
 addEventListener('resize', selWire); addEventListener('scroll', selWire, true);
 /* and checked as pages change under it */
 setInterval(() => { const sh = $('#pick'); if (sh && !sh.hidden) selWire(); }, 300);
-/* whatever key opens it, the wire starts there */
-document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-pick], [data-tp="pick"], [data-zt="add"], [data-bt="add"]'); if (t) pickFrom = t; }, true);
+/* the device's key it was opened by, or the device's own when a toolbar's ADD opened it */
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-pick], [data-tp="pick"], [data-zt="add"], [data-bt="add"]'); if (!t) return; pickFrom = t.matches('[data-zt="add"], [data-bt="add"]') ? ($$(PICK_KEYS).find(seen) || null) : t; }, true);
 /* a picture for any of them, for the board or the receipt */
 async function pickURL(k, id) {
   if (k === 'X') return exampleZineImage();
@@ -121,14 +124,16 @@ async function pickPut(k, id, btn) {
   if (k === 'img') { if (PICK.to === 'strip') $('#zine-file').click(); else if (PICK.to === 'board') $('#board-file').click(); else { const f = $('#wf-photo'); if (f) f.click(); else tick(600); } return; }
   if (btn) { btn.classList.add('put'); setTimeout(() => btn.classList.remove('put'), 500); if (PICK.to === 'strip') flyToStrip(btn); }
   if (PICK.to === 'strip') {
-    if (k === 'stk') { const st = stickNow()[+id]; if (!st) return; if (st.w) await faceReady(FACES[st.f || 0]); placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.w ? 130 : st.j ? 90 : 70); if (st.j) snd.jelly(0.3); }
+    if (k === 'stk') { const st = stickNow()[+id]; if (!st) return; if (st.w) await faceReady(FACES[st.f || 0]); placeOnPage(sticker({ ...st, col: ZCOL }), 'sticker', st.w ? 130 : st.j ? 90 : 70, false, stickerColour(st)); if (st.j) snd.jelly(0.3); }
     else if (k === 'pk') placeOnPage(PACKS[+id], 'sticker', 90, true);
     else if (k === 'wild') { const u = await pickURL(k, id); if (u) placeOnPage(u, 'sticker', 96, true); else tick(600); }
     else await pieceOn(k, id);
   } else {
+    /* chosen already on the board: taken off again */
+    if (PICK.to === 'board' && typeof boardUnpick === 'function' && boardUnpick(`${k}:${id}`)) { pickRender(); snd.tick(900); return; }
     const u = await pickURL(k, id); if (!u) { tick(600); return; }
     const big = /^(X|S|p|T|R)$/.test(k);
-    if (PICK.to === 'board') await addToBoard(big ? await thumbOf(u, 360) : u, k === 'stk' || k === 'pk' ? 'sticker' : 'art', big ? 200 : 110);
+    if (PICK.to === 'board') { await addToBoard(big ? await thumbOf(u, 360) : u, k === 'stk' || k === 'pk' ? 'sticker' : 'art', big ? 200 : 110, `${k}:${id}`); pickRender(); }
     else { WDRAFT.photo = await thumbOf(u, 700); store.set('da.wish.v1', WDRAFT); refreshPanel(); }
   }
   tick(1500);

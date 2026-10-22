@@ -121,7 +121,7 @@ function renderView() {
   const cov = $('#cover'); if (cov) cov.replaceChildren();
   jrShow();
   if (k === 'radio') { bindOutlook(); askHeroPhotos(); if (S.open) startHeroes(); } else stopHeroes();
-  if (k === 'portfolio') { bindPortfolio(); fillDeck(); }
+  if (k === 'portfolio') { bindPortfolio(); fillDeck(); fillSongs(); }
   if (k === 'signs') { fillThumbs(); fillDeck(); }
   if (k === 'radio' && (T4.water || (S.wx.tmax || 0) >= HEAT.hot)) loadOverlays();
   growTA($('#wf-for')); jwMore($('#jw-for')); railFit();
@@ -205,18 +205,19 @@ function monthKinds() {
 }
 /* the outlook as a graphic equaliser: a column of lit segments for every month, as high as its heat, from orange through red
    to black at the extreme. Pressed, a month opens its readout: the month, its danger, its window, and the lives it reaches */
-const EQ_SEGS = 10, EQ_LIT = [2, 4, 6, 8, 10];
-const segTone = i => (i < 3 ? 0 : i < 5 ? 1 : i < 7 ? 2 : i < 9 ? 3 : 4);
+const EQ_SEGS = 11, EQ_LIT = [2, 4, 6, 8, 9];
+const segTone = i => Math.min(4, Math.floor(i / (EQ_SEGS / 5)));
 /* the equaliser moves with the music, not a wave of its own: each column lifts with the mix as loud as its month is hot, a cap
    above it rises and falls back slowly, and every note of the sweep pulses the extreme months */
 let eqRaf = 0, eqNote = 0; const EQK = new WeakMap();
 function eqTick() {
-  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); if (c) c.style.transform = ''; m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); const cp = m.querySelector('.eq-cap'); if (cp) cp.style.transform = ''; }); return; }
+  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); const base = +m.dataset.lit || 2; if (c) c.querySelectorAll('i:not(.eq-cap)').forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < base); el.classList.remove('snd'); el.classList.toggle('pk', idx === base - 1); }); EQK.delete(m); m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); }); return; }
   const lv = snd.level(), nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt;
-  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, c = m.querySelector('.eq-c'), cp = m.querySelector('.eq-cap'); const up = lv * w; const k = EQK.get(m) || { cap: 0 }; k.cap = Math.max(up, k.cap - 0.012); EQK.set(m, k);
-    if (c) c.style.transform = `scaleY(${(1 + up * 0.35).toFixed(3)})`;
-    /* and its colour: the music and El Niño drive the red further up the column */
-    m.style.setProperty('--hot', Math.min(1.4, (+m.dataset.heat || 0) + up * 0.9 + (prefs.nino ? 0.25 : 0)).toFixed(3)); if (cp) cp.style.transform = `translateY(${(-k.cap * 26).toFixed(1)}px)`;
+  /* each column the same height, in the same box: the heat of its month lights it to a level, the music lights more above
+     that as loud as the month is hot, never past the top; a peak holds a moment and falls back */
+  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, base = +m.dataset.lit || 2, c = m.querySelector('.eq-c'); const up = lv * w; const k = EQK.get(m) || { n: base, pk: base }; const n = Math.min(EQ_SEGS, base + Math.round(up * 4.2)); k.pk = Math.max(n, k.pk - 0.08);
+    if (c && (n !== k.n || Math.round(k.pk) !== k.pkr)) { const segs = c.querySelectorAll('i:not(.eq-cap)'); segs.forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < n); el.classList.toggle('snd', idx >= base && idx < n); el.classList.toggle('pk', idx === Math.round(k.pk) - 1); }); k.n = n; k.pkr = Math.round(k.pk); }
+    EQK.set(m, k); m.style.setProperty('--hot', Math.min(1.4, (+m.dataset.heat || 0) + up * 0.9 + (prefs.nino ? 0.25 : 0)).toFixed(3));
     if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } }
   eqRaf = requestAnimationFrame(eqTick);
 }
@@ -231,8 +232,8 @@ function eqHeat() {
 }
 function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const HT = eqHeat(); const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
-  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = Mo.lv >= 4 ? [12, 11, 10].map(i => `<i class="l t4 up" style="--p:${(i / EQ_SEGS).toFixed(2)}"></i>`).join('') : ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}" style="--p:${(i / EQ_SEGS).toFixed(2)}"></i>`;
-    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" data-lv="${Mo.lv}" data-heat="${HT[k].toFixed(3)}" style="--hot:${HT[k].toFixed(3)}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s"><i class="eq-cap" aria-hidden="true"></i>${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
+  const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}" style="--p:${(i / (EQ_SEGS - 1)).toFixed(2)}"></i>`;
+    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" data-lv="${Mo.lv}" data-lit="${EQ_LIT[Mo.lv] || 2}" data-heat="${HT[k].toFixed(3)}" style="--hot:${HT[k].toFixed(3)}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s"><i class="eq-cap" aria-hidden="true"></i>${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
@@ -621,7 +622,7 @@ document.addEventListener('click', e => {
    dragged it moves, a press or the close-up key takes it to twice its size and back; sliding to another lets it go */
 const GZ = { im: null, s: 1, x: 0, y: 0, pts: new Map(), pinch: null, drag: null };
 const gzIm = () => { const sl = $$('#gallery .gl-slide')[galleryAt]; return sl ? sl.querySelector('.gl-hero > img') : null; };
-function gzApply(ease) { const im = GZ.im; if (!im) return; im.style.transition = ease ? 'transform .22s ease-out' : 'none'; im.style.transform = GZ.s > 1.001 ? `translate(${GZ.x.toFixed(1)}px,${GZ.y.toFixed(1)}px) scale(${GZ.s.toFixed(3)})` : ''; im.classList.toggle('zoomed', GZ.s > 1.001); const tr = $('#gallery .gl-track'); if (tr) tr.classList.toggle('zooming', GZ.s > 1.001); }
+function gzApply(ease) { const im = GZ.im; if (!im) return; im.style.setProperty('transition', ease ? 'transform .22s ease-out' : 'none', 'important'); if (GZ.s > 1.001) im.style.setProperty('transform', `translate(${GZ.x.toFixed(1)}px,${GZ.y.toFixed(1)}px) scale(${GZ.s.toFixed(3)})`, 'important'); else im.style.removeProperty('transform'); im.classList.toggle('zoomed', GZ.s > 1.001); const tr = $('#gallery .gl-track'); if (tr) tr.classList.toggle('zooming', GZ.s > 1.001); }
 function gzReset(ease) { if (GZ.im) { GZ.s = 1; GZ.x = 0; GZ.y = 0; gzApply(ease); } GZ.im = null; GZ.pts.clear(); GZ.pinch = null; GZ.drag = null; }
 function gzTo(im, s1, px, py, ease) {
   if (GZ.im !== im) { gzReset(); GZ.im = im; }
@@ -660,7 +661,7 @@ function printerTop() {
     + `<figcaption class="pt-cap mono"><b>${esc(String(MASTER ? MASTER.n : 'novel.global').toUpperCase())}</b><span>${p.ready ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</span></figcaption>`
     + `<span class="pt-over mono" aria-live="polite">${fresh ? esc(PT.code || '') : ''}</span>`
     /* how to make one: a handbook to download, to build a printer of one's own and join the network */
-    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR DIRECT ACTION PRINTER</a></figure></section>`;
+    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR PRINTER</a></figure></section>`;
 }
 /* something sent to print: kept (the last one hangs from the slot), and played out now if the page is open, else on arrival */
 function ptPrint(img, code, status) {
@@ -680,12 +681,12 @@ function viewPortfolio() {
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
   /* the W.I.S.H.es made here are among the stories, marked as one's own: one module, not two */
-  return printerTop() + quickHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.filter(s => !s.ex).length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  return printerTop() + quickHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()
       + `</section>`
-    + `<details class="sec" id="sec-briefs"><summary>${labI('note', 'Briefs', BRIEFS.length)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
+    + songsHTML()
     + `<section class="sec tools" id="sec-tools">${labI('guide', 'Tools')}<div class="tool-pair">`
       + `<a class="tool" href="field.html" target="_blank" rel="noopener"><span class="tool-art" id="art-field" aria-hidden="true"></span><b>Field list</b><small class="mono">${FIELD.length}</small><i class="go">${icon('out')}</i></a>`
       + `<a class="tool guide" href="guide.html" target="_blank" rel="noopener"><span class="tool-art" id="art-guide" aria-hidden="true"></span><b>Guide</b><i class="go">${icon('out')}</i></a>`
@@ -694,6 +695,7 @@ function viewPortfolio() {
       + `</section>`
     + `<section class="sec" id="sec-set">${labI('motion', 'Settings')}<div class="set"><button type="button" class="tog lb" data-tip="Sound" aria-label="Sound" id="ix-sound" aria-pressed="${!!prefs.sound}">${icon('sound')}</button><button type="button" class="tog lb" data-tip="Motion" aria-label="Motion" id="ix-motion" aria-pressed="${!!prefs.motion}">${icon('motion')}</button><button type="button" class="tog lb" data-tip="Areas" aria-label="Areas" id="ix-areas" aria-pressed="${!!prefs.areas}" data-tip="Search areas for animals lost">${icon('lost')}</button><button type="button" class="tog lb" data-tip="Day · Dark" aria-label="Day or dark" id="ix-night" aria-pressed="${darkNow()}">${icon(darkNow() ? 'night' : 'day')}<small class="dd">${darkNow() ? 'NIGHT' : 'DAY'}</small></button><button type="button" class="tog lb" data-tip="Printers" aria-label="Printers" id="ix-printers" aria-pressed="${!!prefs.printers}" data-tip="W.I.S.H. printers at partner places, on the map">${icon('receipt')}</button>${HIDE.size ? `<button type="button" class="tog" id="ix-hidden" data-tip="Show every hidden cell again">${icon('hide')}<small>${HIDE.size} HIDDEN</small></button>` : ''}<label class="sig">${icon('sign')}<input id="ix-sign" type="text" maxlength="40" aria-label="Your name" placeholder="Name" value="${esc(S.me.by)}"></label><button type="button" class="tog lb" id="ix-journey" aria-label="The first visit again">${icon('restore')}</button><button type="button" class="tog lb rst" id="ix-reset" aria-label="Start again" data-tip="Start again">${icon('reset')}</button></div>`
       + `<div class="rst-w" id="rst-w" hidden role="alertdialog" aria-label="Start again"><p>${icon('alert')}<span>Everything made on this device goes: signals, boards, W.I.S.H.es, posters, the press. This cannot be undone.</span></p><div class="rst-a"><button type="button" class="key" id="rst-no" aria-label="Keep it">${icon('close')}</button><button type="button" class="key rst-yes" id="rst-yes">${icon('reset')}<b class="mono">CLEAR</b></button></div></div></section>`
+    + `<details class="sec" id="sec-briefs"><summary>${labI('note', 'Case studies', BRIEFS.length)}</summary><ol class="briefs">${BRIEFS.map(b => `<li><a href="${esc(b.url)}" target="_blank" rel="noopener" data-tip="${esc(cap(b.fact))}"><span class="bn mono">${b.id.slice(1)}</span><span class="nm"><b>${esc(b.t)}</b><small class="mono">${esc(b.after.toUpperCase())} · ${esc((b.city || '').toUpperCase())}${b.yr ? ` ${b.yr}` : ''} · ${THEMES[b.th] || ''}</small></span>${icon('out', 'sm')}</a></li>`).join('')}</ol></details>`
     + `<details class="sec" id="sec-src"><summary>${labI('quote', 'Sources')}</summary><ul class="det">${det.map(v => `<li>${esc(v)}</li>`).join('')}</ul></details>`;
 }
 /* a story as a line, as a forum lists them: a small photograph, the headline, the code */
