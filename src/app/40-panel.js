@@ -207,10 +207,23 @@ function monthKinds() {
    to black at the extreme. Pressed, a month opens its readout: the month, its danger, its window, and the lives it reaches */
 const EQ_SEGS = 10, EQ_LIT = [2, 4, 6, 8, 10];
 const segTone = i => (i < 3 ? 0 : i < 5 ? 1 : i < 7 ? 2 : i < 9 ? 3 : 4);
+/* the equaliser moves with the music, not a wave of its own: each column lifts with the mix as loud as its month is hot, a cap
+   above it rises and falls back slowly, and every note of the sweep pulses the extreme months */
+let eqRaf = 0, eqNote = 0; const EQK = new WeakMap();
+function eqTick() {
+  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); if (c) c.style.transform = ''; const cp = m.querySelector('.eq-cap'); if (cp) cp.style.transform = ''; }); return; }
+  const lv = snd.level(), nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt;
+  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, c = m.querySelector('.eq-c'), cp = m.querySelector('.eq-cap'); const up = lv * w; const k = EQK.get(m) || { cap: 0 }; k.cap = Math.max(up, k.cap - 0.012); EQK.set(m, k);
+    if (c) c.style.transform = `scaleY(${(1 + up * 0.35).toFixed(3)})`; if (cp) cp.style.transform = `translateY(${(-k.cap * 26).toFixed(1)}px)`;
+    if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } }
+  eqRaf = requestAnimationFrame(eqTick);
+}
+const eqWake = () => { if (!eqRaf) eqRaf = requestAnimationFrame(eqTick); };
+setInterval(eqWake, 1000);
 function monthStrip() {
   const ks = [...Array(OUT_N).keys()]; const now = nowK(); const span = k => k >= S.mo && k < S.mo + 3; const gs = monthKinds();
   const col = k => { const Mo = outMonth(k); const lit = EQ_LIT[Mo.lv] || 2; let segs = Mo.lv >= 4 ? '<i class="l t4 up"></i>'.repeat(3) : ''; for (let i = EQ_SEGS - 1; i >= 0; i--) segs += `<i class="${i < lit ? `l t${segTone(i)}` : ''}${i === lit - 1 ? ' pk' : ''}"></i>`;
-    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s">${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
+    return `<button type="button" class="mo d${Mo.lv} h${Mo.h}${span(k) ? ' on' : ''}${k === now ? ' now' : ''}${S.moRead === k ? ' read' : ''}" data-mo="${k}" data-lv="${Mo.lv}" aria-pressed="${S.moRead === k}" data-tip="${MON[Mo.m]} ${Mo.y} · ${DEG[Mo.lv]}"><span class="eq-c" style="--d:${(k * 0.17).toFixed(2)}s"><i class="eq-cap" aria-hidden="true"></i>${segs}</span><b class="mono">${MON[Mo.m].charAt(0)}</b></button>`; };
   return `<div class="mstrip eq" style="--n:${OUT_N}">${(CONFIG.FEATURES || {}).time ? `<button type="button" class="t-play" data-time aria-pressed="${timeOn()}" aria-label="Time">${icon(timeOn() ? 'pause' : 'play', 'sm')}</button>` : ''}<div class="ms-m" role="group" aria-label="Months">${ks.map(col).join('')}</div></div>`
     + (S.moRead != null ? readout(S.moRead, gs[S.moRead]) : '');
 }
@@ -512,7 +525,7 @@ function showGallery(on) {
   /* the example's zine is made once a visit; until then the muse waits in its place */
   if (ps.some(x => x.ex && !x.img)) exampleZineImage().then(u => { if (u && !$('#gallery').hidden && S.view === 3) showGallery(true); });
   const art = x => (x.img ? `<img src="${x.img}" alt="" draggable="false">` : `<i class="gl-wait" aria-hidden="true">${M.jellySVG('currentColor', 'transparent', 48)}</i>`);
-  /* each poster's own card, tucked beside it */
+  /* a carousel of pairs: each poster's own card, the noticing and its connections, standing beside it at full size, the poem's art */
   const pair = x => { const c = !x.ex && deck().find(v => v.id === 'p:' + x.id); return c ? `<div class="gl-pair">${cardBtn(c)}</div>` : ''; };
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}${pair(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
@@ -527,7 +540,7 @@ function showGallery(on) {
 const cardKindW = c => (c.kind === 'fig' ? 'CONSTELLATION' : String(M.KINDS[c.g] || (c.kind === 'poster' ? 'POSTER' : 'LIFE')).toUpperCase());
 const cardBack = c => `<b>${esc(String(c.name || '').toUpperCase())}</b><span>${cardKindW(c)}</span>${c.kind === 'life' && THREAT[c.g] ? `<small>${esc(THREAT[c.g])}</small>` : ''}${c.kind === 'poster' && cardIntel(c) ? `<small>${esc(cardIntel(c))}</small>` : ''}<i>№ ${String(c.n + 1).padStart(3, '0')}</i>`;
 const cardBtn = c => `<button type="button" class="gc" data-gc="${esc(c.id)}" aria-label="${esc(c.name || 'A card')}"><span class="gc-in"><img class="gc-f" data-card-g="${esc(c.id)}" alt=""><span class="gc-b mono">${cardBack(c)}</span></span></button><button type="button" class="gc-go" data-gc-open="${esc(c.id)}" aria-label="Open the card">${icon('next', 'sm')}</button>`;
-function cardImgs() { (async () => { for (const im of $$('#gallery img[data-card-g]:not([src])')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })(); }
+function cardImgs() { (async () => { for (const im of $$('#gallery img[data-card-g]:not([src])')) { const c = deck().find(v => v.id === im.dataset.cardG); if (!c) continue; try { const u = await cardURL(c, im.closest('.gl-pair') ? 6 : 2); if (im.isConnected) im.src = u; } catch (e) { /* left blank */ } } })(); }
 /* the cards beside the screen: the lives and the constellations (a poster's own card stands with it, in the screen) */
 function galleryCards() {
   const g = $('#gallery'); if (!g || g.hidden) return;
@@ -586,15 +599,15 @@ document.addEventListener('click', e => {
   const a = e.target.closest('[data-gl]'); const p = wallOf()[galleryAt]; if (!a || !p) { const gv = e.target.closest('[data-go-view]'); if (gv) setView(+gv.dataset.goView); return; }
   if (a.dataset.gl === 'prev') { galleryGo(galleryAt - 1); return; }
   if (a.dataset.gl === 'next') { galleryGo(galleryAt + 1); return; }
-  if (a.dataset.gl === 'zoom' && phone()) { galleryFull(); tick(1600); return; }
-  if (a.dataset.gl === 'zoom' && p.img) { const im = gzIm(); if (im) { if (GZ.im === im && GZ.s > 1.001) gzReset(true); else gzTo(im, 2, null, null, true); tick(1600); } return; }
+  /* the close-up key: the pair full screen, on any screen; there the wheel, a pinch or a press brings the piece closer */
+  if (a.dataset.gl === 'zoom') { galleryFull(); tick(1600); return; }
   if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
   if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
 /* close up inside the same screen, never a second window: the wheel or a pinch scales the piece about where it points,
    dragged it moves, a press or the close-up key takes it to twice its size and back; sliding to another lets it go */
 const GZ = { im: null, s: 1, x: 0, y: 0, pts: new Map(), pinch: null, drag: null };
-const gzIm = () => { const sl = $$('#gallery .gl-slide')[galleryAt]; return sl ? sl.querySelector('.gl-hero img') : null; };
+const gzIm = () => { const sl = $$('#gallery .gl-slide')[galleryAt]; return sl ? sl.querySelector('.gl-hero > img') : null; };
 function gzApply(ease) { const im = GZ.im; if (!im) return; im.style.transition = ease ? 'transform .22s ease-out' : 'none'; im.style.transform = GZ.s > 1.001 ? `translate(${GZ.x.toFixed(1)}px,${GZ.y.toFixed(1)}px) scale(${GZ.s.toFixed(3)})` : ''; im.classList.toggle('zoomed', GZ.s > 1.001); const tr = $('#gallery .gl-track'); if (tr) tr.classList.toggle('zooming', GZ.s > 1.001); }
 function gzReset(ease) { if (GZ.im) { GZ.s = 1; GZ.x = 0; GZ.y = 0; gzApply(ease); } GZ.im = null; GZ.pts.clear(); GZ.pinch = null; GZ.drag = null; }
 function gzTo(im, s1, px, py, ease) {
@@ -603,9 +616,9 @@ function gzTo(im, s1, px, py, ease) {
   const r = im.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2; if (px == null) { px = cx; py = cy; }
   const qx = (px - cx) / GZ.s, qy = (py - cy) / GZ.s; GZ.x = px - cx + GZ.x - s1 * qx; GZ.y = py - cy + GZ.y - s1 * qy; GZ.s = s1; gzApply(ease);
 }
-document.addEventListener('wheel', e => { const im = e.target.closest && e.target.closest('#gallery .gl-hero img'); if (!im || (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !(GZ.im === im && GZ.s > 1.001))) return; e.preventDefault(); gzTo(im, (GZ.im === im ? GZ.s : 1) * Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY); }, { passive: false });
+document.addEventListener('wheel', e => { const im = e.target.closest && e.target.closest('#gallery .gl-hero > img'); if (!im || (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !(GZ.im === im && GZ.s > 1.001))) return; e.preventDefault(); gzTo(im, (GZ.im === im ? GZ.s : 1) * Math.exp(-e.deltaY * 0.0022), e.clientX, e.clientY); }, { passive: false });
 document.addEventListener('pointerdown', e => {
-  const im = e.target.closest && e.target.closest('#gallery .gl-hero img'); if (!im) return; if (GZ.im !== im) gzReset(); GZ.im = im; GZ.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
+  const im = e.target.closest && e.target.closest('#gallery .gl-hero > img'); if (!im) return; if (GZ.im !== im) gzReset(); GZ.im = im; GZ.pts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
   if (GZ.pts.size === 2) { const [a, b] = [...GZ.pts.values()]; GZ.pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: GZ.s }; GZ.drag = null; }
   else if (GZ.s > 1.001) { GZ.drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; im.setPointerCapture(e.pointerId); e.preventDefault(); }
 });

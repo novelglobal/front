@@ -247,13 +247,6 @@ details.sec[open]>summary .lab::after{content:" –"}
 .eq-c i{display:block;height:4px;background:rgba(20,20,18,.07)}
 .eq-c i.l{background:var(--deg0)}
 .eq-c i.t1{background:var(--deg1)}.eq-c i.t2{background:var(--deg2)}.eq-c i.t3{background:var(--deg3)}.eq-c i.t4{background:var(--deg4)}
-.mo:not(.on) .eq-c i.l{opacity:.62}
-.mo.hp .eq-c i.l{opacity:.42}
-.mo.on.hp .eq-c i.l{opacity:.7}
-/* the top segment flickers a little, as a level meter does */
-.mo .eq-c i.pk{animation:lvl 2.6s ease-in-out infinite;animation-delay:var(--d)}
-@keyframes lvl{0%,100%{opacity:1}45%{opacity:.55}55%{opacity:.9}}
-.still .mo .eq-c i.pk{animation:none}
 .mo.d4 .eq-c i.t4:first-child,.mo.d4 .eq-c i.pk{position:relative}
 .mo.d4 .eq-c i.pk::after{content:'\2020';position:absolute;left:50%;top:-11px;transform:translateX(-50%);font:500 9px/1 var(--mono);color:var(--deg4)}
 .mo b{font:500 9px var(--mono);text-align:center;color:var(--grey-text)}
@@ -982,9 +975,7 @@ a.sig-line{text-decoration:none;color:inherit}
 .lyr{grid-template-columns:112px 26px 1fr 26px 64px}
 .lyr-m{width:26px;height:28px;display:grid;place-items:center;color:var(--ink);border:1px solid color-mix(in srgb,var(--ink) 22%,transparent)}
 .lyr-m .i{width:13px;height:13px}
-body.on-air .eq-c{animation:lift 1.8s ease-in-out var(--d, 0s) infinite;transform-origin:50% 100%}
-@keyframes lift{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.14)}}
-@media (prefers-reduced-motion:reduce){body.on-air .eq-c{animation:none}}
+body.on-air .eq-c{transform-origin:50% 100%;transition:transform .08s linear}
 
 /* ───────── SIGNALS: the board over the map, and the field book beside it ───────── */
 #board{position:fixed;z-index:6;top:0;left:0;bottom:0;right:var(--page);background:#141412 radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px) 0 0/22px 22px}
@@ -1601,7 +1592,7 @@ body.rec .ph{display:none}
 .qp-paper textarea{display:block;width:100%;min-height:150px;padding:0;border:0;resize:vertical;background:transparent;color:#141412;font:500 16px/1.45 var(--mono);outline:none}
 .qp-paper textarea::placeholder{color:#9A978C}
 .qp-ph{position:relative;margin:0 0 12px;display:grid;justify-items:center;gap:6px}
-.qp-ph img{display:block;max-width:100%;filter:grayscale(1) contrast(1.15)}
+.qp-ph img{display:block;max-width:100%}
 .qp-x{position:absolute;top:4px;right:4px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:rgba(252,251,247,.9);color:#141412}
 .qp-sz{width:100%;accent-color:#141412}
 .qp-cam{position:absolute;left:12px;bottom:12px;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;color:#141412;box-shadow:inset 0 0 0 1px rgba(20,20,18,.25);cursor:pointer}
@@ -2200,7 +2191,7 @@ html.night .visor.mod .vs-body{background:var(--grain),linear-gradient(180deg,rg
 .vs-cam{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;cursor:pointer;color:#1F2A20;box-shadow:inset 0 0 0 1.5px rgba(31,42,32,.55)}
 .vs-cam .i{width:17px;height:17px}
 .vs-ph{position:relative;margin-right:auto}
-.vs-ph img{display:block;height:54px;width:auto;max-width:120px;object-fit:cover;filter:grayscale(1) contrast(1.15) sepia(.25) hue-rotate(40deg);box-shadow:0 0 0 1.5px rgba(31,42,32,.6)}
+.vs-ph img{display:block;height:54px;width:auto;max-width:120px;object-fit:cover;box-shadow:0 0 0 1.5px rgba(31,42,32,.6)}
 .vs-phx{position:absolute;top:-8px;right:-8px;display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#1F2A20;color:#CBD4C3;cursor:pointer}
 .vs-phx .i{width:11px;height:11px}
 .vs-keys{display:flex;align-items:center;justify-content:center;gap:16px;margin:18px 0 0}
@@ -2720,7 +2711,7 @@ body.veiled .jr-sonar{display:none}
 .jr-light.big{background:radial-gradient(circle at 50% 55%,rgba(255,255,255,.8),rgba(160,255,232,.5) 42%,rgba(20,184,156,0) 82%);animation-duration:2.3s}
 @keyframes jlight{0%{opacity:0}16%{opacity:1}100%{opacity:0}}
 .jr-burst{position:fixed;inset:0;z-index:71;pointer-events:none;overflow:hidden;color:#7FFFE0}
-.jr-j{position:absolute;left:var(--x);bottom:-140px;width:calc(70px * var(--s));height:calc(70px * var(--s));opacity:0;filter:drop-shadow(0 0 12px rgba(127,255,224,.75));animation:jrise 4.8s cubic-bezier(.3,.1,.3,1) var(--d) both}
+.jr-j{position:absolute;left:var(--x);bottom:-140px;width:calc(70px * var(--s));height:calc(70px * var(--s));opacity:0;filter:drop-shadow(0 0 12px rgba(127,255,224,.75));animation:jrise 9.5s cubic-bezier(.35,.1,.35,1) var(--d) both}
 .jr-j svg{display:block;width:100%;height:100%}
 @keyframes jrise{0%{transform:translate(0,0) scale(.55);opacity:0}12%{opacity:1}55%{transform:translate(calc(var(--w) * -1),-60vh) scale(.95)}100%{transform:translate(var(--w),calc(-100vh - 220px)) scale(1);opacity:0}}
 /* the device that has just come up rises into place */
@@ -2744,7 +2735,7 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .simple-r .rd-k .kn-ic .i{width:12px;height:12px}
 .simple-r .rd-nino{top:12px;left:14px}
 .simple-r .rn-tag{top:12px;left:56px}
-.simple-r .h-screw.a{left:9px;bottom:9px}.simple-r .h-screw.b{left:46%;bottom:8px}
+.simple-r .h-screw.a{left:9px;bottom:9px}.simple-r .h-screw.b{display:none}
 .simple-r .dev.radio.upg:not(.mod){max-width:356px;padding-right:30px;padding-bottom:30px}
 
 /* W.I.S.H., the front: the intention device, the radio's size, over the map. A handheld in smoked jade: its grip on one side,
@@ -2798,7 +2789,7 @@ body.jr-in .jr-dev{animation:jup 1s cubic-bezier(.2,1.25,.4,1) both}
 .jr.fold .jr-r{filter:drop-shadow(0 10px 18px rgba(0,0,0,.45))}
 .jr.fold .jr-r img{height:46px;max-height:none;object-fit:cover;object-position:top;cursor:pointer;box-shadow:none;clip-path:polygon(0 0,100% 0,100% 84%,94% 100%,88% 84%,82% 100%,76% 84%,70% 100%,64% 84%,58% 100%,52% 84%,46% 100%,40% 84%,34% 100%,28% 84%,22% 100%,16% 84%,10% 100%,4% 84%,0 96%);transform-origin:50% 0;animation:jroll .3s cubic-bezier(.3,1.3,.5,1) both}
 @keyframes jroll{0%{transform:rotate(-1.2deg) scaleY(2.6);opacity:.5}100%{transform:rotate(-1.2deg);opacity:1}}
-@media (min-width:1200px){.jr.fold{align-items:flex-start}}
+.jr.fold .jr-r{position:fixed;top:var(--ft,40px);left:var(--fx,50%);transform:translateX(-50%)}
 @media (prefers-reduced-motion:reduce){.jr.fold .jr-r img{animation:none}}
 .jr-sg{display:flex;align-items:center;gap:12px;min-height:0}
 .jr-tab{position:relative;display:grid;justify-items:center;align-content:center;gap:6px;width:40px;height:96px;padding:0;border:0;border-radius:0 16px 16px 0;cursor:pointer;color:#0E8F84;background:rgba(255,255,255,.95);box-shadow:0 8px 22px rgba(0,0,0,.32);transition:transform .15s}
@@ -2844,7 +2835,13 @@ html.night .jr-act{background:rgba(18,28,30,.94);color:#E6F4F0}html.night .jr-ac
 .tp-paper{position:absolute;left:18px;right:18px;bottom:6px;height:30px;background:repeating-linear-gradient(180deg,transparent 0 9px,rgba(20,24,28,.22) 9px 10.5px) 0 4px/62% 100% no-repeat,linear-gradient(180deg,#FFFFFF,#F1EFE8);box-shadow:0 -1px 3px rgba(0,0,0,.18);clip-path:polygon(0 18%,5% 8%,10% 18%,15% 6%,20% 16%,25% 5%,30% 15%,35% 6%,40% 17%,45% 7%,50% 16%,55% 5%,60% 15%,65% 7%,70% 17%,75% 6%,80% 16%,85% 6%,90% 17%,95% 7%,100% 16%,100% 100%,0 100%)}
 .jp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px}
 .jp-keys{display:grid;gap:8px}
-.simple-p .jp-aa{width:40px;height:40px;border-radius:9px;background:#16A89A;font:700 15px/1 var(--sans)}
+/* the keys: a photograph of one's own (words are typed on the receipt itself), take back, closer */
+.jp-keys{grid-template-columns:repeat(2,36px);gap:6px!important}
+.simple-p .jp-img{width:36px;height:36px;border-radius:9px;background:#16A89A;color:#fff}
+.simple-p .jp-img .i,.simple-p .jp-zoom .i{width:18px;height:18px}
+.simple-p .jp-zoom{width:36px;height:36px;border-radius:9px}
+/* the tie on the left side loops outward, to the left */
+.simple-p .h-tie{transform:scaleX(-1)!important}
 .jp-sel{position:relative;display:block;height:78px;padding:0;border:0;border-radius:7px;cursor:pointer;background:#F7F2E6;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08),0 1px 0 rgba(255,255,255,.6),0 6px 14px rgba(0,0,0,.4);transform:rotate(-1.4deg);transition:transform .12s}
 .jp-sel:hover{transform:rotate(-.6deg) translateY(-1px)}
 .jp-sel:active{transform:rotate(-1.4deg) translateY(2px)}
@@ -2997,9 +2994,39 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
   .tab-s{font-size:10px!important;letter-spacing:.06em;opacity:.8}
 }
 @media (max-width:759px){
-  /* the receipt rolled up rests just above the device, clear of its grip; at the lip the device's screen and keys take no touch */
-  .jr.fold{bottom:max(var(--dock,70px),calc(100dvh - var(--dev-top,50dvh) + 40px))}
+  /* at the lip the device's screen and keys take no touch */
   .jr.fold .jr-r{flex:0 0 auto}
   .jr.fold .jr-r img{width:min(60vw,250px);max-width:none}
   body.pane-main[data-view="signals"][data-face="front"] .simple-w :is(.vs-i,.vs-sg,.vs-make){pointer-events:none}
 }
+/* on a desk the sticker packs show a thin bar to say there are more along */
+@media (pointer:fine){.pk-packs{scrollbar-width:thin;scrollbar-color:rgba(127,255,224,.45) transparent;cursor:grab}.pk-packs::-webkit-scrollbar{height:4px}.pk-packs::-webkit-scrollbar-thumb{background:rgba(127,255,224,.45);border-radius:2px}}
+/* ───────── v0.07 the showcase as a carousel of pairs: the card (what was noticed and its connections) and the poster (its poem's
+   art) side by side at one height, the card a tarot's length; the close-up key takes the pair full screen on any screen ───────── */
+.gl-slide .gl-hero{gap:clamp(10px,3%,28px)!important}
+.gl-slide .gl-hero>img{max-height:78%!important;max-width:58%!important}
+.gl-pair{order:-1;flex:0 0 auto!important;align-self:center!important;height:78%!important;width:auto!important;aspect-ratio:3/5;margin:0!important;transform:none!important}
+.gl-pair .gc{width:100%;height:100%;display:block}
+.gl-pair .gc-in,.gl-pair .gc-f{width:100%;height:100%;object-fit:contain}
+.gl-pair .gc-go{bottom:6px;right:6px}
+.gallery.full .gl-pair{display:block!important;height:86%!important}
+.gallery.full .gl-slide .gl-hero>img{max-height:86%!important;max-width:60%!important}
+@media (max-width:759px){.gl-slide .gl-hero{gap:8px!important}.gl-pair{height:auto!important;width:38%!important;max-height:78%}.gl-slide .gl-hero>img{max-width:56%!important}.gallery.full .gl-pair{height:auto!important;width:40%!important}}
+/* the equaliser's caps: a small bar above each column that the music throws up and lets fall; the extreme months flash on each note */
+.eq-c{position:relative}
+.eq-cap{position:absolute!important;left:0;right:0;top:-6px;height:2px!important;background:var(--deg2)!important;opacity:.85;transition:transform .06s linear}
+.mo.d4 .eq-cap{background:var(--deg3)!important}
+.mo.d1 .eq-cap{background:#0E8F84!important}
+.mo.hit .eq-c i.l{animation:eqhit .26s ease-out}
+@keyframes eqhit{0%{filter:brightness(1.9) saturate(1.3)}100%{filter:none}}
+.simple-p .jp-undo{width:36px!important;height:36px!important}
+/* a link's song: a round key with a jellyfish ring, low on the left over the map, and a small keep key on its shoulder */
+.song-k{position:fixed;z-index:30;left:16px;bottom:calc(var(--dock,0px) + 56px);display:flex;align-items:flex-start;gap:4px}
+.song-k[hidden]{display:none}
+.sk-play{position:relative;display:grid;place-items:center;width:52px;height:52px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#06110F;background:radial-gradient(circle at 35% 30%,#B9FFF0,#4FD6BC 60%,#14907E);box-shadow:0 8px 18px rgba(0,0,0,.45),inset 0 -3px 0 rgba(0,0,0,.18)}
+.sk-play .i{width:20px;height:20px}
+.sk-play.on{background:radial-gradient(circle at 35% 30%,#FFE2B5,#FF9A2E 60%,#B85A00)}
+.sk-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(127,255,224,.9);pointer-events:none;animation:nextring 2.2s ease-out infinite}
+.sk-play.on .sk-ring{display:none}
+.sk-keep{display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:50%;cursor:pointer;color:#E9EEF0;background:#2B3135;box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.still .sk-ring{animation:none;opacity:.8}

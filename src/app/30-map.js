@@ -113,7 +113,7 @@ function placeRadar(lat, lng) {
   if (simple() && prefs.journey < 1) jRadio();
 }
 /* a double tap ties instead of zooming while a cell or a marker is open */
-map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') e.preventDefault(); });
+map.on('dblclick', e => { if (S.mode === 'ping' || S.mode === 'place') { e.preventDefault(); return; } const h = life.hit(e.point.x, e.point.y, false, true); if (h && h.kind === 'tribe') { e.preventDefault(); selectTribe(h.id); } });
 let hoverT = 0, hoverKey = null, hoverLast = null;
 function hoverAt(e) {
   const h = life.hit(e.point.x, e.point.y, true); const canvas = map.getCanvas();

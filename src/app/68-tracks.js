@@ -322,3 +322,28 @@ function openRadioLink() {
 }
 /* an earlier build kept a track of one's own here; its store goes */
 try { indexedDB.deleteDatabase('da.tracks'); } catch (e) { /* none */ }
+/* ───────── a link's song: a QR on a receipt, a code, a mix sent. Opened, its song plays in the background at the first touch
+   (a browser lets nothing sound before one), round and round, the figure tied there and the lives around it, without leaving
+   the page it opened on; its key floats over the map to stop it and start it again, and a small key beside it keeps the place
+   and its layers among the loops ───────── */
+const LSONG = { armed: false, on: false, timer: 0 };
+function linkSongKey() {
+  let k = $('#song-k'); if (!k) { k = document.createElement('div'); k.id = 'song-k'; k.className = 'song-k'; k.innerHTML = `<button type="button" class="sk-play" data-lsong aria-pressed="false" aria-label="This link's song">${icon('play')}<i class="sk-ring" aria-hidden="true"></i></button><button type="button" class="sk-keep" data-lsong-keep aria-label="Keep this song">${icon('plus', 'sm')}</button>`; document.body.appendChild(k); }
+  k.hidden = !LSONG.armed; const b = k.querySelector('[data-lsong]'); b.setAttribute('aria-pressed', String(LSONG.on)); b.classList.toggle('on', LSONG.on); b.querySelector('svg.i').outerHTML = icon(LSONG.on ? 'pause' : 'play');
+}
+function linkSong(on) {
+  clearTimeout(LSONG.timer); LSONG.on = !!on;
+  if (on) {
+    snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); }
+    const round = () => { if (!LSONG.on) return; const seq = strings.song() || []; const end = seq.length ? Math.max(...seq.map(n => n.at)) - performance.now() : 0; LSONG.timer = setTimeout(round, Math.max(4000, end + 2000)); };
+    round();
+  }
+  linkSongKey();
+}
+const linkArm = () => { LSONG.armed = true; linkSongKey(); };
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-lsong]')) { linkSong(!LSONG.on); return; }
+  if (e.target.closest('[data-lsong-keep]')) { const m = mixNow(); LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); toast('KEPT · LOOPS'); snd.tick(1900); }
+});
+/* the first touch on a page a link opened starts its song, unless that touch is on the song's own key */
+addEventListener('pointerup', e => { if (!LSONG.armed || LSONG.on || LSONG.started || (e.target.closest && e.target.closest('#song-k'))) return; LSONG.started = true; linkSong(true); }, true);

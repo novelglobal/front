@@ -296,6 +296,11 @@ async function fetchSightings(force) {
       const q2 = new URLSearchParams(q); q2.set('iconic_taxa', 'Aves,Mammalia,Reptilia,Amphibia,Actinopterygii,Mollusca,Arachnida');
       for (let page = 1; page <= 2; page++) { const r2 = await fetch(`${CONFIG.INAT_API}/observations?${q2}&page=${page}`, { headers: { Accept: 'application/json' } }); if (!r2.ok) break; const j2 = await r2.json(); all.push(...(j2.results || [])); if ((j2.total_results || 0) <= page * 200) break; }
     } catch (e) { /* the first list is enough */ }
+    /* mammals are seen least: the last year of them, apart, two pages (possums, flying-foxes, bats, rakali, foxes, echidnas) */
+    try {
+      const q3 = new URLSearchParams(q); q3.set('iconic_taxa', 'Mammalia'); q3.set('d1', isoDay(new Date(Date.now() - 365 * 864e5)));
+      for (let page = 1; page <= 2; page++) { const r3 = await fetch(`${CONFIG.INAT_API}/observations?${q3}&page=${page}`, { headers: { Accept: 'application/json' } }); if (!r3.ok) break; const j3 = await r3.json(); all.push(...(j3.results || [])); if ((j3.total_results || 0) <= page * 200) break; }
+    } catch (e) { /* the lists before are enough */ }
     const ids = new Set(); const uniq = all.filter(r => r && !ids.has(r.id) && ids.add(r.id));
     const obs = uniq.map(compact).filter(Boolean); const t = Date.now();
     if (!store.set('da.obs.v3', { t, obs })) store.set('da.obs.v3', { t, obs: obs.slice(0, 250) });

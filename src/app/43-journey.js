@@ -44,9 +44,10 @@ function jDone(quiet) {
   if (S.open && !S.mode) { headBar(); renderView(); }
 }
 function jBurst() {
-  const el = document.createElement('div'); el.className = 'jr-burst'; el.setAttribute('aria-hidden', 'true'); const r = seeded(String(Date.now()));
-  el.innerHTML = Array.from({ length: 12 }, (_, i) => `<i class="jr-j" style="--x:${Math.round(4 + r() * 88)}%;--d:${(i * 0.16 + r() * 0.3).toFixed(2)}s;--s:${(0.6 + r() * 0.9).toFixed(2)};--w:${Math.round(r() * 40 - 20)}px">${M.jellySVG('currentColor', 'rgba(127,255,224,.16)', 64)}</i>`).join('');
-  document.body.appendChild(el); setTimeout(() => el.remove(), reduced() ? 1800 : 5600);
+  /* one jellyfish, slow: it rises from the foot of the screen, pulsing, and is gone off the top */
+  const el = document.createElement('div'); el.className = 'jr-burst'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `<i class="jr-j" style="--x:calc(50% - 60px);--d:.2s;--s:1.7;--w:14px">${M.jellySVG('currentColor', 'rgba(127,255,224,.16)', 64)}</i>`;
+  document.body.appendChild(el); setTimeout(() => el.remove(), reduced() ? 1800 : 10000);
 }
 
 /* ───────── the next thing to touch says so with light alone: a soft sonar ring rising from it. On the bare map, where life
@@ -101,11 +102,12 @@ function jRadio() {
 }
 /* W.I.S.H.'s front stands over the map: there, once everything is open as on a first visit, what is touched is what is noticed */
 const wishOverMap = () => S.open && S.view === 1 && faceOf(1) === 'front' && !S.mode;
-/* what was touched on the map: a place of the human ecology is a location noticed (a life goes through select). On a first
-   visit from any page it has reached; once everything is open, on W.I.S.H.'s front */
+/* what was touched on the map: a life goes through select, and only a life (a sighting, or a record of one's own) makes a
+   receipt, since only a life has its El Niño ahead; a place of the human ecology is tied to the life W.I.S.H. holds, and
+   with none held it is only named. On a first visit from any page it has reached; once everything is open, on W.I.S.H.'s front */
 function jTap(h) {
   if (!h || (simple() ? prefs.journey < 1 : !wishOverMap())) return false;
-  if (h.kind === 'place') { const p = life.place(h.id); if (!p) return false; if (S.view === 1 && JR.sel && JR.sel.k === 'life') return jTie(p); return jPick(jSelPlace(p), [p._x, p._y]); }
+  if (h.kind === 'place') { const p = life.place(h.id); if (!p) return false; if (S.view === 1 && JR.sel && JR.sel.k === 'life') return jTie(p); life.hover(h); tick(1100); return true; }
   if (h.kind === 'new') return true;
   return false;
 }
@@ -113,7 +115,7 @@ function jTap(h) {
 /* ───────── something noticed: kept as the receipt will need it, since the map's own records come and go, and W.I.S.H. opens
    over the map to hold it. The first time, its tab flies into the rail first ───────── */
 function jPick(sel, at) {
-  if (!sel || (simple() && prefs.journey < 1)) return false;
+  if (!sel || sel.k !== 'life' || (simple() && prefs.journey < 1)) return false;
   const first = simple() && prefs.journey < 2; JR.sel = sel; if (first) JR.want = '';
   /* the suggestions taken up stay while they still fit what is held */
   JR.acts = first ? [] : (JR.acts || []).filter(k => jActs().some(a => a.k === k)); saveJR(); hintIt = null; life.hover(null); $('#tag').hidden = true;
@@ -186,6 +188,7 @@ function famArt(x, fam, harm, cx, cy, R) {
   else { dia(R, harm); if (!harm) { dia(R * 0.62, false); x.beginPath(); x.arc(cx, cy, R * 0.18, 0, Math.PI * 2); x.fill(); } }
   x.restore();
 }
+/* levels 2 or 4: inked for PRINT; 0: in colour, the photograph at its largest, for everything that is not printed */
 async function intelCanvas(sel, s, W = 384, levels = 2) {
   sel = sel || {}; const k = W / 384, pad = Math.round(16 * k); const p = s.pin || {};
   try { await document.fonts.load('700 20px Poppins'); await document.fonts.load('italic 400 12px Poppins'); await document.fonts.load('500 12px "IBM Plex Mono"'); } catch (e) { /* fallback type */ }
@@ -232,8 +235,8 @@ async function intelCanvas(sel, s, W = 384, levels = 2) {
   if (how.length) { y += Math.round(6 * k); for (const l of how) { x.font = mono(11.5, 600); x.fillText('>', pad, y); text(l, mono(11.5), Math.round(16 * k), pad + Math.round(14 * k)); y += Math.round(3 * k); } }
   y += pad; const textH = y;
   /* the head: the photograph as it prints, its credit under it; or the thing's own mark, large, in ink */
-  const src = sel.photo || (s.img ? sigSrc(s, false) : ''); let head = null; let headH = 0;
-  if (src) { headH = Math.round(W * 0.66); try { head = await bwCanvas(src, W, headH, levels); } catch (e) { head = null; } }
+  const col = !levels; const src = sel.photo || (s.img ? sigSrc(s, col) : ''); let head = null; let headH = 0;
+  if (src) { headH = Math.round(W * (col ? 0.78 : 0.66)); try { head = col ? await colourCanvas(src, W, headH) : await bwCanvas(src, W, headH, levels); } catch (e) { head = null; } }
   if (!head) headH = sel.k === 'life' ? Math.round(W * 0.42) : Math.round(W * 0.34);
   const credit = head && s.img ? figCredit(s) : ''; const creditH = credit ? Math.round(16 * k) : 0;
   const out = document.createElement('canvas'); out.width = W; out.height = headH + creditH + textH; const o2 = out.getContext('2d'); o2.fillStyle = '#fff'; o2.fillRect(0, 0, W, out.height); o2.fillStyle = '#000'; o2.textBaseline = 'top';
@@ -246,6 +249,7 @@ async function intelCanvas(sel, s, W = 384, levels = 2) {
   else M.glyph(o2, p.g || 'paw', W / 2, headH / 2, headH * 0.66, '#000');
   if (credit) { o2.font = mono(8.5); o2.fillText(credit, pad, headH + Math.round(4 * k)); }
   o2.drawImage(T, 0, 0, W, textH, 0, headH + creditH, W, textH);
+  if (col) return out;
   const id = o2.getImageData(0, 0, W, out.height); const d = id.data; for (let i = 0; i < d.length; i += 4) { const v = d[i] / 255; const q = levels === 2 ? (v < 0.55 ? 0 : 1) : Math.round(v * 3) / 3; d[i] = d[i + 1] = d[i + 2] = Math.round(q * 255); d[i + 3] = 255; }
   o2.putImageData(id, 0, 0); return out;
 }
@@ -356,13 +360,16 @@ let jrEl = null;
 let jrOpen = false;
 /* the receipt hangs from a bulldog clip: pressed, it rolls up into it, a strip of its head left showing, and the map is clear
    but for what is held; on a phone the device lowered to its lip rolls it up too. Kept for the visit only */
-let jrFold = false;
+let jrFold = false, jrPin = null;
 const jrFolded = () => jrFold || (phone() && pane === 'main');
 function jrFoldSet(on) { jrFold = !!on; if (!on && phone() && pane === 'main') setPane('page'); jrTabs(); snd.tick(on ? 1000 : 1600); }
 function jrTabs() {
   const n = (JR.acts || []).length, f = jrFolded(), op = jrOpen && !f;
   $$('[data-jtab]').forEach(b => { b.setAttribute('aria-expanded', String(op)); b.classList.toggle('open', op); b.classList.toggle('next', b.classList.contains('vs-sg') && !jrOpen && !n && !String(JR.want || '').trim()); const c = b.querySelector('.jt-n'); if (c) c.textContent = n ? String(n) : ''; });
   if (!jrEl) return; const was = jrEl.classList.contains('fold');
+  /* rolled up, it stays pinned where its head hung: the clip does not move, the receipt rolls up into it and drops from it */
+  if (f && !was) { const r = jrEl.querySelector('.jr-r').getBoundingClientRect(); if (r.width && r.height > 60) jrPin = { t: Math.round(r.top), x: Math.round(r.left + r.width / 2) }; }
+  if (jrPin) { jrEl.style.setProperty('--ft', `${jrPin.t}px`); jrEl.style.setProperty('--fx', `${jrPin.x}px`); }
   jrEl.classList.toggle('open', jrOpen); jrEl.classList.toggle('fold', f); const l = jrEl.querySelector('.jr-acts'); if (l) l.hidden = !jrOpen; const k = jrEl.querySelector('.jr-fold'); if (k) k.setAttribute('aria-expanded', String(!f));
   /* let down again: what is held is slid clear of it once the device is up */
   if (was && !f) { clearK = ''; setTimeout(() => requestAnimationFrame(() => jClear(true)), phone() && !reduced() ? 380 : 0); }
@@ -370,7 +377,7 @@ function jrTabs() {
 /* rolled up, the device's suggestions key lets the receipt down with its suggestions open, one tick */
 function jrToggle(on) { if (jrFolded()) { on = true; jrFold = false; if (phone() && pane === 'main') setPane('page'); } jrOpen = on == null ? !jrOpen : !!on; jrTabs(); snd.tick(jrOpen ? 1600 : 1000); }
 function jrShow() {
-  const on = wishOverMap() && (!simple() || (prefs.journey >= 2 && !!JR.sel));
+  const on = wishOverMap() && !!JR.sel && JR.sel.k === 'life' && (!simple() || prefs.journey >= 2);
   if (!jrEl) { if (!on) { jHeld(); return; } jrEl = document.createElement('div'); jrEl.className = 'jr'; jrEl.id = 'jr'; document.body.appendChild(jrEl); }
   jrEl.hidden = !on; jHeld(); if (!on) return;
   const nw = $('#view .simple-w .vs-now'); if (nw) nw.textContent = jNowW();
@@ -413,8 +420,8 @@ function jClear(soft) {
 let jpvN = 0;
 const jPreview = debounce(async () => {
   if (!jrEl || jrEl.hidden) return; const my = ++jpvN;
-  const cv = await intelCanvas(jSel(), jSignal(), 384, 2).catch(() => null); if (!cv || my !== jpvN || !jrEl || jrEl.hidden) return;
-  const im = jrEl.querySelector('.jr-r img'); if (!im) return; im.src = cv.toDataURL('image/png');
+  const cv = await intelCanvas(jSel(), jSignal(), 576, 0).catch(() => null); if (!cv || my !== jpvN || !jrEl || jrEl.hidden) return;
+  const im = jrEl.querySelector('.jr-r img'); if (!im) return; im.src = cv.toDataURL('image/jpeg', 0.9);
   (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(() => requestAnimationFrame(jClear));
 }, 220);
 const jWantSave = debounce(saveJR, 300);
@@ -439,7 +446,8 @@ let jMaking = false;
 async function jMake() {
   if (jMaking) return; const f = $('#jw-for'); const want = String(f ? f.value : JR.want || '').trim();
   if (!want && !(JR.acts || []).length) { nudge(f); tick(600); return; }
-  if (simple() && !JR.sel) { tick(600); return; }
+  /* a receipt is of a life: with none held, the map says where to touch */
+  if (!JR.sel || JR.sel.k !== 'life') { tick(600); jHint(); return; }
   jMaking = true;
   try {
     JR.want = want; const at = Date.now(); const s0 = jSignal(null, at); const sig = { ...s0, code: codeFor(`${at}|${s0.pin.lat}|${s0.pin.lng}|${s0.for || ''}|${S.me.dev}`) };
@@ -450,7 +458,7 @@ async function jMake() {
     tie(1); if (!first) snd.printer(700); jBoard(sig);
     /* handed on, as on a line: the receipt goes to PRINT, and W.I.S.H. is left clear for what is noticed next */
     JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; jrFold = false; clearK = ''; saveJR();
-    PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = 0; jFresh = true; if (!simple()) setFace(2, 'front');
+    PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = phone() ? 1 : 0; jFresh = true; if (!simple()) setFace(2, 'front');
     if (first) jGo(3); if (im) flyToTab(2, im);
     setTimeout(() => { setView(2); if (phone()) setPane('page'); }, reduced() ? 0 : 560);
   } finally { jMaking = false; }
@@ -459,7 +467,7 @@ async function jMake() {
 /* what is made goes on the board too, its receipt with any string tied in it, so the studio side of W.I.S.H. opens on the story
    so far */
 async function jBoard(s) {
-  try { const cv = await intelCanvas(s.jsel, s, 256, 2); await addToBoard(cv.toDataURL('image/png'), 'receipt', 200); } catch (e) { /* the board can wait */ }
+  try { const cv = await intelCanvas(s.jsel, s, 512, 0); await addToBoard(cv.toDataURL('image/jpeg', 0.88), 'receipt', 200); } catch (e) { /* the board can wait */ }
 }
 
 /* ───────── PRINT's receipt, on the strip: the intel at its head, the words typed under it on the paper itself, the code to
