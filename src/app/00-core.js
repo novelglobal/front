@@ -155,7 +155,7 @@ const snd = (() => {
     if (ctx.currentTime !== ctSeen) { ctSeen = ctx.currentTime; ctAt = now; return true; } return now - ctAt < 1500;
   }
   function rebuild() {
-    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear(); NZ.clear(); CK.clear();
+    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear(); NZ.clear(); CK.clear(); for (const k of Object.keys(FXB)) delete FXB[k];
     try { if (old && old.state !== 'closed') old.close().catch(() => {}); } catch (e) { /* gone */ }
   }
   setInterval(() => {
@@ -173,7 +173,11 @@ const snd = (() => {
         ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
         /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
         heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
-        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2; bus.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
+        const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2;
+        /* the tamer: no ding, squeak or honk gets through sharp. A dip where a squeak lives, and the very top let down */
+        const dip = ctx.createBiquadFilter(); dip.type = 'peaking'; dip.frequency.value = 2800; dip.Q.value = 1.1; dip.gain.value = -7;
+        const shelf = ctx.createBiquadFilter(); shelf.type = 'highshelf'; shelf.frequency.value = 4800; shelf.gain.value = -6;
+        bus.connect(dip); dip.connect(shelf); shelf.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
         mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon);
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
@@ -210,8 +214,21 @@ const snd = (() => {
   /* every sound leaves through a panner: mostly dry, a little into the room */
   function out(node, pan = 0, room = 1) {
     let n = node; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); node.connect(p); n = p; }
-    n.connect(bus); if (room) { const r = ctx.createGain(); r.gain.value = room; n.connect(r); r.connect(wet); }
+    const fx = fxNow && fxBus(fxNow); n.connect(fx ? fx.in : bus); const rm = room * (fx ? fx.room : 1); if (rm) { const r = ctx.createGain(); r.gain.value = rm; n.connect(r); r.connect(wet); }
   }
+  /* ───────── the three filters a layer can be heard through (the radio's knobs choose them): MIST, soft and close, every
+     edge rounded off; HALL, the note let go into a long dark hall, ethereal, a choir's room; DEPTH, under water, the note into
+     the dub echo and the low end only. Each takes the ding, the squeak and the honk out of whatever plays through it ───────── */
+  let fxNow = null; const FXB = {};
+  function fxBus(k) {
+    if (FXB[k]) return FXB[k]; const was = fxNow; fxNow = null;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.4; const g = ctx.createGain(); lp.connect(g); g.connect(bus); let rm = 1;
+    if (k === 'mist') { lp.frequency.value = 1100; g.gain.value = 1.05; rm = 0.8; }
+    else if (k === 'hall') { lp.frequency.value = 1900; g.gain.value = 0.55; rm = 2.6; const h = ctx.createGain(); h.gain.value = 0.9; lp.connect(h); h.connect(hall); }
+    else { lp.frequency.value = 560; g.gain.value = 1.2; rm = 0.5; const d = ctx.createGain(); d.gain.value = 0.7; lp.connect(d); d.connect(dubEcho()); }
+    fxNow = was; return (FXB[k] = { in: lp, room: rm });
+  }
+  const withFx = (k, fn) => { const was = fxNow; fxNow = k; try { return fn(); } finally { fxNow = was; } };
   /* a plucked string: a burst of noise through a short delay line that loses a little each pass */
   const KS = new Map();
   function string(freq, dur = 1.4, damp = 0.9965) {
@@ -327,12 +344,12 @@ const snd = (() => {
      the note and the chord, the chord alone, or the note alone */
   let dubIn = null;
   function dubEcho() {
-    if (dubIn) return dubIn;
+    if (dubIn) return dubIn; const was = fxNow; fxNow = null;
     dubIn = ctx.createGain(); const d = ctx.createDelay(2); d.delayTime.value = 0.375; const fb = ctx.createGain(); fb.gain.value = 0.5;
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 220; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1700;
     dubIn.connect(d); d.connect(hp); hp.connect(lp); lp.connect(fb); fb.connect(d);
     const o = ctx.createGain(); o.gain.value = 0.8; lp.connect(o); out(o, 0, 0.5);
-    return dubIn;
+    fxNow = was; return dubIn;
   }
   function dubV(f, t, v, pan, bright, danger, vi) {
     const k = (vi || 0) % 3;
@@ -355,6 +372,24 @@ const snd = (() => {
     const o = osc('sine', b * 2, t, t + 1.5); o.frequency.exponentialRampToValueAtTime(b, t + 0.35);
     const o2 = osc('triangle', b, t, t + 0.6); const g2 = ctx.createGain(); g2.gain.value = bright ? 0.22 : 0.12; o2.connect(g2);
     const e = ctx.createGain(); o.connect(e); g2.connect(e); env(e, t, 0.02, v * 3.2, 0.12, 1.15); out(e, pan * 0.4, 0.5);
+  }
+  /* ───────── after Boadicea (1987): no backing track, only what the hand finds. A choir's 'ah', low and wide, for a cluster
+     of lives; a depth charge, a sub that falls away into the echo, for a life in danger; a round low note for the rest ───────── */
+  function choirV(f, t, v, pan) {
+    let b = f; while (b > 220) b /= 2; while (b < 110) b *= 2; const end = t + 4.4;
+    const e = ctx.createGain(); const fm = [[700, 6, 1], [1150, 8, 0.5], [2600, 10, 0.16]].map(([fq, q, g]) => { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q; const gg = ctx.createGain(); gg.gain.value = g; bp.connect(gg); gg.connect(e); return bp; });
+    for (const [m, dt, g] of [[1, -9, 1], [1, 8, 1], [1.5, 3, 0.45], [0.5, 0, 0.5]]) { const o = osc('sawtooth', qn(b * m), t, end); o.detune.value = dt; vib(o, t, end, 4.4, b * m * 0.004, 0.6); const og = ctx.createGain(); og.gain.value = g; o.connect(og); fm.forEach(bp => og.connect(bp)); }
+    env(e, t, 0.9, v * 2.4, 0.9, 2.5); out(e, pan * 0.6, 2.2);
+  }
+  function depthV(f, t, v, pan) {
+    const o = osc('sine', 96, t, t + 3); o.frequency.exponentialRampToValueAtTime(34, t + 1.5); const e = ctx.createGain(); o.connect(e); env(e, t, 0.008, v * 4.2, 0.05, 2.3);
+    const th = ctx.createBufferSource(); th.buffer = noise(0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; const tg = ctx.createGain(); tg.gain.setValueAtTime(v * 3, t); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); th.connect(lp); lp.connect(tg); tg.connect(e); th.start(t);
+    out(e, pan * 0.2, 0.7); const s2 = ctx.createGain(); s2.gain.value = 0.45; e.connect(s2); s2.connect(dubEcho());
+  }
+  function boaV(f, t, v, pan, bright, danger, vi, cluster) {
+    if (danger) depthV(f, t, v, pan);
+    if (cluster) choirV(f, t + (danger ? SIX * 2 : 0), v * 0.8, pan);
+    if (!danger && !cluster) dubV(f, t, v * 0.8, pan, bright, false, 2);
   }
   /* COMMUNITY: dust on a record, and a breath of noise filtered round the note, falling */
   function dustV(f, t, v, pan, bright) {
@@ -407,15 +442,16 @@ const snd = (() => {
     /* a dry click for a press: at once, but on a note of the key, so a knob turned climbs the scale */
     tick(f = 1700) {
       buzz(8); if (!ready()) return;
-      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(), q = qn(f);
-      o.type = 'triangle'; o.frequency.setValueAtTime(q, t); o.frequency.exponentialRampToValueAtTime(q * 0.45, t + 0.035);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      /* low and round, a fingertip on wood: never above the E an octave over middle A */
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); let q = qn(f); while (q > 660) q /= 2;
+      o.type = 'sine'; o.frequency.setValueAtTime(q, t); o.frequency.exponentialRampToValueAtTime(q * 0.6, t + 0.04);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
       o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.06);
     },
     /* a knot's own sound: an animal's instrument, or a voice for the people; f is the string's own note */
     knot(spec, f = 330, at = 0, v = 1, pan = 0) { if (!ready()) return describe(spec).len; const t = onGrid(ctx.currentTime + at); room(t, true); return knotAt(spec, qf(f), t, v, pan); },
     /* a string tied: shorter strings ring higher */
-    pluck(len = 0.5, pan = 0, gain = 0.15) { buzz(8); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); play(string(qn(150 + (1 - clamp(len, 0, 1)) * 470), 2, 0.997), gain, t - ctx.currentTime, pan, 3600); },
+    pluck(len = 0.5, pan = 0, gain = 0.15) { buzz(8); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); play(string(qn(150 + (1 - clamp(len, 0, 1)) * 470), 2, 0.997), gain * 0.75, t - ctx.currentTime, pan, 1700); },
     /* a string cut: muted, low */
     snap(pan = 0) { buzz([4, 24, 4]); if (!ready()) return; play(string(98, 0.35, 0.95), 0.18, 0, pan, 1600); },
     /* every string at once, slowly, high to low */
@@ -424,7 +460,7 @@ const snd = (() => {
     song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = onGrid(ctx.currentTime + 0.06);
       for (const n of seq.slice(0, 180)) { const t = t0 + Math.round(n.t / SIX) * SIX; if (!room(t)) continue; if (n.spec) knotAt(n.spec, qf(n.f), t, n.v || 0.8, n.pan || 0); else play(string(qn(n.f), n.dur || 2, n.dc || 0.997), n.g || 0.09, t - ctx.currentTime, n.pan || 0, n.cut || 3600); } },
     /* a constellation born: four notes of the dub stab, rising, a sixteenth apart */
-    born() { buzz([6, 30, 6]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); [110, 130.81, 164.81, 220].forEach((f, i) => dubV(f, t + i * SIX, 0.04, (i - 1.5) * 0.3, true, false, 2)); },
+    born() { buzz([6, 30, 6]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); withFx('mist', () => [110, 130.81, 164.81, 220].forEach((f, i) => dubV(f, t + i * SIX, 0.04, (i - 1.5) * 0.3, true, false, 2))); },
     /* a cell reached by the sweep. spec: { g } a life, { fam } a place (its own small real sound). opt: v, pan, mood, bright
        (new), danger, vi (which voice) */
     ping(spec, f, opt = {}) {
@@ -433,8 +469,8 @@ const snd = (() => {
       const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
       /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
          a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */
-      const V = { dub: dubV, weight: dropV, dust: dustV, stab: stabV, burial: burialV, fog: breath }[md] || dubV;
-      if (spec.fam && md === 'fog') knotAt(spec, fq, t, v * 5, pan); else V(fq, t, v, pan, bright, opt.danger, opt.vi || 0);
+      const V = { dub: dubV, weight: dropV, dust: dustV, stab: stabV, burial: burialV, fog: breath, boa: boaV }[md] || dubV;
+      withFx(opt.fx || 'mist', () => { if (spec.fam && md === 'fog') knotAt(spec, fq, t, v * 5, pan); else V(fq, t, v, pan, bright, opt.danger, opt.vi || 0, opt.cluster); });
       return true;
     },
     /* a thermal head stepping: filtered noise in short strokes (the square swings the level from nothing to full, 38 a second),
@@ -442,23 +478,23 @@ const snd = (() => {
     printer(ms = 1200) {
       buzz([18, 36, 18, 36, 18, 36, 40]); if (!ready()) return;
       const t = ctx.currentTime, d = ms / 1000; const s = ctx.createBufferSource(); s.buffer = noise(d);
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.4;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 1.1;
       const g = ctx.createGain(); g.gain.value = 0.04; const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 38; const lg = ctx.createGain(); lg.gain.value = 0.04;
       const f = ctx.createGain(); f.gain.setValueAtTime(1, t + Math.max(0, d - 0.05)); f.gain.linearRampToValueAtTime(0, t + d);
       lfo.connect(lg); lg.connect(g.gain); s.connect(bp); bp.connect(g); g.connect(f); f.connect(bus); s.start(t); lfo.start(t); s.stop(t + d); lfo.stop(t + d);
     },
     /* a poster put up: the low A as a dub stab, and the sub falling under it */
-    horn() { buzz([40, 60, 120]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(55, t, 0.07, 0, true, false, 0); dropV(110, t + SIX * 2, 0.06, 0, false); },
+    horn() { buzz([40, 60, 120]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); depthV(55, t, 0.05, 0); withFx('hall', () => choirV(220, t + SIX * 2, 0.05, 0)); },
     /* the muse: one soft chord of the dub stab, high in the key */
-    jelly(pan = 0) { if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(220, t, 0.035, pan, true, false, 1); },
+    jelly(pan = 0) { if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); withFx('hall', () => choirV(220, t, 0.03, pan)); },
     /* the muse tapped: the low A and its fifth, swelling slowly and away */
     ship() { buzz([60, 80, 200]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.03); room(t, true); for (const [f, g] of [[55, 1], [82.41, 0.5], [110, 0.22]]) { const o = osc('sine', f, t, t + 3.4); const e = ctx.createGain(); o.connect(e); env(e, t, 0.7, 0.13 * g, 1.2, 1.4); out(e, 0, 0.6); } },
     /* the radar set down: two notes of the dub stab, the A and the E above it */
-    toot() { buzz([20, 40, 20]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); dubV(110, t, 0.05, -0.2, false, false, 2); dubV(164.81, t + SIX * 3, 0.05, 0.2, false, false, 0); },
+    toot() { buzz([20, 40, 20]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.02); room(t, true); withFx('mist', () => { dubV(110, t, 0.05, -0.2, false, false, 2); choirV(164.81, t + SIX * 3, 0.035, 0.2); }); },
     /* a step met: the dub stab rising, a note more the further along, in the same key as everything; never glass */
     reward(n = 1) {
       buzz([10, 30, 10, 30, 40]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.03); room(t, true); const F = [110, 130.81, 146.83, 164.81, 196, 220]; const k = Math.min(F.length, 1 + n);
-      for (let i = 0; i < k; i++) dubV(F[i], t + i * SIX * 2, 0.05, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2);
+      withFx('mist', () => { for (let i = 0; i < k; i++) dubV(F[i], t + i * SIX * 2, 0.05, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2); });
     },
     /* a gate passed on a first visit: one more note of a rising figure in A minor, the dub stab into its echo (the veil one,
        the radar two, W.I.S.H. three, PRINT four); everything open, the figure run through on the sixteenths to the high A,
@@ -466,8 +502,9 @@ const snd = (() => {
     gate(n = 1) {
       buzz(n >= 5 ? [12, 40, 12, 40, 60] : [8, 30, 8]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.04); room(t, true); const F = [110, 130.81, 164.81, 196, 220];
       const k = Math.min(n, 5), step = n >= 5 ? SIX : SIX * 2;
-      for (let i = 0; i < k; i++) dubV(F[i], t + i * step, 0.06, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2);
-      if (n >= 5) dropV(110, t + step * k, 0.07, 0, true);
+      withFx('hall', () => { for (let i = 0; i < k; i++) dubV(F[i], t + i * step, 0.06, (i - (k - 1) / 2) * 0.3, true, false, i === k - 1 ? 0 : 2); });
+      /* everything open: the choir comes in under the last note, and the depth charge falls under it */
+      if (n >= 5) { depthV(110, t + step * k, 0.06, 0); withFx('hall', () => choirV(220, t + step * (k - 1), 0.05, 0)); }
     },
     /* paper torn off */
     tear() {

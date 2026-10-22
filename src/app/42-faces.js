@@ -79,7 +79,8 @@ const SCREWS = '<i class="hack h-screw a" aria-hidden="true"></i><i class="hack 
 /* ───────── RADIO, the front: the smoked radio at half its height. The El Niño switch, the grille, play, a knob for each layer,
    in one row ───────── */
 const KNOB_A = [-135, -45, 45, 135];
-const knobPos = k => (trackOn(k) ? volStep(k) + 1 : 0);
+/* a knob is a layer's filter: off, then MIST, HALL, DEPTH; the level stays where it is */
+const knobPos = k => (trackOn(k) ? FXS.indexOf(fxOf(k)) + 1 : 0);
 /* the El Niño switch, on both faces of the radio: one setting, one speed */
 const ninoSwitch = () => `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`;
 function radioFront() {
@@ -88,13 +89,13 @@ function radioFront() {
     + `${knobsHTML()}${upMods()}${flipBtn()}</div></section>`;
 }
 /* a knob for each layer: off, then three levels, its ticks lit as far as it is turned, its layer's mark under it */
-const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
+const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" aria-valuetext="${p ? FXS[p - 1].toUpperCase() : 'OFF'}" data-tip="${L.w} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
   + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`;
 /* a knob turned: a click goes round, off, one, two, three; arrow keys step and stop at the ends */
 function turnKnob(k, d, stop) {
   const p0 = knobPos(k); let p = p0 + d; p = stop ? clamp(p, 0, 3) : (p + 4) % 4; if (p === p0) { tick(600); return; }
-  if (!p) setTrack4(k, false); else { prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[p - 1] }; savePrefs(); if (!trackOn(k)) setTrack4(k, true); }
-  const b = $(`#view [data-knob="${k}"]`); if (b) { b.style.setProperty('--a', `${KNOB_A[p]}deg`); b.setAttribute('aria-valuenow', String(p)); const li = b.closest('.rd-k'); li.classList.toggle('on', !!p); li.querySelectorAll('.kn-ticks b').forEach((x, n) => x.classList.toggle('on', n < p)); }
+  if (!p) setTrack4(k, false); else { prefs.fx = { ...(prefs.fx || {}), [k]: FXS[p - 1] }; savePrefs(); if (!trackOn(k)) setTrack4(k, true); }
+  const b = $(`#view [data-knob="${k}"]`); if (b) { b.style.setProperty('--a', `${KNOB_A[p]}deg`); b.setAttribute('aria-valuenow', String(p)); b.setAttribute('aria-valuetext', p ? FXS[p - 1].toUpperCase() : 'OFF'); b.dataset.tip = `${b.getAttribute('aria-label')} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}`; const li = b.closest('.rd-k'); li.classList.toggle('on', !!p); li.querySelectorAll('.kn-ticks b').forEach((x, n) => x.classList.toggle('on', n < p)); }
   snd.tick(800 + p * 320);
 }
 viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'); if (k) turnKnob(k.dataset.knob, 1, false); });
@@ -127,7 +128,7 @@ function wishDevice(back) {
     + `<label class="vs-i" data-tip="Intention">${back ? '<b class="vs-m wf-m" aria-hidden="true">I</b>' : ''}<textarea id="wf-for" rows="1" maxlength="90" autocomplete="off" spellcheck="false" aria-label="Intention" placeholder=" ">${esc(String(L.for || '').replace(/^[lce]:/, ''))}</textarea><i class="vs-cur" aria-hidden="true"></i></label><ol class="vs-sug" id="wf-sug" hidden></ol>`
     + (back ? `<ol class="vs-poem">${WKEYS.map(k => `<li data-tip="${esc(WISH[k][1])}"><b class="wf-m" aria-hidden="true">${k.toUpperCase()}</b><textarea id="wf-${k}" rows="2" maxlength="${SIG.line}" aria-label="${esc(WISH[k][0])}" placeholder="${esc(WISH[k][0])}" spellcheck="true">${esc(L[k] || '')}</textarea></li>`).join('')}</ol>`
       + `<label class="vs-by" data-tip="By"><b class="wf-m" aria-hidden="true">BY</b><input id="wf-by" type="text" maxlength="40" value="${esc(L.by || S.me.by || '')}" aria-label="By" spellcheck="false"></label>` : '')
-    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-pick="wish" aria-label="Select: art, songs, stickers, lives">${icon('plus')}</button><button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><label class="vs-cam" aria-label="A photograph: take one, or choose one">${icon('camera')}<input type="file" id="wf-photo" accept="image/*" hidden></label></div></div>`
+    + `<div class="vs-att">${photo}<button type="button" class="vs-cam vs-clr" data-pick="wish" aria-label="Select: art, songs, stickers, lives">${icon('plus')}</button><button type="button" class="vs-cam vs-clr" data-vs="clear" aria-label="Clear">${icon('close')}</button><input type="file" id="wf-photo" accept="image/*" hidden></div></div>`
     + `<div class="vs-keys"><button type="submit" class="vs-make make-b${String(L.for || '').trim() ? ' next' : ''}" aria-label="Make the W.I.S.H."><i class="vs-oval"></i><b>make</b></button></div>`
     + `${flipBtn()}</div></form></section>`;
 }
@@ -191,7 +192,7 @@ function printFront() {
   const stk = radiusSpecies(3).map((sp, i) => `<i class="jp-stk s${i}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy"></i>`).join('');
   return `<section class="sec front-p simple-p" id="sec-out"><div class="dev tepra jr-dev${upCls()}"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i>`
     + `<div class="jp-row"><button type="button" class="jp-sel" data-pick="strip" aria-label="Select: stickers, lives"><span class="jp-sheet" aria-hidden="true">${stk}<i class="jp-stk jelly">${M.jellySVG('#0F3B40', 'rgba(127,255,224,.55)', 30)}</i><i class="jp-peel"></i></span><i class="jp-plus" aria-hidden="true">${icon('plus')}</i></button>`
-    + `<span class="jp-keys"><button type="button" class="tp-k jp-img" data-tp="image" aria-label="A photograph of one's own, onto the receipt">${icon('camera')}</button><button type="button" class="tp-k jp-undo" data-tp="undo" aria-label="Undo: or take off what is chosen">${icon('undo')}</button><button type="button" class="tp-k jp-zoom" data-tp="zoom" aria-label="Closer: the receipt fitted, wide, close">${icon('search')}</button></span>`
+    + `<span class="jp-keys"><button type="button" class="tp-k jp-reset" data-tp="reset" aria-label="Start again: the receipt bare, as it came">${icon('close')}</button><button type="button" class="tp-k jp-undo" data-tp="undo" aria-label="Undo: or take off what is chosen">${icon('undo')}</button><button type="button" class="tp-k jp-zoom" data-tp="zoom" aria-label="Closer: the receipt fitted, wide, close">${icon('search')}</button></span>`
     + `<button type="button" class="print-k tp-prn${on.length ? ' on' : ''}${s ? ' next' : ''}" data-pout="send" aria-label="Print receipt">${icon('epson')}</button></div>`
     + `<button type="button" class="tp-i${on.length ? ' on' : ''}" data-prn aria-expanded="false" aria-label="The printer: its name and state"><i class="tp-led"></i></button><span class="tp-info jp-info${on.length > 1 ? ' many' : ''}" id="tp-info" hidden>${info}</span>`
     + `${upMods()}${flipBtn()}</div></section>`;

@@ -9,9 +9,9 @@
 /* the moods, turned round on each layer's key. Since the sound moved to one deep key at 120 BPM (brief 0.06, stage C) six are
    left: DUB, WEIGHT (a sub that drops), DUST, STAB, FOG and BURIAL. The others stay listed only so a radio link made with one
    still reads, and sound as the nearest deep one (MOOD_AS); new moods go at the end, since a link keeps a mood by its place */
-const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' }, dub: { w: 'DUB', ic: 'sound' }, dust: { w: 'DUST', ic: 'ground' }, stab: { w: 'STAB', ic: 'harm' } };
+const MOODS = { fog: { w: 'FOG', ic: 'dusk' }, rain: { w: 'RAIN', ic: 'rain' }, weight: { w: 'WEIGHT', ic: 'night' }, jelly: { w: 'JELLY', ic: 'jelly' }, burial: { w: 'BURIAL', ic: 'ghost' }, haunt: { w: 'HAUNT', ic: 'zanom' }, voodoo: { w: 'VOODOO', ic: 'candle' }, cheek: { w: 'CHEEKY', ic: 'star5' }, blown: { w: 'BLOWN', ic: 'flame' }, collective: { w: 'COLLECTIVE', ic: 'people' }, dub: { w: 'DUB', ic: 'sound' }, dust: { w: 'DUST', ic: 'ground' }, stab: { w: 'STAB', ic: 'harm' }, boa: { w: 'BOADICEA', ic: 'jelly' } };
 const MOOD_AS = { rain: 'dust', jelly: 'dub', haunt: 'stab', voodoo: 'stab', cheek: 'dust', blown: 'stab', collective: 'dub' };
-const MOOD_ON = ['dub', 'weight', 'dust', 'stab', 'fog', 'burial'];
+const MOOD_ON = ['boa', 'dub', 'weight', 'dust', 'stab', 'fog', 'burial'];
 const moodIs = m => (MOODS[m] ? MOOD_AS[m] || m : null);
 const moodOf = () => moodIs(prefs.mood) || 'fog';
 const F0 = 55, PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 15, 16];
@@ -45,13 +45,13 @@ function pingCell(it, first) {
   const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound || LOOP.on) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
   const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
   return snd.ping(o.pack ? (PACK_SPEC[o.pk] && PACK_SPEC[o.pk].fam ? PACK_SPEC[o.pk] : { g }) : { g }, F0 * partialOf(g || 'x') * (it.b.tone === 'flora' ? 2 : 1),
-    { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: Math.sin((it.sb || 0) * Math.PI / 180) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi) });
+    { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: Math.sin((it.sb || 0) * Math.PI / 180) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi), cluster: (it.pile || 0) >= 2, fx: fxOf(o.pack ? 'community' : 'life') });
 }
 function pingPlace(p) {
   if (!TRK.on.places || !prefs.sound || LOOP.on) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
   /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
   if (!p.cur && partialOf(p.n) % 3) return false; flashLayer(p.on ? 'pollution' : 'community');
-  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), vi: partialOf(p.n || p.fam) % 8, v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7 });
+  return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), vi: partialOf(p.n || p.fam) % 8, v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7, fx: fxOf(p.on ? 'pollution' : 'community') });
 }
 const playIcon = (id, on) => (id === 'life' ? icon('sound', 'sm') : icon(on ? 'pause' : 'play', 'sm'));
 function setTrack(id, on) {
@@ -92,7 +92,11 @@ const layerLvl = k => lvlOf(k);
 /* the radio as it first sounds, before a mood is turned: deep and slow, dub and ambient. LIFE a dub chord stab into tape echo,
    WATER a sub note that drops, COMMUNITY filtered dust and noise, POLLUTION a low detuned stab */
 const LM_DEF = { life: 'dub', community: 'dust', water: 'weight', pollution: 'stab' };
-const moodOfLayer = k => moodIs((prefs.lm || {})[k]) || moodIs(prefs.mood) || LM_DEF[k] || 'dub';
+/* a first visit hears LIFE after Boadicea: a choir for a cluster, a depth charge for a life in danger, a round low note for the rest */
+const moodOfLayer = k => moodIs((prefs.lm || {})[k]) || moodIs(prefs.mood) || (k === 'life' && simple() ? 'boa' : LM_DEF[k]) || 'dub';
+/* the filter each layer is heard through, as its knob is turned: MIST, HALL, DEPTH */
+const FXS = ['mist', 'hall', 'depth'];
+const fxOf = k => (FXS.includes((prefs.fx || {})[k]) ? prefs.fx[k] : 'mist');
 /* what each layer holds inside the radar now: a count, nothing more */
 function trackCount(k) {
   if (k === 'life') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist).length;
@@ -154,7 +158,7 @@ function flashLayer(k) {
 /* water: a drop; a pond or wetland lower, a fountain higher */
 function pingClimate(c) {
   if (!TRK.on.water || !prefs.sound || LOOP.on) return false; flashLayer('water');
-  return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: Math.sin((c.sb || 0) * Math.PI / 180) * 0.7 });
+  return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: Math.sin((c.sb || 0) * Math.PI / 180) * 0.7, fx: fxOf('water') });
 }
 /* a layer's volume, three steps: quiet, half, full */
 const VOLS = [0.18, 0.5, 1];
@@ -235,9 +239,9 @@ function loopTick() {
     const lvl = lvlOf(k); if (!trackOn(k) || lvl < 0.02) continue; const mood = moodOfLayer(k);
     for (const c of L.cells || []) {
       if (!crossed(c.b)) continue; const pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
-      if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8 }); }
-      else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * lvl, pan });
-      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * lvl, pan }); }
+      if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life') }); }
+      else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * lvl, pan, fx: fxOf('water') });
+      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * lvl, pan, fx: fxOf(k) }); }
       if (ok) flashLayer(k);
     }
   }
