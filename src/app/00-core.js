@@ -386,10 +386,18 @@ const snd = (() => {
     const th = ctx.createBufferSource(); th.buffer = noise(0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; const tg = ctx.createGain(); tg.gain.setValueAtTime(v * 3, t); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); th.connect(lp); lp.connect(tg); tg.connect(e); th.start(t);
     out(e, pan * 0.2, 0.7); const s2 = ctx.createGain(); s2.gain.value = 0.45; e.connect(s2); s2.connect(dubEcho());
   }
+  /* the knob a layer is heard through is its instrument in the mix: MIST ambient and close, the soft pluck, the choir for a
+     cluster, the depth charge for a life in danger; HALL ethereal, the choir on every note and air an octave above it; DEPTH
+     electro, a sub pulse under the note and the note an octave up into the dub echo. El Niño heats each: a breath of choir over
+     the mist, the octave of air always in the hall, a quick arpeggio over the depth */
   function boaV(f, t, v, pan, bright, danger, vi, cluster) {
+    const k = fxNow || 'mist', hot = !!prefs.nino;
+    if (k === 'hall') { choirV(f, t, v * 0.9, pan); if (cluster || hot) choirV(f * 2, t + SIX, v * 0.45, -pan); if (danger) depthV(f, t, v * 0.6, pan); return; }
+    if (k === 'depth') { depthV(f, t, v * 0.8, pan); dubV(f * 2, t + SIX, v * 0.6, pan, true, danger, 2); if (hot) { dubV(f * 3, t + SIX * 2, v * 0.35, -pan, true, false, 2); dubV(f * 4, t + SIX * 3, v * 0.25, pan, true, false, 2); } return; }
     if (danger) depthV(f, t, v, pan);
     if (cluster) choirV(f, t + (danger ? SIX * 2 : 0), v * 0.8, pan);
     if (!danger && !cluster) dubV(f, t, v * 0.8, pan, bright, false, 2);
+    if (hot) choirV(f, t + SIX * 2, v * 0.4, -pan);
   }
   /* COMMUNITY: dust on a record, and a breath of noise filtered round the note, falling */
   function dustV(f, t, v, pan, bright) {
