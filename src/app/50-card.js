@@ -477,8 +477,9 @@ async function fillWishFig(o) {
   /* the card turns over first; then the photograph develops */
   await new Promise(r => setTimeout(r, reduced() ? 0 : 420)); if (my !== wfN) return;
   for (let i = 0; i < 40 && !fig.clientWidth; i++) await new Promise(r => setTimeout(r, 25));
-  const W = fig.clientWidth || 320, H = Math.round(W * 0.75); const k = Math.min(2, devicePixelRatio || 1); const src = imgSrc(c, o.id, o, true);
-  try { const bw = await colourCanvas(src, Math.round(W * k), Math.round(H * k)); if (my !== wfN) return; cv.width = bw.width; cv.height = bw.height; cv.getContext('2d').drawImage(bw, 0, 0); cv.classList.remove('grey'); }
+  const W = fig.clientWidth || 320, H = Math.round(W * 0.75); const k = Math.min(2, devicePixelRatio || 1); const src = imgSrc(c, o.id, o, false);
+  /* the slip is what prints: its photograph in ink, as the printer will make it */
+  try { const bw = await bwCanvas(src, Math.round(W * k), Math.round(H * k), 2); if (my !== wfN) return; cv.width = bw.width; cv.height = bw.height; cv.getContext('2d').drawImage(bw, 0, 0); cv.classList.remove('grey'); }
   catch (e) {   /* a host that will not share its pixels: the photograph greyed by the browser instead */
     try { const im = await loadImage(src); if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); const sc = Math.max(cv.width / im.naturalWidth, cv.height / im.naturalHeight); x.drawImage(im, (cv.width - im.naturalWidth * sc) / 2, (cv.height - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); cv.classList.add('grey'); }
     catch (e2) { if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); x.fillStyle = '#E6E5DE'; x.fillRect(0, 0, cv.width, cv.height); M.glyph(x, lifeOf(o), cv.width / 2, cv.height / 2, cv.height * 0.6, '#141412'); }
