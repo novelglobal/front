@@ -470,6 +470,9 @@
      the ground; no disc, no white. Several seen together, a small pile of them; danger in the months ahead, a fine edge in red,
      or black at the extreme; rare, a gold spark; new, a red point */
   const STICK = /^k-|^fauna$|^flora$|^night$|^cold$|^hero$/;
+  /* the backboned: birds, mammals, reptiles, frogs and fish */
+  const VERT = new Set(['bird', 'mammal', 'reptile', 'water']);
+  const rgbaOf = (hex, a) => { const n = parseInt(String(hex).slice(1, 7), 16); return /^#[0-9a-f]{6}/i.test(hex) ? `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})` : `rgba(255,255,255,${a})`; };
   const MARK_COL = { hero: C.clay, story: C.clay, need: '#F2C14E', offer: C.teal, event: '#7C9CFF', injured: C.red, dead: '#2A2B2C', lost: '#FF6B5E', danger: C.orange, cold: '#9AA39D', hist: '#C9CFCB' };
   function edge16(ctx, parts, x, y, size, color, px) {
     if (!parts) return; const k = size / 16;
@@ -480,12 +483,18 @@
   function sticker(ctx, b, x, y, col) {
     const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)); const parts = b.i ? paths()[b.i] : gpaths()[b.g] || gpaths().paw; const quiet = b.tone === 'cold' || b.tone === 'hist';
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (b.tone === 'hist') ctx.globalAlpha *= 0.55;
+    /* a bird or an animal carries a soft light of its own colour under it, as the five in greatest need carry gold: it reads on
+       any ground, at a glance, without a disc */
+    const vert = VERT.has(GROUP[b.g]) && /^k-/.test(b.tone || '') && !quiet;
+    if (vert && b.tier < 2) { const R = s * 0.5 + 5, g1 = ctx.createRadialGradient(x, y, s * 0.12, x, y, R); g1.addColorStop(0, rgbaOf(col, 0.55)); g1.addColorStop(0.55, rgbaOf(col, 0.22)); g1.addColorStop(1, rgbaOf(col, 0)); ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill(); }
     if (b.tier >= 2) { const g0 = ctx.createRadialGradient(x, y, s * 0.3, x, y, s * 0.5 + 8); g0.addColorStop(0, 'rgba(242,193,78,.34)'); g0.addColorStop(1, 'rgba(242,193,78,0)'); ctx.fillStyle = g0; ctx.beginPath(); ctx.arc(x, y, s * 0.5 + 8, 0, TAU); ctx.fill(); }
     /* the pile: the same mark twice more behind it, deeper in colour */
     for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) { ctx.save(); ctx.globalAlpha *= 0.85; ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 3; draw16(ctx, parts, x + k * 2.6, y - k * 2.6, s, mixHex(col, -0.38), 1); ctx.restore(); }
     const dz = b.dz || (b.hot ? 3 : 0);
     if (dz >= 3) edge16(ctx, parts, x, y, s, dz >= 4 ? '#14110F' : '#E8402A', 1.1);
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; draw16(ctx, parts, x, y, s, quiet ? MARK_COL[b.tone] : col, 1.15); ctx.restore();
+    /* a bird or an animal: a fine light keyline round it, and a bolder line, so its shape holds at a small size */
+    if (vert) edge16(ctx, parts, x, y, s, 'rgba(255,255,255,.5)', 0.7);
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; draw16(ctx, parts, x, y, s, quiet ? MARK_COL[b.tone] : col, vert ? 1.4 : 1.15); ctx.restore();
     if (b.tier >= 1) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); };
       const k = Math.max(2.6, s * 0.17); sp(x - s * 0.46, y - s * 0.44, k); if (b.tier >= 2) sp(x - s * 0.62, y - s * 0.06, k * 0.6); }
     if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.42, y - s * 0.42, Math.max(2.2, d * 0.11), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); }

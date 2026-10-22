@@ -85,7 +85,9 @@ const life = (() => {
     const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || isFresh(o));
     const tier = o.hist ? 0 : tierOf(o, sub);
     if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, dz: deg >= 3 ? deg : 0, fresh };
-    return { tone: M.toneOf(g), g, d: d + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
+    /* birds and animals a little larger than the small lives, easy to find */
+    const vert = ['k-bird', 'k-mammal', 'k-reptile', 'k-water'].includes(M.toneOf(g));
+    return { tone: M.toneOf(g), g, d: (vert ? Math.round(d * 1.25) + 2 : d) + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
   function placeGlyph(p) { const k = PLACE_KINDS[p.kind] || PLACE_KINDS[0]; if (p.g) return p.g; if (p.tx) return glyphOf(p); if (k.f === 'flora') return 'plant'; return ['fauna', 'injured', 'dead', 'lost'].includes(k.f) ? 'paw' : null; }
@@ -280,6 +282,35 @@ const life = (() => {
     for (const [la, ln, r] of blobs) { const p = map.project([ln, la]); const rp = r / metresPerPixel(la); if (off(p.x, p.y, rp * 1.3)) continue; blob(ctx, p.x, p.y, rp, ((la * 7919 + ln * 104729) % TAU + TAU) % TAU); }
     ctx.fill(); ctx.restore();
   }
+  /* the water: each river along its own course as wide as its banks, each pond as its shape, a clear blue over the ground with
+     a fine light edge, as water catches the sky. Where the real water is not yet here, the config's few waters stand in */
+  /* drawn whole on a layer of its own, then laid down once, so where squares or waters overlap it is never darker */
+  let wcv = null;
+  function river(ctx, pts) {
+    const P = pts.map(([la, ln, w]) => { const q = map.project([ln, la]); return [q.x, q.y, Math.max(1.2, w / 2 / metresPerPixel(la))]; });
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y, h] of P) { x0 = Math.min(x0, x - h); y0 = Math.min(y0, y - h); x1 = Math.max(x1, x + h); y1 = Math.max(y1, y + h); }
+    if (x1 < 0 || y1 < 0 || x0 > W || y0 > H) return;
+    const L = [], R = [];
+    for (let i = 0; i < P.length; i++) { const a = P[Math.max(0, i - 1)], b = P[Math.min(P.length - 1, i + 1)]; let nx = -(b[1] - a[1]), ny = b[0] - a[0]; const n = Math.hypot(nx, ny) || 1; nx /= n; ny /= n; const [x, y, h] = P[i]; L.push([x + nx * h, y + ny * h]); R.push([x - nx * h, y - ny * h]); }
+    ctx.beginPath(); L.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); for (let i = R.length - 1; i >= 0; i--) ctx.lineTo(R[i][0], R[i][1]); ctx.closePath();
+    ctx.fill();
+    /* the ends rounded, so a creek does not stop square */
+    for (const k of [0, P.length - 1]) { ctx.beginPath(); ctx.arc(P[k][0], P[k][1], P[k][2], 0, TAU); ctx.fill(); }
+  }
+  function water(ctx) {
+    if (!wcv) wcv = document.createElement('canvas'); if (wcv.width !== Math.round(W * dpr) || wcv.height !== Math.round(H * dpr)) { wcv.width = Math.round(W * dpr); wcv.height = Math.round(H * dpr); }
+    const w = wcv.getContext('2d'); w.setTransform(dpr, 0, 0, dpr, 0, 0); w.clearRect(0, 0, W, H); w.fillStyle = '#3C9AD8'; w.lineJoin = 'round';
+    const kept = waterKept(); const covered = (la, ln) => kept.some(t => t.rivers && Math.floor(la / WTILE) === Math.floor(t.la / WTILE) && Math.floor(ln / WTILE) === Math.floor(t.ln / WTILE));
+    for (const t of kept) {
+      for (const [, pts] of t.rivers || []) river(w, pts);
+      for (const ring of t.pools || []) { w.beginPath(); ring.forEach(([la, ln], i) => { const q = map.project([ln, la]); if (i) w.lineTo(q.x, q.y); else w.moveTo(q.x, q.y); }); w.closePath(); w.fill(); }
+    }
+    /* stand-ins, where no real water has come yet */
+    for (const [, pts] of WATERS.lines) { const m = pts[pts.length >> 1]; if (covered(m[0], m[1])) continue; river(w, pts.map(([a, b]) => [a, b, 30])); }
+    for (const [, a, b] of WATERS.points) { if (covered(a, b)) continue; const q = map.project([b, a]); w.beginPath(); w.arc(q.x, q.y, Math.max(3, 60 / metresPerPixel(a)), 0, TAU); w.fill(); }
+    /* laid down: a soft light of sky blue over the water already in the picture, a little brighter at its edge */
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.26; ctx.drawImage(wcv, 0, 0); ctx.restore();
+  }
   function drawBase() {
     const ctx = bx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
     frameLine(ctx);
@@ -292,9 +323,7 @@ const life = (() => {
     /* the ground, always: water, parks, gardens and green spaces as patches of colour over the map, as an overlay would show
        them; the creeks as bands of water. A double press opens one; a single press goes through to what is drawn over it */
     if (S.mode !== 'tribe') { ctx.save(); for (const t of S.tribes) patch(ctx, t.blobs, C.tribe[t.kind] || C.tribe.park, 0.14); ctx.restore(); }
-    { const z = zoomNow(); const wpx = clamp(Math.pow(2, z - 15) * 9, 3, 26); ctx.save(); ctx.strokeStyle = 'rgba(70,160,255,.22)'; ctx.lineWidth = wpx; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      for (const [, pts] of WATERS.lines) { ctx.beginPath(); pts.forEach(([a, b], i) => { const q = map.project([b, a]); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); }); ctx.stroke(); }
-      ctx.fillStyle = 'rgba(70,160,255,.2)'; for (const [, a, b] of WATERS.points) { const q = map.project([b, a]); ctx.beginPath(); ctx.arc(q.x, q.y, wpx * 0.9, 0, TAU); ctx.fill(); } ctx.restore(); }
+    water(ctx);
     /* the groups' ground stronger inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
@@ -476,6 +505,10 @@ const life = (() => {
       const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'partner' ? 0.55 : 1;
       if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
       let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
+      /* a life the months ahead put in extreme danger, or a threatened one in severe danger, breathes a slow light of that danger
+         under it: it stands out, and it is alive. The rest stay quiet, so these few are seen */
+      if ((it.b.dz >= 4 || (it.b.dz >= 3 && it.b.sig)) && !it.o.hum && a === 1) { const br = still ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.5 + it.phase * TAU); const R = it.b.d * (0.95 + 0.3 * br) + 4; const c0 = it.b.dz >= 4 ? '232,64,42' : '255,122,40'; const gx = it.x + it.dx, gy = it.y + it.dy;
+        const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, R); gr.addColorStop(0, `rgba(${c0},${(0.22 + 0.16 * br).toFixed(3)})`); gr.addColorStop(1, `rgba(${c0},0)`); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(gx, gy, R, 0, TAU); ctx.fill(); }
       /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
       const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = (age < 420 ? back(age / 420) : 1) * (0.55 + 0.45 * it.fade);
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
