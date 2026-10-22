@@ -85,11 +85,11 @@ const life = (() => {
     const fresh = !!(o.isNew || (o.arrived && Date.now() - o.arrived < 7 * 864e5) || isFresh(o));
     const tier = o.hist ? 0 : tierOf(o, sub);
     if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, dz: deg >= 3 ? deg : 0, fresh };
-    /* birds and animals a little larger than the small lives, easy to find */
+    /* sizes by kind: an insect half a bird, a bird half an animal; the twenty larger lives larger still */
     const vert = ['k-bird', 'k-mammal', 'k-reptile', 'k-water'].includes(M.toneOf(g));
     /* one of the twenty larger lives, seen in the last three months: drawn as itself, and larger */
     const ha = M.heroArtOf(nameOf(o)); const recent = (Date.now() - (stampOf(o) || 0)) < 90 * 864e5; const art = ha >= 0 && recent;
-    return { tone: M.toneOf(g), g, v: art ? 1000 + ha : M.variantOf(g, nameOf(o)), d: (art ? Math.round(d * 1.6) + 4 : vert ? Math.round(d * ({ 'k-mammal': 1.4, 'k-bird': 1.2, 'k-reptile': 1.25, 'k-water': 1.1 }[M.toneOf(g)] || 1.2)) + 2 : d) + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
+    return { tone: M.toneOf(g), g, v: art ? 1000 + ha : M.variantOf(g, nameOf(o)), d: (art ? Math.round(d * 2.1) + 4 : Math.round(d * ({ 'k-mammal': 1.9, 'k-bird': 1, 'k-reptile': 1.3, 'k-water': 1.15, 'k-insect': 0.55, 'k-spider': 0.55 }[M.toneOf(g)] || 1)) + (vert ? 2 : 0)) + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
   function placeGlyph(p) { const k = PLACE_KINDS[p.kind] || PLACE_KINDS[0]; if (p.g) return p.g; if (p.tx) return glyphOf(p); if (k.f === 'flora') return 'plant'; return ['fauna', 'injured', 'dead', 'lost'].includes(k.f) ? 'paw' : null; }
@@ -233,10 +233,20 @@ const life = (() => {
     for (const f of S.fountains) { const p = map.project([f.lng, f.lat]); f.x = p.x; f.y = p.y; }
     ringPts = ringOf(S.scan.lat, S.scan.lng, S.scan.r);
     const o = selected(); cellPts = o ? ringOf(o.lat, o.lng, rangeOf(o)) : [];
-    cluster(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+    cluster(); unclutter(); if (hoverH) placeTag(); placeHandle(); placeKnobs(); strings.place();
+  }
+  /* no mark over another: on the screen as it is, the larger and the more urgent keep their place and a mark that would lie
+     over one of them waits until the map is closer. People's needs, offers and gatherings always show */
+  function unclutter() {
+    for (const it of items) it.hid = false; const B = 28, grid = new Map(); const key = (i, j) => i * 100003 + j;
+    const vis = items.filter(it => !it.binned && !it.o.hum && shown(it) && !off(it.x, it.y)).sort((a, b) => (b.alarm - a.alarm) || (b.hero - a.hero) || (b.b.d - a.b.d));
+    for (const it of vis) { const r = it.b.d * 0.5; const i0 = Math.floor(it.x / B), j0 = Math.floor(it.y / B); let hit = false;
+      for (let i = i0 - 1; i <= i0 + 1 && !hit; i++) for (let j = j0 - 1; j <= j0 + 1 && !hit; j++) for (const q of grid.get(key(i, j)) || []) if (Math.hypot(q.x - it.x, q.y - it.y) < (r + q.b.d * 0.5) * 0.9) { hit = true; break; }
+      if (hit && !it.alarm && it.o.id !== S.sel) { it.hid = true; continue; } const k = key(i0, j0); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(it); }
   }
   /* what the ground shows, item by item */
   function shown(it) {
+    if (it.hid && it.o.id !== S.sel) return false;
     const o = it.o; if (S.mode === 'ping' && o.id === S.sel) return false;
     if (S.mode === 'ping' && strings.lifeNode(o.id)) return true;
     /* each track seen or not: a pack of cells is its own; every life is the lives' track */
@@ -378,7 +388,7 @@ const life = (() => {
   /* a creature folds as it moves: its wings, its legs, its body turned through four folds, each drawn once */
   const foldOf = it => (it.moving && !reduced() && M.CREATURES[it.b.g] && it.b.tone !== 'cold' ? Math.round((0.5 + 0.5 * Math.sin(performance.now() / 1000 * M.foldRate(it.b.g) * TAU + it.phase * TAU)) * 3) / 3 : null);
   function drawItem(ctx, it, m, a = 1, k = 1) {
-    const fo = foldOf(it); const bb = it.pile ? { ...it.b, n: it.pile + 1 } : it.b; const sp = M.badgeSprite(fo == null ? bb : { ...bb, fold: fo }, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
+    const fo = foldOf(it); const bb = it.pile && !M.CREATURES[it.b.g] ? { ...it.b, n: it.pile + 1 } : it.b; const sp = M.badgeSprite(fo == null ? bb : { ...bb, fold: fo }, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
     if (m && m.thread) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
     ctx.globalAlpha = a;
     if ((m && (m.rot || m.sx !== 1)) || k !== 1 || it.tilt) { ctx.save(); ctx.translate(x, y); ctx.rotate(it.tilt || 0); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }

@@ -607,7 +607,7 @@
     ctx.restore();
   }
   /* a creature as a mark: its folded shape at its size, an ink edge and a small shadow on the ground under it, nothing round
-     it; several seen together a small pile of the same; seen long ago, the same shape in grey. What it is in danger of is on
+     it, one however many were seen there; seen long ago, the same shape in grey. What it is in danger of is on
      its card, not drawn round it */
   /* as a handheld drew them: the folded creature set on a small grid of pixels, each pixel one colour, hard at its edge, an
      ink pixel round it, and its shadow a pixel down and right; then set large without smoothing, so the pixels show */
@@ -629,7 +629,6 @@
     const s = Math.max(9, Math.round((b.d || 22) * 1.22)); const quiet = b.tone === 'cold'; const col = quiet ? '#A9AFAA' : KCOL[b.g] || '#9A8670'; const f = b.fold == null ? 0.5 : b.fold;
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;
     const vi = quiet ? -1 : b.v == null ? -1 : b.v; const G = vi >= 1000 ? 24 : Math.max(14, Math.min(20, Math.round(s / 1.45))); const P0 = pixelSprite(b.g, col, f, vi, G); const u = s / G, S2 = s * P0.T / G; ctx.imageSmoothingEnabled = false;
-    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) ctx.drawImage(P0.c, x - S2 / 2 + k * 2.6, y - S2 / 2 - k * 2.6, S2, S2);
     /* its shadow on the ground, a pixel down and right, as a living thing stands on it */
     ctx.save(); ctx.globalAlpha *= 0.45; ctx.drawImage(P0.sh, x - S2 / 2 + u, y - S2 / 2 + u * 1.4, S2, S2); ctx.restore(); ctx.drawImage(P0.c, x - S2 / 2, y - S2 / 2, S2, S2); ctx.imageSmoothingEnabled = true;
     ctx.restore();

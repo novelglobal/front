@@ -205,7 +205,7 @@ function monthKinds() {
 }
 /* the outlook as a graphic equaliser: a column of lit segments for every month, as high as its heat, from orange through red
    to black at the extreme. Pressed, a month opens its readout: the month, its danger, its window, and the lives it reaches */
-const EQ_SEGS = 11, EQ_LIT = [2, 4, 6, 8, 9];
+const EQ_SEGS = 11, EQ_LIT = [4, 6, 7, 9, 11];
 const segTone = i => Math.min(4, Math.floor(i / (EQ_SEGS / 5)));
 /* the equaliser moves with the music, not a wave of its own: each column lifts with the mix as loud as its month is hot, a cap
    above it rises and falls back slowly, and every note of the sweep pulses the extreme months */
@@ -215,7 +215,7 @@ function eqTick() {
   const lv = snd.level(), nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt;
   /* each column the same height, in the same box: the heat of its month lights it to a level, the music lights more above
      that as loud as the month is hot, never past the top; a peak holds a moment and falls back */
-  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, base = +m.dataset.lit || 2, c = m.querySelector('.eq-c'); const up = lv * w; const k = EQK.get(m) || { n: base, pk: base }; const n = Math.min(EQ_SEGS, base + Math.round(up * 4.2)); k.pk = Math.max(n, k.pk - 0.08);
+  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, base = +m.dataset.lit || 2, c = m.querySelector('.eq-c'); const up = lv * w; const k = EQK.get(m) || { n: base, pk: base }; const n = Math.min(EQ_SEGS, base + Math.round((0.35 + up) * 5)); k.pk = Math.max(n, k.pk - 0.08);
     if (c && (n !== k.n || Math.round(k.pk) !== k.pkr)) { const segs = c.querySelectorAll('i:not(.eq-cap)'); segs.forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < n); el.classList.toggle('snd', idx >= base && idx < n); el.classList.toggle('pk', idx === Math.round(k.pk) - 1); }); k.n = n; k.pkr = Math.round(k.pk); }
     EQK.set(m, k); m.style.setProperty('--hot', Math.min(1.4, (+m.dataset.heat || 0) + up * 0.9 + (prefs.nino ? 0.25 : 0)).toFixed(3));
     if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } }

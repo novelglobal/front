@@ -18,7 +18,7 @@ let zc = null, zFmt = null;
 const ZINE_PROPS = ['daKind', 'daStory', 'selectable', 'evented', 'daSrc', 'daPhoto', 'daMode', 'daMoved', 'daColour'];
 const ZHIST = []; let zLast = '';
 /* what stays on the strip whatever is taken off it: the story at its head; on a first visit, its words and its code too */
-const ZFIXED = ['base', 'words', 'code'];
+const ZFIXED = ['base', 'words', 'code', 'ink'];
 const zKey = () => 'da.press.' + PRESS.fmt;
 const saveZine = debounce(() => { if (!zc) return; const json = zc.toJSON(ZINE_PROPS); const str = JSON.stringify(json); if (zLast && str !== zLast) { ZHIST.push(zLast); if (ZHIST.length > 12) ZHIST.shift(); } zLast = str; if (!store.set(zKey(), { json, h: zc.getHeight() })) saveFull(); }, 300);
 /* the tools: words, a headline, cut-out letters, a photocopy, a pen, shapes, a stamp, tape, ink, undo, remove. Icons only;
@@ -142,6 +142,8 @@ async function showZine(on) {
     zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true, allowTouchScrolling: true, selection: !phone() });
     /* a strip of paper is a foot and a half at most (457 mm), whatever grows it */
     const sh = zc.setHeight.bind(zc); zc.setHeight = (h, o) => sh(Math.min(h, capH()), o);
+    /* whatever is placed goes under the receipt's own ink, its words and its code */
+    zc.on('object:added', e => { const o = e.target; if (!o || ZFIXED.includes(o.daKind) || typeof jObj !== 'function') return; for (const k of ['ink', 'words', 'code']) { const q = jObj(k); if (q) zc.bringToFront(q); } });
     zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); });
     /* the story at the head moves up and down only, and stays on the paper; let down past the end, the paper grows to hold it */
     zc.on('object:moving', e => { const o = e.target; if (o && o.daKind === 'base') o.set({ left: 0, top: clamp(o.top, 60 - o.getScaledHeight(), zc.getHeight() - 60) }); });
