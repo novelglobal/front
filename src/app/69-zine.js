@@ -4,6 +4,9 @@
    one's own, a pen, shapes, stamps, tape, cut-out letters, photocopies. What is on the strip is what prints: here, or
    at novel.global's printer as the printer's own raster. Each paper is kept on this device (da.press.<format>)
    ════════════════════════════════════════════════════════════════════ */
+/* the longest receipt: 1.5 ft, 457 mm, on 80 or 58 mm paper (a canvas unit is its paper's width over its width in mm) */
+const MAX_MM = 457;
+const capH = () => { const F = FORMATS[PRESS.fmt] || {}; return F.n === '80' || F.n === '58' ? Math.round(F.w * MAX_MM / +F.n) : Infinity; };
 const FORMATS = { r80: { dots: 512, w: 320, ic: 'receipt', n: '80' }, r58: { dots: 384, w: 240, ic: 'receipt', n: '58' }, gb: { dots: 160, w: 160, levels: 4, ic: 'gb', n: '' }, zine: { w: 420, h: 595, ic: 'base', n: 'A5' } };
 const PRESS = { story: null, fmt: 'r80', pack: 'life', zl: 1, drawer: null };   /* every visit opens on the 80 mm receipt, the drawers shut */
 /* the stories made here that have not yet gone through the press: once one is printed, or sent to print, the press is done
@@ -136,6 +139,8 @@ async function showZine(on) {
   const F = FORMATS[PRESS.fmt]; host.dataset.fmt = PRESS.fmt;
   if (!zc) {
     zc = new f.Canvas('zine-c', { width: F.w, height: F.h || 520, backgroundColor: '#FFFFFF', preserveObjectStacking: true, allowTouchScrolling: true, selection: !phone() });
+    /* a strip of paper is a foot and a half at most (457 mm), whatever grows it */
+    const sh = zc.setHeight.bind(zc); zc.setHeight = (h, o) => sh(Math.min(h, capH()), o);
     zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); });
     /* the story at the head moves up and down only, and stays on the paper; let down past the end, the paper grows to hold it */
     zc.on('object:moving', e => { const o = e.target; if (o && o.daKind === 'base') o.set({ left: 0, top: clamp(o.top, 60 - o.getScaledHeight(), zc.getHeight() - 60) }); });
@@ -280,7 +285,7 @@ async function zineTool(k) {
   if (k === 'cut') { const g = cutOut(f, words() || 'WISH', x, y); c.add(g); c.setActiveObject(g); }
   if (k === 'image') { $('#zine-file').click(); return; }
   if (k === 'zoom') { PRESS.zl = (PRESS.zl + 1) % 3; fitZ(); refaceKey('zoom'); snd.tick(1200 + PRESS.zl * 300); return; }
-  if (k === 'len') { c.setHeight(c.getHeight() + Math.round(c.getWidth() * 0.75)); fitZ(); c.renderAll(); saveZine(); snd.printer(300); const d = $('#zine .desk'); if (d) d.scrollTo({ top: d.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' }); return; }
+  if (k === 'len') { if (c.getHeight() >= capH() - 1) { toast('1.5 FT · THE LONGEST'); tick(600); return; } c.setHeight(c.getHeight() + Math.round(c.getWidth() * 0.75)); fitZ(); c.renderAll(); saveZine(); snd.printer(300); const d = $('#zine .desk'); if (d) d.scrollTo({ top: d.scrollHeight, behavior: reduced() ? 'auto' : 'smooth' }); return; }
   if (k === 'draw') { c.isDrawingMode = !c.isDrawingMode; c.freeDrawingBrush.color = ZCOL; c.freeDrawingBrush.width = 3; $('#zine [data-zt="draw"]').classList.toggle('on', c.isDrawingMode); return; }
   /* tape: paper tape, a strip of bandana, barbed wire; pressed again while one is chosen, it becomes the next */
   if (k === 'tape') {
@@ -379,7 +384,8 @@ async function pieceOn(kind, id) {
   if (kind === 'W') { const sp = WILD.find(v => v.id === String(id)); if (sp) placeOnPage(await speciesSticker(sp), 'sticker', 96, true); }
   if (kind === 'b') { const u = await boardImage(id); if (u) placeOnPage(u, 'board', 600); else tick(600); }
   if (kind === 'p') { const p = POSTERS2.find(v => v.id === id); if (p) placeOnPage(p.img, 'poster', 600); }
-  if (kind === 'X') { placeExampleZine(); return; }
+  /* the example onto the receipt already there, as art; only a bare strip becomes the example itself */
+  if (kind === 'X') { if (!PRESS.story && zc && !zc.getObjects().length) { placeExampleZine(); return; } const u = await exampleZineImage(); if (u) placeOnPage(u, 'art', 220); else tick(600); return; }
   if (kind === 'T') { const card = deck().find(c => c.id === id); if (card) placeOnPage(await mountArt(await cardURL(card, 3)), 'art', 200); }
   if (kind === 'R') { const m = (id && (LOOPS.find(l => l.id === id) || MIXES.find(l => l.id === id))) || (placed() ? mixNow() : null); if (m) placeOnPage(mixArt(m, mixURL(m)), 'art', 240); }
   if (kind === 'S') { const x = S.signals.find(v => v.key === id); if (x) { const cvs = await slipCanvas(x, 384, 2, isTty(), isConn()); placeOnPage(cvs.toDataURL('image/png'), 'story', 220); } }
@@ -397,10 +403,12 @@ const POSTERS2 = store.get('da.posters2.v1', []);
 let lastPoster = '';
 async function savePoster(quiet) {
   const out = await stripOut(); if (!out) return; const sig = `${out.url.length}|${out.url.slice(-80)}`; if (quiet && sig === lastPoster) return POSTERS2[0]; lastPoster = sig; const s = pressStory(); const im = await loadImage(out.url, false);
-  const k = Math.min(1, 360 / im.width); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height);
+  /* on the wall the poster is in colour: the life's photograph at its largest, its name and the intention; the strip in ink is for the printer */
+  let art = null; if (s) { const pin = s.pin || {}; try { art = await intelCanvas(s.jsel || { k: 'life', n: pin.cn || pin.n || '', latin: pin.cn && pin.n !== pin.cn ? pin.n : '' }, s, 600, 0); } catch (e) { art = null; } }
+  const src = art || im; const k = Math.min(1, (art ? 600 : 360) / src.width); const c = document.createElement('canvas'); c.width = Math.round(src.width * k); c.height = Math.round(src.height * k); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(src, 0, 0, c.width, c.height);
   const where = s && s.pin ? { lat: +s.pin.lat, lng: +s.pin.lng } : { lat: S.scan.lat, lng: S.scan.lng };
   const figs = strings.list().filter(g => g.o && life.inScan(g.o.lat, g.o.lng)).slice(0, 3).map(g => String(g.id));
-  POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.8), ...where, figs, ...(s ? { story: s.key } : {}) }); POSTERS2.splice(12);
+  POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.84), ...(s && s.img ? { ph: sigSrc(s, true) } : {}), ...where, figs, ...(s ? { story: s.key } : {}) }); POSTERS2.splice(12);
   while (!store.set('da.posters2.v1', POSTERS2) && POSTERS2.length > 1) POSTERS2.pop();
   if (!quiet) { snd.horn(); toast('✓'); } life.redraw(); return POSTERS2[0];
 }
@@ -416,37 +424,47 @@ async function cardArt(p, n, scale = 3, pal) {
   x.fillStyle = P0; x.fillRect(0, 0, W, H); x.fillStyle = P2; x.fillRect(2, 2, W - 4, 1); x.fillRect(2, H - 3, W - 4, 1); x.fillRect(2, 2, 1, H - 4); x.fillRect(W - 3, 2, 1, H - 4);
   x.fillStyle = P1; x.fillRect(4, 4, W - 8, 1); x.fillRect(4, H - 5, W - 8, 1); x.fillRect(4, 4, 1, H - 8); x.fillRect(W - 5, 4, 1, H - 8);
   for (const [sx, sy] of [[4, 4], [W - 5, 4], [4, H - 5], [W - 5, H - 5]]) { x.fillStyle = P3; x.fillRect(sx, sy - 1, 1, 3); x.fillRect(sx - 1, sy, 3, 1); }
-  /* the window: the poster, small, in four tones by a 4 x 4 order */
-  const im = await loadImage(p.img, !/^data:/.test(p.img)); const ww = 44, wh = p.kind === 'poster' ? 52 : 58, wx = 8, wy = 14; const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
-  const k = Math.max(ww / im.width, wh / im.height); tx.drawImage(im, (ww - im.width * k) / 2, 0, im.width * k, im.height * k);
-  const d = tx.getImageData(0, 0, ww, wh); const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; const rgb = PAL.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
-  for (let y = 0; y < wh; y++) for (let xx = 0; xx < ww; xx++) { const i = (y * ww + xx) * 4; const l = (0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]) / 255; const v = clamp(Math.floor(l * 3 + (B[(y % 4) * 4 + (xx % 4)] / 16 - 0.5) * 0.9 + 0.5), 0, 3); const [r, g, b] = rgb[v]; d.data[i] = r; d.data[i + 1] = g; d.data[i + 2] = b; d.data[i + 3] = 255; }
-  tx.putImageData(d, 0, 0);
-  x.save(); x.beginPath(); x.moveTo(wx, wy + wh); x.lineTo(wx, wy + ww / 2); x.arc(wx + ww / 2, wy + ww / 2, ww / 2, Math.PI, 0); x.lineTo(wx + ww, wy + wh); x.closePath(); x.clip(); x.drawImage(t, wx, wy); x.restore();
-  x.strokeStyle = P3; x.lineWidth = 1; x.beginPath(); x.moveTo(wx - 0.5, wy + wh + 0.5); x.lineTo(wx - 0.5, wy + ww / 2); x.arc(wx + ww / 2, wy + ww / 2, ww / 2 + 0.5, Math.PI, 0); x.lineTo(wx + ww + 0.5, wy + wh + 0.5); x.closePath(); x.stroke();
-  /* its number, and the plate with the muse */
+  /* the window: a life's own photograph in its colour, at the card's full size; a constellation's figure in four tones by a 4 x 4 order */
+  const ww = 44, wh = 52, wx = 8, wy = 14; const colour = p.kind !== 'fig'; const src = (colour && p.ph) || p.img;
+  let im = null; try { im = await loadImage(src, !/^data:/.test(src)); } catch (e) { if (src !== p.img) im = await loadImage(p.img, !/^data:/.test(p.img)); else throw e; }
+  const arch = (g, s0, o = 0) => { g.beginPath(); g.moveTo((wx - o) * s0, (wy + wh + o) * s0); g.lineTo((wx - o) * s0, (wy + ww / 2) * s0); g.arc((wx + ww / 2) * s0, (wy + ww / 2) * s0, (ww / 2 + o) * s0, Math.PI, 0); g.lineTo((wx + ww + o) * s0, (wy + wh + o) * s0); g.closePath(); };
+  if (!colour) {
+    const t = document.createElement('canvas'); t.width = ww; t.height = wh; const tx = t.getContext('2d');
+    const k = Math.max(ww / im.width, wh / im.height); tx.drawImage(im, (ww - im.width * k) / 2, 0, im.width * k, im.height * k);
+    const d = tx.getImageData(0, 0, ww, wh); const B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; const rgb = PAL.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
+    for (let y = 0; y < wh; y++) for (let xx = 0; xx < ww; xx++) { const i = (y * ww + xx) * 4; const l = (0.3 * d.data[i] + 0.59 * d.data[i + 1] + 0.11 * d.data[i + 2]) / 255; const v = clamp(Math.floor(l * 3 + (B[(y % 4) * 4 + (xx % 4)] / 16 - 0.5) * 0.9 + 0.5), 0, 3); const [r, g, b] = rgb[v]; d.data[i] = r; d.data[i + 1] = g; d.data[i + 2] = b; d.data[i + 3] = 255; }
+    tx.putImageData(d, 0, 0); x.save(); arch(x, 1); x.clip(); x.drawImage(t, wx, wy); x.restore();
+  }
+  x.strokeStyle = P3; x.lineWidth = 1; arch(x, 1, 0.5); x.stroke();
+  /* its number, and the plate with its common name */
   x.fillStyle = P3; x.font = '400 10px VT323, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(roman(n + 1), W / 2, 9);
-  const py = p.kind === 'poster' ? 70 : 76;
-  x.fillStyle = P2; x.fillRect(8, py, W - 16, 15); x.fillStyle = P0; x.fillRect(9, py + 1, W - 18, 13); if (p.g) M.glyph(x, p.g, W / 2, py + 7.5, 11, P3); else M.icon(x, 'jelly', W / 2, py + 7.5, 11, P3);
-  /* a poster's danger ahead as four pips on the plate, as many lit as it is high; any other card, its three dots */
-  if (p.kind === 'poster') for (let i = 0; i < 4; i++) { x.fillStyle = i < (p.deg || 0) ? P3 : P1; x.fillRect(12, py + 3 + i * 3, 2, 2); x.fillRect(W - 14, py + 3 + i * 3, 2, 2); }
-  else { x.fillStyle = P1; for (let i = 0; i < 3; i++) { x.fillRect(14 + i * 3, py + 7, 1, 1); x.fillRect(W - 15 - i * 3, py + 7, 1, 1); } }
-  /* and the day it was made, under the plate */
-  if (p.kind === 'poster' && p.at) { x.fillStyle = P2; x.font = '400 9px VT323, monospace'; x.fillText(fmtStamp(p.at).split(' ')[0], W / 2, 90); }
-  const out = document.createElement('canvas'); out.width = W * scale; out.height = H * scale; const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(c, 0, 0, out.width, out.height); return out;
+  const py = 70; x.fillStyle = P2; x.fillRect(6, py, W - 12, 17); x.fillStyle = P0; x.fillRect(7, py + 1, W - 14, 15);
+  /* a poster's danger ahead as four pips either side of its number, as many lit as it is high */
+  if (p.kind === 'poster') for (let i = 0; i < 4; i++) { x.fillStyle = i < (p.deg || 0) ? P3 : P1; x.fillRect(9 + i * 3, 8, 2, 2); x.fillRect(W - 11 - i * 3, 8, 2, 2); }
+  /* and the day it was made, at the foot */
+  if (p.kind === 'poster' && p.at) { x.fillStyle = P2; x.font = '400 9px VT323, monospace'; x.fillText(fmtStamp(p.at).split(' ')[0], W / 2, 92); }
+  const out = document.createElement('canvas'); out.width = W * scale; out.height = H * scale; const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(c, 0, 0, out.width, out.height);
+  if (colour) { o.save(); arch(o, scale); o.clip(); o.imageSmoothingEnabled = true; o.imageSmoothingQuality = 'high'; const k = Math.max(ww * scale / im.width, wh * scale / im.height); o.drawImage(im, (wx + ww / 2) * scale - im.width * k / 2, (wy + wh / 2) * scale - im.height * k / 2, im.width * k, im.height * k); o.restore(); o.strokeStyle = P3; o.lineWidth = Math.max(1, scale * 0.6); arch(o, scale, 0.5); o.stroke(); }
+  /* the name, as sharp as the card is large, as big as fits the plate in two lines at most */
+  const nm = String(p.name || '').toUpperCase(); o.fillStyle = P3; o.textAlign = 'center'; o.textBaseline = 'middle';
+  if (nm) { const maxW = (W - 18) * scale; let fs = 7 * scale; const lines = t => { o.font = `400 ${fs}px VT323, monospace`; const out2 = []; let l = ''; for (const w of t.split(/\s+/)) { const nx = l ? `${l} ${w}` : w; if (!l || o.measureText(nx).width <= maxW) l = nx; else { out2.push(l); l = w; } } if (l) out2.push(l); return out2; };
+    let ls = lines(nm); while ((ls.length > 2 || ls.some(l => o.measureText(l).width > maxW)) && fs > 3 * scale) { fs -= scale * 0.5; ls = lines(nm); }
+    ls = ls.slice(0, 2); const lh = fs * 0.95; ls.forEach((l, i) => o.fillText(l, W / 2 * scale, (py + 8.5) * scale + (i - (ls.length - 1) / 2) * lh)); }
+  else if (p.g) M.glyph(o, p.g, W / 2 * scale, (py + 8.5) * scale, 11 * scale, P3); else M.icon(o, 'jelly', W / 2 * scale, (py + 8.5) * scale, 11 * scale, P3);
+  return out;
 }
 /* ───────── the deck: every poster made, every life sent to the W.I.S.H.MAKER, every constellation, each a card of its own
    in its own palette. Kept here as tokens; turned over large; shared, saved, or laid on the strip as a sticker ───────── */
 /* a poster's card carries what its receipt was of: the life, its mark, the day it was made, its danger ahead and when, where */
 function posterCard(p, i) {
   const s = p.story ? S.signals.find(x => x.key === p.story) : null; const pin = (s && s.pin) || {}; const sel = (s && s.jsel) || {};
-  return { id: 'p:' + p.id, img: p.img, n: POSTERS2.length - 1 - i, kind: 'poster', ref: p.id, name: pin.cn || pin.n || sel.n || '', g: pin.g && pin.g !== 'paw' ? pin.g : null, at: p.at, deg: (s && s.deg) || 0, when: (s && s.when) || '', place: pin.place || '' };
+  return { id: 'p:' + p.id, img: p.img, ph: p.ph || (s && s.img ? sigSrc(s, true) : '') || '', n: POSTERS2.length - 1 - i, kind: 'poster', ref: p.id, name: pin.cn || pin.n || sel.n || '', g: pin.g && pin.g !== 'paw' ? pin.g : null, at: p.at, deg: (s && s.deg) || 0, when: (s && s.when) || '', place: pin.place || '' };
 }
 /* its intel in a line: the day, the danger ahead and when, where */
 const cardIntel = c => [c.at ? fmtStamp(c.at).split(' ')[0] : '', c.deg ? DEG[c.deg] : '', c.when || '', c.place || ''].filter(Boolean).join(' · ');
 function deck() {
   return [...POSTERS2.map(posterCard),
-    ...SPECIES.filter(sp => sp.ph).map((sp, i) => ({ id: 'l:' + sp.id, img: sp.ph, g: sp.g, n: i, kind: 'life', name: sp.n })),
+    ...SPECIES.filter(sp => sp.ph).map((sp, i) => ({ id: 'l:' + sp.id, img: sp.ph, ph: photoURL(sp.ph, 'large'), g: sp.g, n: i, kind: 'life', name: sp.n })),
     ...strings.list().map((g, i) => ({ id: 'c:' + g.id, img: figArt(g, '#000000'), g: glyphOf(g.o) || null, n: i, kind: 'fig', name: g.name }))];
 }
 const CARDS = new Map();
@@ -477,7 +495,8 @@ async function openCard(card) {
   $$('.card-view').forEach(e => e.remove()); snd.jelly(0);
   const el = document.createElement('div'); el.className = 'card-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', card.name || 'A card');
   const c = await cardArt(card, card.n, 4); c.className = 'tv-card'; const { fig, poster } = cardKin(card); const WITH = { poster: !!poster, song: !!fig };
-  const acts = [['strip', 'receipt', 'onto the strip', 'placed as art, to print'], ['board', 'base', 'onto the board', 'pinned up in W.I.S.H.'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
+  /* to the W.I.S.H. board first, then to the print shop */
+  const acts = [['board', 'base', 'to the W.I.S.H. board', 'pinned up in W.I.S.H.'], ['strip', 'receipt', 'to the print shop', 'placed as art, to print'], ...(poster ? [['png', 'download', 'keep the poster', 'saved as a picture']] : []), ['x', 'close', 'close', '']];
   el.innerHTML = `<div class="tv-in"><div class="tv-spread">`
     + (poster ? `<figure class="tv-side tv-poster"><img src="${poster.img}" alt=""><figcaption class="mono">poster</figcaption></figure>` : '')
     + `<div class="tv-mid"></div>`

@@ -86,7 +86,7 @@ function paintFace(f, wipe) {
 function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
   /* a first visit: a life touched is what was noticed, and W.I.S.H. holds it (43-journey.js) */
-  if (!opt.sig && !opt.cell && (simple() ? prefs.journey >= 1 : wishOverMap())) { const it = life.items.find(x => x.o === o); if (jPick(o.isTribe ? jSelGroup(o) : jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
+  if (!opt.sig && !opt.cell && (simple() ? prefs.journey >= 1 : wishOverMap())) { const it = life.items.find(x => x.o === o); if (!o.isTribe && !o.isEvent && jPick(jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
   if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
   const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
   strings.open(o, opt.sig); openRecord(); if (!opt.sig) tie(0);
@@ -477,8 +477,8 @@ async function fillWishFig(o) {
   /* the card turns over first; then the photograph develops */
   await new Promise(r => setTimeout(r, reduced() ? 0 : 420)); if (my !== wfN) return;
   for (let i = 0; i < 40 && !fig.clientWidth; i++) await new Promise(r => setTimeout(r, 25));
-  const W = fig.clientWidth || 320, H = Math.round(W * 0.75); const k = Math.min(2, devicePixelRatio || 1); const src = imgSrc(c, o.id, o, false);
-  try { const bw = await bwCanvas(src, Math.round(W * k), Math.round(H * k), 2); if (my !== wfN) return; cv.width = bw.width; cv.height = bw.height; cv.getContext('2d').drawImage(bw, 0, 0); cv.classList.remove('grey'); }
+  const W = fig.clientWidth || 320, H = Math.round(W * 0.75); const k = Math.min(2, devicePixelRatio || 1); const src = imgSrc(c, o.id, o, true);
+  try { const bw = await colourCanvas(src, Math.round(W * k), Math.round(H * k)); if (my !== wfN) return; cv.width = bw.width; cv.height = bw.height; cv.getContext('2d').drawImage(bw, 0, 0); cv.classList.remove('grey'); }
   catch (e) {   /* a host that will not share its pixels: the photograph greyed by the browser instead */
     try { const im = await loadImage(src); if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); const sc = Math.max(cv.width / im.naturalWidth, cv.height / im.naturalHeight); x.drawImage(im, (cv.width - im.naturalWidth * sc) / 2, (cv.height - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); cv.classList.add('grey'); }
     catch (e2) { if (my !== wfN) return; cv.width = Math.round(W * k); cv.height = Math.round(H * k); const x = cv.getContext('2d'); x.fillStyle = '#E6E5DE'; x.fillRect(0, 0, cv.width, cv.height); M.glyph(x, lifeOf(o), cv.width / 2, cv.height / 2, cv.height * 0.6, '#141412'); }

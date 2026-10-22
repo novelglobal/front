@@ -399,6 +399,9 @@ const snd = (() => {
     heat(on) { if (ctx && mixLP) heatSet(!!on); },
     /* sounding now, or waiting for a touch to be given its sound back */
     running: () => !!ctx && !sick && clockOK(),
+    /* how loud the whole mix is now, 0 to 1, read off its output; and when the last note of the sweep sounded */
+    level() { if (!mon || !ctx || ctx.state !== 'running' || sick) return 0; mon.getFloatTimeDomainData(MONB); let s = 0; for (let i = 0; i < MONB.length; i += 2) { const v = MONB[i]; if (Number.isFinite(v)) s += v * v; } return Math.min(1, Math.sqrt(s / (MONB.length / 2)) * 5); },
+    noteAt: () => lastBlip,
     /* for the checks: the sound as a phone can leave it, running with nothing coming out */
     __sicken() { sick = true; },
     /* a dry click for a press: at once, but on a note of the key, so a knob turned climbs the scale */

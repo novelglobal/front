@@ -205,6 +205,14 @@ function autolevel(id) {
   return id;
 }
 const BW = new Map();
+/* a photograph cut to a frame in its own colour, at the size asked (everything made outside PRINT shows the life as it is) */
+async function colourCanvas(src, W, H) {
+  const key = `c|${src.slice(0, 120)}|${src.length}|${W}|${H}`; if (BW.has(key)) return BW.get(key);
+  const im = await loadImage(src, !/^data:/.test(src));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high';
+  const sc = Math.max(W / im.naturalWidth, H / im.naturalHeight); x.drawImage(im, (W - im.naturalWidth * sc) / 2, (H - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc);
+  if (BW.size > 48) BW.clear(); BW.set(key, cv); return cv;
+}
 /* a photograph cut to a frame and dithered: two inks for a thermal head, four greys for a Game Boy */
 async function bwCanvas(src, W, H, levels = 2, mode = photoMode()) {
   const key = `${src.slice(0, 120)}|${src.length}|${W}|${H}|${levels}|${mode}`; if (BW.has(key)) return BW.get(key);

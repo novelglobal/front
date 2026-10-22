@@ -32,7 +32,7 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['zoom', 'search', 'ZOOM'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['lock', 'anchor', 'LOCK'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -79,9 +79,10 @@ function exFrame(keepView) {
   if (!cv) return; const ex = boardId === 'b00', locked = exLocked() || bLock; $('#board').classList.toggle('locked', exLocked()); $('#board').classList.toggle('ex-edit', ex && !exLocked());
   cv.selection = false; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' });
   if (keepView) { cv.requestRenderAll(); return; }
-  bzi = 1; if (!ex) { bBase = 1; cv.setViewportTransform([1, 0, 0, 1, 0, 0]); return; }
+  /* a board of one's own opens further out: all of it in view, never closer than 0.7 */
+  bzi = 1; const own = !ex; if (own && !cv.getObjects().length) { bBase = 0.7; cv.setViewportTransform([0.7, 0, 0, 0.7, 0, 0]); return; }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const cols = cv.getObjects().filter(o => o.daKind === 'section'); for (const o of cols.length ? cols : cv.getObjects()) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
-  if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; if (W < 120 || H < 120) { requestAnimationFrame(exFrame); return; } const z = Math.min(1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
+  if (!Number.isFinite(x0)) return; const W = cv.getWidth(), H = cv.getHeight(), pad = 18; if (W < 120 || H < 120) { requestAnimationFrame(exFrame); return; } const z = Math.min(own ? 0.7 : 1.2, (W - pad * 2) / (x1 - x0), (H - pad * 2) / (y1 - y0));
   bBase = z; cv.setViewportTransform([z, 0, 0, z, pad - x0 * z + (W - pad * 2 - (x1 - x0) * z) / 2, pad - y0 * z]);
 }
 async function switchBoard(id) { if (!BOARDS.some(b => b.id === id)) return; saveBoard(false); boardId = id; prefs.board = id; savePrefs(); if (cv) await loadBoard(); refreshPanel(); snd.tick(1500); }
@@ -137,7 +138,7 @@ function tplObjects(f) {
     card('note', t, x + 4, y - 44, { backgroundColor: 'transparent', fill: '#8FA9C4', fontSize: 24, width: 320 }); if (d) card('fig', d, x + 14, y + 14, { width: 236, fontSize: 10.5 }); };
   /* the four boxes and the notes beside them fit a desk's screen beside the device */
   box('W', 10, 60); box('I', 360, 60); box('S', 10, 520); box('H', 360, 520);
-  let y = 16; for (const k of ['HOW', 'NOTE', 'SECT', 'LINK', 'IMG', 'ZOOM', 'LOCK', 'OUT']) { const [t, d] = T[k] || []; if (!t) continue; const c = card(k === 'HOW' ? 'note' : 'codec', d ? `${t}\n${d}` : t, 712, y, k === 'HOW' ? { width: 220, fontSize: 18 } : { width: 220, fontSize: 16 }); y += c.getScaledHeight() + 10; }
+  let y = 16; for (const k of ['HOW']) { const [t, d] = T[k] || []; if (!t) continue; const c = card(k === 'HOW' ? 'note' : 'codec', d ? `${t}\n${d}` : t, 712, y, k === 'HOW' ? { width: 220, fontSize: 18 } : { width: 220, fontSize: 16 }); y += c.getScaledHeight() + 10; }
   return objs;
 }
 /* laid if it should be; true when it was. The board as kept is read after the wait for Fabric, and written in the same breath,

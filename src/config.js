@@ -6,7 +6,7 @@ window.DA_CONFIG = {
   TERRAIN_EXAGGERATION: 3,
   DAYS: 60,                                                         // sightings from the last 60 days; older ones go cold
   PAGES: 8,                                                         // × 200 sightings
-  HISTORY: { years: 4, days: 30, per: 200 },                        // the same weeks in past years
+  HISTORY: { years: 6, days: 30, per: 200 },                        // the same weeks in past years
   CAP: { m: 150, n: 2 },                                            // in any spot about `m` metres across, at most `n` sightings of one kind show; the rest wait
   INAT_API: 'https://api.inaturalist.org/v1',
   INAT_WEB: 'https://www.inaturalist.org/observations/',
@@ -42,22 +42,15 @@ window.DA_CONFIG = {
   SCAN_FIRST: 500,                                                  // the radar's reach where a first tap puts it down, in metres
   REFRESH_MIN: 60,
   LIVE_MIN: 5,
-  /* the first board's template: the W.I.S.H. matrix, a box for each letter with what research goes in it, and a codec note on
-     each tool of the board, the way a game's field manual explains itself; every piece can be deleted. The approval page can
+  /* the first board's template: the W.I.S.H. matrix, a box for each letter with what research goes in it, and how the board
+     works beside them; every piece can be deleted. The approval page can
      rewrite these words (BOARD TEMPLATE): a note to a paragraph, its title on its first line, the key word in the title */
   TEMPLATE: [
-    ['HOW', 'HOW THIS BOARD WORKS', 'Put what you find in the four boxes. Pull a string between things that belong together. Move them about until the plan makes sense. Then make it real.'],
+    ['HOW', 'HOW THIS BOARD WORKS', 'Put what you find in the four boxes. Pull a string between things that belong together. Move them about until the plan makes sense.'],
     ['W', 'W · WHAT WE KNOW', 'Paste the research here: counts, maps, studies, and what the people who live here have seen.'],
     ['I', 'I · IT WOULD BE GREAT', 'What would be better, for this life and this place. One line is enough.'],
     ['S', "S · SO LET'S CREATE", 'The idea, the thing to make: a poster, a planting, a meeting, a song.'],
     ['H', 'H · HERE IS HOW IT WORKS', 'Who does what, when, and with what. Steps small enough to start tomorrow.'],
-    ['NOTE', '140.85 · NOTE', 'A sticky note. Tap it twice to write on it. Drag it anywhere.'],
-    ['SECT', '140.96 · SECT', 'A box to keep things together, its name on top.'],
-    ['LINK', '141.12 · LINK', 'Press LINK, then two things: a string joins them. Tap a string to cut it.'],
-    ['IMG', '141.52 · IMG', 'A picture from your phone or computer, pinned up.'],
-    ['ZOOM', '141.80 · ZOOM', 'Closer, normal, further. Drag the bare ground to look about.'],
-    ['LOCK', '142.52 · LOCK', 'Holds everything still, so a drag only moves the view.'],
-    ['OUT', '140.15 · OUT', 'The board as a picture or a PDF, to share or to print.'],
   ],
 };
 

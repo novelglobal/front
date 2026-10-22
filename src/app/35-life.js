@@ -146,7 +146,8 @@ const life = (() => {
   const running = () => !reduced() && !paused();
   /* the hand keeps one tempo whatever the heat: a turn in four bars of 120 BPM, so every cell it finds lands on the grid the
      sound keeps. El Niño changes heat, not speed: the glass runs red, the sound opens */
-  const tempo = () => 1;
+  /* El Niño turns the radar twice as fast; every note it finds still lands on the beat (snd's grid), so the music thickens, not hurries */
+  const tempo = () => (prefs.nino ? 2 : 1);
   /* the hand moves on; whatever lies between where it was and where it is now is found */
   function sweep(now) {
     const dt = lastSweep ? Math.min(0.12, (now - lastSweep) / 1000) : 0; lastSweep = now;
@@ -288,7 +289,13 @@ const life = (() => {
     const lit = cellOpen ? cellPts : null;
     if (lit) { ctx.save(); ctx.beginPath(); poly(ctx, lit); ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fill(); ctx.restore(); }
     if (placed() && S.mode !== 'tribe' && S.mode !== 'partner' && ringPts.length) glass(ctx);
-    /* the groups' ground shows only inside an open cell, while its strings are being made; a group chosen shows whole */
+    /* the ground, always: water, parks, gardens and green spaces as patches of colour over the map, as an overlay would show
+       them; the creeks as bands of water. A double press opens one; a single press goes through to what is drawn over it */
+    if (S.mode !== 'tribe') { ctx.save(); for (const t of S.tribes) patch(ctx, t.blobs, C.tribe[t.kind] || C.tribe.park, 0.14); ctx.restore(); }
+    { const z = zoomNow(); const wpx = clamp(Math.pow(2, z - 15) * 9, 3, 26); ctx.save(); ctx.strokeStyle = 'rgba(70,160,255,.22)'; ctx.lineWidth = wpx; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const [, pts] of WATERS.lines) { ctx.beginPath(); pts.forEach(([a, b], i) => { const q = map.project([b, a]); if (i) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); }); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(70,160,255,.2)'; for (const [, a, b] of WATERS.points) { const q = map.project([b, a]); ctx.beginPath(); ctx.arc(q.x, q.y, wpx * 0.9, 0, TAU); ctx.fill(); } ctx.restore(); }
+    /* the groups' ground stronger inside an open cell, while its strings are being made; a group chosen shows whole */
     if (cellOpen || S.mode === 'tribe') {
       ctx.save(); if (cellOpen) { ctx.beginPath(); poly(ctx, cellPts); ctx.clip(); }
       for (const t of S.tribes) { const sel = S.tribeSel === t.id; if (S.mode === 'tribe' && !sel) continue; patch(ctx, t.blobs, C.tribe[t.kind] || C.tribe.park, sel ? 0.5 : 0.22); }
@@ -411,7 +418,12 @@ const life = (() => {
     for (const p of placesL) p._x = null;
     if (!seeTrack('places') || S.mode === 'ping') return;
     const k = clamp(0.75 + (zoomNow() - 14) * 0.22, 0.75, 1.25);
-    for (const p of placesIn()) { const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) continue; p._x = q.x; p._y = q.y; strings.placeMark(ctx, p, q.x, q.y, k, false); }
+    /* the places are data, not what to touch first: drawn quiet, half clear (a canvas filter costs too much at this rate), and back in their colour when their tag
+       is up or when W.I.S.H. holds a life they can be tied to */
+    const lit = p => (hoverH && hoverH.kind === 'place' && hoverH.id === p.id) || (S.view === 1 && S.open && JR.sel && JR.sel.k === 'life');
+    const qs = []; for (const p of placesIn()) { const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) continue; p._x = q.x; p._y = q.y; qs.push([p, q]); }
+    ctx.save(); ctx.globalAlpha = 0.42; for (const [p, q] of qs) if (!lit(p)) strings.placeMark(ctx, p, q.x, q.y, k, false); ctx.restore();
+    for (const [p, q] of qs) if (lit(p)) strings.placeMark(ctx, p, q.x, q.y, k, false);
   }
   /* a first visit shows a printer only once it is online: nothing on the bare map points anywhere before it is chosen */
   function printers(ctx, t, still) { const d = printerSize(); for (const p of PARTNERS) { p._x = null; if (!p.printer || !prefs.printers || (simple() && !(PSTATE[p.id] || {}).ready)) continue; const q = map.project([p.lng, p.lat]); p._x = q.x; p._y = q.y; if (off(q.x, q.y)) continue; const on = !!(PSTATE[p.id] || {}).ready; M.printer(ctx, q.x, q.y, d, still || !on ? 0 : t, on); } }
@@ -551,7 +563,9 @@ const life = (() => {
   handle.addEventListener('keydown', e => { const o = selected(); if (!o) return; const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 25 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -25 : 0; if (!d) return; e.preventDefault(); S.radius.set(o.id, clamp(rangeOf(o) + d, CONFIG.RADIUS.min, CONFIG.RADIUS.max)); placeHandle(); commitRadius(); dirty = true; });
 
   /* ───────── hit-testing where things are drawn, moving ones where they have moved to ───────── */
-  function hit(x, y, peek) {
+  /* dbl: a double press, the only way into a patch of ground (water, a park, a garden), so a single press always reaches the
+     lives and places drawn over it */
+  function hit(x, y, peek, dbl) {
     const slack = coarse() ? 10 : 5; let best = null;
     const consider = (d, h) => { if (d <= slack && (!best || d < best.d)) best = { ...h, d }; };
     if (ghost) { const q = map.project([ghost.lng, ghost.lat]); if (Math.hypot(q.x - x, q.y - y) < 20) return { kind: 'new', lat: ghost.lat, lng: ghost.lng, d: 0 }; }
@@ -564,7 +578,7 @@ const life = (() => {
     for (const it of items) { if (it.binned || !shown(it) || off(it.x, it.y)) continue; const d = Math.hypot(it.x + it.dx - x, it.y + it.dy - y) - it.b.d / 2;
       if (it.pile >= 2 && zoomNow() < 15.4 && d <= slack) { if (!peek) { map.easeTo({ center: [it.lng, it.lat], zoom: map.getZoom() + 1.4, duration: reduced() ? 0 : 500 }); tick(1600); } return { kind: 'zoom', d: 0 }; }
       consider(d + (it.b.tone === 'hist' ? 3 : 0) + (S.mode === 'ping' ? 4 : 0), { kind: 'cell', id: it.o.id }); }
-    if (!best && !peek && S.mode !== 'ping') { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => (S.mode === 'tribe' || inScan(ll.lat, ll.lng)) && inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
+    if (!best && dbl && S.mode !== 'ping') { const ll = map.unproject([x, y]); const t = S.tribes.find(tr => inTribe(tr, ll.lat, ll.lng)); if (t) return { kind: 'tribe', id: t.id, d: 0 }; }
     return best;
   }
 

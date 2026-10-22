@@ -48,7 +48,7 @@ function pickRender() {
   const face = k => { const sp = k === 'lives' && simple() ? radiusSpecies(1)[0] : null; return sp ? `<img class="pk-tf" src="${esc(photoURL(sp.ph, 'square'))}" alt="">` : null; };
   el.querySelector('.pk-tabs').innerHTML = pickTabs().map(([k, ic, w, word]) => `<button type="button" class="pk-tab" data-pk-tab="${k}" aria-pressed="${PICK.tab === k}" aria-label="${w}">${face(k) || icon(ic)}<i class="pk-tl" aria-hidden="true"></i><small class="pk-w" aria-hidden="true">${word}</small></button>`).join('');
   el.classList.toggle('simple', simple()); el.dataset.tab = PICK.tab;
-  el.querySelector('.sel-b').innerHTML = pickBody(); pickFill();
+  el.querySelector('.sel-b').innerHTML = pickBody(); pickFill(); requestAnimationFrame(selWire);
 }
 /* the pictures that take a moment: the stories as receipts, the cards */
 async function pickFill() {
@@ -68,8 +68,14 @@ const closePick = () => { const el = $('#pick'); if (el) el.hidden = true; selWi
 /* the jumper wire: from the key SELECT was opened by, sagging, to the header on the module's board */
 let pickFrom = null;
 const selWireEl = (() => { const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); el.setAttribute('class', 'sel-wire'); el.setAttribute('aria-hidden', 'true'); el.style.display = 'none'; document.body.appendChild(el); return el; })();
+/* SELECT is never open without its wire: when the key it hangs from is gone (the page drawn again, another page, the device
+   turned over), the wire moves to the SELECT key of the device now in front; with no device that takes a piece, it closes */
+const PICK_KEYS = '#view [data-pick], #view [data-tp="pick"], #board:not([hidden]) [data-bt="add"], #zine:not([hidden]) [data-zt="add"]';
+const seen = el => !!el && el.isConnected && el.offsetParent !== null;
 function selWire() {
-  const sh = $('#pick'); const box = sh && $('#pick .sel-in'); const on = !!box && !sh.hidden && !!pickFrom && pickFrom.isConnected && pickFrom.offsetParent !== null;
+  const sh = $('#pick'); const box = sh && $('#pick .sel-in'); const open = !!box && !sh.hidden;
+  if (open && !seen(pickFrom)) { pickFrom = $$(PICK_KEYS).find(seen) || null; if (!pickFrom) { sh.hidden = true; } else { PICK.to = pickTo(); sh.dataset.to = PICK.to; } }
+  const on = open && !sh.hidden && seen(pickFrom);
   selWireEl.style.display = on ? '' : 'none'; if (!on) return;
   const a = pickFrom.getBoundingClientRect(), b = box.getBoundingClientRect(); const x0 = a.left + a.width / 2, y0 = a.bottom - 4, x1 = b.left + 30, y1 = b.top - 2;
   const sag = Math.min(180, 40 + Math.hypot(x1 - x0, y1 - y0) * 0.3);
@@ -77,6 +83,8 @@ function selWire() {
   selWireEl.innerHTML = `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)}C${x0.toFixed(1)} ${(y0 + sag).toFixed(1)} ${x1.toFixed(1)} ${(y1 + sag).toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}"/><rect x="${(x0 - 4).toFixed(1)}" y="${(y0 - 5).toFixed(1)}" width="8" height="10" rx="1.5"/><rect x="${(x1 - 4).toFixed(1)}" y="${(y1 - 8).toFixed(1)}" width="8" height="10" rx="1.5"/>`;
 }
 addEventListener('resize', selWire); addEventListener('scroll', selWire, true);
+/* and checked as pages change under it */
+setInterval(() => { const sh = $('#pick'); if (sh && !sh.hidden) selWire(); }, 300);
 /* whatever key opens it, the wire starts there */
 document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-pick], [data-tp="pick"], [data-zt="add"], [data-bt="add"]'); if (t) pickFrom = t; }, true);
 /* a picture for any of them, for the board or the receipt */
@@ -141,3 +149,11 @@ let selDrag = null;
 document.addEventListener('pointerdown', e => { const h = e.target.closest('#pick .sel-h'); if (!h || e.target.closest('button')) return; const box = $('#pick .sel-in'); const r = box.getBoundingClientRect(); selDrag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); e.preventDefault(); });
 document.addEventListener('pointermove', e => { if (!selDrag || e.pointerId !== selDrag.id) return; const box = $('#pick .sel-in'); const w = box.offsetWidth, hh = box.offsetHeight; const x = clamp(e.clientX - selDrag.dx, 4, innerWidth - w - 4), y = clamp(e.clientY - selDrag.dy, 4, innerHeight - hh - 4); $('#pick').classList.add('moved'); box.style.left = `${x}px`; box.style.top = `${y}px`; selWire(); });
 document.addEventListener('pointerup', e => { if (selDrag && e.pointerId === selDrag.id) selDrag = null; });
+/* a row wider than SELECT (the sticker packs, a phone's tray): on a desk the wheel turns it sideways and a mouse drags it, as a
+   finger does; a drag is not a press */
+const sideRow = t => t && t.closest && t.closest('.pk-packs, #pick .pk-grid');
+document.addEventListener('wheel', e => { const row = sideRow(e.target); if (!row || row.scrollWidth <= row.clientWidth + 2 || getComputedStyle(row).overflowX === 'visible' || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return; e.preventDefault(); row.scrollLeft += e.deltaY; }, { passive: false });
+let rowDrag = null;
+document.addEventListener('pointerdown', e => { const row = e.pointerType === 'mouse' && e.button === 0 && sideRow(e.target); rowDrag = row && row.scrollWidth > row.clientWidth + 2 ? { row, x: e.clientX, l: row.scrollLeft, on: false } : null; });
+addEventListener('pointermove', e => { const d = rowDrag; if (!d) return; const dx = e.clientX - d.x; if (!d.on && Math.abs(dx) < 6) return; d.on = true; d.row.scrollLeft = d.l - dx; });
+addEventListener('pointerup', () => { const d = rowDrag; rowDrag = null; if (!d || !d.on) return; const stop = ev => { ev.stopPropagation(); ev.preventDefault(); }; addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 300); });
