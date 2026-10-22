@@ -503,14 +503,22 @@ async function jStrip() {
 }
 /* the receipt's own words stay readable whatever is laid over them: its ink is printed again on top of everything placed,
    as ink sits over a sticker (multiplied, so the paper stays clear and only the black shows), its photograph left out */
-let inkKey = '';
+let inkKey = '', jHead = 0.5;
+/* a picture never rests on the receipt's words: dropped or moved over them, it slides down into the room under them; on the
+   photograph at the receipt's head it may sit anywhere */
+function jClearOf(o) {
+  const base = jObj('base'); if (!base || !o || ['base', 'words', 'code', 'ink'].includes(o.daKind) || o.type !== 'image') return false;
+  const top = base.top + base.getScaledHeight() * jHead, bot = base.top + base.getScaledHeight(); const r = o.getBoundingRect(true, true);
+  if (r.top + r.height <= top + 4 || r.top >= bot - 2) return false;
+  o.set({ top: o.top + (bot + 8 - r.top) }); o.setCoords(); return true;
+}
 function jInk(base) {
   const f = window.fabric; let ink = jObj('ink'); const el = base.getElement && base.getElement(); if (!el || !el.naturalWidth) return ink;
   const key = `${base.daStory}|${el.naturalWidth}x${el.naturalHeight}`;
   if (!ink || inkKey !== key) {
     const W = el.naturalWidth, H = el.naturalHeight; const s = pressStory() || {}; const sel = s.jsel || {}; const photo = !!(sel.photo || s.img); const headH = Math.round(W * (photo ? 0.66 : sel.k === 'life' ? 0.42 : 0.34));
     const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.drawImage(el, 0, 0); x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, headH);
-    if (ink) zc.remove(ink); ink = new f.Image(c, { daKind: 'ink', selectable: false, evented: false, globalCompositeOperation: 'multiply' }); zc.add(ink); inkKey = key;
+    if (ink) zc.remove(ink); ink = new f.Image(c, { daKind: 'ink', selectable: false, evented: false, globalCompositeOperation: 'multiply' }); zc.add(ink); inkKey = key; jHead = headH / H;
   }
   ink.set({ left: base.left, top: base.top, scaleX: base.scaleX, scaleY: base.scaleY, originX: base.originX, originY: base.originY }); ink.setCoords(); return ink;
 }

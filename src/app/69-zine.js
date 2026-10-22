@@ -143,7 +143,8 @@ async function showZine(on) {
     /* a strip of paper is a foot and a half at most (457 mm), whatever grows it */
     const sh = zc.setHeight.bind(zc); zc.setHeight = (h, o) => sh(Math.min(h, capH()), o);
     /* whatever is placed goes under the receipt's own ink, its words and its code */
-    zc.on('object:added', e => { const o = e.target; if (!o || ZFIXED.includes(o.daKind) || typeof jObj !== 'function') return; for (const k of ['ink', 'words', 'code']) { const q = jObj(k); if (q) zc.bringToFront(q); } });
+    zc.on('object:added', e => { const o = e.target; if (!o || ZFIXED.includes(o.daKind) || typeof jObj !== 'function') return; jClearOf(o); for (const k of ['ink', 'words', 'code']) { const q = jObj(k); if (q) zc.bringToFront(q); } });
+    zc.on('object:modified', e => { if (typeof jClearOf === 'function' && jClearOf(e.target)) { zc.renderAll(); saveZine(); } });
     zc.on('object:modified', saveZine); zc.on('text:changed', saveZine); zc.on('path:created', e => { if (e.path) e.path.set('daKind', 'pen'); saveZine(); });
     /* the story at the head moves up and down only, and stays on the paper; let down past the end, the paper grows to hold it */
     zc.on('object:moving', e => { const o = e.target; if (o && o.daKind === 'base') o.set({ left: 0, top: clamp(o.top, 60 - o.getScaledHeight(), zc.getHeight() - 60) }); });
@@ -452,7 +453,8 @@ async function colourStrip(s) {
     if (o.type !== 'image') continue;
     if (o.daKind === 'base') { if (!photo) continue; try { const Wd = o.width, hd = Math.round(Wd * 0.66); const cc = await colourCanvas(photo, Wd, hd); const im = new f.Image(cc, { left: o.left, top: o.top, scaleX: o.scaleX, scaleY: o.scaleY, originX: o.originX, originY: o.originY, angle: o.angle }); c2.insertAt(im, c2.getObjects().indexOf(o) + 1); } catch (e) { /* the head stays in ink */ } continue; }
     const src = o.daColour || (o.daPhoto || o.daKind === 'image' ? o.daSrc : null); if (!src) continue;
-    const w = o.getScaledWidth(); o.filters = []; await new Promise(r => o.setSrc(src, r, { crossOrigin: 'anonymous' })); o.scaleToWidth(w);
+    /* its colour self fitted inside the very box it had on the strip, so it never reaches over the words */
+    const w = o.getScaledWidth(), h = o.getScaledHeight(); o.filters = []; await new Promise(r => o.setSrc(src, r, { crossOrigin: 'anonymous' })); const k = Math.min(w / (o.width || 1), h / (o.height || 1)); o.set({ scaleX: k, scaleY: k }); o.setCoords();
   }
   /* drawn whole, with a margin of paper under its last line so nothing at its foot is lost when it is shown */
   c2.renderAll(); const out = document.createElement('canvas'); const k = Math.min(1, 600 / c2.getWidth()) * 2; const foot = Math.round(24 * k); out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k) + foot;
