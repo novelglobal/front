@@ -454,8 +454,9 @@ async function colourStrip(s) {
     const src = o.daColour || (o.daPhoto || o.daKind === 'image' ? o.daSrc : null); if (!src) continue;
     const w = o.getScaledWidth(); o.filters = []; await new Promise(r => o.setSrc(src, r, { crossOrigin: 'anonymous' })); o.scaleToWidth(w);
   }
-  c2.renderAll(); const out = document.createElement('canvas'); const k = Math.min(1, 600 / c2.getWidth()) * 2; out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k);
-  out.getContext('2d').drawImage(c2.toCanvasElement(k), 0, 0); c2.dispose(); return out;
+  /* drawn whole, with a margin of paper under its last line so nothing at its foot is lost when it is shown */
+  c2.renderAll(); const out = document.createElement('canvas'); const k = Math.min(1, 600 / c2.getWidth()) * 2; const foot = Math.round(24 * k); out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k) + foot;
+  const ox = out.getContext('2d'); ox.fillStyle = '#FFFFFF'; ox.fillRect(0, 0, out.width, out.height); ox.drawImage(c2.toCanvasElement(k), 0, 0); c2.dispose(); return out;
 }
 async function savePoster(quiet) {
   const out = await stripOut(); if (!out) return; const sig = `${out.url.length}|${out.url.slice(-80)}`; if (quiet && sig === lastPoster) return POSTERS2[0]; lastPoster = sig; const s = pressStory(); const im = await loadImage(out.url, false);

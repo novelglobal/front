@@ -518,10 +518,11 @@ function jLayout() {
   const base = jObj('base'), words = jObj('words'), code = jObj('code'); if (!base || !words) return;
   /* the words sit under the picture until they are moved; moved, they stay where they were put, and the code keeps its place */
   const wTop = Math.round(base.top + base.getScaledHeight() + 12); if (!words.daMoved) { words.set({ top: wTop }); words.setCoords(); }
-  const wh = Math.max(words.daMoved ? 64 : words.getScaledHeight(), 64);
+  /* room under the words for what is placed, as the receipt over the map had: a hand's width of paper before the code */
+  const wh = Math.max(words.daMoved ? 150 : words.getScaledHeight() + 86, 150);
   const ink = jInk(base); if (ink) zc.bringToFront(ink); zc.bringToFront(words);
   if (code) { code.set({ top: Math.round((words.daMoved ? wTop : words.top) + wh + 16) }); code.setCoords(); zc.bringToFront(code); }
-  const need = Math.ceil((code ? code.top + code.getScaledHeight() : words.top + wh) + 18); if (Math.abs(zc.getHeight() - need) > 2) { zc.setHeight(need); fitZ(); }
+  const need = Math.ceil((code ? code.top + code.getScaledHeight() : words.top + wh) + 30); if (Math.abs(zc.getHeight() - need) > 2) { zc.setHeight(need); fitZ(); }
   zc.renderAll(); jCaret();
 }
 /* the words box: a press on it, or on the blinking caret, and the keyboard types onto the paper */
