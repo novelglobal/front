@@ -252,7 +252,7 @@
      lighter tone of its own colour, a fine ink edge so it holds on any ground, no glow and nothing see-through. f (0..1) is
      the fold: a wing raised or lowered, wings opened or closed, legs drawn in or out; the map turns it slowly as each moves.
      On a 16-unit grid, the creature facing right ───────── */
-  const KCOL = { bird: '#3D7BD9', parrot: '#2FA84F', waterbird: '#EEF1F2', raptor: '#7A4E2D', owl: '#A8845A', butterfly: '#FF8A2A', moth: '#8C6B4A', bee: '#F2B23A', wasp: '#F2B23A', fly: '#5E6B73', beetle: '#2E8B57', bug: '#C8402F', dragonfly: '#2FB5C9', grasshopper: '#7DB03A', mantis: '#7DB03A', ant: '#5A3A2A',
+  const KCOL = { tree: '#3E7A3A', plant: '#5E9A3E', flower: '#E86A9A', grass: '#8AA04A', fungi: '#C8402F', bird: '#3D7BD9', parrot: '#2FA84F', waterbird: '#EEF1F2', raptor: '#7A4E2D', owl: '#A8845A', butterfly: '#FF8A2A', moth: '#8C6B4A', bee: '#F2B23A', wasp: '#F2B23A', fly: '#5E6B73', beetle: '#2E8B57', bug: '#C8402F', dragonfly: '#2FB5C9', grasshopper: '#7DB03A', mantis: '#7DB03A', ant: '#5A3A2A',
     possum: '#8D9097', mammal: '#9A8670', flyingfox: '#4A3A30', bat: '#3A3A42', macropod: '#B07D52', fox: '#D9622B', cat: '#D99A4A', dog: '#B8875A', rabbit: '#C9B49A', rodent: '#8A7A6A', echidna: '#5A4A3A', paw: '#9A8670', ape: '#C8642A',
     lizard: '#8C9A3A', snake: '#5C6B2E', turtle: '#6E7F4A', frog: '#4CB050', aquatic: '#2FA4C9', spider: '#6B5A8E', orb: '#C9A227', snail: '#B07CE8', segmented: '#C77A6A' };
   const CREATURES = (() => {
@@ -297,11 +297,17 @@
     const dog = f => { const p = quad(f, { tail: [[2.6, 8.4], [0.6, 5 - f * 1.4], [1.6, 4.6 - f * 1.4], [3.4, 7.8]], ear: [[11.2, 4.8], [10.4, 8.4], [12.4, 6.2]] }); return p; };
     const rodent = f => quad(f, { tail: [[2.4, 11], [0, 13.4 - f], [0.3, 14 - f], [2.6, 11.8]], ear: [[11.2, 5], [11.6, 3], [13, 3.4], [12.8, 5]] });
     const ape = f => { const s1 = (f - 0.5) * 1.2; return [P([[4, 5.4], [1.4 + s1, 13.8], [2.8, 14.2], [5.2, 8]], 1), P([[12, 5.4], [14.6 - s1, 13.8], [13.2, 14.2], [10.8, 8]], 1), P([[5, 4], [11, 4], [12, 10], [10, 13], [6, 13], [4, 10]], 0), P([[6, 13], [5, 15.6], [7.4, 15.6], [7.6, 13]], 1), P([[10, 13], [11, 15.6], [8.6, 15.6], [8.4, 13]], 1), P([[5.6, 0.8], [10.4, 0.8], [11, 4.6], [5, 4.6]], 0), P([[6.6, 1.8], [9.4, 1.8], [9.6, 4.2], [6.4, 4.2]], 7), { eye: [7.2, 2.6], eye2: [8.8, 2.6] }]; };
-    return { platypus, fox, koala, wombat, roo, glider, rakali, neck, antechinus, brushtail, bird, parrot, waterbird, raptor, owl, butterfly, moth, bee, wasp: bee, fly: bee, beetle, bug: beetle, dragonfly, grasshopper: lizard, mantis: dragonfly, ant: beetle, possum: brushtail, mammal: quad, paw: quad, cat, dog, rodent, ape, macropod: rabbit, rabbit,
+    /* the plants, still: a tree's crown on its trunk, a sprig, a flower, a tuft of grass, a toadstool */
+    const tree = () => [P([[7.2, 10.6], [8.8, 10.6], [9, 15.4], [7, 15.4]], 4), P([[8, 1.4], [12.6, 3.4], [14.2, 7.8], [11.6, 11.2], [4.4, 11.2], [1.8, 7.8], [3.4, 3.4]], 0), P([[8, 1.4], [12.6, 3.4], [14.2, 7.8], [8, 6.4]], 2), P([[4.4, 11.2], [8, 6.4], [11.6, 11.2]], 1)];
+    const plant = () => [P([[8, 15.4], [2.6, 6], [7.4, 9.4]], 0), P([[8, 15.4], [13.4, 6], [8.6, 9.4]], 1), P([[8, 15.4], [7.4, 2], [9.4, 8]], 2)];
+    const flower = () => [P([[7.4, 9], [8.6, 9], [8.6, 15.4], [7.4, 15.4]], 4), ...[[8, 1.6], [12.4, 4.8], [10.8, 9.8], [5.2, 9.8], [3.6, 4.8]].map(([px, py]) => P([[8, 5.8], [px - 1.8, py], [px, py - 1.4], [px + 1.8, py]], 0)), P([[6.6, 4.6], [9.4, 4.6], [9.4, 7], [6.6, 7]], 3)];
+    const grass = () => [P([[3, 15], [2, 4], [5, 15]], 1), P([[6, 15], [7.4, 2], [9, 15]], 0), P([[10, 15], [13.6, 5], [12.4, 15]], 2)];
+    const fungi = () => [P([[6.6, 8], [9.4, 8], [9.8, 15], [6.2, 15]], 2), P([[1.6, 8.6], [4, 4], [8, 2.4], [12, 4], [14.4, 8.6]], 0), { eye: [5.6, 5.8], eye2: [10.4, 5.4], eyeCol: '#F4F2EA' }];
+    return { tree, plant, flower, grass, fungi, platypus, fox, koala, wombat, roo, glider, rakali, neck, antechinus, brushtail, bird, parrot, waterbird, raptor, owl, butterfly, moth, bee, wasp: bee, fly: bee, beetle, bug: beetle, dragonfly, grasshopper: lizard, mantis: dragonfly, ant: beetle, possum: brushtail, mammal: quad, paw: quad, cat, dog, rodent, ape, macropod: rabbit, rabbit,
       flyingfox: bat, bat, lizard, snake, turtle, frog, aquatic: fish, spider, orb: spider, snail, segmented: snake, echidna };
   })();
   /* the accent tones: [beak or bill, belly, head, wing, legs and body] by kind */
-  const ACC = { parrot: ['#FF8A2A', '#F2C14E', '#E8402A', '#2F6FD8'], flyingfox: [null, null, null, null, '#D9822B'], bee: [null, null, null, null, '#141412'], wasp: [null, null, null, null, '#141412'], moth: [null, null, null, null, '#3A2A1E'], butterfly: [null, null, null, null, '#141412'] };
+  const ACC = { flower: ['#F2C14E', null, null, null, '#3E7A3A'], tree: [null, null, null, null, '#6A4A30'], plant: [], fungi: [], parrot: ['#FF8A2A', '#F2C14E', '#E8402A', '#2F6FD8'], flyingfox: [null, null, null, null, '#D9822B'], bee: [null, null, null, null, '#141412'], wasp: [null, null, null, null, '#141412'], moth: [null, null, null, null, '#3A2A1E'], butterfly: [null, null, null, null, '#141412'] };
   /* the kinds within each kind, by the name they are known by: each a few colours of its own, as a handheld's sprites were,
      and a mark that tells it (a crest, spots, bands). [pattern, shape, base, accents [beak, belly, head, wing, body], extra] */
   const VARIANTS = [
@@ -600,9 +606,9 @@
     for (const pt of parts) { ctx.lineWidth = (pt.f ? 0 : pt.w) + (px * 2) / k; ctx.stroke(pt.p); if (pt.f) ctx.fill(pt.p, pt.rule || 'nonzero'); }
     ctx.restore();
   }
-  /* a creature as a mark: its folded shape at its size; several seen together a small pile of the same; in danger in the
-     months ahead a crisp ring, red when severe, ink at the extreme; one of the five a fine gold ring; rare a gold spark; new a
-     red point. Seen long ago, the same shape in grey */
+  /* a creature as a mark: its folded shape at its size, an ink edge and a small shadow on the ground under it, nothing round
+     it; several seen together a small pile of the same; seen long ago, the same shape in grey. What it is in danger of is on
+     its card, not drawn round it */
   /* as a handheld drew them: the folded creature set on a small grid of pixels, each pixel one colour, hard at its edge, an
      ink pixel round it, and its shadow a pixel down and right; then set large without smoothing, so the pixels show */
   const PIX = new Map();
@@ -611,10 +617,10 @@
     const c = document.createElement('canvas'); c.width = c.height = T; const x = c.getContext('2d', { willReadFrequently: true }); creature(x, g, T / 2, T / 2, G, col, f, vi, null, 16 / G);
     const d = x.getImageData(0, 0, T, T); const A = d.data;
     for (let i = 0; i < T * T; i++) A[i * 4 + 3] = A[i * 4 + 3] > 120 ? 255 : 0;
-    /* a ring of pixels round what is there: ink first, then the paper it was cut from */
+    /* a ring of ink pixels round what is there, so it holds on any ground */
     const ring = (r, g2, b) => { const on = new Uint8Array(T * T); for (let i = 0; i < T * T; i++) on[i] = A[i * 4 + 3] ? 1 : 0;
       for (let yy = 0; yy < T; yy++) for (let xx = 0; xx < T; xx++) { const i = yy * T + xx; if (on[i]) continue; if ((xx > 0 && on[i - 1]) || (xx < T - 1 && on[i + 1]) || (yy > 0 && on[i - T]) || (yy < T - 1 && on[i + T])) { A[i * 4] = r; A[i * 4 + 1] = g2; A[i * 4 + 2] = b; A[i * 4 + 3] = 255; } } };
-    ring(12, 14, 14); ring(244, 242, 234);
+    ring(12, 14, 14);
     x.putImageData(d, 0, 0);
     const sh = document.createElement('canvas'); sh.width = sh.height = T; const sx = sh.getContext('2d'); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#0C0E0E'; sx.fillRect(0, 0, T, T);
     const out = { c, sh, T }; PIX.set(key, out); if (PIX.size > 600) PIX.delete(PIX.keys().next().value); return out;
@@ -623,19 +629,13 @@
     const s = Math.max(9, Math.round((b.d || 22) * 1.22)); const quiet = b.tone === 'cold'; const col = quiet ? '#A9AFAA' : KCOL[b.g] || '#9A8670'; const f = b.fold == null ? 0.5 : b.fold;
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a;
     const vi = quiet ? -1 : b.v == null ? -1 : b.v; const G = vi >= 1000 ? 24 : Math.max(14, Math.min(20, Math.round(s / 1.45))); const P0 = pixelSprite(b.g, col, f, vi, G); const u = s / G, S2 = s * P0.T / G; ctx.imageSmoothingEnabled = false;
-    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) ctx.drawImage(P0.sh, x - S2 / 2 + k * 2.6, y - S2 / 2 - k * 2.6, S2, S2);
-    const dz = b.dz || (b.hot ? 3 : 0);
-    if (dz >= 3 && !quiet) { ctx.beginPath(); ctx.arc(x, y, s * 0.62, 0, TAU); if (dz >= 4) { ctx.lineWidth = 3.4; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); } ctx.lineWidth = dz >= 4 ? 1.8 : 1.4; ctx.strokeStyle = dz >= 4 ? '#141412' : '#E8402A'; ctx.stroke(); }
-    if (b.tone === 'hero') { ctx.beginPath(); ctx.arc(x, y, s * 0.62 + (dz >= 3 ? 3 : 0), 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = GOLD; ctx.stroke(); }
-    /* its shadow a pixel down and right, hard, as a paper cut-out stands off the ground */
-    ctx.drawImage(P0.sh, x - S2 / 2 + u, y - S2 / 2 + u * 1.4, S2, S2); ctx.drawImage(P0.c, x - S2 / 2, y - S2 / 2, S2, S2); ctx.imageSmoothingEnabled = true;
-    if (b.tier >= 1 && !quiet) { const sp = (sx, sy, k) => { ctx.beginPath(); ctx.moveTo(sx, sy - k); ctx.lineTo(sx + k * 0.3, sy - k * 0.3); ctx.lineTo(sx + k, sy); ctx.lineTo(sx + k * 0.3, sy + k * 0.3); ctx.lineTo(sx, sy + k); ctx.lineTo(sx - k * 0.3, sy + k * 0.3); ctx.lineTo(sx - k, sy); ctx.lineTo(sx - k * 0.3, sy - k * 0.3); ctx.closePath(); ctx.fillStyle = GOLD; ctx.fill(); };
-      sp(x - s * 0.5, y - s * 0.46, Math.max(2.2, s * 0.13)); }
-    if (b.fresh) { ctx.beginPath(); ctx.arc(x + s * 0.44, y - s * 0.44, Math.max(2, s * 0.1), 0, TAU); ctx.fillStyle = C.red; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = C.white; ctx.stroke(); }
+    for (let k = Math.min(2, Math.max(0, (b.n || 0) - 1)); k >= 1; k--) ctx.drawImage(P0.c, x - S2 / 2 + k * 2.6, y - S2 / 2 - k * 2.6, S2, S2);
+    /* its shadow on the ground, a pixel down and right, as a living thing stands on it */
+    ctx.save(); ctx.globalAlpha *= 0.45; ctx.drawImage(P0.sh, x - S2 / 2 + u, y - S2 / 2 + u * 1.4, S2, S2); ctx.restore(); ctx.drawImage(P0.c, x - S2 / 2, y - S2 / 2, S2, S2); ctx.imageSmoothingEnabled = true;
     ctx.restore();
   }
   function sticker(ctx, b, x, y, col) {
-    if (/^k-|^hero$|^cold$|^fauna$/.test(b.tone || '') && CREATURES[b.g]) { creatureMark(ctx, b, x, y); return; }
+    if (/^k-|^hero$|^cold$|^fauna$|^flora$/.test(b.tone || '') && CREATURES[b.g]) { creatureMark(ctx, b, x, y); return; }
     const d = b.d || 22, s = Math.max(8, Math.round(d * 1.16)); const parts = b.i ? paths()[b.i] : gpaths()[b.g] || gpaths().paw; const quiet = b.tone === 'cold' || b.tone === 'hist';
     ctx.save(); if (b.a != null) ctx.globalAlpha = b.a; if (b.tone === 'hist') ctx.globalAlpha *= 0.55;
     const vert = VERT.has(GROUP[b.g]) && /^k-/.test(b.tone || '') && !quiet;

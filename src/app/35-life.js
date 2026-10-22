@@ -117,8 +117,7 @@ const life = (() => {
       else if (o.kind === 'lost' && it.alarm) { it.pulse = 2; it.pc = C.red; it.radar = searchOf(o); }
       else if (o.arrived && now - o.arrived < 5 * 60e3) { it.pulse = 2; it.pc = C.red; }
     }
-    /* the lives in extreme danger in the months ahead keep a slow orange ring */
-    items.filter(it => !it.pulse && !it.o.hum && it.b.dz >= 4).sort((a, b) => (b.hero - a.hero) || ((b.o.rare || 0) - (a.o.rare || 0))).slice(0, 4).forEach(it => { it.pulse = 1; it.pc = C.orange; });
+
     /* a need for help, while it is new, keeps a slow orange ring */
     for (const it of items) if (!it.pulse && it.o.hum && it.o.kind === 'need' && it.flag) { it.pulse = 1; it.pc = C.orange; }
     /* declutter: in any spot about CAP.m across, at most CAP.n sightings of one kind show, the freshest; an alarm, a record
@@ -511,9 +510,6 @@ const life = (() => {
       const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'partner' ? 0.55 : 1;
       if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
       let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
-      /* a life the months ahead put in extreme danger, or a threatened one in severe danger, breathes: a fine ring of that danger
-         opens from it and closes, slowly. The rest stay quiet, so these few are seen */
-      if ((it.b.dz >= 4 || (it.b.dz >= 3 && it.b.sig)) && !it.o.hum && a === 1 && !still) { const br = 0.5 + 0.5 * Math.sin(t * 1.5 + it.phase * TAU); ctx.beginPath(); ctx.arc(it.x + it.dx, it.y + it.dy, it.b.d * 0.62 + 4 + br * 5, 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = it.b.dz >= 4 ? '#E8402A' : '#FF7A28'; ctx.stroke(); }
       /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
       const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = (age < 420 ? back(age / 420) : 1) * (0.55 + 0.45 * it.fade);
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
