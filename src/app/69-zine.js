@@ -443,9 +443,13 @@ let lastPoster = '';
 async function colourStrip(s) {
   if (!zc) return null; const f = window.fabric; const c2 = new f.StaticCanvas(null, { width: zc.getWidth(), height: zc.getHeight(), backgroundColor: zc.backgroundColor || '#FFFFFF' });
   await new Promise(r => c2.loadFromJSON(zc.toJSON(ZINE_PROPS), r));
-  let head = null; if (s && s.jr) { try { head = (await intelCanvas(s.jsel, s, 600, 0)).toDataURL('image/png'); } catch (e) { head = null; } }
-  for (const o of c2.getObjects()) {
-    if (o.type !== 'image') continue; const src = o.daKind === 'base' ? head : o.daColour || (o.daPhoto || o.daKind === 'image' ? o.daSrc : null); if (!src) continue;
+  /* the receipt's head keeps its place and its size exactly: only its photograph, at the top of it, is laid over in colour,
+     so the words, the code and what was placed on it stay where they were put */
+  const photo = s && s.jr ? ((s.jsel && s.jsel.photo) || (s.img ? sigSrc(s, true) : '')) : '';
+  for (const o of [...c2.getObjects()]) {
+    if (o.type !== 'image') continue;
+    if (o.daKind === 'base') { if (!photo) continue; try { const Wd = o.width, hd = Math.round(Wd * 0.66); const cc = await colourCanvas(photo, Wd, hd); const im = new f.Image(cc, { left: o.left, top: o.top, scaleX: o.scaleX, scaleY: o.scaleY, originX: o.originX, originY: o.originY, angle: o.angle }); c2.insertAt(im, c2.getObjects().indexOf(o) + 1); } catch (e) { /* the head stays in ink */ } continue; }
+    const src = o.daColour || (o.daPhoto || o.daKind === 'image' ? o.daSrc : null); if (!src) continue;
     const w = o.getScaledWidth(); o.filters = []; await new Promise(r => o.setSrc(src, r, { crossOrigin: 'anonymous' })); o.scaleToWidth(w);
   }
   c2.renderAll(); const out = document.createElement('canvas'); const k = Math.min(1, 600 / c2.getWidth()) * 2; out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k);
