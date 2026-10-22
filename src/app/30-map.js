@@ -56,6 +56,7 @@ map.on('load', () => {
 });
 map.on('error', () => { /* a tile that cannot load stays blank; offline is a normal state */ });
 map.on('move', () => life.moved());
+map.on('moveend', () => waterView());
 map.on('resize', () => life.resize());
 
 /* tilt far enough and the ground rises: the terrain in three dimensions under the same photograph */

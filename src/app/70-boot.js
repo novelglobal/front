@@ -94,7 +94,7 @@ if (isLocalHash(pendingHash)) handleHash();
 /* the radar waits, and the first clue floats over the ground: find yourself. A touch on the map puts the radar down there */
 setTimeout(weatherFx, 900);
 loadWeather().then(() => fetchSightings(false)).then(() => { if (pendingHash) handleHash(); }).then(() => fetchHistory());
-placesAround(S.scan.lat, S.scan.lng, S.scan.r);
+placesAround(S.scan.lat, S.scan.lng, S.scan.r); setTimeout(waterView, 1200);
 /* the offline copy is fetched once the first view has what it needs (the map idle), not alongside it */
 const regSW = () => { if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => { /* online-only is fine */ }); };
 map.once('idle', () => setTimeout(regSW, 2000)); setTimeout(regSW, 20000);

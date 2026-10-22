@@ -466,7 +466,7 @@ function quickHTML() {
     + (QP.img ? `<figure class="qp-ph"><img src="${QP.img}" alt="" style="width:${Math.round(QP.w * 100)}%"><button type="button" class="qp-x" data-qp="rm" aria-label="Take the photograph off">${icon('close', 'sm')}</button><input type="range" class="qp-sz" id="qp-sz" min="30" max="100" value="${Math.round(QP.w * 100)}" aria-label="The photograph's size"></figure>` : '')
     + `<textarea id="qp-t" rows="7" maxlength="900" spellcheck="true" aria-label="A note to print" placeholder=" ">${esc(QP.t)}</textarea><i class="qp-caret" aria-hidden="true"></i>`
     + `<label class="qp-cam" aria-label="A photograph" data-tip="A photograph">${icon('camera')}<input type="file" id="qp-f" accept="image/*" hidden></label></div>`
-    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Send a message to ${esc(p ? p.n : 'the printer')}"><i class="pk-led"></i>${icon('epson')}</button></section>`;
+    + `<button type="button" class="print-k qp-go${on.length ? ' on' : ''}" data-qp="go" aria-label="Send a message to ${esc(p ? p.n : 'the printer')}" data-tip="Message prints directly to novel.global if online"><i class="pk-led"></i>${icon('epson')}</button></section>`;
 }
 /* the note as the printer's head will lay it down: the photograph dithered at its size, the words in the receipt's type */
 async function quickCanvas(W = 512) {
@@ -488,7 +488,10 @@ async function quickPrint(btn) {
     const cvs = await quickCanvas(512); const bytes = new Uint8Array([0x1B, 0x40, ...rasterOf(cvs), 0x0A, 0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00]);
     const at = Date.now(); const first = String(QP.t || '').trim().split('\n')[0].slice(0, 40);
     const s = { v: 1, code: codeFor(`${at}|note|${S.me.dev}`), at, pin: { id: null, lat: +S.scan.lat.toFixed(3), lng: +S.scan.lng.toFixed(3), n: '', cn: 'NOTE', g: 'paw', place: suburbAt(S.scan.lat, S.scan.lng) }, threat: '', when: '', deg: 0, lines: { w: first, i: '', s: '', h: '' }, nodes: [], edges: [], who: S.me.by || '', note: String(QP.t || '').slice(0, 280) };
-    const v = await directAction(s, MASTER ? MASTER.id : '', bytes, 'message'); store.set('da.printed.v1', Date.now()); snd.printer(900); ptPrint(cvs.toDataURL('image/png'), s.code, v && v.status); toast(v && v.status === 'outbox' ? '…' : '✓'); btn.classList.add('sent'); setTimeout(() => btn.classList.remove('sent'), 1600); return v;
+    const v = await directAction(s, MASTER ? MASTER.id : '', bytes, 'message'); store.set('da.printed.v1', Date.now()); snd.printer(900); ptPrint(cvs.toDataURL('image/png'), s.code, v && v.status); toast(v && v.status === 'outbox' ? '…' : '✓'); btn.classList.add('sent');
+    /* sent: the form is cleared for the next message, the words and the photograph both */
+    QP.t = ''; QP.img = ''; store.set('da.quick.v1', QP); { const t = $('#qp-t'); if (t) t.value = ''; const ph = $('#sec-quick .qp-ph'); if (ph) ph.remove(); }
+    setTimeout(() => btn.classList.remove('sent'), 1600); return v;
   } catch (e) { toast('✕'); return null; } finally { btn.classList.remove('busy'); }
 }
 $('#view').addEventListener('input', e => {

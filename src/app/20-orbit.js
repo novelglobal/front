@@ -117,6 +117,65 @@ function placesAround(lat, lng, R) {
   })();
   return placesBusy;
 }
+/* ───────── the water as it is: every river, creek and canal along its own course, as wide as its banks are apart, and every
+   pond, lake and wetland pool as its own shape, from OpenStreetMap. A square of about five kilometres at a time, kept a month.
+   Until a square is here (offline, or the first moment) the few waters written into the config stand in ───────── */
+const WTILE = 0.05, WTILES = store.get('da.water.v1', {});
+const WATER_Q = bb => `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bb});way["natural"="water"](${bb});way["waterway"="riverbank"](${bb});relation["natural"="water"](${bb}););out geom(${bb}) qt;`;
+let waterBusy = null, waterFailAt = 0;
+/* metres east and north of a point, near enough at a city's size */
+const enM = (la0, ln0) => { const kx = 111320 * Math.cos(la0 * Math.PI / 180); return (la, ln) => [(ln - ln0) * kx, (la - la0) * 110574]; };
+const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0; return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
+/* one square read: its rivers as [kind, [[lat, lng, width m], …]], its still waters as rings of [lat, lng] */
+function waterOf(j, la0, ln0) {
+  const xy = enM(la0, ln0); const banks = [], rivers = [], pools = [];
+  for (const el of j.elements || []) {
+    const t = el.tags || {};
+    const ways = el.type === 'relation' ? (el.members || []).filter(m => m.type === 'way' && m.geometry).map(m => m.geometry) : el.geometry ? [el.geometry] : [];
+    for (const g of ways) { const pts = g.filter(Boolean).map(q => [+q.lat.toFixed(5), +q.lon.toFixed(5)]); if (pts.length < 2) continue;
+      if (t.waterway && t.waterway !== 'riverbank') { rivers.push({ k: t.waterway, w: parseFloat(t.width) || 0, pts }); continue; }
+      banks.push(pts.map(([la, ln]) => xy(la, ln)));
+      const closed = el.type === 'way' && pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1];
+      if (closed && t.water !== 'river' && t.waterway !== 'riverbank') pools.push(pts);
+    }
+  }
+  /* each river's width where it runs: twice the distance to the nearer bank, if a bank is mapped within reach, smoothed */
+  const DEF = { river: 34, canal: 14, stream: 6 };
+  const out = rivers.map(r => {
+    const ws = r.pts.map(([la, ln]) => { const p = xy(la, ln); let d = 160; for (const b of banks) for (let i = 1; i < b.length; i++) { const e = segD(p, b[i - 1], b[i]); if (e < d) d = e; } return d < 150 ? Math.max(4, Math.min(240, d * 2)) : (r.w || DEF[r.k] || 8); });
+    const sm = ws.map((w, i) => Math.round(((ws[i - 1] ?? w) + w * 2 + (ws[i + 1] ?? w)) / 4));
+    return [r.k, r.pts.map(([la, ln], i) => [la, ln, sm[i]])];
+  });
+  return { rivers: out, pools };
+}
+function saveWater() { const keys = Object.keys(WTILES).sort((a, b) => WTILES[a].t - WTILES[b].t); while (keys.length > 12) delete WTILES[keys.shift()]; while (!store.set('da.water.v1', WTILES) && keys.length) delete WTILES[keys.shift()]; }
+/* the squares of water over what is in view */
+function waterAround(lat, lng) {
+  const i = Math.floor(lat / WTILE), j = Math.floor(lng / WTILE), key = `${i},${j}`; const t = WTILES[key];
+  if (t && Date.now() - t.t < ((t.rivers || []).length || (t.pools || []).length ? 30 : 2) * 864e5) return Promise.resolve(t);
+  if (waterBusy || Date.now() - waterFailAt < 120000) return Promise.resolve(null);
+  waterBusy = (async () => {
+    const bb = [i * WTILE, j * WTILE, (i + 1) * WTILE, (j + 1) * WTILE].map(v => v.toFixed(4)).join(',');
+    for (const url of CONFIG.OVERPASS) {
+      try {
+        const res = await fetch(`${url}?data=${encodeURIComponent(WATER_Q(bb))}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const jj = await res.json(); if (jj.remark && /error|time/i.test(jj.remark)) throw new Error(jj.remark);
+        WTILES[key] = { t: Date.now(), la: (i + 0.5) * WTILE, ln: (j + 0.5) * WTILE, ...waterOf(jj, (i + 0.5) * WTILE, (j + 0.5) * WTILE) }; saveWater(); waterBusy = null; if (typeof life !== 'undefined') life.moved(); return WTILES[key];
+      } catch (e) { /* the next mirror */ }
+    }
+    waterFailAt = Date.now(); waterBusy = null; return null;
+  })();
+  return waterBusy;
+}
+/* the squares under the view, its middle first, then its corners, one at a time */
+let waterQ = null;
+function waterView() {
+  if (waterQ || typeof map === 'undefined' || map.getZoom() < 11.5) return; const b = map.getBounds(), c = map.getCenter();
+  const pts = [[c.lat, c.lng], [b.getNorth(), b.getWest()], [b.getNorth(), b.getEast()], [b.getSouth(), b.getWest()], [b.getSouth(), b.getEast()]];
+  waterQ = (async () => { for (const [la, ln] of pts) { try { await waterAround(la, ln); } catch (e) { /* later */ } } waterQ = null; })();
+}
+/* what is kept, for drawing: every square's rivers and pools */
+const waterKept = () => Object.values(WTILES);
 const liveEvent = u => !u.isEvent || !u.start || u.start + 3 * 3600e3 > Date.now();
 /* a gig: tagged gig, or listed by Triple R (rrr) or Resident Advisor (ra) */
 const isGig = o => !!o && !!o.isEvent && (o.tags || []).some(t => t === 'gig' || t === 'rrr' || t === 'ra');

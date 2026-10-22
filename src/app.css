@@ -3009,6 +3009,9 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
 .gl-pair .gc{width:100%;height:100%;display:block}
 .gl-pair .gc-in,.gl-pair .gc-f{width:100%;height:100%;object-fit:contain}
 .gl-pair .gc-go{bottom:6px;right:6px}
+/* the card fills its place beside the poster, centred on it, never drawn small at its top corner */
+.gl-pair .gc{aspect-ratio:auto!important}
+.gl-slide .gl-hero .gl-pair img.gc-f{position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain;object-position:50% 50%;background:transparent;box-shadow:none;cursor:pointer;touch-action:auto}
 .gallery.full .gl-pair{display:block!important;height:86%!important}
 .gallery.full .gl-slide .gl-hero>img{max-height:86%!important;max-width:60%!important}
 @media (max-width:759px){.gl-slide .gl-hero{gap:8px!important}.gl-pair{height:auto!important;width:38%!important;max-height:78%}.gl-slide .gl-hero>img{max-width:56%!important}.gallery.full .gl-pair{height:auto!important;width:40%!important}}
@@ -3082,10 +3085,14 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
 .pt-build:hover,.pt-build:focus-visible{background:#7FFFE0;color:#06110F}
 /* the equaliser's colour: yellow at the foot of a column to red at its head, the red reaching further down as a month is
    hotter, and further up still with the music and El Niño (--hot, set as it plays); every month of the year in colour */
-.mo .eq-c i.l{background:hsl(calc(48 - 48 * min(1, var(--hot, .3) * 1.7 * (1.1 - var(--p, .5)) + var(--p, .5) * var(--hot, .3))) 96% calc(56% - var(--p, .5) * var(--hot, .3) * 18%))!important;transition:background-color .12s linear}
-.mo.d4 .eq-c i.l.up{background:hsl(0 90% calc(42% - var(--hot, .3) * 10%))!important}
-/* an extreme month still reaches black at its very top, over the red */
-.mo.d4 .eq-c .eq-cap+i.l.up{background:var(--deg4)!important}
+#sec-heat .mstrip.eq .mo .eq-c i.l,#sec-heat .mstrip.eq .mo.hp .eq-c i.l,#sec-heat .mstrip.eq .mo.on.hp .eq-c i.l{background:hsl(calc(48 - 48 * min(1, var(--hot, .3) * 1.7 * (1.1 - var(--p, .5)) + var(--p, .5) * var(--hot, .3))) 96% calc(56% - var(--p, .5) * var(--hot, .3) * 18%))!important;box-shadow:none!important;opacity:1;transition:background-color .12s linear}
+/* the months no forecast reaches yet are lit too, as the year's heat runs on to next September, a shade softer */
+#sec-heat .mstrip.eq .mo.hp .eq-c i.l{opacity:.86}
+/* above each column the rest of its scale, faint, in the same colour: no month and no segment left blank */
+#sec-heat .mstrip.eq .mo .eq-c i:not(.l):not(.eq-cap){background:hsl(calc(48 - 48 * min(1, var(--hot, .3) * 1.7 * (1.1 - var(--p, .5)) + var(--p, .5) * var(--hot, .3))) 96% calc(56% - var(--p, .5) * var(--hot, .3) * 18%))!important;box-shadow:none!important;opacity:.24}
+/* an extreme month's blocks over its column lit red, glowing, the top one brightest */
+#sec-heat .mstrip.eq .mo.d4 .eq-c i.l.up{background:hsl(352 92% calc(46% + var(--hot, .3) * 6%))!important;box-shadow:0 0 6px rgba(255,40,70,.55)!important;opacity:1!important}
+#sec-heat .mstrip.eq .mo.d4 .eq-c .eq-cap+i.l.up{background:#FF2D55!important}
 html.night .mo .eq-c i.l{filter:brightness(1.08)}
 /* ═════════ novel.global, 0.09: below the printer and its message form, one long 80 mm receipt, living, in a cyberdeck, in
    full colour: a dark chassis with screws down both rails, the paper through it torn at each module's head and perforated at
