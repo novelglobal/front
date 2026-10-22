@@ -97,6 +97,9 @@ function turnKnob(k, d, stop) {
   if (!p) setTrack4(k, false); else { prefs.fx = { ...(prefs.fx || {}), [k]: FXS[p - 1] }; savePrefs(); if (!trackOn(k)) setTrack4(k, true); }
   const b = $(`#view [data-knob="${k}"]`); if (b) { b.style.setProperty('--a', `${KNOB_A[p]}deg`); b.setAttribute('aria-valuenow', String(p)); b.setAttribute('aria-valuetext', p ? FXS[p - 1].toUpperCase() : 'OFF'); b.dataset.tip = `${b.getAttribute('aria-label')} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}`; const li = b.closest('.rd-k'); li.classList.toggle('on', !!p); li.querySelectorAll('.kn-ticks b').forEach((x, n) => x.classList.toggle('on', n < p)); }
   snd.tick(800 + p * 320);
+  /* turned to an instrument, the layer is heard through it at once: a note of its own, then two more */
+  if (p && prefs.sound) { const spec = k === 'life' ? { g: 'bird' } : k === 'water' ? { g: 'aquatic' } : { fam: k === 'pollution' ? 'brand' : 'third' }; const f0 = F0 * partialOf(spec.g || spec.fam);
+    [0, 1, 2].forEach(i => setTimeout(() => snd.ping(spec, f0 * [1, 1.5, 2][i], { mood: moodOfLayer(k), v: 0.05, pan: (i - 1) * 0.4, cluster: i === 2, fx: FXS[p - 1] }), 120 + i * 260)); }
 }
 viewEl.addEventListener('click', e => { const k = e.target.closest('[data-knob]'); if (k) turnKnob(k.dataset.knob, 1, false); });
 /* the red switch: El Niño. Everything is at 120 BPM already, so it changes heat, not speed: the sound opened and harder, the
