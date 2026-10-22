@@ -1,5 +1,5 @@
 ================================================================================
- NOVEL.GLOBAL  //  FIELD HANDBOOK No. 1                        FORM DA-PRN-01
+ NOVEL.GLOBAL                                                   FORM DA-PRN-01
 ================================================================================
 
         ____  __  __ ___ _     ____       _       ____   ___  _       _    ____
@@ -10,455 +10,56 @@
 
                    D I R E C T   A C T I O N   P R I N T E R
 
-        A small machine on a shop counter, a library desk or a back fence
-        that prints what the neighbourhood notices, wants and plans to do,
-        sent from a phone, approved by a person, and made of parts you can
-        buy, borrow or salvage. Runs on the sun. Joins the network.
-
-                         .-----------------------------.
-                         |  ~~~~~~~~~~~~~~~~~~~~~~~~~  |
-                         |  WATER OUT FOR THE          |
-                         |  FLYING-FOXES               |
-                         |  > shallow water out        |
-                         |  > no bread for birds       |
-                         |        [ QR ]   DA-7K2Q     |
-                         '--.  .--.  .--.  .--.  .--.--'
-                            '--'  '--'  '--'  '--'
-
-  EDITION 0.08, OCTOBER 2026. FREE TO COPY, CHANGE AND SHARE (MIT LICENCE).
-  THE CODE: https://github.com/novelglobal/front   THE SITE: https://novel.global
-
 ================================================================================
- CONTENTS
+ CORE
 ================================================================================
 
-   0.  HOW TO READ THIS HANDBOOK
-   1.  WHAT YOU ARE BUILDING  (THE WHOLE STACK, ON ONE PAGE)
-   2.  PARTS LIST
-   3.  STAGE A  --  THE PRINTER ON THE BENCH
-   4.  STAGE B  --  THE RASPBERRY PI
-   5.  STAGE C  --  PRINTD, THE PRINTER'S OWN SERVER
-   6.  STAGE D  --  THE BRIDGE TO NOVEL.GLOBAL
-   7.  STAGE E  --  WI-FI FROM A PHONE, THE OFF BUTTON
-   8.  STAGE F  --  THE SUN  (SOLAR, BATTERY, POWER)
-   9.  STAGE G  --  THE CASE, THE COUNTER, THE STREET
-  10.  JOINING THE NETWORK  (WHAT TO SEND)
-  11.  WHAT A PRINT IS MADE OF  (ESC/POS, FOR THE CURIOUS)
-  12.  WHEN IT GOES WRONG
-  13.  THE RADIO (OPTIONAL): MESHTASTIC
-  14.  REFERENCES, REPOSITORIES, THANKS
+  [ ]  Epson TM-T88V receipt printer, USB
+  [ ]  Epson PS-180 power supply, 24 V
+  [ ]  80 mm thermal paper rolls
+  [ ]  Raspberry Pi 3 Model A+
+  [ ]  32 GB microSD card
+  [ ]  Raspberry Pi OS Lite, 64-bit
+  [ ]  USB-A to USB-B cable
+  [ ]  100 W 12 V solar panel
+  [ ]  10 A MPPT charge controller
+  [ ]  12.8 V 50 Ah LiFePO4 battery
+  [ ]  12 V to 24 V DC boost converter, 5 A
+  [ ]  12 V to 5 V USB buck converter, 3 A
+  [ ]  Inline fuse holders, blade fuses
+  [ ]  2.5 mm2 cable, MC4 connectors
+  [ ]  Wi-Fi or a phone hotspot
 
 ================================================================================
- 0.  HOW TO READ THIS HANDBOOK
+ MODS
 ================================================================================
 
-   Each stage ends in a CHECK. Do not go on until the check passes.
-   Lines that start with  $  are typed into the Pi's terminal, without the $.
-   Lines in [BRACKETS] are things you choose: a name, a password.
-
-   +----------------------------------------------------------------------+
-   |  NOTE  Mains power, batteries and solar can hurt you and start fires. |
-   |        Fuse every positive lead. Never seal a battery in a hot box.   |
-   |        If in doubt, ask someone who has done it before. Many have.   |
-   +----------------------------------------------------------------------+
+  [ ]  Momentary push button, GPIO 5
+  [ ]  Status LED, 330 ohm resistor, GPIO 6
+  [ ]  IP65 enclosure
+  [ ]  Cable glands
+  [ ]  Paper slot with a rain lip
+  [ ]  Mounting brackets
 
 ================================================================================
- 1.  WHAT YOU ARE BUILDING
+ HACKS
 ================================================================================
 
-     PHONE  ----->  NOVEL.GLOBAL  ----->  APPROVAL  ----->  YOUR PRINTER
-   (a W.I.S.H.,     (the site and its     (a person says     (asks for work
-    a message,       queue: Cloudflare     yes, or the        every 3 s,
-    a poster)        Worker + D1)          printer is set     prints it,
-                                           to print without)  says PRINTED)
-
-   The printer is never reached from outside. It ASKS for work, so it needs
-   no open ports, no fixed address and no router settings. Wherever it can
-   reach the internet, it works.
-
-        .--------------.  USB   .---------------.   Wi-Fi    .-------------.
-        |  EPSON       |<-------|  RASPBERRY PI |~~~~~~~~~~~~| THE INTERNET|
-        |  TM-T88V     |        |  printd       |            | novel.global|
-        |  (80 mm)     |        |  da-pull      |            '-------------'
-        '------+-------'        '-------+-------'
-               | 24 V                   | 5 V
-        .------+------------------------+-------.
-        |  POWER: SUN -> BATTERY -> TWO SUPPLIES |
-        '----------------------------------------'
-
-   SOFTWARE, BOTTOM TO TOP
-     Raspberry Pi OS Lite (64-bit, Bookworm or newer)
-     printd  ............ a small local server that drives the printer (MIT)
-     da-pull (pull.py) .. the bridge: asks novel.global for slips, hands them
-                          to printd, reports back
-     wifi-setup ......... opens a setup Wi-Fi when no known one is found
-     da-off ............. turns the Pi off safely when asked from the site
+  [ ]  Any 80 mm ESC/POS printer, salvaged
+  [ ]  Old phone as the hotspot
+  [ ]  Car battery, 12 V USB adapter
+  [ ]  Lunchbox enclosure
+  [ ]  Bulldog clip paper catcher
 
 ================================================================================
- 2.  PARTS LIST                                    (prices: rough, AUD, 2026)
+ UPGRADES
 ================================================================================
 
-   THE PRINTING PART  (what the code is built and tested for)
-   [ ] Epson TM-T88V receipt printer, USB, with its PS-180 supply (24 V)
-         second-hand from shops closing down: $40 - $120
-         (other ESC/POS printers may work; only the TM-T88V is tested)
-   [ ] 80 mm thermal paper rolls (58 mm works too, set in the site)  $2 each
-   [ ] USB-A to USB-B cable ("printer cable")                         $5
-   [ ] Raspberry Pi 3 Model A+, or any Pi with Wi-Fi                  $40-$80
-   [ ] microSD card, 32 GB                                            $10
-   [ ] 5 V 2.5 A supply for the Pi (for the bench, before solar)      $15
-   [ ] Optional: a push button and two female jumper wires (the off
-       and on button)                                                 $3
-   [ ] Optional: a Meshtastic LoRa radio on USB (section 13)          $40
+  [ ]  Meshtastic LoRa node, Heltec V3 or RAK WisBlock
+  [ ]  915 MHz antenna
+  [ ]  Raspberry Pi 4 or 5
+  [ ]  100 Ah battery
+  [ ]  Paper-low sensor
+  [ ]  Epson TM-T88VI
 
-   THE SUN  (suggested; not part of the code -- size it to your place)
-   [ ] Solar panel, 100 W, 12 V nominal                               $100
-   [ ] MPPT charge controller, 12 V, 10-20 A, with a load output      $40
-   [ ] LiFePO4 battery, 12.8 V, 50 Ah, with its own BMS               $250
-   [ ] DC-DC boost 12 V -> 24 V, 5 A  (for the printer)               $20
-   [ ] DC-DC buck  12 V -> 5 V USB, 3 A  (for the Pi)                 $10
-   [ ] Inline blade fuses: 15 A battery, 5 A printer, 3 A Pi          $10
-   [ ] 2.5 mm2 red/black cable, ring lugs, MC4 leads for the panel    $30
-
-   THE CASE
-   [ ] A vented box (a fruit crate, an old radio, a toolbox), mesh,
-       zip ties, a drip loop for every cable that comes in from outside
-   [ ] Stickers. A lot of stickers.
-
-================================================================================
- 3.  STAGE A  --  THE PRINTER ON THE BENCH
-================================================================================
-
-     1. Plug the PS-180 into the printer and the wall. Load paper:
-        open the lid, drop the roll in so the paper comes off the BOTTOM
-        towards you, close the lid. It feeds a little and cuts.
-     2. SELF-TEST: switch the printer OFF. Hold FEED. Switch it ON.
-        Let go when it starts printing.
-
-            .---------------------.
-            | TM-T88V             |      Look for the line that says
-            | ...                 |      PRINT WIDTH or DOTS.
-            | Print width: 512 ---|----  512 dots is what the site expects
-            | ...                 |      on 80 mm. If it says 576, tell the
-            '---------------------'      operator (section 10).
-
-   CHECK A:  the self-test prints and cuts cleanly.
-
-================================================================================
- 4.  STAGE B  --  THE RASPBERRY PI
-================================================================================
-
-     1. On a computer, install Raspberry Pi Imager:
-           https://www.raspberrypi.com/software/
-     2. Choose: Raspberry Pi OS Lite (64-bit). Choose your SD card.
-     3. Click the settings (gear) and set:
-           hostname ........ [your-printer-name]        e.g. pickles
-           user/password ... [your choice]
-           Wi-Fi ........... your network
-           SSH ............. ON
-     4. Write the card. Put it in the Pi. Power the Pi.
-     5. From the computer, on the same Wi-Fi:
-
-     $ ssh [user]@[your-printer-name].local
-
-     6. Make the user that runs the printer, and let it reach the printer:
-
-     $ sudo apt update && sudo apt install -y python3-venv git
-     $ sudo useradd --system --create-home --groups lp,dialout da
-     $ echo 'SUBSYSTEM=="usbmisc", KERNEL=="lp*", GROUP="lp", MODE="0660"' \
-         | sudo tee /etc/udev/rules.d/99-escpos.rules
-
-     7. Plug the printer's USB cable into the Pi. Then:
-
-     $ ls /dev/usb/
-
-   CHECK B:  you see  lp0  in the list.
-
-================================================================================
- 5.  STAGE C  --  PRINTD, THE PRINTER'S OWN SERVER
-================================================================================
-
-   printd (https://github.com/HansF/printd, MIT) takes raw printer bytes
-   over a small local web API and sends them to the USB printer.
-
-     $ sudo mkdir -p /opt/printd && sudo chown da /opt/printd
-     $ sudo -u da python3 -m venv /opt/printd/venv
-     $ sudo -u da /opt/printd/venv/bin/pip install git+https://github.com/HansF/printd
-
-   Make a long random key (keep it; you need it twice):
-
-     $ openssl rand -hex 24
-
-   Write /etc/printd.env :
-
-     $ sudo nano /etc/printd.env
-
-        PRINTD_HOST=127.0.0.1
-        PRINTD_PORT=8080
-        PRINTD_PRINTER_KIND=usb
-        PRINTD_DEVICE=/dev/usb/lp0
-        PRINTD_PRINT_WIDTH=512
-        PRINTD_API_KEY=[the long random key]
-
-   Run it as a service. Write /etc/systemd/system/printd.service :
-
-        [Unit]
-        Description=printd
-        After=network.target
-        [Service]
-        User=da
-        EnvironmentFile=/etc/printd.env
-        ExecStart=/opt/printd/venv/bin/python -m printd
-        Restart=always
-        [Install]
-        WantedBy=multi-user.target
-
-     $ sudo systemctl enable --now printd
-     $ curl -s http://127.0.0.1:8080/healthz
-
-   CHECK C:  the answer says  "ok": true
-
-================================================================================
- 6.  STAGE D  --  THE BRIDGE TO NOVEL.GLOBAL
-================================================================================
-
-   The bridge is pull.py, in the receiver/ folder of the repository.
-
-     $ git clone --depth 1 https://github.com/novelglobal/front /tmp/front
-     $ sudo mkdir -p /opt/da-pull
-     $ sudo cp /tmp/front/receiver/pull.py /opt/da-pull/
-     $ sudo cp /tmp/front/receiver/da-pull.service /etc/systemd/system/
-     $ sudo cp /tmp/front/receiver/da-pull.env.example /etc/da-pull.env
-     $ sudo chgrp da /etc/da-pull.env && sudo chmod 640 /etc/da-pull.env
-
-   Edit /etc/da-pull.env. The first three lines come from the operator
-   when your printer is paired (section 10). Until then, test dry:
-
-        DA_SERVER=https://novel.global
-        DA_PRINTER=[the id you are given]
-        DA_TOKEN=[the token you are given, shown once]
-        PRINTD_URL=http://127.0.0.1:8080
-        PRINTD_API_KEY=[the same long random key as printd]
-        DA_COLS=42          # 42 on 80 mm paper, 32 on 58 mm
-        DA_MESH=            # see section 13
-        DA_POLL=3           # seconds between asks
-        # DA_DRY=1          # test without paper: slips written to files
-
-     $ sudo systemctl enable --now da-pull
-     $ journalctl -u da-pull -f
-
-   CHECK D:  the printer prints a READY slip with its place and its Wi-Fi.
-             (Before pairing, the log says the token was refused: that is
-             right. It waits and asks again.)
-
-================================================================================
- 7.  STAGE E  --  WI-FI FROM A PHONE, THE OFF BUTTON
-================================================================================
-
-   One line installs the rest, and updates everything when run again:
-
-     $ curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/setup/install.sh | sh
-
-   It adds:
-     - WI-FI FROM A PHONE. If the Pi finds no known Wi-Fi for 2 minutes it
-       opens its own:  [NAME] SETUP  and PRINTS its password and a QR code.
-       Join it with a phone; a page opens by itself (or go to 10.42.0.1).
-       Choose your Wi-Fi, type its password, press JOIN. It prints ON WI-FI.
-       Nobody comes in 10 minutes: it closes and looks again.
-     - THE BUTTON. A push button on pins 5 and 6 (GPIO 3 and ground):
-
-            Pi header, pins 1..6 (the end with the corner hole)
-             .---.---.
-           1 | o | o | 2
-           3 | o | o | 4
-           5 | X | X | 6    <-- the button's two wires here
-             '---'---'
-
-       Press to turn the Pi off safely; press again to turn it on.
-     - TURN OFF FROM THE SITE. The operator's approval page can turn it off.
-
-   CHECK E:  switch your router off; in about 2 minutes [NAME] SETUP
-             prints its password. Switch the router on again.
-
-================================================================================
- 8.  STAGE F  --  THE SUN
-================================================================================
-
-   This stage is a suggestion from the people who wrote the code, not a part
-   of the code. Size it to your place, your shade and your season.
-
-           \   |   /
-         -- ( SUN ) --        100 W PANEL
-           /   |   \               |  MC4
-                                   v
-                         .-------------------.
-                         |  MPPT CONTROLLER  |---[15 A]--- BATTERY 12.8 V
-                         |  (load output)    |             LiFePO4 50 Ah
-                         '---------+---------'
-                                   | load (12 V)
-                    .--------------+--------------.
-                 [5 A]                          [3 A]
-                    |                              |
-            .-------+-------.              .-------+-------.
-            | BOOST 12->24 V|              | BUCK 12->5 V  |
-            | -> PRINTER    |              | -> PI (USB)   |
-            '---------------'              '---------------'
-
-   THE BUDGET (a day, roughly)
-     Pi, always on ..................  2.5 W x 24 h  =  60 Wh
-     Printer, waiting ...............  2   W x 24 h  =  48 Wh
-     Printing, 40 slips .............                 ~ 10 Wh
-                                                      --------
-                                                      ~120 Wh a day
-     Battery 12.8 V x 50 Ah = 640 Wh  ->  about 4 to 5 days with no sun.
-     A 100 W panel in Melbourne gives very roughly 150 Wh (winter) to
-     450 Wh (summer) a day. In winter, add a second panel or let the
-     printer sleep at night (see below).
-
-   SAVING POWER
-     - Let the Pi turn off at night: a cron line, e.g. at 22:00
-          $ sudo crontab -e        then add:   0 22 * * * /sbin/poweroff
-       and a timer relay, or the button, to start it again in the morning.
-     - Switch the printer's supply with the controller's load output, so a
-       flat battery cuts the load before it harms the battery.
-
-   CHECK F:  with the wall supplies unplugged, it prints a TEST slip
-             (ask the operator for one, or press the printer's FEED).
-
-================================================================================
- 9.  STAGE G  --  THE CASE, THE COUNTER, THE STREET
-================================================================================
-
-     - The paper comes out of the FRONT. Leave a slot, and room to tear.
-     - The printer and the Pi make a little heat. Vent the box.
-     - A battery in the sun gets hot. Keep it shaded and ventilated.
-     - Cables that come in from outside: a drip loop, then a gland.
-     - Put the place's name on it. Put a QR code to novel.global on it.
-     - Ask the people who host it what they want printed, and when.
-
-          .------------------------------.
-          |  [ ] [ ] [ ]   NOVEL.GLOBAL  |   a fruit crate, a toolbox,
-          |   ____________________       |   an old radio case: all good
-          |  |____________________|<-----|-- the slot
-          |  WHAT HAVE YOU NOTICED?      |
-          '------------------------------'
-
-================================================================================
- 10.  JOINING THE NETWORK  --  WHAT TO SEND
-================================================================================
-
-   Send the operator these, as a message from novel.global (the message box
-   on its portfolio prints at novel.global's own printer), or as an issue
-   titled  NEW PRINTER: [name]  at https://github.com/novelglobal/front :
-
-     1. THE PLACE ......... its name, as people know it
-     2. WHERE ............. street address and suburb
-     3. A LINE ............ what the place is, in one sentence
-     4. A LINK ............ its website or page, if it has one
-     5. THE POINT ......... latitude and longitude (long-press it on a map)
-     6. THE PAPER ......... 58 mm or 80 mm; and the self-test's dots
-     7. THE ID ............ a short name in lower case for the printer,
-                            e.g. pickles  (letters and dashes only)
-     8. A PHOTOGRAPH ...... of the printer where it lives (optional, lovely)
-     9. WHO TO ASK ........ how to reach a person there
-
-   Never send your PRINTD_API_KEY. It never leaves your Pi.
-
-   THE OPERATOR THEN
-     - adds your printer to the site's settings (src/config.js and
-       src/places.js) and publishes it;
-     - opens the approval page, PRINTERS, PAIR A PRINTER, and gets
-       three lines, shown once:
-
-          DA_SERVER=https://novel.global
-          DA_PRINTER=[your id]
-          DA_TOKEN=[a 32-character token]
-
-     - sends them to you. Put them in /etc/da-pull.env, then:
-
-     $ sudo systemctl restart da-pull
-
-   CHECK 10:  on novel.global your printer's light turns green on the map,
-              and the operator's TEST PRINT comes out of your slot.
-
-   WHAT HAPPENS NEXT
-     Slips sent to your printer wait for approval on the operator's page
-     (or print straight away, if you agree to that). A slip not printed in
-     24 hours is dropped. Once printed, its picture is deleted; only its
-     status is kept, for 7 days. Your Pi keeps nothing.
-
-================================================================================
- 11.  WHAT A PRINT IS MADE OF  (ESC/POS, FOR THE CURIOUS)
-================================================================================
-
-     1B 40              ESC @          start clean
-     1B 74 00           ESC t 0        code page 437
-     1D 76 30 00 ...    GS v 0         a picture, in bands of 255 rows,
-                                       512 dots wide on 80 mm (64 bytes/row)
-     1B 45 01           ESC E 1        bold on (for headings)
-     1D 28 6B ...       GS ( k         a QR code, model 2
-     1B 64 04           ESC d 4        feed four lines
-     1D 56 42 00        GS V B 0       cut
-
-   The bridge asks:   GET  /api/printers/[id]/next   (Bearer token)
-       204 ............ nothing waiting
-       200 ............ {job, code, escpos (base64), mesh}  or  {off: true}
-   and answers:       POST /api/printers/[id]/jobs/[job]
-                        {"status": "printed"}   or   {"status": "failed"}
-   No signal: it waits, doubling the wait up to a minute, and asks again.
-
-================================================================================
- 12.  WHEN IT GOES WRONG
-================================================================================
-
-   NOTHING PRINTS, LOG SAYS TOKEN REFUSED ... not paired yet, or the token
-                                             was mistyped. Section 10.
-   NO /dev/usb/lp0 ......................... cable, power, or the udev rule
-                                             (section 4, step 6). Replug.
-   printd healthz fails .................... /etc/printd.env, then
-                                             journalctl -u printd -e
-   PRINTS GARBAGE .......................... wrong width: 512 vs 576 dots.
-   PAPER COMES OUT BLANK ................... the roll is in backwards.
-   NO WI-FI AT A NEW PLACE ................. wait 2 minutes for [NAME] SETUP.
-   IT TURNED ITSELF OFF .................... the battery, or the operator's
-                                             TURN OFF. Press the button.
-
-================================================================================
- 13.  THE RADIO (OPTIONAL): MESHTASTIC
-================================================================================
-
-     A Meshtastic LoRa radio on USB sends each slip's short line (200 bytes
-     at most) out on its primary channel, for anyone nearby on the mesh,
-     with no internet at all.
-
-     $ sudo -u da python3 -m pip install --user meshtastic
-
-     then in /etc/da-pull.env:    DA_MESH=auto
-                                  (or DA_MESH=/dev/ttyACM0, or tcp:[host])
-
-     https://meshtastic.org      (the library is GPL-3.0, a separate program)
-
-================================================================================
- 14.  REFERENCES, REPOSITORIES, THANKS
-================================================================================
-
-     novel.global, the site and its printers ... https://novel.global
-     the code (MIT) ............................ https://github.com/novelglobal/front
-       receiver/README.md  .... the same steps, kept current
-       receiver/pull.py  ...... the bridge
-       receiver/setup/  ....... Wi-Fi setup, the button, the one-line install
-     printd (MIT) .............................. https://github.com/HansF/printd
-     Raspberry Pi Imager ....................... https://www.raspberrypi.com/software/
-     Meshtastic ................................ https://meshtastic.org
-     Epson TM-T88V technical reference ......... search: "TM-T88V technical reference guide"
-     ESC/POS command reference ................. search: "ESC/POS command reference"
-
-          .-.
-         (o o)    Made in Naarm (Melbourne), on the land of the Wurundjeri
-         | O \    Woi-wurrung people. Sovereignty has never been ceded.
-          \   \
-           `~~~'  Print what you notice. Print what you want. Do it together.
-
-================================================================================
-                              END OF HANDBOOK  //  DA-PRN-01
 ================================================================================

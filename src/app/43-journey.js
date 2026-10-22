@@ -424,7 +424,14 @@ const jPreview = debounce(async () => {
   const cv = await intelCanvas(jSel(), jSignal(), 576, 0).catch(() => null); if (!cv || my !== jpvN || !jrEl || jrEl.hidden) return;
   const im = jrEl.querySelector('.jr-r img'); if (!im) return; im.src = cv.toDataURL('image/jpeg', 0.9);
   (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(() => requestAnimationFrame(jClear));
-}, 220);
+}, 40);
+/* a life's receipt made ready before it is asked for: under the pointer, its photograph is fetched and set in colour at the
+   receipt's own size, so a press turns it into its card at once */
+const jWarmed = new Set();
+function jWarm(o) {
+  if (!o || jWarmed.has(o.id) || o.hum || o.isTribe) return; jWarmed.add(o.id); if (jWarmed.size > 200) jWarmed.clear();
+  const sel = jSelLife(o); const src = sel.photo || (sel.img ? sigSrc({ img: sel.img }, true) : ''); if (src) colourCanvas(src, 576, Math.round(576 * 0.78)).catch(() => {});
+}
 const jWantSave = debounce(saveJR, 300);
 const jMakeLit = () => { const mk = $('#view .vs-make'); if (mk) mk.classList.toggle('next', jWants()); };
 document.addEventListener('click', e => {
@@ -526,6 +533,25 @@ function jCaret() {
   const z = (zc.upperCanvasEl.getBoundingClientRect().width / zc.getWidth()) || 1; c.style.left = `${Math.round((w.left + 2) * z)}px`; c.style.top = `${Math.round((w.top + 2) * z)}px`; c.style.height = `${Math.round(18 * z)}px`; c.style.width = `${Math.max(8, Math.round(9 * z))}px`; c.hidden = false;
 }
 addEventListener('resize', () => setTimeout(jCaret, 60));
+/* ───────── once everything is open, a quiet word when nothing has been pressed for five seconds: beside the information corner
+   on RADIO and on W.I.S.H.'s handheld, and on PRINT's receipt where the words go (never printed). Any press puts it away ───────── */
+const idleTip = (() => { const el = document.createElement('p'); el.className = 'idle-tip mono'; el.hidden = true; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); return el; })();
+let idleT = 0;
+function idleOff() { idleTip.hidden = true; const ph = $('#jr-ph'); if (ph) ph.hidden = true; clearTimeout(idleT); idleT = setTimeout(idleOn, 5000); }
+function idleOn() {
+  const pk = $('#pick'); if (simple() || document.hidden || $('.card-view') || (pk && !pk.hidden)) return;
+  if (S.open && S.view === 2) {
+    /* PRINT: the receipt's empty words say what they are for */
+    const c = $('#jr-caret'); if (faceOf(2) !== 'front' || !c || c.hidden) return; let ph = $('#jr-ph');
+    if (!ph) { ph = document.createElement('span'); ph.id = 'jr-ph'; ph.className = 'jr-ph'; ph.setAttribute('aria-hidden', 'true'); ph.textContent = 'tell a story'; }
+    if (ph.parentNode !== c.parentNode) c.parentNode.appendChild(ph); ph.style.left = `${c.offsetLeft + c.offsetWidth + 6}px`; ph.style.top = `${c.offsetTop}px`; ph.style.fontSize = `${Math.max(11, c.offsetHeight * 0.82)}px`; ph.hidden = false; return;
+  }
+  const w = !S.open || S.view === 0 ? 'What have you noticed?' : S.view === 1 && faceOf(1) === 'front' ? 'Make a connection' : ''; if (!w) return;
+  const i = $('.maplibregl-ctrl-attrib-button') || $('.maplibregl-ctrl-attrib'); if (!i) return; const r = i.getBoundingClientRect(); if (!r.width) return;
+  idleTip.textContent = w; idleTip.style.left = `${Math.round(r.right + 8)}px`; idleTip.style.top = `${Math.round(r.top + r.height / 2)}px`; idleTip.hidden = false;
+}
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'click']) addEventListener(ev, idleOff, { passive: true, capture: true });
+idleOff();
 /* what is placed on the receipt lands on its picture, in turn round its edges, never over its words or its code */
 function jLand() {
   const W = zc.getWidth(), base = jObj('base'); const n = zc.getObjects().filter(o => !ZFIXED.includes(o.daKind)).length;

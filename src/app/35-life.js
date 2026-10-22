@@ -64,7 +64,7 @@ const life = (() => {
       const k = PLACE_KINDS[o.kind] || PLACE_KINDS[0]; const g = placeGlyph(o);
       return { tone: k.f === 'fauna' ? M.toneOf(g) : PLACE_TONE[k.f] || 'k-other', g, i: g ? null : PLACE_ICON[k.f] || 'plus', d: Math.max(d, 18) + 6 };
     }
-    if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, tier: 2, hero: true }; }
+    if (o.hero) { const deg = degOf(o); return { tone: 'hero', g: glyphOf(o), v: M.variantOf(glyphOf(o), nameOf(o)), d: d + Math.round(d * 0.5), dz: deg >= 3 ? deg : 0, sig: !!o.tx.th, tier: 2, hero: true }; }
     /* a story: a slip issued about a life, standing where its life was */
     if (o.story) return { tone: 'story', g: glyphOf(o), d: Math.max(10, d + 4), carried: !o.ex, fresh: isFresh(o) };
     if (o.hist) return { tone: 'hist', g: glyphOf(o), d: Math.max(7, Math.round(d * 0.5)) };
@@ -87,7 +87,9 @@ const life = (() => {
     if (flora) return { tone: 'flora', g, d: Math.max(6, Math.round(d * 0.55)) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, dz: deg >= 3 ? deg : 0, fresh };
     /* birds and animals a little larger than the small lives, easy to find */
     const vert = ['k-bird', 'k-mammal', 'k-reptile', 'k-water'].includes(M.toneOf(g));
-    return { tone: M.toneOf(g), g, d: (vert ? Math.round(d * 1.25) + 2 : d) + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
+    /* one of the twenty larger lives, seen in the last three months: drawn as itself, and larger */
+    const ha = M.heroArtOf(nameOf(o)); const recent = (Date.now() - (stampOf(o) || 0)) < 90 * 864e5; const art = ha >= 0 && recent;
+    return { tone: M.toneOf(g), g, v: art ? 1000 + ha : M.variantOf(g, nameOf(o)), d: (art ? Math.round(d * 1.6) + 4 : vert ? Math.round(d * ({ 'k-mammal': 1.4, 'k-bird': 1.2, 'k-reptile': 1.25, 'k-water': 1.1 }[M.toneOf(g)] || 1.2)) + 2 : d) + (o.user ? 2 : 0) + (deg >= 3 ? 2 : 0) + tier * 2, sig: !!(sub.tx && sub.tx.th), tier, fresh, n: o.n > 1 ? o.n : 0, dz: deg >= 3 ? deg : 0 };
   }
   /* the kind of life a record being placed will carry: the one chosen, else the one the words name, else any animal */
   function placeGlyph(p) { const k = PLACE_KINDS[p.kind] || PLACE_KINDS[0]; if (p.g) return p.g; if (p.tx) return glyphOf(p); if (k.f === 'flora') return 'plant'; return ['fauna', 'injured', 'dead', 'lost'].includes(k.f) ? 'paw' : null; }
@@ -297,6 +299,8 @@ const life = (() => {
     /* the ends rounded, so a creek does not stop square */
     for (const k of [0, P.length - 1]) { ctx.beginPath(); ctx.arc(P[k][0], P[k][1], P[k][2], 0, TAU); ctx.fill(); }
   }
+  /* drinking water: a small filled drop, blue, an ink edge */
+  function drop(ctx, x, y) { ctx.beginPath(); ctx.moveTo(x, y - 5.4); ctx.quadraticCurveTo(x + 3.4, y - 1, x + 3.1, y + 1.2); ctx.arc(x, y + 1.2, 3.1, 0, Math.PI); ctx.quadraticCurveTo(x - 3.4, y - 1, x, y - 5.4); ctx.closePath(); ctx.fillStyle = '#3C9AD8'; ctx.fill(); ctx.lineWidth = 0.9; ctx.strokeStyle = 'rgba(12,14,14,.85)'; ctx.stroke(); }
   function water(ctx) {
     if (!wcv) wcv = document.createElement('canvas'); if (wcv.width !== Math.round(W * dpr) || wcv.height !== Math.round(H * dpr)) { wcv.width = Math.round(W * dpr); wcv.height = Math.round(H * dpr); }
     const w = wcv.getContext('2d'); w.setTransform(dpr, 0, 0, dpr, 0, 0); w.clearRect(0, 0, W, H); w.fillStyle = '#3C9AD8'; w.lineJoin = 'round';
@@ -342,7 +346,7 @@ const life = (() => {
     }
     /* WATER, or any hot day, inside the radar: drinking water; on a hot day, the air temperature now */
     if (T4.water || (S.wx.tmax || 0) >= HEAT.hot) {
-      for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1; M.icon(ctx, 'water', f.x, f.y, 14, '#5CC8F2', 1.2); ctx.restore(); }
+      for (const f of S.fountains) { if (f.x == null || !inScan(f.lat, f.lng)) continue; drop(ctx, f.x, f.y); }
       for (const s of S.sensors) {
         if (s.x == null || !inScan(s.lat, s.lng)) continue; const txt = `${s.t.toFixed(1)}°`; ctx.save(); ctx.font = '500 10px "IBM Plex Mono", monospace'; const w = ctx.measureText(txt).width + 8;
         ctx.fillStyle = 'rgba(8,14,16,.72)'; ctx.fillRect(s.x - w / 2, s.y - 7, w, 14); ctx.fillStyle = s.t >= HEAT.hot ? '#FF8A5C' : '#DFFFF8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, s.x, s.y + 0.5); ctx.restore();
@@ -372,8 +376,10 @@ const life = (() => {
   /* ───────── the marks layer ───────── */
   const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
   const back = k => { k = clamp(k, 0, 1); const c = 1.9; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+  /* a creature folds as it moves: its wings, its legs, its body turned through four folds, each drawn once */
+  const foldOf = it => (it.moving && !reduced() && M.CREATURES[it.b.g] && it.b.tone !== 'cold' ? Math.round((0.5 + 0.5 * Math.sin(performance.now() / 1000 * M.foldRate(it.b.g) * TAU + it.phase * TAU)) * 3) / 3 : null);
   function drawItem(ctx, it, m, a = 1, k = 1) {
-    const sp = M.badgeSprite(it.pile ? { ...it.b, n: it.pile + 1 } : it.b, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
+    const fo = foldOf(it); const bb = it.pile ? { ...it.b, n: it.pile + 1 } : it.b; const sp = M.badgeSprite(fo == null ? bb : { ...bb, fold: fo }, dpr); const x = it.x + (m ? m.dx : 0), y = it.y + (m ? m.dy : 0);
     if (m && m.thread) { ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(it.x, it.y - it.b.d * 1.7); ctx.lineTo(x, y - it.b.d / 2); ctx.stroke(); ctx.restore(); }
     ctx.globalAlpha = a;
     if ((m && (m.rot || m.sx !== 1)) || k !== 1 || it.tilt) { ctx.save(); ctx.translate(x, y); ctx.rotate(it.tilt || 0); if (m) { ctx.rotate(m.rot || 0); ctx.scale(m.sx || 1, 1); } ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.size / 2, -sp.size / 2, sp.size, sp.size); ctx.restore(); }
@@ -505,10 +511,9 @@ const life = (() => {
       const node = cellOpen && strings.lifeNode(it.o.id); const a = it.alarm ? 1 : cellOpen && !node ? 0.45 : S.mode === 'tribe' || S.mode === 'partner' ? 0.55 : 1;
       if (it.pulse && !still && a === 1) M.pulse(ctx, { pulse: it.pulse, pc: it.pc, r: it.b.d / 2 - 2, f: 'fauna' }, it.x, it.y, t, it.phase);
       let m = null; if (it.moving && !still) { m = it.hero ? M.heroMotion(it.o.heroOf.move, t, it.phase, amp) : M.motion(it.b.g, t, it.phase, amp); it.dx = m.dx; it.dy = m.dy; } else { it.dx = 0; it.dy = 0; }
-      /* a life the months ahead put in extreme danger, or a threatened one in severe danger, breathes a slow light of that danger
-         under it: it stands out, and it is alive. The rest stay quiet, so these few are seen */
-      if ((it.b.dz >= 4 || (it.b.dz >= 3 && it.b.sig)) && !it.o.hum && a === 1) { const br = still ? 0.5 : 0.5 + 0.5 * Math.sin(t * 1.5 + it.phase * TAU); const R = it.b.d * (0.95 + 0.3 * br) + 4; const c0 = it.b.dz >= 4 ? '232,64,42' : '255,122,40'; const gx = it.x + it.dx, gy = it.y + it.dy;
-        const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, R); gr.addColorStop(0, `rgba(${c0},${(0.22 + 0.16 * br).toFixed(3)})`); gr.addColorStop(1, `rgba(${c0},0)`); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(gx, gy, R, 0, TAU); ctx.fill(); }
+      /* a life the months ahead put in extreme danger, or a threatened one in severe danger, breathes: a fine ring of that danger
+         opens from it and closes, slowly. The rest stay quiet, so these few are seen */
+      if ((it.b.dz >= 4 || (it.b.dz >= 3 && it.b.sig)) && !it.o.hum && a === 1 && !still) { const br = 0.5 + 0.5 * Math.sin(t * 1.5 + it.phase * TAU); ctx.beginPath(); ctx.arc(it.x + it.dx, it.y + it.dy, it.b.d * 0.62 + 4 + br * 5, 0, TAU); ctx.lineWidth = 1.2; ctx.strokeStyle = it.b.dz >= 4 ? '#E8402A' : '#FF7A28'; ctx.stroke(); }
       /* found by the sweep: it arrives with a small overshoot and a ring that leaves it */
       const rv = seen.get(it.o.id); const age = rv != null && !it.flag ? now - rv : 9999; const k = (age < 420 ? back(age / 420) : 1) * (0.55 + 0.45 * it.fade);
       if (age < 700 && !still) { const q = age / 700; ctx.save(); ctx.globalAlpha = (1 - q) * 0.9; ctx.beginPath(); ctx.arc(it.x, it.y, it.b.d / 2 + 2 + q * 16, 0, TAU); ctx.strokeStyle = C.white; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore(); }
@@ -645,6 +650,7 @@ const life = (() => {
   function hover(h) {
     if (h && hoverH && h.kind === hoverH.kind && h.id === hoverH.id && h.key === hoverH.key) return;
     fxDirty = true; hoverAt = performance.now();
+    if (h && h.kind === 'cell' && typeof jWarm === 'function') jWarm(S.byId.get(h.id));
     if (h) { clearTimeout(tagHide); const html = tagHTML(h); if (!html) return; hoverH = h; tagEl.innerHTML = html; tagEl.classList.toggle('alarm', h.kind === 'cell' && isAlarm(S.byId.get(h.id))); tagEl.classList.toggle('node', h.kind === 'node'); tagEl.hidden = false; placeTag(); return; }
     /* a place's name, a business, a printer: left up long enough to read, and kept while the pointer is on it */
     const linger = hoverH && /^(place|partner|tribe)$/.test(hoverH.kind) ? 2200 : 260;
