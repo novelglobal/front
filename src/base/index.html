@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>novel.global</title>
-<meta name="description" content="What have you noticed? Photograph it, say it in a line, see what it connects to, print it.">
-<meta name="theme-color" content="#EDEBE4">
+<meta name="description" content="What have you noticed?">
+<meta name="theme-color" content="#050505">
 <meta name="da-build" content="%BUILD%">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -20,35 +20,71 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
 <link rel="stylesheet" href="base.css">
 </head>
 <body>
+<!-- the glyphs: drawn once, used everywhere. Sticks, beads, dotted threads; no words -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="g-radio" viewBox="0 0 24 24"><circle cx="12" cy="15" r="1.6" class="f"/><path d="M7.5 10.5a6.4 6.4 0 0 1 9 0M4.3 7.3a11 11 0 0 1 15.4 0" class="d"/><path d="M12 15v6"/></symbol>
+  <symbol id="g-wish" viewBox="0 0 24 24"><path d="M1 12h22"/><circle cx="5" cy="12" r="1.8" class="f"/><circle cx="10" cy="12" r="1.8" class="f"/><circle cx="15" cy="12" r="1.8" class="f"/><circle cx="20" cy="12" r="1.8" class="f"/></symbol>
+  <symbol id="g-shop" viewBox="0 0 24 24"><path d="M6 3h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 19z"/><path d="M9 8h6M9 11h6M9 14h3"/></symbol>
+  <symbol id="g-map" viewBox="0 0 24 24"><path d="M2 7h20M2 17h20M7 2v20M17 2v20"/><path d="M7 7l10 10" class="d"/><circle cx="12" cy="12" r="1.6" class="f"/></symbol>
+  <symbol id="g-guide" viewBox="0 0 24 24"><circle cx="5" cy="6" r="1.4" class="f"/><circle cx="5" cy="12" r="1.4" class="f"/><circle cx="5" cy="18" r="1.4" class="f"/><path d="M9 6h11M9 12h11M9 18h7"/></symbol>
+  <symbol id="g-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" class="f"/></symbol>
+  <symbol id="g-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3v-8h18v8h-3M7 14h10v7H7z"/></symbol>
+  <symbol id="g-jelly" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 16 0z" class="f"/><path d="M6 14v7M10 14v8M14 14v8M18 14v7" class="d"/></symbol>
+  <symbol id="g-sos" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/></symbol>
+  <symbol id="g-tiles" viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></symbol>
+  <symbol id="g-pixel" viewBox="0 0 24 24"><path d="M3 3h6v6H3zM9 9h6v6H9zM15 15h6v6h-6zM15 3h6v6h-6zM3 15h6v6H3z" class="f"/></symbol>
+  <symbol id="g-sign" viewBox="0 0 24 24"><path d="M3 4h18v6H3z" class="f"/><path d="M3 4h18v16H3zM6 14h12M6 17h8"/></symbol>
+  <symbol id="g-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" class="d"/></symbol>
+</svg>
+
 <div id="terrain" aria-hidden="true"><div id="tiles"></div><svg id="net"></svg></div>
 
 <header id="top">
-  <a id="mark" href="./" aria-label="novel.global">novel.global</a>
+  <a id="mark" href="./">novel.global</a>
   <span class="sp"></span>
-  <button id="b-map" class="k t">MAP</button>
-  <button id="b-search" class="k t">GUIDE</button>
-  <button id="b-theme" class="k" aria-label="Light or dark" title="Light or dark">◐</button>
+  <button id="b-map" class="g" aria-label="Map" title="Map"><svg><use href="#g-map"/></svg></button>
+  <button id="b-search" class="g" aria-label="Guide" title="Guide"><svg><use href="#g-guide"/></svg></button>
+  <button id="b-theme" class="g" aria-label="Light or dark" title="Light or dark"><svg><use href="#g-theme"/></svg></button>
 </header>
 
 <main id="home">
-  <h1 id="ask" data-say="What have you noticed?">What have you noticed?</h1>
-  <label id="cam" class="cam" aria-label="Photograph what you noticed">
-    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/><circle cx="32" cy="35" r="1.6" class="dot"/><circle cx="49" cy="25" r="1.4" class="dot"/></svg>
+  <!-- the eye: two bamboo sticks lashed at the corners, a ring of beads, a shell for its pupil, threads hanging from it -->
+  <label id="cam" class="eye" aria-label="What have you noticed? Photograph it" title="What have you noticed?">
+    <svg viewBox="0 0 160 120" aria-hidden="true">
+      <g class="shadow"><path d="M6 58Q80 -6 154 50"/><path d="M8 46Q80 116 152 62"/></g>
+      <path class="stick" d="M6 58Q80 -6 154 50"/><path class="stick" d="M8 46Q80 116 152 62"/>
+      <rect class="lash" x="19" y="49" width="6" height="6" transform="rotate(45 22 52)"/><rect class="lash" x="135" y="50" width="6" height="6" transform="rotate(45 138 53)"/>
+      <circle class="iris" cx="80" cy="54" r="19"/>
+      <g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/><path d="M80 49v10"/></g>
+      <g class="threads"><path d="M50 78v22"/><path d="M65 84v28"/><path d="M80 86v30"/><path d="M95 84v28"/><path d="M110 78v22"/></g>
+      <g class="beads"><circle cx="50" cy="102" r="2.4"/><circle cx="65" cy="114" r="2.4"/><circle cx="80" cy="118" r="2.4"/><circle cx="95" cy="114" r="2.4"/><circle cx="110" cy="102" r="2.4"/></g>
+    </svg>
     <input id="shot" type="file" accept="image/*" capture="environment">
   </label>
-  <nav id="ways"><a href="#radio" data-go="radio">RADIO</a><a href="#wish">W.I.S.H.</a><a href="#shop">SHOP</a></nav>
+  <nav id="ways">
+    <a href="#radio" class="g" aria-label="RADIO" title="RADIO"><svg><use href="#g-radio"/></svg></a>
+    <a href="#wish" class="g" aria-label="W.I.S.H." title="W.I.S.H."><svg><use href="#g-wish"/></svg></a>
+    <a href="#shop" class="g" aria-label="SHOP" title="SHOP"><svg><use href="#g-shop"/></svg></a>
+  </nav>
 </main>
 
-<button id="now" hidden></button>
+<!-- the only words: a small screen, as an unhoused OLED module; pressed, the guide -->
+<button id="oled" aria-label="Now" title="Now"><i class="pins" aria-hidden="true"></i><span class="l1"></span><span class="l2"><span></span></span></button>
 
-<nav id="dock" hidden><a href="#radio" data-go="radio">RADIO</a><label class="cam sm" aria-label="Photograph"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/></svg><input class="shot" type="file" accept="image/*" capture="environment"></label><a href="#wish">W.I.S.H.</a></nav>
+<nav id="dock" hidden>
+  <a href="#radio" class="g" aria-label="RADIO" title="RADIO"><svg><use href="#g-radio"/></svg></a>
+  <label class="eye sm" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M6 58Q80 -6 154 50"/><path class="stick" d="M8 46Q80 116 152 62"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>
+  <a href="#wish" class="g" aria-label="W.I.S.H." title="W.I.S.H."><svg><use href="#g-wish"/></svg></a>
+  <a href="#shop" class="g" aria-label="SHOP" title="SHOP"><svg><use href="#g-shop"/></svg></a>
+</nav>
 
 <section id="sheet" hidden></section>
 
-<nav id="maptools"><label class="k" aria-label="Add photographs, calls or icons" title="Add photographs, calls or icons">+<input id="m-add" type="file" accept="image/*,audio/*" multiple hidden></label><button id="m-close" class="k" aria-label="Close the map">×</button></nav>
+<nav id="maptools"><label class="g" aria-label="Add photographs, calls or icons" title="Add photographs, calls or icons">+<input id="m-add" type="file" accept="image/*,audio/*" multiple hidden></label><button id="m-close" class="g" aria-label="Close the map" title="Close the map">×</button></nav>
 
+<div id="tip" hidden></div>
 <p id="credit"></p>
-<noscript><p class="nojs">What have you noticed? This page needs JavaScript to photograph and print. Emergencies: 000. Injured wildlife: Wildlife Victoria (03) 8400 7300.</p></noscript>
+<noscript><p class="nojs">novel.global — Emergencies 000. Injured wildlife: Wildlife Victoria (03) 8400 7300.</p></noscript>
 <script src="base.js"></script>
 </body>
 </html>
