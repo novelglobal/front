@@ -315,3 +315,19 @@ body.mapmode #home, body.mapmode #oled { display: none !important; }
 /* wide, the dock runs under the whole sheet: the sheet scrolls clear of it */
 @media (min-width: 760px) { body.wide #sheet { bottom: 61px; } }
 .idx details.sec > summary h3::before { margin-right: .6em; }
+
+/* the booth: a printer's own page. Only the photograph, then stickers and words, then the print; the menu in small ASCII */
+body.booth > *:not(#booth):not(svg):not(script):not(.toast) { display: none !important; }
+#booth { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; font-size: 12px; }
+#booth .bm { margin: 0; letter-spacing: .14em; color: var(--dim); }
+#booth pre.art { margin: 0; color: var(--stick); font: inherit; line-height: 1.25; }
+body.busy #booth pre.art { animation: blink 1s steps(2) infinite; }
+#booth .am { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; margin: 0; }
+#booth .am label, #booth .am button, #booth .am a { font: inherit; color: var(--ink); background: none; border: 0; padding: 6px 4px; cursor: pointer; text-decoration: none; white-space: pre; }
+#booth .am:not(.sm) label, #booth .am:not(.sm) button, #booth .am:not(.sm) a { font-size: 15px; padding: 10px 8px; }
+#booth .am .on, #booth .am button:hover, #booth .am label:hover, #booth .am a:hover { background: var(--ink); color: var(--paper); }
+#booth .am .go { color: var(--hi); }
+#booth .pv { width: min(100%, 360px); }
+#booth .pv canvas { display: block; width: 100%; height: auto; background: #fff; image-rendering: pixelated; cursor: crosshair; }
+#booth .pv.slip canvas { cursor: default; max-height: 62vh; width: auto; max-width: 100%; margin: 0 auto; }
+#booth .bw { width: min(100%, 360px); font: inherit; font-size: 16px; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--ink); padding: 6px 0; outline: 0; }

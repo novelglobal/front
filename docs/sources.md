@@ -1,6 +1,6 @@
 # Sources: open projects that could be brought in, stage by stage
 
-24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Nothing below has been added.
+24 October 2026. The base has no dependencies, and that is part of why it works on old phones. One project below has been brought in: CanvasDither, for the booth's prints. Nothing else has been added.
 
 Each project is listed with what it would replace and what it costs. Bring one in only when the base's own version fails someone in the field. A pack, loaded only when it is used, is the way to add one.
 
@@ -25,6 +25,7 @@ Each project is listed with what it would replace and what it costs. Bring one i
 | [rough.js](https://github.com/rough-stuff/rough) | Hand-drawn lines and fills. | 9 KB. The sticks are already hand-bent (`chart`). rough.js would give the receipt's frames and SIGN's band the same hand. |
 | [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | Pressure-shaped strokes from a finger. | 3 KB. It would let someone draw their own stick onto the net or the receipt: a tie made by hand, not a key. |
 | [pixelit](https://github.com/giventofly/pixelit) | Pixel art from a photograph, with palettes. | Small. The base's wonky pixels are its own on purpose. Take only its palette mapping, for colour boards. |
+| [CanvasDither](https://github.com/NielsLeenheer/CanvasDither) | **Brought in.** One-bit dithering made for receipt printers. The booth uses its Atkinson method. | 2 KB, `vendor/canvas-dither.js`, loaded only by the booth. It is ported to plain script, with the error carried in a float buffer. |
 | [gifenc](https://github.com/mattdesl/gifenc) | Fast GIF encoding in the browser. | 9 KB. The pixel board's three-picture sprite saved as one moving file, to share. |
 
 ## 4. Printing

@@ -140,3 +140,13 @@ The owner's limit for this round was to guide someone through without words. The
 8. **The guide.** Every group is minimised first except Now. "Needs" is now *If you find*, and "Lives" is now *Neighbours*.
 
 **Sense check.** Each thing left on screen either does something or says something urgent. A thing that did neither was cut: tying, the reel, the share step, the step letters and the chips.
+
+## The booth: the printer as the way in
+
+A printer in a shop or a public place prints anyone's photograph for free. That free print is the marketing.
+
+- The QR sticker or the PRINT FREE poster beside the printer opens a page with two keys: take a photograph, or upload one.
+- After that come stickers, words and the print. There are no menus, links or sign-ups.
+- The receipt carries a small code that opens the site. A photograph people keep becomes the door they keep.
+- After printing there are only two ways on: novel.global, or another photograph. Another photograph comes only after an unseen wait of two to five minutes, so the printer stays a free service and not a toy.
+- The photograph is prepared for the paper, not the screen. Thermal dots spread, so it is lifted, sharpened, and dithered by a method made for receipt printers.
