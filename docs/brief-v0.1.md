@@ -90,3 +90,22 @@ The pixel board turns any pasted or chosen picture into wonky pixels. Three pict
 - **Animal sprites.** Each animal is meant to get three drawn images for its own sprite animation. Today the board animates any three pictures.
 - **The studio's own RADIO.** The studio's RADIO is not yet changed to work as a showcase with the radar as a toggle.
 - **Panning on very old iOS.** Older than iOS 13, a finger cannot pan the map, because there are no pointer events. Everything else works.
+
+## Round two: what was missing, and what changed
+
+These were missing or broken in the first cut, and are now in place:
+
+- **The links into the studio.** W.I.S.H., SHOP and RADAR land on their own pages, and never on the studio's first visit.
+- **The studio is plain.** It no longer has the jellyfish, screws, ties, antennas, cables, plates, grilles, lights or idle prompts. The rail is in words, and the print shop keeps seven of its fifteen tools. Settings › DEVICES brings the hardware back.
+- **The opening shows the ground**, quiet under the question.
+- **The location is asked for.** ◎ lights when the place is known.
+- **Data travels with each noticing:** the suburb, the nearest water or place, the canopy, today's heat and Niño 3.4.
+- **The placed moment.** A few real sightings nearby, of the same life and its closest relatives, are revealed and tied to the noticing. There are three at most.
+- **SIGN** is a public notice for the place, made where something was noticed. This is what the field had none of.
+- **W.I.S.H. replaces the facts** on the receipt, so nothing is said twice.
+- **RADIO** has three new parts:
+  - **SETS:** collections by life, by need and by place.
+  - **A note for each knot** as the net plays.
+  - **Ties:** links you make yourself, which become part of the art.
+- **Packs.** Your own noticings can be saved as a file and shared, and someone else's pack can be added.
+- **Tags act as triggers** into the guide.

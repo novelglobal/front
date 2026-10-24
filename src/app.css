@@ -3228,3 +3228,26 @@ body[data-view="signals"][data-face="front"]:not(.rec) .panel .lk-mark{color:#9F
 .band.dev.radio.mod .mstrip.eq{padding-top:12px!important}
 .band.dev.radio.mod .mstrip.eq .ms-m{padding-top:0!important}
 .band.dev.radio.mod .mstrip.eq .eq-c{height:72px!important}
+
+/* ───── plain (v0.1): the studio without its costume. On unless a visitor turns the devices back on (Settings).
+   No screws, ties, antennas, cables, plates, grilles, lights or jellyfish on the devices; flat shells; words without icons on the rail ───── */
+html.plain .hack, html.plain .mod-cable, html.plain .mod-cap, html.plain .mod-bolt, html.plain .mod-label, html.plain .rd-grille, html.plain .rd-led,
+html.plain .pt-wire, html.plain .sel-wire, html.plain .tp-led, html.plain .vs-rib, html.plain .jp-stk.jelly, html.plain .hud-spec, html.plain .swim,
+html.plain .jr-light, html.plain .jr-j, html.plain .jr-sonar { display: none !important; }
+html.plain .dev { background-image: none !important; box-shadow: 0 0 0 1px rgba(0, 0, 0, .55) !important; border-radius: 6px !important; }
+html.plain .dev::before, html.plain .dev::after { display: none !important; }
+html.plain #rail .tab svg, html.plain #rail .tab .sq { display: none !important; }
+html.plain #rail .tab { box-shadow: none !important; border-radius: 0 !important; }
+/* the flip key: a plain mark, not a gold jellyfish; the idle prompts quiet; the print shop and the board keep their essential tools */
+html.plain .flip-b { width: 30px !important; height: 30px !important; border-radius: 0 !important; background: #FFFFFF !important; color: #151514 !important; box-shadow: 0 0 0 1px #151514 !important; }
+html.plain .flip-b > * { display: none !important; }
+html.plain .flip-b::after, html.plain .flip-b.hint::after { content: '⇄' !important; position: static !important; inset: auto !important; border: 0 !important; border-radius: 0 !important; opacity: 1 !important; font: 15px/1 ui-monospace, Menlo, monospace; }
+html.plain .idle-tip { display: none !important; }
+html.plain .zt[data-zt="head"], html.plain .zt[data-zt="cut"], html.plain .zt[data-zt="shape"], html.plain .zt[data-zt="stamp"], html.plain .zt[data-zt="tape"], html.plain .zt[data-zt="rag"], html.plain .zt[data-zt="short"] { display: none !important; }
+html.plain .flip-b.hint, html.plain .flip-b.hint::before, html.plain .flip-b.hint::after { animation: none !important; outline: none !important; }
+html.plain .flip-b::before { display: none !important; }
+html.plain .tab-s { display: block !important; font: 600 9px/1 var(--mono) !important; letter-spacing: .1em !important; opacity: .75; }
+html.plain .tab[aria-pressed="true"] .tab-s { opacity: 1; }
+@media (min-width: 761px) { html.plain #rail .tab { width: auto !important; min-width: 64px; padding: 0 10px !important; } }
+html.plain .lk-mark { display: none !important; }
+html.plain .zine::after, html.plain #zine::after { display: none !important; }

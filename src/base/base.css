@@ -150,9 +150,9 @@ select.k { appearance: none; -webkit-appearance: none; text-align: left; width: 
 .alert p { margin: 6px 0; }
 /* the design stage: the receipt is the control; a touch changes its art */
 button.slip { display: block; border: 0; cursor: pointer; }
-.dots { display: flex; justify-content: center; gap: 6px; margin: 8px 0 0; }
-.dots i { width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--ink); }
-.dots i.on { background: var(--ink); }
+.dots { display: flex; justify-content: center; gap: 2px; margin: 4px 0 0; }
+.dots button { padding: 8px 6px; } .dots i { display: block; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--ink); }
+.dots button.on i { background: var(--ink); }
 .ctl { display: flex; gap: 6px; margin-top: 12px; }
 .ctl select { flex: 1; min-width: 0; text-align: left; border-radius: 0; -webkit-appearance: none; appearance: none; }
 .ctl a.k { text-decoration: none; }
@@ -184,8 +184,6 @@ button.slip { display: block; border: 0; cursor: pointer; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sol: #8DBF95; } }
 :root[data-theme="dark"] { --sol: #8DBF95; }
 body { background-image: radial-gradient(circle, var(--rule) .8px, transparent 1px); background-size: 24px 24px; }
-#terrain { visibility: hidden; background: var(--paper); }
-body.mapmode #terrain, body.half #terrain { visibility: visible; }
 body.mapmode #home, body.mapmode #now { display: none; }
 #maptools { display: none; position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 4; gap: 6px; }
 body.mapmode #maptools { display: flex; } body.mapmode.away #maptools { display: none; }
@@ -242,3 +240,39 @@ ul.plain { margin: 12px 0 0; padding-left: 18px; font-size: 14px; } ul.plain li 
 #net circle { fill: var(--paper); stroke: var(--bead); stroke-width: 1.4; }
 #net circle.k { fill: var(--bead); stroke: var(--bead); }
 #net text { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
+
+/* ───── v0.1 round 3: the sheet stops above the dock on a phone; the keys that move on stay in reach ───── */
+@media (max-width: 759px) { body.away #sheet { bottom: 65px; padding-bottom: 16px; } #sheet.half { max-height: calc(62vh - 65px); } }
+#sheet .go.next { position: sticky; bottom: 0; z-index: 2; }
+#sheet .stick { position: sticky; bottom: 0; z-index: 2; background: var(--paper); padding: 8px 0 4px; margin-top: 6px; border-top: 1px solid var(--rule); }
+#sheet .stick .ctl { margin-top: 6px; }
+.ph.sm img { max-height: 26vh; object-fit: cover; }
+.hd .loc { margin-left: auto; width: 30px; height: 30px; line-height: 28px; padding: 0; font-size: 14px; }
+.hd .loc + .x { margin-left: 4px; }
+.hd .loc.on { background: var(--sol); border-color: var(--sol); color: var(--paper); }
+.hd .loc.wait { animation: blink 1s steps(2) infinite; } .hd .loc.no { text-decoration: line-through; color: var(--dim); }
+.chips.data { margin-top: 4px; }
+.chip.d { border-style: dotted; font-size: 10px; letter-spacing: .08em; padding: 2px 6px; }
+.chip.d.on { border-style: solid; border-color: var(--sol); color: var(--sol); }
+.chip.d.on::before { content: ''; }
+#sheet.peek { max-height: 30vh; }
+@media (min-width: 760px) { #sheet.peek { max-height: none; } }
+ul.seen { list-style: none; margin: 0; padding: 0; }
+ul.seen li { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+ul.seen li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; border: 1.4px solid var(--bead); margin: 6px 10px 0 0; flex: none; }
+ul.seen li span { flex: 1; } ul.seen small { font: 11px var(--mono); color: var(--dim); }
+ul.seen li.wait::before, ul.seen li.empty::before { display: none; }
+#net circle.seen { fill: var(--paper); stroke: var(--bead); stroke-width: 1.6; }
+/* the ground from the first moment, quiet under the question; the net only when the map is out or a noticing is open */
+body:not(.mapmode):not(.half) #tiles { opacity: calc(var(--tile-o) * .55); }
+body:not(.mapmode):not(.half) #terrain { pointer-events: none; }
+/* tags as triggers; the stories a word brings in; RADIO's keys as marks */
+.card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 10px 0; }
+.card .tags button { font: 10px var(--mono); letter-spacing: .06em; padding: 2px 6px; border: 1px solid var(--rule); color: var(--dim); }
+.card .tags button:hover { border-color: var(--ink); color: var(--ink); }
+.strip { display: flex; gap: 4px; overflow-x: auto; margin: 10px 0; padding-bottom: 4px; }
+.strip button { position: relative; flex: 0 0 92px; height: 92px; background: var(--rule) center/cover no-repeat; filter: grayscale(1); }
+.strip button span { position: absolute; left: 0; right: 0; bottom: 0; font: 9px var(--mono); text-align: left; padding: 2px 4px; background: var(--paper); white-space: nowrap; overflow: hidden; }
+.row.tools { margin-top: 10px; gap: 6px; } .row.tools .k { width: 40px; height: 36px; line-height: 34px; font-size: 16px; text-decoration: none; }
+#r-way a.k { flex: 1; border: 0; border-left: 1px solid var(--ink); height: auto; font: 11px/30px var(--mono); letter-spacing: .1em; text-decoration: none; }
+#maptools { top: 60px; bottom: auto; flex-direction: column; }
