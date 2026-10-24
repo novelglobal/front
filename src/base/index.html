@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* a link made by the studio (a mix, a story code, a page by name) goes on to the studio, so every printed code still opens */
-(function () { var h = location.hash.slice(1); if (h && !/^(radio|pixel|search|guide|now|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
+(function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|pixel|search|guide|now|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
 try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { /* no storage */ }
 /*BASE*/
 </script>
@@ -36,12 +36,12 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/><circle cx="32" cy="35" r="1.6" class="dot"/><circle cx="49" cy="25" r="1.4" class="dot"/></svg>
     <input id="shot" type="file" accept="image/*" capture="environment">
   </label>
-  <nav id="ways"><a href="#radio" data-go="radio">RADIO</a><a href="studio?from=base#wish">W.I.S.H.</a><a href="studio?from=base#print">SHOP</a></nav>
+  <nav id="ways"><a href="#radio" data-go="radio">RADIO</a><a href="#wish">W.I.S.H.</a><a href="#shop">SHOP</a></nav>
 </main>
 
 <button id="now" hidden></button>
 
-<nav id="dock" hidden><a href="#radio" data-go="radio">RADIO</a><label class="cam sm" aria-label="Photograph"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/></svg><input class="shot" type="file" accept="image/*" capture="environment"></label><a href="studio?from=base#wish">W.I.S.H.</a></nav>
+<nav id="dock" hidden><a href="#radio" data-go="radio">RADIO</a><label class="cam sm" aria-label="Photograph"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/></svg><input class="shot" type="file" accept="image/*" capture="environment"></label><a href="#wish">W.I.S.H.</a></nav>
 
 <section id="sheet" hidden></section>
 
