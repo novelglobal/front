@@ -228,3 +228,17 @@ ul.plain { margin: 12px 0 0; padding-left: 18px; font-size: 14px; } ul.plain li 
 .card .pic.icon { background-size: 40%; background-color: var(--paper); image-rendering: pixelated; }
 .ctl .k, .ctl select { font: 11px/30px var(--mono); letter-spacing: .12em; height: 34px; }
 .ctl select { letter-spacing: .04em; padding: 0 8px; }
+/* the stick chart: bamboo sticks and their shadows, dark beads, lashings */
+:root { --stick: #A27B48; --bead: #1E1A16; }
+/* in the dark the beads are shells: pale, as cowries are */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --stick: #C9A46E; --bead: #E6D8BC; --lash: #8A6A40; } }
+:root[data-theme="dark"] { --stick: #C9A46E; --bead: #E6D8BC; --lash: #8A6A40; }
+#net .shadow path { stroke: #000; stroke-opacity: .14; stroke-width: 2.6; fill: none; }
+#net path.stick { stroke: var(--stick); stroke-width: 2.4; stroke-linecap: round; fill: none; }
+#net path.stick.link { stroke-width: 1.8; }
+#net path.stick.swell { stroke-width: 2; }
+#net .lash { fill: var(--lash, #5B3E22); }
+#net .bead { fill: var(--bead); stroke: none; }
+#net circle { fill: var(--paper); stroke: var(--bead); stroke-width: 1.4; }
+#net circle.k { fill: var(--bead); stroke: var(--bead); }
+#net text { paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }

@@ -116,31 +116,75 @@ function arc(p, q, bend) { var mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; v
 function visible() { return net.all ? NOTES.concat(SHARED) : NOTES; }
 function drawNet() {
   while (netEl.firstChild) netEl.removeChild(netEl.firstChild); if (!shown()) return;
-  var list = visible().filter(function (n) { return isFinite(n.lat) && isFinite(n.lng); });
+  var list = visible().filter(function (n) { if (!isFinite(n.lat) || !isFinite(n.lng)) return false; var p = px(n.lat, n.lng); return p[0] > -200 && p[1] > -200 && p[0] < map.w + 200 && p[1] < map.h + 200; });
+  if (net.focus && isFinite(net.focus.lat) && !list.some(function (n) { return n.id === net.focus.id; })) list.push(net.focus);
   if (!list.length) return;
   var g = svg('g', {}); netEl.appendChild(g);
-  /* the lattice: each noticing tied to the one before it, faint; in RADIO, every pair that shares a life or a need */
+  var pts = list.map(function (n) { return px(n.lat, n.lng); }), at = {}; list.forEach(function (n, i) { at[n.id] = i; });
+  /* which sticks: in RADIO and on the map, every pair that shares a life or a need; else each noticing to the one before it */
   var pairs = [];
-  if (net.all) { for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 160; j++) if (kin(list[i], list[j])) pairs.push([list[i], list[j], 'w']); }
-  else for (var i2 = 1; i2 < list.length; i2++) pairs.push([list[i2 - 1], list[i2], 'w d']);
-  if (net.focus) net.links.forEach(function (o) { pairs.push([net.focus, o, '']); });
-  pairs.forEach(function (pr, idx) {
-    var a = px(pr[0].lat, pr[0].lng), b = px(pr[1].lat, pr[1].lng); if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 2) return;
-    var p = svg('path', { d: arc(a, b, idx % 2 ? 0.16 : -0.16), 'class': pr[2] }); g.appendChild(p);
-    if (!pr[2] && net.fresh) { var L = Math.hypot(a[0] - b[0], a[1] - b[1]) * 1.1; p.setAttribute('class', 'draw'); p.style.setProperty('--len', L.toFixed(0)); p.style.animationDelay = (0.6 + idx * 0.25) + 's'; }
-  });
-  list.forEach(function (n) {
-    var p = px(n.lat, n.lng); if (p[0] < -40 || p[1] < -40 || p[0] > map.w + 40 || p[1] > map.h + 40) return;
-    var me = net.focus && n.id === net.focus.id; var r = me ? 5 : n.mine ? 3.5 : 3;
-    var k = svg('g', { 'class': me && net.fresh === n.id ? 'fall' : '' });
-    k.appendChild(svg('line', { x1: p[0], y1: p[1] + r, x2: p[0], y2: p[1] + r + (me ? 22 : 12), 'class': 'd' }));
-    if (n.icon) { var ic = svg('image', { x: p[0] - 12, y: p[1] - 12, width: 24, height: 24 }); ic.setAttributeNS('http://www.w3.org/1999/xlink', 'href', n.icon); ic.setAttribute('href', n.icon); k.appendChild(ic); }
-    else k.appendChild(svg('circle', { cx: p[0], cy: p[1], r: r, 'class': me ? 'me' : n.mine ? 'k' : '' }));
-    if (me || net.all) { var t = svg('text', { x: p[0] + 8, y: p[1] + 3 }); t.textContent = (n.cn || n.say || '').toUpperCase().slice(0, 22); g.appendChild(t); }
-    g.appendChild(k);
+  if (net.all) { for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 120; j++) if (kin(list[i], list[j])) pairs.push([i, j]); }
+  else for (var k = 1; k < list.length; k++) if (list[k] !== net.focus) pairs.push([k - 1, k]);
+  if (net.focus) net.links.forEach(function (o) { if (at[o.id] != null) pairs.push([at[net.focus.id], at[o.id], !!net.fresh]); });
+  chartSVG(g, chart(pts, pairs, seedOf(list)));
+  /* the knots: a shell for each, the newest with a thread hanging under it, as on the bark painting */
+  list.forEach(function (n, i) {
+    var p = pts[i], me = net.focus && n.id === net.focus.id, r = me ? 5.5 : n.mine ? 4 : 3.5;
+    var kk = svg('g', { 'class': me && net.fresh === n.id ? 'fall' : '' });
+    if (me) kk.appendChild(svg('line', { x1: p[0], y1: p[1] + r, x2: p[0], y2: p[1] + r + 24, 'class': 'd' }));
+    if (n.icon) { var ic = svg('image', { x: p[0] - 12, y: p[1] - 12, width: 24, height: 24 }); ic.setAttributeNS('http://www.w3.org/1999/xlink', 'href', n.icon); ic.setAttribute('href', n.icon); kk.appendChild(ic); }
+    else kk.appendChild(svg('circle', { cx: p[0], cy: p[1], r: r, 'class': me ? 'me' : n.mine ? 'k' : '' }));
+    if (me || net.all) { var t = svg('text', { x: p[0] + 9, y: p[1] - 7 }); t.textContent = (n.cn || n.say || '').toUpperCase().slice(0, 22); g.appendChild(t); }
+    g.appendChild(kk);
   });
   if (net.fresh) setTimeout(function () { net.fresh = null; }, 2600);
 }
+/* ───────── the chart, after the Marshall Islands stick charts: a frame of sticks that run on past their joins and are lashed where
+   they cross; a straight stick for each connection, overshooting its knots; shells and beads strung in clusters where sticks meet;
+   one long swell bent across; every stick with its shadow on the wall. One drawing for the map, the receipt and the saved art ───────── */
+function chart(pts, pairs, seed) {
+  var s = (seed || 7) % 2147483646 + 1; var rnd = function () { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  var C = { sticks: [], beads: [], lash: [] }; if (!pts.length) return C;
+  var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  if (x1 - x0 < 120) { var cx = (x0 + x1) / 2; x0 = cx - 60; x1 = cx + 60; } if (y1 - y0 < 90) { var cy = (y0 + y1) / 2; y0 = cy - 45; y1 = cy + 45; }
+  var pad = Math.max(26, (x1 - x0) * 0.16), L = x0 - pad, R = x1 + pad, T = y0 - pad, Bt = y1 + pad, oh = function () { return 14 + rnd() * 26; };
+  var H = [T, Bt]; var n = Bt - T > 180 ? 2 : 1; for (var i = 1; i <= n; i++) H.splice(i, 0, T + (Bt - T) * i / (n + 1) + (rnd() - 0.5) * 18);
+  [L, R].forEach(function (x) { var dx = (rnd() - 0.5) * 8; C.sticks.push({ a: [x, T - oh()], b: [x + dx, Bt + oh()], bow: (rnd() - 0.5) * 6, w: 'frame' }); });
+  H.forEach(function (y) { var dy = (rnd() - 0.5) * 6; C.sticks.push({ a: [L - oh(), y], b: [R + oh(), y + dy], bow: 2 + rnd() * 4, w: 'frame' }); C.lash.push([L, y], [R + (dy ? 0 : 0), y + dy]); });
+  if (pts.length >= 3) C.sticks.push({ a: [L - oh(), T + (Bt - T) * 0.3], b: [R, Bt], bow: -(Bt - T) * 0.32, w: 'swell' });
+  var ends = {}; var mark = function (k, d) { (ends[k] = ends[k] || []).push(d); };
+  pairs.forEach(function (pr) {
+    var a = pts[pr[0]], b = pts[pr[1]]; var dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy); if (d < 3) return; var ux = dx / d, uy = dy / d, e = 10 + rnd() * 10;
+    C.sticks.push({ a: [a[0] - ux * e, a[1] - uy * e], b: [b[0] + ux * e, b[1] + uy * e], bow: 0, w: 'link', fresh: pr[2] });
+    mark(pr[0], [ux, uy]); mark(pr[1], [-ux, -uy]);
+  });
+  pts.forEach(function (p, k) {
+    var dirs = ends[k] || [[1, 0]]; dirs.slice(0, 2).forEach(function (u) { var m = 2 + Math.floor(rnd() * 3); for (var j = 1; j <= m; j++) C.beads.push({ x: p[0] + u[0] * (5 + j * 6), y: p[1] + u[1] * (5 + j * 6), ang: Math.atan2(u[1], u[0]) * 180 / Math.PI }); });
+  });
+  return C;
+}
+function stickPath(st) { var a = st.a, b = st.b, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy) || 1; return 'M' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) + 'Q' + (mx - dy / d * st.bow * 2).toFixed(1) + ' ' + (my + dx / d * st.bow * 2).toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1); }
+function chartSVG(g, C) {
+  var sh = svg('g', { 'class': 'shadow', transform: 'translate(0 9)' }); g.appendChild(sh);
+  C.sticks.forEach(function (st) { sh.appendChild(svg('path', { d: stickPath(st) })); });
+  C.sticks.forEach(function (st, i) {
+    var p = svg('path', { d: stickPath(st), 'class': 'stick ' + st.w }); g.appendChild(p);
+    if (st.fresh) { p.setAttribute('class', 'stick link draw'); p.style.setProperty('--len', Math.round(Math.hypot(st.b[0] - st.a[0], st.b[1] - st.a[1]) * 1.1)); p.style.animationDelay = (0.5 + i * 0.12) + 's'; }
+  });
+  C.lash.forEach(function (l) { g.appendChild(svg('rect', { x: l[0] - 2.5, y: l[1] - 2.5, width: 5, height: 5, 'class': 'lash', transform: 'rotate(45 ' + l[0] + ' ' + l[1] + ')' })); });
+  C.beads.forEach(function (b) { g.appendChild(svg('ellipse', { cx: b.x, cy: b.y, rx: 3.1, ry: 2.2, 'class': 'bead', transform: 'rotate(' + b.ang.toFixed(0) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1) + ')' })); });
+}
+/* the same on a canvas: ink is the sticks' colour, shade their shadow (none on a thermal receipt) */
+function chartCanvas(x, C, ink, bead, shade, k) {
+  k = k || 1; x.lineCap = 'round';
+  var stroke = function (st) { var a = st.a, b = st.b, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy) || 1; x.beginPath(); x.moveTo(a[0], a[1]); x.quadraticCurveTo(mx - dy / d * st.bow * 2, my + dx / d * st.bow * 2, b[0], b[1]); x.stroke(); };
+  if (shade) { x.save(); x.translate(0, 12 * k); x.strokeStyle = shade; x.lineWidth = 3 * k; C.sticks.forEach(stroke); x.restore(); }
+  x.strokeStyle = ink; C.sticks.forEach(function (st) { x.lineWidth = (st.w === 'link' ? 2.2 : 3) * k; stroke(st); });
+  x.fillStyle = bead; C.lash.forEach(function (l) { x.save(); x.translate(l[0], l[1]); x.rotate(Math.PI / 4); x.fillRect(-3 * k, -3 * k, 6 * k, 6 * k); x.restore(); });
+  C.beads.forEach(function (b) { x.save(); x.translate(b.x, b.y); x.rotate(b.ang * Math.PI / 180); x.beginPath(); x.ellipse(0, 0, 3.4 * k, 2.4 * k, 0, 0, 7); x.fill(); x.restore(); });
+}
+var seedOf = function (list) { var h = 0; list.forEach(function (n) { var t = String(n.id); for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; }); return Math.abs(h) || 7; };
 function kin(a, b) { return !!((a.sp && a.sp === b.sp) || (a.issue && a.issue === b.issue && dist(a, b) < 3000)); }
 function dist(a, b) { var R = 6371000, r = Math.PI / 180; var x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * R; }
 
@@ -497,13 +541,13 @@ function slip(n, photo, r, opt, W, boardArt) {
 }
 /* the net as the art: this noticing and what it connects to, sticks and knots and hanging threads */
 function netArt(x, n, r, ox, oy, w, h) {
-  var cx = ox + w / 2, cy = oy + h * 0.25, items = (r.rel || []).slice(0, 3); x.lineWidth = 2; x.strokeStyle = '#000';
-  var pts = items.map(function (o, i) { var a = Math.PI * (0.15 + 0.7 * (items.length > 1 ? i / (items.length - 1) : 0.5)); return [cx - Math.cos(a) * w * 0.38, cy + Math.sin(a) * h * 0.5]; });
-  pts.forEach(function (p, i) { x.beginPath(); x.moveTo(cx, cy); x.quadraticCurveTo((cx + p[0]) / 2 + (i % 2 ? 18 : -18), (cy + p[1]) / 2, p[0], p[1]); x.stroke(); for (var d = 8; d < 50; d += 7) x.fillRect(p[0] - 1, p[1] + d, 3, 3); x.beginPath(); x.arc(p[0], p[1], 7, 0, 7); x.fill(); });
-  for (var i = 0; i + 1 < pts.length; i++) { x.beginPath(); x.moveTo(pts[i][0], pts[i][1]); x.lineTo(pts[i + 1][0], pts[i + 1][1]); x.stroke(); }
-  x.beginPath(); x.arc(cx, cy, 12, 0, 7); x.fill(); for (var d2 = 16; d2 < 70; d2 += 7) x.fillRect(cx - 1, cy + d2, 3, 3);
-  x.beginPath(); for (var gx = ox; gx <= ox + w; gx += w / 8) { x.moveTo(gx, oy + h - 14); x.lineTo(gx, oy + h); } x.moveTo(ox, oy + h - 7); x.lineTo(ox + w, oy + h - 7); x.stroke();
-  x.font = 'bold 16px "Courier New", monospace'; items.forEach(function (o, i) { var p = pts[i]; var t = o.label.toUpperCase().slice(0, 18); var tx = Math.min(ox + w - x.measureText(t).width, Math.max(ox, p[0] - x.measureText(t).width / 2)); x.fillText(t, tx, p[1] - 26); });
+  /* this noticing a shell at the top, what it connects to below it, in the chart's frame; black only, for the thermal head */
+  var items = (r.rel || []).slice(0, 3), cx = ox + w / 2, cy = oy + h * 0.28;
+  var pts = [[cx, cy]].concat(items.map(function (o, i) { var a = Math.PI * (0.18 + 0.64 * (items.length > 1 ? i / (items.length - 1) : 0.5)); return [cx - Math.cos(a) * w * 0.32, cy + Math.sin(a) * h * 0.46]; }));
+  var pairs = items.map(function (o, i) { return [0, i + 1]; }); for (var i = 1; i < items.length; i++) pairs.push([i, i + 1]);
+  chartCanvas(x, chart(pts, pairs, (n.at || 7) % 99991), '#000', '#000', '', 1.4);
+  x.fillStyle = '#000'; pts.forEach(function (p, i) { x.beginPath(); x.arc(p[0], p[1], i ? 7 : 11, 0, 7); x.fill(); });
+  x.font = 'bold 16px "Courier New", monospace'; items.forEach(function (o, i) { var p = pts[i + 1]; var t = o.label.toUpperCase().slice(0, 18); var tw = x.measureText(t).width; x.fillStyle = '#fff'; var tx = Math.min(ox + w - tw, Math.max(ox, p[0] - tw / 2)); x.fillRect(tx - 3, p[1] + 14, tw + 6, 18); x.fillStyle = '#000'; x.fillText(t, tx, p[1] + 16); });
 }
 function raster(cv) {
   var W = cv.width, H = cv.height, bw = W >> 3, d = cv.getContext('2d').getImageData(0, 0, W, H).data, out = [0x1B, 0x40];
@@ -849,13 +893,14 @@ function play(list) {
 }
 function stopPlay() { if (!playing) return; clearTimeout(playing.t); NOTES = playing.mine; SHARED = playing.keep; playing = null; net.focus = null; render(); }
 function saveNetArt(list) {
-  var S = 1080, c = document.createElement('canvas'); c.width = c.height = S; var x = c.getContext('2d'); x.fillStyle = '#EDEBE4'; x.fillRect(0, 0, S, S); x.strokeStyle = x.fillStyle = '#151514'; x.lineWidth = 2;
-  if (!list.length) return; var la = list.map(function (n) { return n.lat; }), lo = list.map(function (n) { return n.lng; });
+  if (!list.length) return; var S = 1080, c = document.createElement('canvas'); c.width = c.height = S; var x = c.getContext('2d'); x.fillStyle = '#EDEBE4'; x.fillRect(0, 0, S, S);
+  var la = list.map(function (n) { return n.lat; }), lo = list.map(function (n) { return n.lng; });
   var s = Math.min.apply(null, la), nn = Math.max.apply(null, la) + 1e-6, w = Math.min.apply(null, lo), e = Math.max.apply(null, lo) + 1e-6;
-  var P = function (n) { return [120 + (n.lng - w) / (e - w) * (S - 240), 120 + (nn - n.lat) / (nn - s) * (S - 300)]; };
-  for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) if (kin(list[i], list[j]) || j === i + 1) { var a = P(list[i]), b = P(list[j]); x.globalAlpha = kin(list[i], list[j]) ? 1 : 0.35; x.beginPath(); x.moveTo(a[0], a[1]); x.quadraticCurveTo((a[0] + b[0]) / 2 - (b[1] - a[1]) * 0.16, (a[1] + b[1]) / 2 + (b[0] - a[0]) * 0.16, b[0], b[1]); x.stroke(); }
-  x.globalAlpha = 1; list.forEach(function (n) { var p = P(n); x.beginPath(); x.arc(p[0], p[1], n.mine ? 9 : 6, 0, 7); x.fill(); for (var d = 14; d < 60; d += 9) x.fillRect(p[0] - 1.5, p[1] + d, 3, 3); });
-  x.font = '22px "Courier New", monospace'; x.fillText('WHAT WAS NOTICED · ' + list.length + ' KNOTS · ' + when(Date.now()), 60, S - 50);
+  var pts = list.map(function (n) { return [200 + (n.lng - w) / (e - w) * (S - 400), 200 + (nn - n.lat) / (nn - s) * (S - 440)]; });
+  var pairs = []; for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 160; j++) if (kin(list[i], list[j]) || j === i + 1) pairs.push([i, j]);
+  chartCanvas(x, chart(pts, pairs, seedOf(list)), '#A27B48', '#1E1A16', 'rgba(0,0,0,.13)', 2);
+  x.fillStyle = '#1E1A16'; pts.forEach(function (p, i) { x.beginPath(); x.arc(p[0], p[1], list[i].mine ? 10 : 7, 0, 7); x.fill(); });
+  x.font = '20px ui-monospace, Menlo, monospace'; x.fillStyle = '#6E6C66'; x.fillText(list.length + ' · ' + when(Date.now()) + ' · novel.global', 60, S - 50);
   var a2 = document.createElement('a'); a2.download = 'novel-global-net.png'; a2.href = c.toDataURL('image/png'); document.body.appendChild(a2); a2.click(); a2.remove();
 }
 function packsHTML() {
