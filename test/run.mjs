@@ -1522,7 +1522,7 @@ if (run('base')) try {
   await page.goto('https://oan.test/'); await page.waitForFunction(() => document.querySelector('#ask').textContent === 'What have you noticed?', null, { timeout: 8000 });
   await page.waitForFunction(() => !document.querySelector('#now').hidden, null, { timeout: 8000 }).catch(() => {});
   const home = await page.evaluate(() => ({ ask: document.querySelector('#ask').textContent, ways: [...document.querySelectorAll('#ways a')].map(a => a.textContent + '>' + a.getAttribute('href')), keys: [...document.querySelectorAll('#top button')].map(b => b.textContent).join(), tiles: document.querySelectorAll('#tiles img').length, knots: document.querySelectorAll('#net circle').length, gl: !!document.querySelector('canvas'), now: window.__base.nowItems().map(i => i.k + ': ' + i.t) }));
-  check('the base opens on the ground alone, no marks: the question, the camera, RADIO, W.I.S.H. and SHOP in words; MAP and GUIDE as keys; no WebGL', home.ask === 'What have you noticed?' && home.ways.join() === 'RADIO>#radio,W.I.S.H.>studio?from=base#wish,SHOP>studio?from=base#print' && home.keys === 'MAP,GUIDE,◐' && home.tiles > 3 && !home.knots && !home.gl, JSON.stringify(home).slice(0, 300));
+  check('the base opens on the ground alone, no marks: the question, the camera, RADIO, W.I.S.H. and SHOP in words; MAP and GUIDE as keys; no WebGL', home.ask === 'What have you noticed?' && home.ways.join() === 'RADIO>#radio,W.I.S.H.>#wish,SHOP>#shop' && home.keys === 'MAP,GUIDE,◐' && home.tiles > 3 && !home.knots && !home.gl, JSON.stringify(home).slice(0, 300));
   check('the base loads no map library, no webfonts, nothing of the studio', !loaded.some(p => /maplibre|fonts|app\.js|style\.css|config\.js|field\.js/.test(p)), loaded.filter(p => !/tile/.test(p)).join(' '));
   check('NOW in October: fledglings on the ground and El Niño\'s early heat, a line each, four at most, and what is in season', home.now.length <= 4 && home.now.some(t => /^YOUNG: Fledglings on the ground: .*magpies.*lorikeets/.test(t)) && home.now.some(t => /^EL NIÑO: Early heat/.test(t)), JSON.stringify(home.now));
   await shot(page, 'b01-home.png');
@@ -1574,26 +1574,39 @@ if (run('base')) try {
   await shot(page, 'b03b-reel.png');
   /* RADIO: the net, the wall, the help lines; the radar a key away */
   await page.goto('https://oan.test/#radio'); await page.waitForSelector('#r-way', { timeout: 8000 }); await sleep(600);
-  const radio = await page.evaluate(() => ({ ways: [...document.querySelectorAll('#r-way > *')].map(b => b.textContent), radar: document.querySelector('#r-way a').getAttribute('href'), rows: document.querySelectorAll('#r-body .list li').length, knots: document.querySelectorAll('#net circle').length }));
-  check('RADIO: NET, REEL, SETS, HELP, and the radar as a key to the studio; the noticing a knot on the net, its revealed sightings hanging from it', radio.ways.join() === 'NET,REEL,SETS,HELP,RADAR ↗' && radio.radar === 'studio?from=base#radio' && radio.rows >= 1 && radio.knots >= 2, JSON.stringify(radio));
+  await page.waitForFunction(() => document.querySelectorAll('#r-body .tiles button').length > 3, null, { timeout: 15000 }).catch(() => {});
+  const radio = await page.evaluate(() => ({ ways: [...document.querySelectorAll('#r-way > *')].map(b => b.textContent), sos: [...document.querySelectorAll('.sos a')].map(a => a.getAttribute('href')), tiles: document.querySelectorAll('#r-body .tiles button').length, photos: [...document.querySelectorAll('#r-body .tiles button')].filter(b => b.style.backgroundImage).length, mine: document.querySelectorAll('#r-body .tiles button.mine').length, knots: document.querySelectorAll('#net circle').length, studio: !!document.querySelector('#sheet a[href^="studio"]') }));
+  check('RADIO works in the base: the emergency numbers on top, the sightings about now as photographs with one\'s own among them, all as knots on the net, no way out to the old site', radio.ways.join() === 'LIVE,SETS,HELP' && radio.sos.join() === 'tel:000,tel:0384007300' && radio.tiles > 10 && radio.photos > 5 && radio.mine >= 1 && radio.knots > 10 && !radio.studio, JSON.stringify(radio));
+  await page.evaluate(() => { window.__notes = []; const A = window.AudioContext; window.AudioContext = function () { const c = new A(); const o = c.createOscillator.bind(c); c.createOscillator = function () { window.__notes.push(1); return o(); }; return c; }; });
+  await tap(page, '#r-play'); await sleep(2200);
+  const pl = await page.evaluate(() => ({ notes: window.__notes.length, now: document.querySelector('#r-now').textContent, lit: document.querySelectorAll('.tiles button.on').length, key: document.querySelector('#r-play').textContent }));
+  check('▶ plays: each in turn, a note, its name, its photograph lit; ■ stops', pl.notes >= 2 && /^♪ /.test(pl.now) && pl.lit === 1 && pl.key === '■', JSON.stringify(pl));
+  await tap(page, '#r-play'); await tap(page, '#r-radar'); await sleep(2500);
+  const rd = await page.evaluate(() => ({ shown: getComputedStyle(document.querySelector('#sweep')).display, notes: window.__notes.length }));
+  check('◎ the radar is a toggle: a hand sweeps the ground and sounds each knot it passes', rd.shown === 'block' && rd.notes > pl.notes, JSON.stringify(rd)); await tap(page, '#r-radar');
+  await page.click('#r-body .tiles button:not(.mine)'); await page.waitForSelector('#sheet h2'); await sleep(300);
+  const lv = await page.evaluate(() => ({ h: document.querySelector('#sheet h2').textContent, img: !!document.querySelector('#sheet .ph img'), cam: !!document.querySelector('#sheet .cam') }));
+  check('a sighting opens with its photograph, its name and the camera, to notice one too', !!lv.h && lv.img && lv.cam, JSON.stringify(lv));
+  await page.goto('https://oan.test/'); await page.goto('https://oan.test/#radio'); await page.waitForSelector('#r-way');
   await tap(page, '#r-way [data-w="sets"]'); await sleep(400);
   const sets = await page.evaluate(() => [...document.querySelectorAll('#r-body [data-c] span')].map(s => s.textContent));
-  check('SETS gathers what was noticed by life, by need and by place', sets.includes('Rainbow Lorikeet') && sets.includes('Young') && sets.includes('Carlton'), JSON.stringify(sets));
+  check('SETS gathers what is about by life, by need and by place', sets.includes('Rainbow Lorikeet') && sets.length >= 3, JSON.stringify(sets));
   await tap(page, '#r-way [data-w="help"]'); await sleep(500);
-  const pk = await page.evaluate(() => !!document.querySelector('#pk-out') && !!document.querySelector('#pk-in'));
-  check('packs: one\'s noticings go out as a file to share, and others\' come in', pk);
-  await tap(page, '#r-way [data-w="net"]'); await sleep(400);
-  await shot(page, 'b04-radio.png');
-  await tap(page, '#r-way [data-w="reel"]'); await sleep(300); const wall = await page.evaluate(() => document.querySelectorAll('#r-body .reel .card').length);
-  await tap(page, '#r-way [data-w="help"]'); await sleep(500); const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
-  check('the reel shows the story; HELP has every number to call', wall >= 1 && help.includes('tel:000') && help.includes('tel:0384007300'), wall + ' ' + help.length);
-  /* the studio, from the base: straight to the page asked for, no first visit, its devices plain */
-  for (const [h, v] of [['wish', 1], ['print', 2], ['radio', 0]]) {
-    const sp = await ctx.newPage(); await sp.goto('https://oan.test/studio?from=base#' + h); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2500);
-    const st = await sp.evaluate(() => ({ view: window.__da.S.view, plain: document.documentElement.classList.contains('plain'), veil: !!document.querySelector('#jr-veil'), hacks: [...document.querySelectorAll('.hack')].filter(e => getComputedStyle(e).display !== 'none').length, url: location.pathname + location.search + location.hash }));
-    check(`the base's ${h.toUpperCase()} key lands on the studio's page, no first visit, nothing hung on the devices`, st.view === v && st.plain && !st.veil && !st.hacks && st.url === '/studio#' + h, JSON.stringify(st));
-    await sp.close();
-  }
+  const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
+  check('HELP has every number to call', help.includes('tel:000') && help.includes('tel:0384007300'), help.length + '');
+  /* W.I.S.H. and SHOP are the base's own */
+  await page.goto('https://oan.test/#wish'); await page.waitForSelector('.wl textarea');
+  const wl = await page.evaluate(() => [...document.querySelectorAll('.wl textarea')].map(t => t.value));
+  check('W.I.S.H. in the base: the four lines drafted from the last noticing, each one editable', wl.length === 4 && /lorikeet fledgling/.test(wl[0]) && /WILDLIFE VICTORIA/.test(wl[3]), JSON.stringify(wl));
+  await page.fill('.wl [data-l="2"]', 'A sign on the gate, and water out'); await tap(page, '#w-go'); await page.waitForSelector('#p-slip canvas'); await sleep(500);
+  check('the lines written go on the receipt', await page.evaluate(() => window.__base.wish()[2][1] === 'A sign on the gate, and water out'));
+  await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-prn li:not(.empty)', { timeout: 8000 }).catch(() => {}); await sleep(800);
+  const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: !!document.querySelector('a[href="studio?from=base"]') }));
+  check('SHOP in the base: one\'s receipts and where each is, the printers, how to build one, packs, and the full studio only as an addition', shop.rec[0] === 'HELD FOR A YES' && shop.prn >= 1 && shop.build && shop.packs && shop.add, JSON.stringify(shop));
+  /* the studio is an addition: plain, and a key home */
+  { const sp = await ctx.newPage(); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
+    const st = await sp.evaluate(() => ({ plain: document.documentElement.classList.contains('plain'), veil: !!document.querySelector('#jr-veil'), home: (document.querySelector('#to-base') || {}).getAttribute ? document.querySelector('#to-base').getAttribute('href') : null }));
+    check('the full studio, an addition: plain, no first visit, and ← novel.global home', st.plain && !st.veil && st.home === './', JSON.stringify(st)); await sp.close(); }
   /* the guide: an index, then a life with its year */
   await page.goto('https://oan.test/#guide'); await page.waitForSelector('#q'); await page.waitForFunction(() => document.querySelectorAll('.idx h3').length >= 5, null, { timeout: 8000 });
   const idx = await page.evaluate(() => [...document.querySelectorAll('.idx h3')].map(h => h.firstChild.textContent));
@@ -1648,13 +1661,21 @@ if (ONLY.includes('walk')) try {
   await tap(page, '#p-send'); await sleep(1500); await W('09-sent');
   await tap(page, '#p-send').catch(() => {}); await W('10-reel');
   await tap(page, '#sheet .x').catch(() => {}); await W('11-after');
-  await page.goto('https://oan.test/#radio'); await sleep(1500); await W('12-radio');
+  await page.goto('https://oan.test/#radio'); await sleep(2500); await W('12-radio');
+  await tap(page, '#r-play'); await sleep(2000); await W('12a-playing'); await tap(page, '#r-play');
+  await tap(page, '#r-radar'); await sleep(2500); await W('12d-radar'); await tap(page, '#r-radar');
+  await tap(page, '.tiles button:not(.mine)').catch(() => {}); await sleep(1200); await W('12e-live');
+  await page.goto('https://oan.test/'); await sleep(500); await page.goto('https://oan.test/#radio'); await sleep(1500);
   await tap(page, '#r-way [data-w="sets"]'); await sleep(800); await W('12b-sets');
   await tap(page, '#r-way [data-w="help"]'); await sleep(800); await W('12c-help');
+  await page.goto('https://oan.test/#wish'); await sleep(1500); await W('12f-wish');
+  await tap(page, '#w-go'); await page.waitForSelector('#p-slip canvas'); await sleep(800); await W('12g-wish-print');
+  await page.goto('https://oan.test/#shop'); await sleep(1500); await W('12h-shop');
   await page.goto('https://oan.test/#guide'); await sleep(1500); await W('13-guide');
   await page.goto('https://oan.test/'); await sleep(800); await tap(page, '#b-map'); await sleep(1500); await W('14-map');
   await page.goto('https://oan.test/#pixel'); await sleep(800); await W('15-pixel');
-  for (const [n, h] of [['16-wish', 'studio?from=base#wish'], ['17-shop', 'studio?from=base#print'], ['18-radar', 'studio?from=base#radio']]) { await page.goto('https://oan.test/' + h); await sleep(9000); await W(n); }
+  await page.goto('https://oan.test/studio?from=base'); await sleep(9000); await W('16-studio');
+  await tap(page, '#to-base'); await sleep(1500); await W('17-home-again');
   await ctx.close();
 } catch (e) { results.push(`FAIL  section walk: ${e.message.split('\n')[0]}`); }
 

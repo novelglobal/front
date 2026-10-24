@@ -276,3 +276,36 @@ body:not(.mapmode):not(.half) #terrain { pointer-events: none; }
 .row.tools { margin-top: 10px; gap: 6px; } .row.tools .k { width: 40px; height: 36px; line-height: 34px; font-size: 16px; text-decoration: none; }
 #r-way a.k { flex: 1; border: 0; border-left: 1px solid var(--ink); height: auto; font: 11px/30px var(--mono); letter-spacing: .1em; text-decoration: none; }
 #maptools { top: 60px; bottom: auto; flex-direction: column; }
+
+/* ───── RADIO, W.I.S.H., SHOP in the base ───── */
+.sos { display: flex; gap: 6px; margin: 0 0 10px; }
+.sos a { flex: 1; text-align: center; padding: 9px 6px; border: 1px solid var(--hi); color: var(--hi); font: 12px var(--mono); letter-spacing: .1em; text-decoration: none; }
+.sos a:first-child { flex: 0 0 72px; background: var(--hi); color: var(--paper); }
+.row.tools .meta { margin: 0 0 0 4px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k.on { background: var(--ink); color: var(--paper); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 10px; }
+@media (min-width: 760px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+.tiles button { position: relative; height: 0; padding-bottom: 100%; background: var(--rule) center/cover no-repeat; filter: grayscale(1) contrast(1.05); }
+.tiles button span, .tiles button small { position: absolute; left: 0; right: 0; padding: 1px 4px; font: 9px var(--mono); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--paper); }
+.tiles button span { bottom: 12px; } .tiles button small { bottom: 0; color: var(--dim); }
+.tiles button.mine { box-shadow: inset 0 0 0 2px var(--sol); }
+.tiles button.on, .tiles button:hover { filter: none; box-shadow: inset 0 0 0 2px var(--ink); }
+.lnk { text-decoration: underline; }
+#sweep { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+#sweep .rim { fill: none; stroke: var(--stick); stroke-width: 1.5; stroke-dasharray: 2 5; }
+#sweep .hand { stroke: var(--stick); stroke-width: 2; stroke-linecap: round; }
+.subj { margin: 0 0 10px; }
+.subj button.on { filter: none; box-shadow: inset 0 0 0 2px var(--ink); }
+.subj .add { flex: 0 0 92px; height: 92px; display: grid; place-items: center; border: 1px dashed var(--dim); cursor: pointer; }
+.subj .add svg { width: 30px; height: 30px; fill: none; stroke: var(--ink); stroke-width: 1.6; } .subj .add input { display: none; }
+.wl label { display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px solid var(--rule); padding: 6px 0; }
+.wl b { font: 600 20px/1.4 var(--mono); width: 18px; flex: none; }
+.wl textarea { flex: 1; border: 0; background: transparent; font: 15px/1.4 var(--sans); resize: none; outline: none; padding: 2px 0; }
+.wl .chips { margin: 4px 0 6px 28px; }
+.list .li { display: flex; justify-content: space-between; width: 100%; padding: 9px 0; }
+.k.t { display: inline-block; height: auto; line-height: 1; padding: 9px 10px; text-decoration: none; }
+#sheet .pin { position: sticky; top: -14px; z-index: 3; background: var(--paper); padding: 14px 0 6px; margin-top: -14px; }
+@media (min-width: 760px) { #sheet .pin { top: -56px; padding-top: 56px; margin-top: -56px; } }
+.k.t { font: 11px/1 var(--mono); letter-spacing: .12em; }
+.row { gap: 6px; }
+body:not(.away):not(.mapmode) #dock { display: none !important; }

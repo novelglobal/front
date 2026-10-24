@@ -27,6 +27,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 0.12 | The lives on the map quiet and real: no edges, rings or sparks; plants in the same style; the wall poster exactly as made | Built, on staging |
 | v0.1 alpha | The base at `/` for any phone: one question, a photograph, W.I.S.H. as the way through (the photograph, what matters with a real alert, the receipt, the reel), NOW for the month, RADIO as net, reel and help, the pixel board; the studio at `/studio` (`docs/brief-v0.1.md`) | Built, on staging |
 | v0.1 alpha, two | The studio plain and reached directly from the base; the ground on opening; location asked; place, cell and climate as data; a few real sightings revealed when placed; SIGN; W.I.S.H. in place of the facts; SETS, sound, ties, packs, tags as triggers | Built, on staging |
+| v0.1 alpha, three | RADIO, W.I.S.H. and SHOP as the base's own pages: the radio plays what is about, as photographs, with a radar toggle and the emergency numbers; W.I.S.H. drafted and editable; SHOP with receipts, printers and packs; the studio only as an addition, with a way home | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
