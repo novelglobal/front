@@ -6,13 +6,16 @@ W.I.S.H. is the concept: a praxis poem. **NOTICED** is the intention to respond.
 
 The app works offline in the browser. Stages 1 to 3 of `docs/roadmap.md` are built: the map fixes, stories shared with approval, and print queues pulled by a Raspberry Pi at each partner place. Next comes live data behind the Worker (stage 4).
 
+**From v0.1 (24 October 2026) the site has two builds.** The **base** opens at `/`: a light page with one question, "What have you noticed?", a camera, and W.I.S.H. as the way through a noticing (below, "The base, v0.1"). The **studio** is everything built through the pilot, now at `/studio`, and every link the studio ever printed still opens there.
+
 Read this file first. Then read `README.md`, which is what users see, and `docs/brief.md`, which explains the product decisions and their sources.
 
 ## Status at a glance
 
 | Area | State |
 |---|---|
-| Web app (map, cells, strings, ledger, constellations, slip in two styles, outputs, sharing, partners, the local mesh, cell packs) | Built and working, with browser and server checks (`npm test`) |
+| The base, `/` (v0.1 alpha) | `src/base/`: the photograph, a line, a real alert, the receipt with W.I.S.H. as one key, the reel; GUIDE; MAP with batch adding; RADIO as net, reel and help; the pixel board. About 60 KB to first paint, no map library or webfonts. Checks: `ONLY=base node test/run.mjs` |
+| The studio, `/studio` (map, cells, strings, ledger, constellations, slip in two styles, outputs, sharing, partners, the local mesh, cell packs) | Built and working, with browser and server checks (`npm test`) |
 | Hosting | The Cloudflare Worker `front` builds this repo on every push. `main` is live at `novel.global`; any other branch, such as `staging`, gets its own preview address. See `docs/workflow.md` |
 | Source and build | This tree is the GitHub repo `front`. `npm run build` writes `dist/`, which is the deployable site |
 | Worker | `src/worker/index.js`: stories sent and approved, a print queue for each partner place, the approval page's requests, all on D1 (`front-db`; previews use `front-db-preview`) |
@@ -146,6 +149,7 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, 24 October: the base** (the owner, after field tests: a lorikeet fledgling in Carlton Gardens and no alert, no quick search, no context; the site breaking on older phones). See "The base, v0.1" below and `docs/brief-v0.1.md`.
 - **0.12, 23 October: quieter lives, the poster as made** (the owner's notes on 0.11).
   - The lives on the map have no white edge and nothing round them: no danger rings, no gold rings or sparks, no red point, no breathing light, no orange pulse for the lives in extreme danger. Each is its pixel shape with an ink edge and a faint shadow on the ground; what it is in danger of is on its card. A pile shows as the creature itself twice behind. The plants are drawn the same way (tree, sprig, flower, grass, toadstool).
   - The poster on the wall is the strip as made, to the pixel: the receipt's head keeps its size and place and only its photograph is laid over in colour (`colourStrip`), so the words, the code and what was placed stay where they were.
@@ -336,6 +340,24 @@ The rail holds four destinations. The first three are one journey, joined by a f
 - **PORTFOLIO** (`#portfolio`; `#stories` still lands here): work published from the approval page, the board of stories (eight as cards, the rest as a list, a photograph and a headline each), RECEIVE, the briefs, the tools, the settings and the sources.
 - `portfolio.html` is novel.global's portfolio, of which DIRECT ACTION RADIO is one work: published posts by category, as lists with counts, and each post on its own address (`portfolio.html#slug`). `field.html` is a field list of 204 kinds of life. `guide.html` is a visual key to every mark, kept under about 620 words.
 
+### The base, v0.1 (`src/base/`, served at `/`)
+
+A page for any phone. `index.html`, `base.css` and `base.js` (plain script: no `?.`, no `??`, no framework, no WebGL), with the settings it needs written into the page by `build.mjs` (`window.BASE`: imagery, centre, printers, contacts). Everything else is a pack, loaded only when used: **TERRAIN** (imagery tiles in greys, panned by hand), **FIELD DATA** (`base-db.json`, built from `field.js`, `briefs.js` and the outlook: about 120 KB, fetched after first paint) and the **STUDIO** (the full build at `/studio`). TERRAIN and FIELD DATA switch off under RADIO › HELP › PACKS; without them the base is the question, the camera, the help lines and the receipt.
+
+- **Home**: paper, no map. "What have you noticed?", the camera, and RADIO, W.I.S.H. and SHOP in words (W.I.S.H. and SHOP open the studio's W.I.S.H. and PRINT). At the top, MAP, GUIDE and ◐ (light and dark, `da.base.theme`). One line at the foot, NOW: fledglings on the ground, swooping, El Niño's window, snakes, heat, then what is in season, read from each life's own event; pressed, it opens the guide. Lines arrive through the old phone network's signs (`glitch`); 2600 in the guide plays the tone that once opened a trunk line. Words are in the device's sans, data in its monospace.
+- **No copy of the brief on screen, no steps shown.** A noticing is three screens and one key each:
+  - **The photograph** with where and when: its own GPS and time (`exif`, a small JPEG reader), else the phone's location, else where the map is (the line blinks; a tap on the map moves it). A `>` line for what is happening. Chips: the life it may be (two others offered), the need it names, and the tags chosen before (what one notices grows what one can say). An alert only when there is a real one: what to do (`ISSUES`), the life's own advice, its season now with El Niño only when this life is in this month's window, and the number to call. → places it on the net.
+  - **The design stage**: the receipt as it will print, its photograph the top half; a touch on it changes the art (photograph, wonky pixels, the net; three dots show which). **W.I.S.H. is one key here**: it writes the four lines onto the receipt from what the engine knows (what was noticed; what would be great, as chips starting from the need; what to do; who can help), and they travel with the record (`body.wish`, the chosen as tags). The printer (● ready, ○ queues), + for the studio's print shop, PRINT. Sent as `kind: 'record'`, `type: 'noticed'`, with the ESC/POS raster and the photograph, through approval; no signal, it waits on the device (`da.base.outbox`). → the reel.
+  - **The reel**: every photograph story, this one first, with three marks: ↓ keep the receipt, ⤴ pass on a link (`/#n=DA-XXXX`), ⎙ print at a partner place; ⋯ for GIVE (Wildlife Victoria) and JOIN (the studio's groups); ▶ on a call.
+- **GUIDE** (`#guide`; `#search` and `#now` land here): an index in columns, as a parts catalogue keeps one: Now, Needs, Call, In season, Lives (every kind, opening to its lives with their year as a row of marks), What worked elsewhere (the case studies by theme). One field searches it all. A life: status, where, what to watch for, heat, its year as a data sheet (seen and young, month by month, this month boxed), the alert if there is one, its advice, related lives and a case, and the camera. A need: what to do, the number, the lives most at stake now, what worked elsewhere.
+- **MAP** is a key: the ground in greys and every knot (one's own and everyone's approved). A touch on open ground places a noticing there without a photograph; + adds many at once: photographs (each where it was taken, or near the middle), calls (sound files, played from the reel) and icons (an SVG, or a file named icon or sticker, drawn as the knot).
+- **The engine** (`read`, `guess`, `related`, `caseOf`) is never on screen. It reads the line and the tags against the field list and gives three lines at most, one number, and three connections at most: lives of the same kind breeding or in the same need now, and one case that worked elsewhere, when it fits well (`DA_BRIEFS`). It stays narrow on purpose: "affected by El Niño" says nothing.
+- **The net** replaces the radar's figures in the base: each noticing is a knot with a dotted thread hanging under it (as on a bark painting), tied to what it connects to by a curved stick (as on a Marshall Islands stick chart), drawn in as it is made.
+- **RADIO** (`#radio`): NET (every noticing as knots, tied where they share a life or a need; PLAY ties them in the order they were made; SAVE AS ART), REEL, HELP (the alerts, every number, every report link, the packs) and RADAR ↗, the studio's radio.
+- **Old phones**: no `?.`, `??` or lookbehind (a check reads the source); panning needs pointer events (iOS 13 and later).
+- **The pixel board** (`#pixel`, or paste a picture anywhere): wonky pixels in 24, 40 or 64 cells, in one bit, greys or colour; up to three pictures animate as a sprite; SAVE PNG; PRINT IT.
+- Links: `#radio`, `#pixel`, `#guide`, `#search`, `#now`, `#n=DA-XXXX` are the base's; any other link goes on to `/studio` with its hash, so every code the studio printed still opens. Stored: `da.base.notes` (the last 40, small photographs), `da.base.outbox`, `da.base.printer`, `da.base.packs`, `da.base.theme`.
+
 ### The CONNECTION receipt
 
 The third slip style (`prefs.slip = 'conn'`, `connText()`, `connCanvas()`, and `escpos(s, paper, tty, conn)`): CONNECTION and the code; the SIGNAL (the life and its threat); the PLACE; what it is TIED to (the first caring relation); a group to JOIN, already caring for ground near it, with when it meets and its address (from `DA_TRIBES`, else a tied place with a site of its own); and the NEXT step (the W.I.S.H.'s last line, "here is how it works"). Then the QR code. Every line comes from the slip or the listed groups and places; nothing is made up to fill it. On screen it shows exactly the words that print.
@@ -398,6 +420,8 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 ├── docs/brief.md          the product brief: problem, decisions, sources
 ├── docs/roadmap.md        the stages from here to live, shared data
 ├── docs/workflow.md       how a change goes from this folder to a preview, then to novel.global
+├── src/base/              the base at / (v0.1): index.html, base.css, base.js; build.mjs adds base-db.json
+├── src/body.html          the studio at /studio (studio.html)
 ├── build.mjs              npm run build → dist/, stamped with its commit (and its branch on a preview); app, style, marks and QR minified
 ├── wrangler.jsonc         the Worker `front`: dist/ as static assets, src/worker for everything else, two D1 databases
 ├── receiver/              the partner place's Raspberry Pi: pull.py, da-pull.service, da-pull.env.example, README.md
@@ -561,7 +585,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v73` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v74` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

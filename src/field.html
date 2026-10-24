@@ -169,7 +169,7 @@ footer{padding:16px 24px 40px;border-top:1px solid var(--navy);font:400 10.5px/1
       + '<td class="ev">' + esc(e.event) + '</td>'
       + '<td class="tx">' + esc(e.aware) + '</td><td class="tx">' + esc(e.harm) + '</td><td class="tx">' + esc(e.help) + (e.note ? '<br><span class="mono" style="color:#6B6B6B;font-size:10.5px">' + esc(e.note) + '</span>' : '') + '</td>'
       + '<td class="cl">' + (c ? '<a href="' + c[0] + '"' + (c[0].indexOf('http') === 0 ? ' target="_blank" rel="noopener"' : '') + '>' + use(c[0].indexOf('tel') === 0 ? 'g-phone' : 'g-out') + c[1] + '</a>' : '') + '</td>'
-      + '<td class="mp">' + (seen[e.n.toLowerCase()] ? '<a href="index.html#' + seen[e.n.toLowerCase()] + '" data-tip="Open its latest sighting on the map">' + use('g-where') + 'MAP</a>' : '') + '</td>'
+      + '<td class="mp">' + (seen[e.n.toLowerCase()] ? '<a href="studio#' + seen[e.n.toLowerCase()] + '" data-tip="Open its latest sighting on the map">' + use('g-where') + 'MAP</a>' : '') + '</td>'
       + '<td class="src">' + (e.src || []).map(function (u, i) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="' + esc(u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '">' + (i + 1) + '</a>'; }).join('') + '</td></tr>';
   }).join('');
   /* filters: by kind, this month, a word */

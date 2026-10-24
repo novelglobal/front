@@ -61,8 +61,9 @@ const win = {}; vm.runInNewContext(read(path.join(src, 'config.js')) + '\n' + re
 const partners = (win.DA_PARTNERS || []).map(p => { const pl = (win.DA_PLACES || []).find(x => x.partner === p.id) || {}; return { id: p.id, n: pl.n || p.id, sub: pl.sub || '', paper: String(p.paper || 58), printer: !!p.printer }; });
 if (win.DA_MASTER) partners.unshift({ id: win.DA_MASTER.id, n: win.DA_MASTER.n, sub: '', paper: String(win.DA_MASTER.paper || 80), printer: true });
 fs.writeFileSync(path.join(src, 'worker', 'stamp.js'), `/* written by build.mjs: never edited by hand, never committed */\nexport const BUILD = ${JSON.stringify(sha)};\nexport const PREVIEW = ${preview};\nexport const PARTNERS = ${JSON.stringify(partners)};\n`);
+/* the studio: the whole radio, W.I.S.H. and PRINT, as it was built through the pilot, at /studio */
 const body = read(path.join(src, 'body.html'));
-fs.writeFileSync(path.join(out, 'index.html'), `<!doctype html>
+fs.writeFileSync(path.join(out, 'studio.html'), `<!doctype html>
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
@@ -97,6 +98,23 @@ ${body}
 </body>
 </html>
 `);
+/* the base, at /: what was noticed, a photograph and a sentence, its key facts and a few connections, printed. No map library, no
+   webfonts, no data until asked for: the field list, the outlook and the case studies come as one pack, base-db.json */
+const pick = (o, keys) => Object.fromEntries(keys.filter(k => o[k] != null && o[k] !== '').map(k => [k, o[k]]));
+const lib = {}; vm.runInNewContext(read(path.join(src, 'field.js')) + '\n' + read(path.join(src, 'briefs.js')), { window: lib });
+const O = win.DA_OUTLOOK || {};
+fs.writeFileSync(path.join(out, 'base-db.json'), JSON.stringify({
+  v: sha,
+  field: (lib.DA_FIELD || []).map(f => pick(f, ['id', 'cn', 'n', 'g', 'st', 'where', 'act', 'brd', 'heat', 'water', 'event', 'aware', 'harm', 'help', 'call', 'note'])),
+  briefs: (lib.DA_BRIEFS || []).map(b => pick(b, ['id', 'th', 't', 'after', 'city', 'yr', 'fact', 'url', 'g', 'm', 'dz', 'i'])),
+  outlook: pick(O, ['start', 'h', 'say', 'windows', 'nino', 'tmax', 'hot']),
+  links: win.DA_LINKS || [],
+}));
+const BASE = { imagery: win.DA_CONFIG.IMAGERY.url, maxzoom: win.DA_CONFIG.IMAGERY.maxzoom, credit: win.DA_CONFIG.IMAGERY.attribution, centre: [win.DA_CONFIG.SCAN.lat, win.DA_CONFIG.SCAN.lng], bbox: win.DA_CONFIG.BBOX,
+  portal: win.DA_CONFIG.PORTAL_URL, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], build: sha };
+fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'base.css')), 'css'));
+fs.writeFileSync(path.join(out, 'base.js'), min(read(path.join(src, 'base', 'base.js')), 'js'));
+fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));
 const listing = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => (d.isDirectory() ? listing(path.join(dir, d.name), base) : [path.relative(base, path.join(dir, d.name))])).sort();
 const all = listing(out);
 console.log(`${all.length} files, ${Math.round(all.reduce((n, f) => n + fs.statSync(path.join(out, f)).size, 0) / 1024)} KB in dist/, build ${sha}${preview ? `, PREVIEW ${branch}` : ''}`);

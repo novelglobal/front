@@ -2,6 +2,8 @@
 
 Research and development for direct action. Its first work is a sonic radar over Brunswick to the Melbourne CBD for the El Niño summer of 2026–28. It shows live iNaturalist sightings, the El Niño threat, and the human ecology around it: shops, brands, the circular economy, artists, third spaces and networks. Make string figures between them, listen, notice and print out a four-line W.I.S.H. praxis poem  or brief receipt.
 
+The base at `/` asks one thing: what have you noticed? Photograph it, say it in a line, see the few facts that matter now and who to call, and print it at a solar thermal printer. It is three plain files in `src/base/`, light enough for an old phone; the map imagery, the field data and the studio are packs. The radar and everything above is the studio, at `/studio`.
+
 At [novel.global](https://novel.global). MIT licence. Public alpha, 0.1.0-alpha.3: open source, made to be forked, changed and run elsewhere. Made on Wurundjeri Woi-wurrung Country.
 
 ## Places

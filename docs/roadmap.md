@@ -25,6 +25,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | 0.10 | The equaliser in colour all year, no blanks; the card centred beside its poster; the message form clears when sent; the water as it is, from OpenStreetMap; birds and animals easy to see, the lives in need breathing | Built, on staging |
 | 0.11 | Placing in view; the handheld sends as data; the wall poster in colour; SONGS as albums, CASE STUDIES, a carbon receipt; a plain parts list; quiet prompts; the board's template fixed with its own key; SELECT on the device alone; past exports on PRINT; the lives as folded pixel creatures, twenty larger ones drawn as themselves | Built, on staging |
 | 0.12 | The lives on the map quiet and real: no edges, rings or sparks; plants in the same style; the wall poster exactly as made | Built, on staging |
+| v0.1 alpha | The base at `/` for any phone: one question, a photograph, W.I.S.H. as the way through (the photograph, what matters with a real alert, the receipt, the reel), NOW for the month, RADIO as net, reel and help, the pixel board; the studio at `/studio` (`docs/brief-v0.1.md`) | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |

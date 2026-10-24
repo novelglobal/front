@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>novel.global</title>
+<meta name="description" content="What have you noticed? Photograph it, say it in a line, see what it connects to, print it.">
+<meta name="theme-color" content="#EDEBE4">
+<meta name="da-build" content="%BUILD%">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<script>
+/* a link made by the studio (a mix, a story code, a page by name) goes on to the studio, so every printed code still opens */
+(function () { var h = location.hash.slice(1); if (h && !/^(radio|pixel|search|guide|now|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
+try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { /* no storage */ }
+/*BASE*/
+</script>
+<link rel="stylesheet" href="base.css">
+</head>
+<body>
+<div id="terrain" aria-hidden="true"><div id="tiles"></div><svg id="net"></svg></div>
+
+<header id="top">
+  <a id="mark" href="./" aria-label="novel.global">novel.global</a>
+  <span class="sp"></span>
+  <button id="b-map" class="k t">MAP</button>
+  <button id="b-search" class="k t">GUIDE</button>
+  <button id="b-theme" class="k" aria-label="Light or dark" title="Light or dark">◐</button>
+</header>
+
+<main id="home">
+  <h1 id="ask" data-say="What have you noticed?">What have you noticed?</h1>
+  <label id="cam" class="cam" aria-label="Photograph what you noticed">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/><circle cx="32" cy="35" r="1.6" class="dot"/><circle cx="49" cy="25" r="1.4" class="dot"/></svg>
+    <input id="shot" type="file" accept="image/*" capture="environment">
+  </label>
+  <nav id="ways"><a href="#radio" data-go="radio">RADIO</a><a href="studio#wish">W.I.S.H.</a><a href="studio#print">SHOP</a></nav>
+</main>
+
+<button id="now" hidden></button>
+
+<nav id="dock" hidden><a href="#radio" data-go="radio">RADIO</a><label class="cam sm" aria-label="Photograph"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/></svg><input class="shot" type="file" accept="image/*" capture="environment"></label><a href="studio#wish">W.I.S.H.</a></nav>
+
+<section id="sheet" hidden></section>
+
+<nav id="maptools"><label class="k" aria-label="Add photographs, calls or icons" title="Add photographs, calls or icons">+<input id="m-add" type="file" accept="image/*,audio/*" multiple hidden></label><button id="m-close" class="k" aria-label="Close the map">×</button></nav>
+
+<p id="credit"></p>
+<noscript><p class="nojs">What have you noticed? This page needs JavaScript to photograph and print. Emergencies: 000. Injured wildlife: Wildlife Victoria (03) 8400 7300.</p></noscript>
+<script src="base.js"></script>
+</body>
+</html>

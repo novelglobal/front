@@ -55,7 +55,7 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
         return route.fulfill({ status: r.status, body: Buffer.from(await r.arrayBuffer()), headers: Object.fromEntries(r.headers) });
       }
       if (u.host === 'oan.test' || u.host === 'novel.global') {
-        let p = decodeURIComponent(u.pathname); if (p.endsWith('/')) p += 'index.html';
+        let p = decodeURIComponent(u.pathname); if (p.endsWith('/')) p += 'index.html'; if (!path.extname(p) && fs.existsSync(path.join(DIST, p + '.html'))) p += '.html';   /* /studio is studio.html, as Cloudflare serves it */
         if (p === '/config.js' && config) return ok(config, MIME['.js']);
         const f = path.join(DIST, p);
         if (!f.startsWith(DIST) || !fs.existsSync(f)) return route.fulfill({ status: 404, body: 'not found' });
@@ -135,7 +135,7 @@ if (ONLY.includes('dbg')) try {
   if (process.env.NOSTART || process.env.JOURNEY) await ctx.addInitScript(() => { window.__noStart = true; });
   await page.exposeFunction('__snap', (n, clip) => shot(page, n, clip ? { clip } : {}));
   if (process.env.AT) await page.clock.setFixedTime(new Date(process.env.AT));
-  await page.goto('https://oan.test/index.html' + (process.env.HASH || ''));
+  await page.goto('https://oan.test/studio' + (process.env.HASH || ''));
   /* ACT: a real click first, so the page may make sound (a browser allows none before a touch) */
   if (process.env.ACT) { await sleep(1500); await page.mouse.click(720, 450); }
   await ready(page); await sleep(+(process.env.WAIT || 1500));
@@ -148,7 +148,7 @@ if (ONLY.includes('dbg')) try {
 // ───────── smoke: the bare radar, then the four destinations ─────────
 if (run('smoke')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'smoke');
-  await page.goto('https://oan.test/index.html#stories'); await ready(page, '', true); await settle(page);
+  await page.goto('https://oan.test/studio#stories'); await ready(page, '', true); await settle(page);
   const land = await page.evaluate(() => { const da = window.__da; const c = da.map.project([da.S.scan.lng, da.S.scan.lat]); const panel = document.querySelector('#panel').getBoundingClientRect(); return { open: da.S.open, view: da.S.view, five: document.querySelectorAll('#sec-five .hero-row').length, radarLeftOfPage: c.x < panel.left, hash: location.hash }; });
   check('the site lands on RADIO, the radar beside it, even from a link to another page', land.open && land.view === 0 && land.radarLeftOfPage && land.hash === '#radio', JSON.stringify(land));
   const adm = await page.evaluate(() => { const a = document.querySelector('.maplibregl-ctrl-attrib a.da-admin'); return a ? { href: a.getAttribute('href'), text: a.textContent, nextTo: !!(a.previousElementSibling && a.previousElementSibling.classList.contains('da-build')) } : null; });
@@ -387,7 +387,7 @@ if (run('smoke')) try {
     return out; });
   check('novel.global: SONGS second, each kept song an album, its card slid out of the sleeve, played or shared; CASE STUDIES above the sources; the stories counted as shown; the build key: BUILD A SOLAR THERMAL PRINTER on two lines; on PRINT, closer second, shorter beside longer', v11.songs[1] === v11.songs[0] + 1 && v11.songs[2] && v11.songs[3] && v11.order === 'sec-board,sec-songs,sec-briefs,sec-src' && v11.case === 'CASE STUDIES' && v11.count[0] === v11.count[1] && v11.build === 'BUILD A SOLARTHERMAL PRINTER' && v11.keys[0] === 1 && v11.keys[1], JSON.stringify(v11));
   /* a link to the radio, opened: tuned there, its layers as they were, play waiting for a touch */
-  await page.goto('https://oan.test/index.html?fresh=1#mix=-37.7712,144.9601,750,121000010128'); await ready(page); await sleep(2500);
+  await page.goto('https://oan.test/studio?fresh=1#mix=-37.7712,144.9601,750,121000010128'); await ready(page); await sleep(2500);
   const lk = await page.evaluate(() => { const da = window.__da; return { lat: +da.S.scan.lat.toFixed(4), r: da.S.scan.r, water: da.T4.water, comm: da.T4.community, poll: da.T4.pollution, mood: (da.prefs.lm || {}).pollution, view: da.S.view, radio: da.S.radio }; });
   check('a radio link opened tunes the radar where it was made, with its layers and moods, and waits for play', lk.lat === -37.7712 && lk.r === 750 && lk.water === false && lk.comm === false && lk.poll === true && lk.mood === 'blown' && lk.view === 0 && !lk.radio, JSON.stringify(lk));
   await ctx.close();
@@ -398,7 +398,7 @@ if (run('portfolio')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'portfolio');
   const made = await admin('posts', { title: 'Fan night at Kines', cat: 'case study', summary: 'Twelve fans repaired before the first 35°.', body: 'We met at six.\n\n## What worked\n\nA queue, a bench, a list.', links: ['https://example.org/fans'], status: 'published' });
   await admin('posts', { title: 'A draft nobody sees', body: 'Not yet.' });
-  await page.goto('https://oan.test/index.html'); await ready(page); await tab(page, 3); await sleep(1200);
+  await page.goto('https://oan.test/studio'); await ready(page); await tab(page, 3); await sleep(1200);
   const inApp = await page.evaluate(() => ({ view: window.__da.S.view, rows: [...document.querySelectorAll('#sec-work .sig-line')].map(a => ({ t: a.querySelector('.hl').textContent, href: a.getAttribute('href'), cat: a.querySelector('.code').textContent })) }));
   check('PORTFOLIO lists the work published, never a draft, each linking to its own page', inApp.view === 3 && inApp.rows.length === 1 && inApp.rows[0].t === 'Fan night at Kines' && inApp.rows[0].cat === 'CASE STUDY' && inApp.rows[0].href === `portfolio.html#${made.slug}`, JSON.stringify(inApp));
   await page.goto('https://oan.test/portfolio.html'); await sleep(1200);
@@ -423,7 +423,7 @@ if (run('portfolio')) try {
 // ───────── the fronts: the quickest way from a sound to a receipt; the example; BOARD 00, and its editing from the approval page ─────────
 if (run('fronts')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'fronts');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page); await sleep(800);
   const fr = await page.evaluate(async () => { const da = window.__da; const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
     da.setOpen(true); da.setView(0); await wait(700);
     out.nino = []; { const n = document.querySelector('#view [data-nino]'); n.click(); out.nino.push(!!da.prefs.nino, document.body.classList.contains('nino')); n.click(); out.nino.push(!!da.prefs.nino, document.body.classList.contains('nino')); }
@@ -512,7 +512,7 @@ if (run('fronts')) try {
 // ───────── a first visit: no radar until a tap says where you are ─────────
 if (run('first')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'first');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page); await sleep(800);
   const f = await page.evaluate(() => { const da = window.__da; return { placed: da.placed(), knob: document.querySelector('#knob').hidden, shown: da.life.items.filter(it => da.life.shown(it)).length, press: !document.querySelector('#arcade') && !document.querySelector('#view .steps') }; });
   check('a first visit: every mark on the map, no radar, nothing over the ground; no clues on the quick radio', !f.placed && f.knob && f.shown > 20 && f.press, JSON.stringify(f));
   check('day is the default on a first visit', await page.evaluate(() => !document.documentElement.classList.contains('night')));
@@ -673,7 +673,7 @@ if (run('journey')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true, journey: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'journey');
   /* the veil's own life, timed in the page: when the test first sees it depends on how long the page takes to load */
   await ctx.addInitScript(() => { window.__veil = {}; new MutationObserver(() => { const on = !!document.getElementById('jr-veil'); const t = performance.now(); if (on && !window.__veil.add) window.__veil.add = t; if (!on && window.__veil.add && !window.__veil.rm) window.__veil.rm = t; }).observe(document, { childList: true, subtree: true }); });
-  await page.goto('https://oan.test/index.html'); const v0 = Date.now();
+  await page.goto('https://oan.test/studio'); const v0 = Date.now();
   /* the veil first: small words alone over the map as it loads, gone by themselves */
   const vq = await page.waitForSelector('#jr-veil .jv-q', { timeout: 40000 }).then(el => el.textContent()).catch(() => ''); const v1 = Date.now();
   await page.waitForSelector('#jr-veil', { state: 'detached', timeout: 20000 }).catch(() => {}); const vt = await page.evaluate(() => Math.round((window.__veil.rm || 0) - (window.__veil.add || 0)));
@@ -690,7 +690,7 @@ if (run('journey')) try {
   check('what is made goes on the board too: the receipt waits on the studio side of W.I.S.H. once everything is open', d.s4.board === 1, JSON.stringify({ board: d.s4.board }));
   check('suggestions are taken up as many as wanted, each onto the receipt with its fact, the intention left as typed; the receipt shows what is typed as it is typed', d.story.acts.length === 2 && d.story.on === 2 && d.story.field === '' && d.story.next && d.story.signal === 2 && d.typed.want === 'Water out for the flying-foxes' && d.typed.redrawn, JSON.stringify({ story: d.story, typed: d.typed }));
   check('a place touched near the life on W.I.S.H. is tied to it, a connection on its receipt, and travels in its code', d.tie.tied && d.tie.j === 2 && d.tie.view === 1 && d.tie.redrawn && !!d.s3.unpacked && d.s3.unpacked.tied === 1, JSON.stringify({ tie: d.tie, unpacked: d.s3.unpacked }));
-  check('make: PRINT opens with a label maker half the size, SELECT its hero and no form; the receipt on the strip, then its words, then its code, which a phone reads as the receipt itself, off the screen too', d.s3.screen === true && d.s3.h <= 170 && d.s3.w <= 340 && d.s3.sel && d.s3.hero >= 120 && d.s3.print === 1 && d.s3.lcd === 0 && d.s3.flip === 0 && d.s3.kinds === 'base,words,code' && d.s3.jr && d.s3.caret && /^https:\/\/novel\.global\/#x=/.test(d.s3.qr || '') && !!d.s3.unpacked && d.s3.unpacked.code === d.s3.code && d.s3.unpacked.note === 'Water out for the flying-foxes', JSON.stringify(d.s3));
+  check('make: PRINT opens with a label maker half the size, SELECT its hero and no form; the receipt on the strip, then its words, then its code, which a phone reads as the receipt itself, off the screen too', d.s3.screen === true && d.s3.h <= 170 && d.s3.w <= 340 && d.s3.sel && d.s3.hero >= 120 && d.s3.print === 1 && d.s3.lcd === 0 && d.s3.flip === 0 && d.s3.kinds === 'base,ink,words,code' && d.s3.jr && d.s3.caret && /^https:\/\/novel\.global\/#x=/.test(d.s3.qr || '') && !!d.s3.unpacked && d.s3.unpacked.code === d.s3.code && d.s3.unpacked.note === 'Water out for the flying-foxes', JSON.stringify(d.s3));
   check('PRINT on a first visit is a dongle: a sheet of stickers for some bling, a key to start again and one closer, words and photographs from SELECT or typed on the receipt itself, the code moving down to stay under them', d.s3.keys.sheet >= 1 && d.s3.keys.aa && d.s3.keys.undo && d.s3.keys.zoom && d.words.text === 'Back at dusk' && d.words.below, JSON.stringify({ keys: d.s3.keys, words: d.words }));
   check('SELECT on a first visit: the lives first, then the stickers, nothing made yet to confuse; a life chosen lands on the receipt and the code stays on top', d.pick.simple && d.pick.tabs === 'lives*,stick' && d.pick.lives >= 3 && d.pick.made === 0 && d.placed.more && d.placed.top === 'code', JSON.stringify({ pick: d.pick, placed: d.placed }));
   const waiting = (await admin('stories?status=waiting')).stories.filter(x => x.code === d.s3.code);
@@ -712,7 +712,7 @@ if (run('journey')) try {
   await ctx.close();
   /* at a phone's width: the same way through, each device on its rail, what it holds in view above it */
   const pc = await newCtx({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(pc, { first: true, journey: true }); await pc.addInitScript(() => { window.__noStart = true; }); const pp = await pc.newPage(); watch(pp, 'journey-phone');
-  await pp.goto('https://oan.test/index.html');
+  await pp.goto('https://oan.test/studio');
   const pv = await pp.waitForSelector('#jr-veil .jv-q', { timeout: 40000 }).then(() => true).catch(() => false); const tv0 = Date.now();
   await pp.tap('#jr-veil').catch(() => {}); await pp.waitForSelector('#jr-veil', { state: 'detached', timeout: 8000 }).catch(() => {}); const tv = Date.now() - tv0;
   check('on a phone the veil goes at a touch', pv && tv < 4800, JSON.stringify({ pv, tv }));
@@ -723,19 +723,19 @@ if (run('journey')) try {
   { const f = p.fixed || {}; check('on a phone the intention device holds its size: a long intention scrolls in its two-line screen with an arrow on the glass, the device, its make key and its place on the rail where they were', f.same && f.scroll && f.arrow, JSON.stringify(f)); }
   { const r = p.roll || {}; check('on a phone the W.I.S.H. tab lowers the device to its lip and rolls the receipt up with it, the map in full, the held life still ringed; the tab, the strip or a touch on its head brings both back, the device where it was', r.lo && r.lo.main && r.lo.fold && r.lo.h <= 56 && r.lo.above && r.lo.low && r.lo.held && !r.lo.focus && r.up && !r.up.main && !r.up.fold && Math.abs(r.up.t - r.t0) <= 2 && r.strip && !r.strip.main && !r.strip.fold && r.head && !r.head.main && !r.head.fold && !r.head.focus && Math.abs(r.head.t - r.t0) <= 2, JSON.stringify(r)); }
   check('on a phone W.I.S.H. holds the receipt over the map, the suggestions under it and the intention device under them, nothing over anything', p.spot && p.s2.qr === null && p.s2.acts === 6 && p.s2.same && p.s2.select === 0 && p.s2.modded && layout, JSON.stringify(p.s2));
-  check('on a phone PRINT: the receipt, its words typed on it, its code read by a phone off the screen; SELECT the hero; printed, the showcase holds it waiting, and everything opens', p.s3.screen === true && p.s3.h <= 170 && p.s3.kinds === 'base,words,code' && /^https:\/\/novel\.global\/#x=/.test(p.s3.qr || '') && p.words.text === 'Back at dusk' && p.pick.tabs === 'lives*,stick' && p.placed.more && !p.s4.simple && p.s4.waiting && p.s4.phonePane && p.s4.tabs === 4 && p.flip[0] === 1, JSON.stringify({ s3: p.s3, words: p.words, pick: p.pick, s4: p.s4, flip: p.flip }));
+  check('on a phone PRINT: the receipt, its words typed on it, its code read by a phone off the screen; SELECT the hero; printed, the showcase holds it waiting, and everything opens', p.s3.screen === true && p.s3.h <= 170 && p.s3.kinds === 'base,ink,words,code' && /^https:\/\/novel\.global\/#x=/.test(p.s3.qr || '') && p.words.text === 'Back at dusk' && p.pick.tabs === 'lives*,stick' && p.placed.more && !p.s4.simple && p.s4.waiting && p.s4.phonePane && p.s4.tabs === 4 && p.flip[0] === 1, JSON.stringify({ s3: p.s3, words: p.words, pick: p.pick, s4: p.s4, flip: p.flip }));
   check('on a phone nothing spills sideways at any gate', await pp.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0);
   for (const x of (await admin('stories?status=waiting')).stories.filter(y => y.code === p.s3.code)) await admin(`stories/${x.id}`, { action: 'delete' });
   await pc.close();
   /* the easter egg: the tiny NOVEL.GLOBAL in the information corner, pressed twice, opens everything at once */
   const ec = await newCtx(); await wire(ec, { first: true, journey: true }); await ec.addInitScript(() => { window.__noStart = true; }); const ep = await ec.newPage(); watch(ep, 'journey-egg');
-  await ep.goto('https://oan.test/index.html'); await ep.waitForSelector('#jr-veil', { state: 'detached', timeout: 15000 }).catch(() => {}); await ready(ep); await sleep(800);
+  await ep.goto('https://oan.test/studio'); await ep.waitForSelector('#jr-veil', { state: 'detached', timeout: 15000 }).catch(() => {}); await ready(ep); await sleep(800);
   await tap(ep, '.maplibregl-ctrl-attrib-button'); await sleep(300); await ep.dblclick('.da-egg'); await sleep(1500);
   const egg = await ep.evaluate(() => ({ j: window.__da.prefs.journey, simple: window.__da.simple(), open: window.__da.S.open, flip: document.querySelectorAll('#view [data-flip]').length, tabs: [...document.querySelectorAll('#rail .tab')].filter(t => getComputedStyle(t).visibility !== 'hidden').length }));
   check('the easter egg: NOVEL.GLOBAL in the information corner, pressed twice, opens everything at once', egg.j === 4 && !egg.simple && egg.open && egg.flip === 1 && egg.tabs === 4, JSON.stringify(egg));
   /* a link someone was sent skips the bare map: the radio is there, tuned where the link was made */
   await ep.evaluate(() => localStorage.clear());
-  await ep.goto('https://oan.test/index.html?fresh=2#mix=-37.7712,144.9601,750,121000010128'); await ready(ep, '', true); await sleep(2500);
+  await ep.goto('https://oan.test/studio?fresh=2#mix=-37.7712,144.9601,750,121000010128'); await ready(ep, '', true); await sleep(2500);
   const ln = await ep.evaluate(() => ({ j: window.__da.prefs.journey, open: window.__da.S.open, radio: !!document.querySelector('#view .simple-r .dev'), lat: +window.__da.S.scan.lat.toFixed(4), r: window.__da.S.scan.r, panel: getComputedStyle(document.querySelector('#panel')).display !== 'none' }));
   check('a link someone was sent skips the bare map: the small radio is there, tuned where the link was made', ln.j === 1 && ln.open && ln.radio && ln.panel && ln.lat === -37.7712 && ln.r === 750, JSON.stringify(ln));
   await ec.close();
@@ -744,7 +744,7 @@ if (run('journey')) try {
 // ───────── the radar: moved, resized, kept ─────────
 if (run('radar')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'radar');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(400);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page); await sleep(400);
   const scrXY = (la, ln) => page.evaluate(([la, ln]) => { const da = window.__da; const p = da.map.project([ln, la]); const r = da.map.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; }, [la, ln]);
   await page.evaluate(() => { const da = window.__da; da.life.reveal(); window.__song = null; const o = da.snd.song; da.snd.song = seq => { window.__song = seq; return o.call(da.snd, seq); }; });
   const kd = await (await page.$('#knob')).boundingBox(); await page.mouse.click(kd.x + kd.width / 2, kd.y + kd.height / 2); await sleep(300);
@@ -813,7 +813,7 @@ const bareXY = (page, inside) => page.evaluate(inside => { const da = window.__d
   return null; }, inside);
 if (run('strings')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'strings');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   const id = await openNear(page);
   const card = await page.evaluate(() => { const da = window.__da; const img = document.querySelector('#r-img'); return { mode: da.S.mode, face: da.face(), open: !document.body.classList.contains('shut'), photo: !img.hidden && img.naturalWidth > 0, figH: document.querySelector('#r-fig').getBoundingClientRect().height, name: document.querySelector('#r-name').textContent, threat: document.querySelector('#r-threat').textContent, chips: document.querySelectorAll('#r-chips .c').length, knob: document.querySelector('#knob').hidden }; });
   check('a click on a life opens its card: the photograph large, the name, the threat, the chips', card.mode === 'ping' && card.face === 'front' && card.open && card.photo && card.figH >= 260 && card.name && card.threat.length > 8 && card.chips >= 2 && card.knob, JSON.stringify(card));
@@ -937,7 +937,7 @@ if (run('strings')) try {
 // ───────── places: the listed places stand without OpenStreetMap, and a failed answer is never kept ─────────
 if (run('places')) try {
   const ctx = await newCtx(); await wire(ctx, { overpass: false }); const page = await ctx.newPage(); watch(page, 'places');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   const pl = await page.evaluate(async () => { const da = window.__da; const P = da.PLACES; const lib = P.find(p => /Brunswick Library/.test(p.n)) || P[0];
     da.map.jumpTo({ center: [lib.lng, lib.lat], zoom: 15.6 }); const o = da.life.items.map(i => i.o).filter(o => typeof o.id === 'number' && !o.hum && !o.hist).sort((a, b) => da.haversine(a.lat, a.lng, lib.lat, lib.lng) - da.haversine(b.lat, b.lng, lib.lat, lib.lng))[0];
     da.select(o.id); await new Promise(r => setTimeout(r, 2500));
@@ -964,7 +964,7 @@ const tieNodes = async (page, keys) => { for (const k of keys) { await clickNode
 // ───────── the slip: its photograph and statement changeable, four blank lines, chosen before it is issued ─────────
 if (run('wish')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'wish');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await openNear(page);
   const btn = await page.evaluate(async () => { const da = window.__da; const b = document.querySelector('#r-act'); const out = { label: b.getAttribute('aria-label'), words: (b.querySelector('.hw') || {}).textContent || '', go: b.classList.contains('go'), bg: getComputedStyle(b).backgroundColor }; const n0 = da.SPECIES.length; b.click(); await new Promise(r => setTimeout(r, 700)); out.sent = da.SPECIES.length - n0 === 1 || da.SPECIES[0].id === String(da.S.sel); out.face = da.face(); return out; });
   check('the card leads on with no words: its species card goes to the WISH MAKER, in orange; the card stays open', btn.label === 'To the WISH maker' && !btn.words.trim() && btn.go && btn.bg === 'rgb(255, 122, 0)' && btn.sent && btn.face === 'front', JSON.stringify(btn));
@@ -1039,7 +1039,7 @@ if (run('wish')) try {
 if (run('outputs')) try {
   const ctx = await newCtx({ acceptDownloads: true }); await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://oan.test' }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'outputs');
   await page.addInitScript(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await openNear(page);
   const ks = await page.evaluate(() => [...window.__da.strings.nodes.values()].filter(n => n.t === 'biz').slice(0, 2).map(n => n.key));
   await tieNodes(page, ks);
@@ -1103,7 +1103,7 @@ if (run('outputs')) try {
 // ───────── the board: examples, remix, receiving, removing ─────────
 if (run('board')) try {
   const ctx = await newCtx(); await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://oan.test' }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'board');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await tab(page, 3); await sleep(400);
   await page.click('#sec-board [data-sig="ex:DA-0RNG"]'); await sleep(2200);
   const ex = await page.evaluate(() => { const da = window.__da; const c = da.map.getCenter(); const s = da.S.signals.find(x => x.code === 'DA-0RNG'); return { mode: da.S.mode, sel: da.S.sel, face: da.face(), no: document.querySelector('#r-no').textContent, near: Math.hypot(c.lat - s.pin.lat, c.lng - s.pin.lng) < 0.01, knots: document.querySelectorAll('#s-slip .sl-knots li').length, live: [...da.strings.nodes.keys()].filter(k => k.startsWith('s:DA-0RNG:')).length, marks: da.life.items.filter(i => i.o.code === 'DA-0RNG').length, acts: [...document.querySelectorAll('#s-acts [data-sa]')].map(b => b.dataset.sa).join(' ') }; });
@@ -1148,7 +1148,7 @@ if (run('board')) try {
 // ───────── sharing: NOTICED, RESPONSE with nothing written, DIRECT ACTION to a partner; approval; the board; RECEIVE by code ─────────
 if (run('share')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'share');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await openNear(page);
   await page.evaluate(() => { const da = window.__da; da.toWish(da.S.byId.get(da.S.sel)); }); await sleep(1200);
   const w = await page.evaluate(() => ({ face: window.__da.face(), main: document.querySelector('#r-act .hw').textContent }));
@@ -1175,19 +1175,19 @@ if (run('share')) try {
   check('approved: the sender sees it join the printer queue', /IN THE QUEUE/.test(st1) && /PICKLES/.test(st1), st1);
   /* another device: the board shows it to everyone */
   const ctx2 = await newCtx(); await wire(ctx2); const p2 = await ctx2.newPage(); watch(p2, 'share-2');
-  await p2.goto('https://oan.test/index.html'); await ready(p2); await sleep(1500); await tab(p2, 3); await sleep(600);
+  await p2.goto('https://oan.test/studio'); await ready(p2); await sleep(1500); await tab(p2, 3); await sleep(600);
   const b2 = await p2.evaluate(code => { const r = [...document.querySelectorAll('#sec-board .sig-row')].find(x => x.querySelector('.code').textContent === code); return { row: !!r, sh: !!r && r.classList.contains('sh'), st: r ? (r.querySelector('.st') || { getAttribute: () => '' }).getAttribute('aria-label') || '' : '' }; }, s0.code);
   check('on another device it stands on the board, for everyone', b2.row && b2.sh && /SHOWN/.test(b2.st), JSON.stringify(b2));
   await ctx2.close();
   /* a story approved before CONFIG.SHARED_SINCE, made while the site was being built, is shown nowhere */
   const ctxC = await newCtx(); await wire(ctxC, { config: BASE_CONFIG.replace(/SHARED_SINCE: '[^']*'/, "SHARED_SINCE: '2099-01-01T00:00:00Z'") }); const pC = await ctxC.newPage(); watch(pC, 'share-cut');
-  await pC.goto('https://oan.test/index.html'); await ready(pC); await sleep(1500);
+  await pC.goto('https://oan.test/studio'); await ready(pC); await sleep(1500);
   const cut = await pC.evaluate(code => ({ shared: window.__da.S.shared.length, here: window.__da.S.signals.some(x => x.code === code), cfg: window.__da.CONFIG.SHARED_SINCE }), s0.code);
   check('a story approved before the cut-off is shown nowhere: the ones made while the site was being built are gone', cut.shared === 0 && !cut.here && /2099/.test(cut.cfg), JSON.stringify(cut));
   await ctxC.close();
   /* a third device, from the code printed on the slip */
   const ctx3 = await newCtx(); await wire(ctx3); const p3 = await ctx3.newPage(); watch(p3, 'share-3');
-  await p3.goto('https://oan.test/index.html'); await ready(p3); await p3.evaluate(() => localStorage.removeItem('da.shared.v1')); await tab(p3, 3); await sleep(400);
+  await p3.goto('https://oan.test/studio'); await ready(p3); await p3.evaluate(() => localStorage.removeItem('da.shared.v1')); await tab(p3, 3); await sleep(400);
   await tap(p3, '#rx-open'); await p3.fill('#rx-t', s0.code.toLowerCase()); await tap(p3, '#rx button[type="submit"]'); await sleep(1600);
   const r3 = await p3.evaluate(() => ({ code: window.__da.S.issued && window.__da.S.issued.code, face: window.__da.face(), mode: window.__da.S.mode }));
   check('RECEIVE: the code printed on the slip brings the story up on any device', r3.code === s0.code && r3.face === 'signal' && r3.mode === 'ping', JSON.stringify(r3));
@@ -1239,7 +1239,7 @@ if (run('share')) try {
 // ───────── placing a record by hand ─────────
 if (run('place')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'place');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   const c = await page.evaluate(() => { const da = window.__da; const p = da.map.project([da.S.scan.lng + 0.001, da.S.scan.lat + 0.0005]); const r = da.map.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; });
   await page.mouse.click(c[0], c[1], { button: 'right' }); await sleep(900);
   check('a right-click on open ground makes no record', await page.evaluate(() => !window.__da.S.mode));
@@ -1289,7 +1289,7 @@ if (run('place')) try {
 // ───────── hiding any cell; changing the five ─────────
 if (run('hide')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'hide');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   const it = await page.evaluate(() => { const da = window.__da; da.life.reveal(); const r = da.map.getContainer().getBoundingClientRect(); const it = da.life.items.find(i => i.inS && da.life.shown(i) && !i.binned && !i.o.hero && !i.o.user && typeof i.o.id === 'number' && i.x > 80 && i.y > 120 && i.x < r.width - 320 && i.y < r.height - 120 && (() => { const h = da.life.hit(i.x, i.y); return h && h.id === i.o.id; })()); return it && it.o.id; });
   const [x, y] = await xy(page, it); await page.mouse.move(x, y, { steps: 4 }); await sleep(600);
   const tagOf = () => page.evaluate(id => { const t = document.querySelector('#tag'); const r = t.getBoundingClientRect(); const it = window.__da.life.items.find(i => i.o.id === id); const m = window.__da.map.getContainer().getBoundingClientRect();
@@ -1334,7 +1334,7 @@ if (run('hide')) try {
 // ───────── an animal lost: its search area, on and off ─────────
 if (run('lost')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'lost');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await page.evaluate(() => { const da = window.__da; da.startPlace({ lat: -37.7660, lng: 144.9580 }); }); await sleep(600);
   await page.fill('#pl-text', 'lost dog, a kelpie, ran off'); await sleep(500); await tap(page, '#r-act'); await sleep(1400);
   const l0 = await page.evaluate(() => { const da = window.__da; const it = da.life.items.find(i => i.o.kind === 'lost'); return { main: document.querySelector('#r-act .hw').textContent, areas: da.prefs.areas, radar: it && it.radar, toggle: !!document.querySelector('#r-do [data-do="areas"]') }; });
@@ -1350,7 +1350,7 @@ if (run('lost')) try {
 // ───────── a phone: the radar above, the sheet below ─────────
 if (run('phone')) try {
   const ctx = await newCtx({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'phone');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(800);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page); await sleep(800);
   const a = await page.evaluate(() => { const p = document.querySelector('#panel').getBoundingClientRect(); return { shut: document.body.classList.contains('shut'), off: p.top >= innerHeight - 2, tabs: [...document.querySelectorAll('#rail .tab')].map(t => Math.round(t.getBoundingClientRect().right)), knob: !document.querySelector('#knob').hidden }; });
   check('on a phone the radar has the screen; the page waits below', a.shut && a.off && a.knob && a.tabs.every(r => r <= 390), JSON.stringify(a));
   const ic = await page.evaluate(() => { const b = document.querySelector('.maplibregl-ctrl-attrib-button'); const r = b.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); const rail = document.querySelector('#rail').getBoundingClientRect(); const tabs = [...document.querySelectorAll('#rail .tab')].map(t => t.getBoundingClientRect());
@@ -1401,14 +1401,14 @@ if (run('phone')) try {
 // ───────── a hot day: drinking water and the air temperature now, inside the radar ─────────
 if (run('hot')) try {
   const ctx = await newCtx(); await wire(ctx, { tmax: 41, night: 8 }); const page = await ctx.newPage(); watch(page, 'hot');
-  await page.goto('https://oan.test/index.html'); await ready(page); await sleep(800);
+  await page.goto('https://oan.test/studio'); await ready(page); await sleep(800);
   await tab(page, 0);
   await page.waitForFunction(() => window.__da.S.sensors.length > 0 && window.__da.S.fountains.length > 0, null, { timeout: 30000 }).catch(() => {});
   const hot = await page.evaluate(() => ({ tmax: window.__da.S.wx.tmax, sensors: window.__da.S.sensors.length, fountains: window.__da.S.fountains.length }));
   check('on a day over the heat line, the drinking water and the air temperature arrive', hot.tmax >= 40 && hot.sensors > 0 && hot.fountains > 0, JSON.stringify(hot));
   await ctx.close();
   const ctx2 = await newCtx(); await wire(ctx2, { tmax: 24 }); const p2 = await ctx2.newPage(); watch(p2, 'mild');
-  await p2.goto('https://oan.test/index.html'); await ready(p2); await tab(p2, 0); await sleep(1500);
+  await p2.goto('https://oan.test/studio'); await ready(p2); await tab(p2, 0); await sleep(1500);
   check('on a mild day the water and the air temperature stay away, unless WATER is on (it is, by default)', await p2.evaluate(() => (window.__da.S.sensors.length === 0 && window.__da.S.fountains.length === 0) || window.__da.T4.water));
   await ctx2.close();
 } catch (e) { results.push(`FAIL  section hot: ${e.message.split('\n')[0]}`); }
@@ -1416,7 +1416,7 @@ if (run('hot')) try {
 // ───────── no signal: the radar, the five and the examples still stand ─────────
 if (run('offline')) try {
   const ctx = await newCtx(); await wire(ctx, { inat: false, ens: false, comOK: false }); const page = await ctx.newPage(); watch(page, 'offline');
-  await page.goto('https://oan.test/index.html');
+  await page.goto('https://oan.test/studio');
   await page.waitForFunction(() => window.__da && window.__da.S.mapReady && document.body.classList.contains('nosignal'), null, { timeout: 60000 });
   await sleep(800); await tab(page, 3); await sleep(400);
   const off = await page.evaluate(() => ({ items: window.__da.life.items.length, five: window.__da.S.heroes.length, sigs: document.querySelectorAll('#sec-board .sig-row, #sec-board .sig-line').length, codes: [...document.querySelectorAll('#sec-board .code')].map(c => c.textContent).join(' ') }));
@@ -1427,7 +1427,7 @@ if (run('offline')) try {
 // ───────── night: as the device is set, or chosen in Settings; the page darkens, the ground dims, a slip stays paper ─────────
 if (run('night')) try {
   const ctx = await newCtx(); await wire(ctx, { dark: true }); const page = await ctx.newPage(); watch(page, 'night');
-  await page.goto('https://oan.test/index.html'); await ready(page, '', true); await settle(page);
+  await page.goto('https://oan.test/studio'); await ready(page, '', true); await settle(page);
   const n0 = await page.evaluate(() => ({ night: document.documentElement.classList.contains('night'), page: getComputedStyle(document.querySelector('#panel')).backgroundColor, ground: getComputedStyle(document.querySelector('.maplibregl-canvas')).filter }));
   check('night, chosen: the page darkens, the ground dims', n0.night && (n0.page.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((x, y) => x + +y, 0) < 160 && /brightness/.test(n0.ground), JSON.stringify(n0));
   await tab(page, 3); await sleep(500); await tap(page, '#ix-night'); await sleep(300);
@@ -1446,11 +1446,11 @@ if (run('night')) try {
 // ───────── the field list page ─────────
 if (run('field')) try {
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'field');
-  await page.goto('https://oan.test/index.html'); await ready(page); await sleep(600);
+  await page.goto('https://oan.test/studio'); await ready(page); await sleep(600);
   await page.goto('https://oan.test/field.html'); await sleep(900);
-  const f = await page.evaluate(() => ({ rows: document.querySelectorAll('#rows tr').length, glyphs: document.querySelectorAll('#tools [data-g]').length, maps: document.querySelectorAll('#rows a[href^="index.html#"]').length, overflow: document.documentElement.scrollWidth - innerWidth }));
+  const f = await page.evaluate(() => ({ rows: document.querySelectorAll('#rows tr').length, glyphs: document.querySelectorAll('#tools [data-g]').length, maps: document.querySelectorAll('#rows a[href^="studio#"]').length, overflow: document.documentElement.scrollWidth - innerWidth }));
   check('the field list renders every kind, with links to the map', f.rows >= 200 && f.glyphs >= 30 && f.maps >= 5 && f.overflow <= 0, JSON.stringify(f));
-  const href = await page.evaluate(() => document.querySelector('#rows a[href^="index.html#"]').getAttribute('href'));
+  const href = await page.evaluate(() => document.querySelector('#rows a[href^="studio#"]').getAttribute('href'));
   await page.goto('https://oan.test/' + href); await ready(page); await sleep(1500);
   const sel = await page.evaluate(() => ({ sel: window.__da.S.sel, face: window.__da.face(), hidden: document.querySelector('#record').hidden }));
   check('a MAP link opens its life on the map', sel.sel != null && !sel.hidden && sel.face === 'front', `${href} → ${JSON.stringify(sel)}`);
@@ -1460,7 +1460,7 @@ if (run('field')) try {
 // ───────── gatherings from a published sheet ─────────
 if (run('events')) try {
   const ctx = await newCtx(); await wire(ctx, { config: BASE_CONFIG.replace("EVENTS_URL: ''", "EVENTS_URL: 'https://sheet.test/events.csv'") }); const page = await ctx.newPage(); watch(page, 'events');
-  await page.goto('https://oan.test/index.html'); await ready(page); await sleep(800); await tab(page, 0); await sleep(400);
+  await page.goto('https://oan.test/studio'); await ready(page); await sleep(800); await tab(page, 0); await sleep(400);
   const ev = await page.evaluate(() => { const da = window.__da; const e = da.S.community.filter(o => String(o.id).startsWith('e:')); const its = da.life.items.filter(it => String(it.o.id).startsWith('e:')); return { n: e.length, title: e[0] && e[0].title, onMap: its.filter(it => da.life.shown(it)).length, gig: its.some(it => it.b.tone === 'event' && it.b.i === 'hug') }; });
   check('a published sheet of gatherings stands on the map, a gig with a hug', ev.n === 2 && ev.title === 'Frog count, Merri Creek' && ev.onMap === 2 && ev.gig, JSON.stringify(ev));
   await page.evaluate(() => { location.hash = 'E01'; }); await sleep(900);
@@ -1497,11 +1497,115 @@ if (run('static')) try {
   check('the README is short', readme.split('\n').length <= 40, `${readme.split('\n').length} lines`);
 } catch (e) { results.push(`FAIL  section static: ${e.message.split('\n')[0]}`); }
 
+// ───────── the base, at /: one question, a photograph and a line, its key facts and few connections, printed or queued ─────────
+/* a JPEG that says where and when it was taken, as a phone's camera writes it: Carlton Gardens, 23 October 2026 */
+async function exifJPEG() {
+  const jpg = await sharp({ create: { width: 320, height: 240, channels: 3, background: { r: 90, g: 140, b: 70 } } }).jpeg().toBuffer();
+  const t = Buffer.alloc(178); t.write('II', 0); t.writeUInt16LE(42, 2); t.writeUInt32LE(8, 4);
+  const ent = (o, tag, type, count, val) => { t.writeUInt16LE(tag, o); t.writeUInt16LE(type, o + 2); t.writeUInt32LE(count, o + 4); if (typeof val === 'string') t.write(val, o + 8, 'latin1'); else t.writeUInt32LE(val, o + 8); };
+  t.writeUInt16LE(2, 8); ent(10, 0x8769, 4, 1, 38); ent(22, 0x8825, 4, 1, 76);
+  t.writeUInt16LE(1, 38); ent(40, 0x9003, 2, 20, 56); t.write('2026:10:23 14:05:00\0', 56, 'latin1');
+  t.writeUInt16LE(4, 76); ent(78, 1, 2, 2, 'S\0'); ent(90, 2, 5, 3, 130); ent(102, 3, 2, 2, 'E\0'); ent(114, 4, 5, 3, 154);
+  [[37, 1], [48, 1], [216, 10], [144, 1], [58, 1], [1704, 100]].forEach(([a, b], i) => { t.writeUInt32LE(a, 130 + i * 8); t.writeUInt32LE(b, 134 + i * 8); });
+  const head = Buffer.alloc(10); head.writeUInt16BE(0xFFE1, 0); head.writeUInt16BE(2 + 6 + t.length, 2); head.write('Exif\0\0', 4, 'latin1');
+  return Buffer.concat([jpg.subarray(0, 2), head, t, jpg.subarray(2)]);
+}
+if (run('base')) try {
+  const src = fs.readFileSync(path.join(ROOT, 'src/base/base.js'), 'utf8');
+  check('the base is plain script for old phones: no optional chaining, no ??, no class fields', !/\?\.[a-zA-Z_$[(]|\?\?/.test(src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/'(?:\\.|[^'\\])*'/g, "''")));
+  const ctx = await newCtx({ timezoneId: 'Australia/Melbourne' }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'base');
+  const loaded = []; page.on('request', r => loaded.push(new URL(r.url()).pathname));
+  await page.clock.setFixedTime(new Date('2026-10-23T14:20:00+11:00'));
+  await page.goto('https://oan.test/'); await page.waitForFunction(() => document.querySelector('#ask').textContent === 'What have you noticed?', null, { timeout: 8000 });
+  await page.waitForFunction(() => !document.querySelector('#now').hidden, null, { timeout: 8000 }).catch(() => {});
+  const home = await page.evaluate(() => ({ ask: document.querySelector('#ask').textContent, ways: [...document.querySelectorAll('#ways a')].map(a => a.textContent + '>' + a.getAttribute('href')), keys: [...document.querySelectorAll('#top button')].map(b => b.textContent).join(), tiles: document.querySelectorAll('#tiles img').length, knots: document.querySelectorAll('#net circle').length, gl: !!document.querySelector('canvas'), now: window.__base.nowItems().map(i => i.k + ': ' + i.t) }));
+  check('the base opens on paper: the question, the camera, RADIO, W.I.S.H. and SHOP in words; MAP and GUIDE as keys; no map loaded, no WebGL', home.ask === 'What have you noticed?' && home.ways.join() === 'RADIO>#radio,W.I.S.H.>studio#wish,SHOP>studio#print' && home.keys === 'MAP,GUIDE,◐' && home.tiles === 0 && !home.knots && !home.gl, JSON.stringify(home).slice(0, 300));
+  check('the base loads no map library, no webfonts, nothing of the studio', !loaded.some(p => /maplibre|fonts|app\.js|style\.css|config\.js|field\.js/.test(p)), loaded.filter(p => !/tile/.test(p)).join(' '));
+  check('NOW in October: fledglings on the ground and El Niño\'s early heat, a line each, four at most, and what is in season', home.now.length <= 4 && home.now.some(t => /^YOUNG: Fledglings on the ground: .*magpies.*lorikeets/.test(t)) && home.now.some(t => /^EL NIÑO: Early heat/.test(t)), JSON.stringify(home.now));
+  await shot(page, 'b01-home.png');
+  /* a lorikeet fledgling in Carlton Gardens: the photograph says where */
+  await page.setInputFiles('#shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() });
+  await page.waitForSelector('#n-next', { timeout: 8000 });
+  const w = await page.evaluate(() => ({ where: document.querySelector('#n-where').textContent, img: !!document.querySelector('#sheet .ph img'), steps: !!document.querySelector('.wish') }));
+  check('the photograph, and where and when it says it was taken (Carlton Gardens), with no steps shown', !w.steps && w.img && /^23 OCT 14:05 · 37\.806\dS 144\.971\dE$/.test(w.where), JSON.stringify(w));
+  await page.fill('#n-say', 'lorikeet fledgling on the path, not flying'); await sleep(900);
+  const n = await page.evaluate(() => ({ chips: [...document.querySelectorAll('#n-chips .chip.on')].map(c => c.textContent), alts: [...document.querySelectorAll('#n-chips .chip:not(.on):not(.w)')].map(c => c.textContent), key: [...document.querySelectorAll('#n-alert .alert p')].map(l => l.textContent), call: (document.querySelector('#n-alert .call') || {}).textContent || '' }));
+  check('a lorikeet fledgling reads as Rainbow Lorikeet and YOUNG, Musk Lorikeet offered', n.chips.join() === 'Rainbow Lorikeet,YOUNG' && n.alts.includes('Musk Lorikeet'), JSON.stringify(n.chips) + JSON.stringify(n.alts));
+  check('a real alert, three lines at most: what to do with a fledgling, the season with El Niño, who to call', n.key.length <= 3 && /fledgling: leave it/.test(n.key[0]) && n.key.some(k => /BREEDING JUN–JAN/.test(k) && /El Niño, early heat/.test(k)) && /WILDLIFE VICTORIA.*8400 7300/.test(n.call), JSON.stringify(n.key) + n.call);
+  const quiet = await page.evaluate(() => { const t = document.querySelector('#n-say'); t.value = 'a nice tree shadow'; t.dispatchEvent(new Event('input')); return new Promise(r => setTimeout(() => r(document.querySelector('#n-alert').innerHTML), 500)); });
+  check('nothing to say, nothing said: no alert for a line with no need and no life in it', quiet === '', quiet.slice(0, 120));
+  await page.fill('#n-say', 'lorikeet fledgling on the path, not flying'); await sleep(500);
+  const broad = await page.evaluate(() => { const b = window.__base; return ['affected by El Niño', 'hot day, lots of birds', 'magpie swooping cyclists', 'snake on the creek path', 'dead raven in the gutter'].map(t => { const r = b.read({ id: 'x', say: t, tags: [], lat: -37.8, lng: 144.97 }); return { t, issue: r.issue ? r.issue.k : '', rel: r.rel.length, lines: r.lines.length, call: r.call ? r.call.label : '' }; }); });
+  check('the engine stays narrow: nothing reads as everything, each need finds its own call', broad.every(r => r.rel <= 3 && r.lines <= 3) && broad[0].rel === 0 && broad[2].issue === 'swoop' && broad[3].issue === 'snake' && /DEECA/.test(broad[3].call) && broad[4].issue === 'dead' && /SICK OR DEAD/.test(broad[4].call), JSON.stringify(broad));
+  await shot(page, 'b02-notice.png');
+  await tap(page, '#n-next'); await page.waitForSelector('#p-slip canvas', { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('#p-to option') && document.querySelector('#p-to').value, null, { timeout: 8000 }); await sleep(600);
+  const pr = await page.evaluate(() => { const c = document.querySelector('#p-slip canvas'); return { w: c.width, h: c.height, to: document.querySelector('#p-to').value, keys: [...document.querySelectorAll('#sheet button, #sheet a, #sheet select')].filter(e => !e.closest('#p-wants') && e.offsetParent).length, dots: document.querySelectorAll('#p-dots i').length, knots: 1, notes: window.__base.notes().length }; });
+  check('the design stage: placed as a knot, the receipt 80 mm wide for novel.global, five keys in all', pr.knots === 1 && pr.notes === 1 && pr.w === 512 && pr.h > 700 && pr.to === 'novelglobal' && pr.dots === 3 && pr.keys <= 6, JSON.stringify(pr));
+  for (let k = 0; k < 3; k++) { await tap(page, '#p-slip'); await sleep(450); }
+  const h0 = await page.evaluate(() => document.querySelector('#p-slip canvas').height);
+  await tap(page, '#p-wish'); await sleep(700);
+  const ws = await page.evaluate(() => ({ on: [...document.querySelectorAll('#p-wants .chip.on')].map(c => c.textContent), h: document.querySelector('#p-slip canvas').height, lines: window.__base.wish().map(l => l[0]).join('') }));
+  check('W.I.S.H. is one key on the design stage: its four lines go on the receipt, what would be great starting from the need', ws.on.join() === 'LEFT ALONE,PETS KEPT IN' && ws.h > h0 + 60 && ws.lines === 'WISH', JSON.stringify(ws) + ' ' + h0);
+  await shot(page, 'b03-design.png');
+  await tap(page, '#p-send'); await page.waitForFunction(() => /HELD|QUEUED|SENT/.test(document.querySelector('#p-st').textContent), null, { timeout: 10000 });
+  const waiting = await admin('stories?status=waiting'); const rec = (waiting.stories || []).find(s => s.kind === 'record' && /fledgling/.test(s.body));
+  const body = rec ? JSON.parse(rec.body) : {};
+  check('PRINT sends it to novel.global\'s printer as a noticing with its photograph and its W.I.S.H., held for a yes', !!rec && rec.job === 'held' && rec.photo && body.type === 'noticed' && body.tx && body.tx.cn === 'Rainbow Lorikeet' && body.issue === 'young' && body.tags.join() === 'YOUNG,LEFT ALONE,PETS KEPT IN' && body.wish.length === 4 && /lorikeet fledgling/.test(body.wish[0]) && rec.dest === 'novelglobal', JSON.stringify(rec || waiting).slice(0, 300));
+  await page.waitForFunction(() => document.querySelector('#p-send').textContent === '→'); await tap(page, '#p-send'); await page.waitForSelector('.reel .card');
+  const h = await page.evaluate(() => ({ first: document.querySelector('.card .ln').textContent, acts: [...document.querySelectorAll('.card:first-child .acts > *')].map(a => a.textContent), al: (document.querySelector('.card .al') || {}).textContent || '', text: document.body.innerText }));
+  check('then the reel, this story first, three marks and more: keep, pass on, print at a place', /lorikeet fledgling/.test(h.first) && h.acts.join() === '↓,⤴,⎙,⋯' && /fledgling/.test(h.al), JSON.stringify(h.acts));
+  check('none of the engine\'s words on any page', !/WHAT WE KNOW|IT WOULD BE GREAT|SO LET|HERE’S HOW|KEY|CONNECTS TO/.test(h.text), '');
+  await shot(page, 'b03b-reel.png');
+  /* RADIO: the net, the wall, the help lines; the radar a key away */
+  await page.goto('https://oan.test/#radio'); await page.waitForSelector('#r-way', { timeout: 8000 }); await sleep(600);
+  const radio = await page.evaluate(() => ({ ways: [...document.querySelectorAll('#r-way > *')].map(b => b.textContent), radar: document.querySelector('#r-way a').getAttribute('href'), rows: document.querySelectorAll('#r-body .list li').length, knots: document.querySelectorAll('#net circle').length }));
+  check('RADIO: NET, REEL, HELP, and the radar as a key to the studio; the noticing a knot on the net', radio.ways.join() === 'NET,REEL,HELP,RADAR ↗' && radio.radar === 'studio#radio' && radio.rows >= 1 && radio.knots >= 1, JSON.stringify(radio));
+  await shot(page, 'b04-radio.png');
+  await tap(page, '#r-way [data-w="reel"]'); await sleep(300); const wall = await page.evaluate(() => document.querySelectorAll('#r-body .reel .card').length);
+  await tap(page, '#r-way [data-w="help"]'); await sleep(500); const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
+  check('the reel shows the story; HELP has every number to call', wall >= 1 && help.includes('tel:000') && help.includes('tel:0384007300'), wall + ' ' + help.length);
+  /* the guide: an index, then a life with its year */
+  await page.goto('https://oan.test/#guide'); await page.waitForSelector('#q'); await page.waitForFunction(() => document.querySelectorAll('.idx h3').length >= 5, null, { timeout: 8000 });
+  const idx = await page.evaluate(() => [...document.querySelectorAll('.idx h3')].map(h => h.firstChild.textContent));
+  check('GUIDE opens on an index: now, needs, numbers, in season, every life by kind, what worked elsewhere', idx.join() === 'Now,Needs,Call,In season · Oct,Lives,What worked elsewhere', JSON.stringify(idx));
+  await page.click('.idx [data-g="owl"]'); await sleep(200); await page.click('.idx [data-sp2="tawny-frogmouth"]'); await sleep(300);
+  const life = await page.evaluate(() => ({ h: document.querySelector('#sheet h2').textContent, yr: document.querySelectorAll('#sheet table.yr td.f2').length, now: !!document.querySelector('#sheet table.yr td.m'), spec: document.querySelectorAll('#sheet dl.spec dt').length }));
+  check('a life in the guide: its status, where, what to watch for, its year as a data sheet', life.h === 'Tawny Frogmouth' && life.yr >= 5 && life.now && life.spec >= 3, JSON.stringify(life));
+  await shot(page, 'b04b-guide.png');
+  await page.click('#sheet .back'); await page.fill('#q', 'frogmouth'); await sleep(300);
+  check('one field searches the guide', await page.evaluate(() => !!document.querySelector('#g-out [data-sp="tawny-frogmouth"]')));
+  /* the map is a key: the ground and the knots, and many added at once */
+  await page.goto('https://oan.test/'); await sleep(500); await tap(page, '#b-map'); await sleep(1200);
+  const before = await page.evaluate(() => window.__base.notes().length);
+  await page.setInputFiles('#m-add', [{ name: 'creek.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }, { name: 'frog-call.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(2000) }]); await sleep(1200);
+  const mp = await page.evaluate(() => ({ tiles: document.querySelectorAll('#tiles img').length, knots: document.querySelectorAll('#net circle').length, notes: window.__base.notes().length, call: window.__base.notes().some(n => n.call && n.audio) }));
+  check('MAP shows the ground and every knot; + adds photographs and calls at once, a photograph where it was taken', mp.tiles > 3 && mp.knots >= 2 && mp.notes === before + 2 && mp.call, JSON.stringify(mp));
+  await shot(page, 'b04c-map.png');
+  /* the pixel board */
+  await page.goto('https://oan.test/#pixel'); await page.waitForSelector('#pb-in', { state: 'attached' });
+  await page.setInputFiles('#pb-in', { name: 'a.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#pb canvas', { timeout: 5000 });
+  const px = await page.evaluate(() => { const c = document.querySelector('#pb canvas'); return { w: c.width, frames: document.querySelectorAll('#pb-f button').length }; });
+  check('the pixel board turns a picture into wonky pixels', px.w > 100 && px.frames === 1, JSON.stringify(px));
+  /* a studio link still opens the studio */
+  await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForURL(/\/studio#mix=/, { timeout: 8000 }).catch(() => {});
+  check('a link the studio made (#mix=…) goes on to the studio', /\/studio#mix=-37\.7712/.test(page.url()), page.url());
+  await ctx.close();
+  /* on a phone: nothing wider than the screen */
+  const pc = await newCtx({ viewport: { width: 375, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(pc); const pp = await pc.newPage(); watch(pp, 'base-phone');
+  await pp.goto('https://oan.test/'); await sleep(1500); await shot(pp, 'b05-phone.png');
+  await pp.setInputFiles('#shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await pp.waitForSelector('#n-next'); await pp.fill('#n-say', 'lorikeet fledgling'); await sleep(700); await shot(pp, 'b07-phone-notice.png');
+  await pp.click('#n-next'); await pp.waitForSelector('#p-slip canvas'); await sleep(500); await shot(pp, 'b08-phone-s.png');
+  const wide = await pp.evaluate(() => Math.max(document.documentElement.scrollWidth, document.querySelector('#sheet').scrollWidth));
+  check('on a phone the base fits the screen', wide <= 375, String(wide));
+  await pc.close();
+} catch (e) { results.push(`FAIL  section base: ${e.message.split('\n')[0]}`); }
+
 // ───────── look: screenshots for review only (ONLY=look) ─────────
 if (ONLY.includes('look')) try {
   const W = +(process.env.W || 1440), Hh = +(process.env.H || 900); const phone = !!process.env.PHONE;
   const ctx = await newCtx({ viewport: { width: W, height: Hh }, ...(phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) }); await wire(ctx); const page = await ctx.newPage(); watch(page, 'look');
-  await page.goto('https://oan.test/index.html'); await ready(page); await settle(page); await sleep(2500);
+  await page.goto('https://oan.test/studio'); await ready(page); await settle(page); await sleep(2500);
   const P = phone ? 'p-' : '';
   await shot(page, `${P}l01-radar.png`);
   await page.evaluate(() => { window.__da.life.reveal(); window.__da.setView(0); }); await sleep(1500); await shot(page, `${P}l02-now.png`);
