@@ -109,3 +109,34 @@ These were missing or broken in the first cut, and are now in place:
   - **Ties:** links you make yourself, which become part of the art.
 - **Packs.** Your own noticings can be saved as a file and shared, and someone else's pack can be added.
 - **Tags act as triggers** into the guide.
+
+## Round four: wordless
+
+The owner's limit for this round was to guide someone through without words. The only words left are novel.global and what is urgent. The test was whether a stranger at the showcase could get from the eye to a printed poem and a song without being told how.
+
+**The reasoning**
+
+- **Words were doing the work that form should do.** Every label was a promise the screen then had to keep. A glyph drawn from the same sticks and beads as the art makes the keys part of the art. Words stay only where getting it wrong costs a life: the alert and the number.
+- **One small screen holds every other word.** The OLED line at the foot is an unhoused module: one line that changes, and the guide behind it when pressed. It is small enough to ignore, and the urgent line is always there.
+- **The eye replaces the camera.** The reference art looks back at you: the stick chart's lashings and the bark painting's dotted threads. The first thing on the page is an act of looking, not a button.
+- **Bare bones, not wellness.** Dark by default, one monospace, no soft gradients, no rounded cards. Colour is kept for three things: the stick (what holds), red (urgent) and green (done).
+
+**What changed, stage by stage**
+
+1. **The eye.** A photograph always reaches the next screen. It goes on even without its picture, and the iris turns while it reads.
+2. **The noticing.** A line, who it may be (minimised), the alert when there is one, and →. Tags that meant nothing are gone.
+3. **Placed.** The knot falls and its neighbours are revealed, as before.
+4. **The design stage.** Four art dots and the W.I.S.H. key.
+   - The poem prints with no letters.
+   - Status is three pips: sent, seen, printed. "Held for a yes" is gone.
+   - What was sent shows at once, with or without a printer.
+5. **W.I.S.H.** A ranked thread of strategies. The hero is a poster.
+   - Replies are written in four lines, each with a minimised list that fits that poster's tags.
+   - This is where a noticing becomes a plan others build on, so it replaces a share step.
+6. **RADIO.** A 4-track you play into: notes are placed like tape, then tweaked with a double tap, then kept or downloaded.
+   - The voices are gamelan, jegog, chant, kecak and taiko, in pelog or slendro: the Akira soundtrack's palette (Geinoh Yamashirogumi).
+   - Tying is gone. It asked for a decision no one had a reason to make.
+7. **The map.** Filled with shared stories and live sightings. Every mark explains itself on hover, and nothing leaves the window: a small card opens in place.
+8. **The guide.** Every group is minimised first except Now. "Needs" is now *If you find*, and "Lives" is now *Neighbours*.
+
+**Sense check.** Each thing left on screen either does something or says something urgent. A thing that did neither was cut: tying, the reel, the share step, the step letters and the chips.
