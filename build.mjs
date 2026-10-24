@@ -83,6 +83,11 @@ fs.writeFileSync(path.join(out, 'studio.html'), `<!doctype html>
 <link rel="preload" href="vendor/fonts/ibm-plex-mono-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
+<script>
+/* plain unless the devices were turned back on; and a visitor sent here by the base never walks the first visit again: the base is the first visit now */
+try { var dp = JSON.parse(localStorage.getItem('da.prefs') || '{}'); if (localStorage.getItem('da.devices') !== '1') document.documentElement.classList.add('plain');
+  if (/[?&]from=base/.test(location.search)) { window.__fromBase = true; if ((dp.journey || 0) < 4) { dp.journey = 4; localStorage.setItem('da.prefs', JSON.stringify(dp)); } history.replaceState(null, '', location.pathname + location.hash); } } catch (e) { document.documentElement.classList.add('plain'); }
+</script>
 </head>
 <body>
 ${body}
@@ -109,9 +114,13 @@ fs.writeFileSync(path.join(out, 'base-db.json'), JSON.stringify({
   briefs: (lib.DA_BRIEFS || []).map(b => pick(b, ['id', 'th', 't', 'after', 'city', 'yr', 'fact', 'url', 'g', 'm', 'dz', 'i'])),
   outlook: pick(O, ['start', 'h', 'say', 'windows', 'nino', 'tmax', 'hot']),
   links: win.DA_LINKS || [],
+  /* where a noticing is: the named places and waters near it, and the suburb's canopy */
+  places: (win.DA_PLACES || []).map(p => [p.n, +(+p.lat).toFixed(5), +(+p.lng).toFixed(5)]),
+  waters: ((win.DA_WATERS || {}).points || []).map(w => [w[0], w[1], w[2]]),
+  canopy: Object.fromEntries(Object.entries(win.DA_CANOPY || {}).filter(([k, v]) => v && v.pc).map(([k, v]) => [k, v.pc])),
 }));
 const BASE = { imagery: win.DA_CONFIG.IMAGERY.url, maxzoom: win.DA_CONFIG.IMAGERY.maxzoom, credit: win.DA_CONFIG.IMAGERY.attribution, centre: [win.DA_CONFIG.SCAN.lat, win.DA_CONFIG.SCAN.lng], bbox: win.DA_CONFIG.BBOX,
-  portal: win.DA_CONFIG.PORTAL_URL, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], build: sha };
+  portal: win.DA_CONFIG.PORTAL_URL, inat: win.DA_CONFIG.INAT_API, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], build: sha };
 fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'base.css')), 'css'));
 fs.writeFileSync(path.join(out, 'base.js'), min(read(path.join(src, 'base', 'base.js')), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));

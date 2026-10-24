@@ -55,7 +55,6 @@ function at(x, y) { return { lat: uy(wy(map.lat, map.z) + y - map.h / 2, map.z),
 var tilesEl = $('#tiles'), netEl = $('#net'), terrain = $('#terrain');
 var shown = function () { var c = document.body.classList; return c.contains('mapmode') || c.contains('half'); };
 function drawTiles() {
-  if (!shown()) return;
   if (!PACKS.terrain || !B.imagery) { tilesEl.innerHTML = ''; map.tiles = {}; terrain.style.background = 'radial-gradient(circle, var(--rule) 1px, transparent 1.2px) 0 0/22px 22px'; return; }
   terrain.style.background = '';
   var z = map.z, cx = wx(map.lng, z), cy = wy(map.lat, z), n = Math.pow(2, z);
@@ -113,19 +112,24 @@ addEventListener('resize', function () { map.w = innerWidth; map.h = innerHeight
 var net = { focus: null, links: [], all: false, fresh: null };
 function svg(tag, a) { var el = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in a) el.setAttribute(k, a[k]); return el; }
 function arc(p, q, bend) { var mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; var dx = q[0] - p[0], dy = q[1] - p[1]; var k = bend == null ? 0.18 : bend; return 'M' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + 'Q' + (mx - dy * k).toFixed(1) + ' ' + (my + dx * k).toFixed(1) + ' ' + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }
-function visible() { return net.all ? NOTES.concat(SHARED) : NOTES; }
+function visible() { var l = net.all ? NOTES.concat(SHARED) : NOTES; return net.only ? l.filter(function (n) { return net.only.ids.indexOf(n.id) >= 0; }) : l; }
 function drawNet() {
   while (netEl.firstChild) netEl.removeChild(netEl.firstChild); if (!shown()) return;
   var list = visible().filter(function (n) { if (!isFinite(n.lat) || !isFinite(n.lng)) return false; var p = px(n.lat, n.lng); return p[0] > -200 && p[1] > -200 && p[0] < map.w + 200 && p[1] < map.h + 200; });
   if (net.focus && isFinite(net.focus.lat) && !list.some(function (n) { return n.id === net.focus.id; })) list.push(net.focus);
+  if (net.focus) net.links.forEach(function (o) { if (isFinite(o.lat) && !list.some(function (n) { return n.id === o.id; })) list.push(o); });
+  /* on the open net, the sightings each noticing revealed hang from it too */
+  var hang = [];
+  if (net.all) list.slice().forEach(function (n) { (n.seen || []).forEach(function (o) { if (!list.some(function (m) { return m.id === o.id; }) && list.length < 160) { list.push(o); hang.push([n.id, o.id]); } }); });
   if (!list.length) return;
   var g = svg('g', {}); netEl.appendChild(g);
   var pts = list.map(function (n) { return px(n.lat, n.lng); }), at = {}; list.forEach(function (n, i) { at[n.id] = i; });
   /* which sticks: in RADIO and on the map, every pair that shares a life or a need; else each noticing to the one before it */
   var pairs = [];
-  if (net.all) { for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 120; j++) if (kin(list[i], list[j])) pairs.push([i, j]); }
+  if (net.all) { for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 120; j++) if (kin(list[i], list[j]) || tieOf(list[i], list[j])) pairs.push([i, j]); }
   else for (var k = 1; k < list.length; k++) if (list[k] !== net.focus) pairs.push([k - 1, k]);
   if (net.focus) net.links.forEach(function (o) { if (at[o.id] != null) pairs.push([at[net.focus.id], at[o.id], !!net.fresh]); });
+  hang.forEach(function (h) { if (at[h[0]] != null && at[h[1]] != null) pairs.push([at[h[0]], at[h[1]]]); });
   chartSVG(g, chart(pts, pairs, seedOf(list)));
   /* the knots: a shell for each, the newest with a thread hanging under it, as on the bark painting */
   list.forEach(function (n, i) {
@@ -133,8 +137,8 @@ function drawNet() {
     var kk = svg('g', { 'class': me && net.fresh === n.id ? 'fall' : '' });
     if (me) kk.appendChild(svg('line', { x1: p[0], y1: p[1] + r, x2: p[0], y2: p[1] + r + 24, 'class': 'd' }));
     if (n.icon) { var ic = svg('image', { x: p[0] - 12, y: p[1] - 12, width: 24, height: 24 }); ic.setAttributeNS('http://www.w3.org/1999/xlink', 'href', n.icon); ic.setAttribute('href', n.icon); kk.appendChild(ic); }
-    else kk.appendChild(svg('circle', { cx: p[0], cy: p[1], r: r, 'class': me ? 'me' : n.mine ? 'k' : '' }));
-    if (me || net.all) { var t = svg('text', { x: p[0] + 9, y: p[1] - 7 }); t.textContent = (n.cn || n.say || '').toUpperCase().slice(0, 22); g.appendChild(t); }
+    else kk.appendChild(svg('circle', { cx: p[0], cy: p[1], r: n.inat ? 3.5 : r, 'class': me ? 'me' : n.inat ? 'seen' : n.mine ? 'k' : '' }));
+    if (me || net.all || n.inat) { var t = svg('text', { x: p[0] + 9, y: p[1] - 7 }); t.textContent = (n.cn || n.say || '').toUpperCase().slice(0, 22); g.appendChild(t); }
     g.appendChild(kk);
   });
   if (net.fresh) setTimeout(function () { net.fresh = null; }, 2600);
@@ -320,12 +324,15 @@ function read(n) {
   var o = outlookNow(); var grp = g.group;
   if (o && o.win && grp && o.win.g.indexOf(grp) >= 0) season += (season ? ' ' : '') + 'El Niño, ' + o.win.w.toLowerCase() + ': ' + o.win.why;
   if (season) lines.push({ t: season, s: 'NOW' });
-  if (!lines.length && !DB && PACKS.field) lines.push({ t: 'Reading the field list…', s: '' });
+  /* today's heat, for a life that suffers in it: said only when the day is hot */
+  var hot = !!(n.wx && n.wx.max >= 35 && sp && sp.heat >= 2);
+  if (hot) lines.splice(issue ? 1 : 0, 0, { t: Math.round(n.wx.max) + '° today. ' + (sp.help || 'Water out, in shade.'), alert: true });
+  if (!lines.length && !DB && PACKS.field) lines.push({ t: '· · ·', s: '' });
   var call = issue ? callOf(issue.call) : sp && sp.call === 'wildlife' ? contact('WILDLIFE VICTORIA') : sp && sp.call === 'snake' ? contact('DEECA') : null;
   var rel = related(sp, grp, issue).map(function (f) { return { id: f.id, label: f.cn, sub: f.brd && f.brd[M] === 'B' ? 'BREEDING NOW' : f.g.toUpperCase(), f: f }; });
   var cs = caseOf(grp, issue); if (cs) { if (rel.length >= 3) rel.pop(); rel.push({ id: cs.id, label: cs.t, sub: (cs.city || cs.after || '') + (cs.yr ? ' ' + cs.yr : ''), brief: cs }); }
   var near = NOTES.concat(SHARED).filter(function (x) { return x.id !== n.id && ((sp && x.sp === sp.id) || (issue && x.issue === issue.k && dist(x, n) < 3000)); }).slice(0, 3);
-  return { sp: sp, alts: g.alts, group: grp, issue: issue, lines: lines.slice(0, 3), call: call, rel: rel, near: near };
+  return { sp: sp, alts: g.alts, group: grp, issue: issue, hot: hot, lines: lines.slice(0, 3), call: call, rel: rel, near: near };
 }
 
 /* ───────── the sheet ───────── */
@@ -375,51 +382,89 @@ function onShot(file) {
     var ex = exif(fr.result);
     loadImg(url).then(function (im) {
       var photo = shrink(im, 900, 0.78); if (photo.length > 400e3) photo = shrink(im, 640, 0.7);
-      cur = { id: 'n' + Date.now().toString(36), at: ex.t || Date.now(), photo: photo, thumb: shrink(im, 220, 0.7), say: '', tags: [], mine: true };
+      cur = { id: 'n' + Date.now().toString(36), at: ex.t || Date.now(), photo: photo, thumb: shrink(im, 220, 0.7), say: '', tags: [], off: [], mine: true };
       if (ex.lat != null) { cur.lat = ex.lat; cur.lng = ex.lng; cur.src = 'PHOTO'; } else { cur.lat = map.lat; cur.lng = map.lng; cur.src = 'MAP'; locate(); }
       URL.revokeObjectURL(url); db(); stepW();
-    }).catch(function () { toast('That picture could not be read'); });
+    }).catch(function () { toast('×'); });
   };
   fr.readAsArrayBuffer(file.slice(0, 256 * 1024));
 }
-function locate() {
-  if (!navigator.geolocation) return;
+/* where: the photograph's own GPS first; else the phone is asked; else a touch on the map */
+function locate(force) {
+  var b = $('#n-loc'); if (!navigator.geolocation) { if (b) b.classList.add('no'); return; }
+  if (b) b.classList.add('wait');
   navigator.geolocation.getCurrentPosition(function (p) {
-    if (!cur || cur.src === 'TAP') return; cur.lat = p.coords.latitude; cur.lng = p.coords.longitude; cur.src = 'HERE'; focusOn(cur.lat, cur.lng, 17); whereLine();
-  }, function () { whereLine(); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    if (!cur || (cur.src === 'TAP' && !force)) return; cur.lat = p.coords.latitude; cur.lng = p.coords.longitude; cur.src = 'HERE'; focusOn(cur.lat, cur.lng, 17); whereLine(); reading();
+  }, function () { var bb = $('#n-loc'); if (bb) { bb.classList.remove('wait'); bb.classList.add('no'); } whereLine(); }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
 }
-function whereLine() { var el = $('#n-where'); if (el && cur) { el.textContent = when(cur.at) + ' · ' + ll(cur.lat, cur.lng); el.className = cur.src === 'MAP' ? 'blink' : ''; } }
+function whereLine() {
+  var el = $('#n-where'); if (!el || !cur) return; el.textContent = when(cur.at) + ' · ' + ll(cur.lat, cur.lng); el.className = cur.src === 'MAP' ? 'blink' : '';
+  var b = $('#n-loc'); if (b) { b.classList.remove('wait'); b.classList.toggle('on', cur.src === 'HERE' || cur.src === 'PHOTO'); }
+}
 function onTap(x, y) {
-  if (cur && !sheet.hidden && $('#n-where')) { var p = at(x, y); cur.lat = p.lat; cur.lng = p.lng; cur.src = 'TAP'; whereLine(); net.focus = cur; net.links = []; render(); return; }
+  var c = document.body.classList;
+  if (cur && !sheet.hidden && $('#n-where')) { var p = at(x, y); cur.lat = p.lat; cur.lng = p.lng; cur.src = 'TAP'; whereLine(); net.focus = cur; net.links = []; render(); reading(); return; }
+  if (!c.contains('mapmode') && !c.contains('half')) return;
   /* a knot pressed opens what was noticed there */
   var best = null, bd = 18; visible().forEach(function (n) { var q = px(n.lat, n.lng); var d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = n; } });
-  if (best) openNote(best); else if (document.body.classList.contains('mapmode') && sheet.hidden) { var g = at(x, y); placeAt(g.lat, g.lng); }
+  if (best && net.tie) {
+    if (!net.tie.first) { net.tie.first = best; net.focus = best; render(); return; }
+    if (net.tie.first.id !== best.id) { TIES.push([net.tie.first.id, best.id]); store.set('da.base.ties', TIES); pluck(best.g || 'bird'); net.fresh = best.id; }
+    net.tie.first = null; net.focus = null; render(); return;
+  }
+  if (best) openNote(best); else if (c.contains('mapmode') && sheet.hidden) { var g = at(x, y); placeAt(g.lat, g.lng); }
+}
+
+/* ───────── where it is, and in what weather: the suburb, the nearest named place or water, the suburb's canopy, today's heat,
+   El Niño now. These come with the noticing as data; each can be left off ───────── */
+var SUBURBS = [['Brunswick', -37.767, 144.961], ['Brunswick East', -37.771, 144.978], ['Brunswick West', -37.765, 144.944], ['Coburg', -37.744, 144.966], ['Carlton', -37.800, 144.967],
+  ['Carlton North', -37.787, 144.971], ['Princes Hill', -37.783, 144.966], ['Parkville', -37.784, 144.951], ['Fitzroy', -37.799, 144.978], ['Fitzroy North', -37.783, 144.985], ['Collingwood', -37.802, 144.988],
+  ['Clifton Hill', -37.789, 144.995], ['Northcote', -37.770, 145.000], ['North Melbourne', -37.799, 144.944], ['West Melbourne', -37.807, 144.940], ['Kensington', -37.794, 144.927], ['Flemington', -37.788, 144.930],
+  ['Melbourne', -37.814, 144.963], ['East Melbourne', -37.813, 144.985], ['Docklands', -37.817, 144.946], ['Southbank', -37.825, 144.964]];
+function nearest(list, lat, lng, max) { var best = null, bd = max; (list || []).forEach(function (p) { var d = dist({ lat: lat, lng: lng }, { lat: p[1], lng: p[2] }); if (d < bd) { bd = d; best = [p[0], d]; } }); return best; }
+var WX = {};
+function weather(lat, lng) {
+  var k = lat.toFixed(2) + ',' + lng.toFixed(2); if (WX[k]) return WX[k];
+  WX[k] = fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lng.toFixed(3) + '&daily=temperature_2m_max&timezone=Australia%2FMelbourne&forecast_days=1')
+    .then(function (r) { return r.json(); }).then(function (j) { var m = j && j.daily && j.daily.temperature_2m_max; return m && m.length ? { max: m[0] } : null; }).catch(function () { return null; });
+  return WX[k];
+}
+function context(n) {
+  var out = [], sub = nearest(SUBURBS, n.lat, n.lng, 4000);
+  if (sub) out.push(sub[0].toUpperCase());
+  if (DB) { var w = nearest(DB.waters, n.lat, n.lng, 450), pl = nearest(DB.places, n.lat, n.lng, 200), at2 = w || pl; if (at2) out.push(at2[0].toUpperCase().slice(0, 30)); if (sub && DB.canopy && DB.canopy[sub[0].toUpperCase()]) out.push('CANOPY ' + DB.canopy[sub[0].toUpperCase()] + '%'); }
+  if (n.wx && n.wx.max != null) out.push(Math.round(n.wx.max) + '° TODAY');
+  var o = outlookNow(); if (o && o.nino) out.push('NIÑO 3.4 ' + o.nino.replace(/ ?(OBS|PEAK)/, '').replace('≈', ''));
+  return out;
 }
 
 /* ───────── a noticing: the photograph with where and when, a line, what it is. The engine stays underneath: it shows only
    an alert that is real, and offers what it reads as chips. What is chosen feeds the receipt, the net and the record ───────── */
 function stepW() {
   focusOn(cur.lat, cur.lng, 17); net.focus = cur; net.links = []; render();
-  open('<div class="hd"><span id="n-where"></span><button class="x" aria-label="Close">×</button></div>' +
-    (cur.photo ? '<div class="ph"><img alt="" src="' + cur.photo + '"></div>' : '') +
+  open('<div class="hd"><span id="n-where"></span><button class="k loc" id="n-loc" aria-label="Where I am" title="Where I am">◎</button><button class="x" aria-label="Close">×</button></div>' +
+    (cur.photo ? '<div class="ph sm"><img alt="" src="' + cur.photo + '"></div>' : '') +
     '<div class="say-row"><span class="pr">&gt;</span><textarea id="n-say" class="say" rows="1" maxlength="200" aria-label="What is happening"></textarea></div>' +
-    '<div class="chips" id="n-chips"></div><div id="n-alert"></div>' +
-    '<button class="go" id="n-next" aria-label="Next">→</button>', true);
-  whereLine(); var say = $('#n-say'), tmr = 0; say.value = cur.say || '';
+    '<div id="n-alert"></div><div class="chips" id="n-chips"></div><div class="chips data" id="n-data"></div>' +
+    '<button class="go next" id="n-next" aria-label="Next">→</button>', true);
+  whereLine(); var say = $('#n-say'), tmr = 0; say.value = cur.say || ''; if (!('ontouchstart' in window)) say.focus();
   say.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { cur.say = say.value.trim(); cur.spId = null; reading(); }, 220); });
-  $('#n-next').addEventListener('click', function () { cur.say = say.value.trim(); place(); stepS(cur.note); });
+  $('#n-loc').addEventListener('click', function () { locate(true); });
+  $('#n-next').addEventListener('click', function () { cur.say = say.value.trim(); place(); revealStep(cur.note); });
   db().then(reading); reading();
 }
-/* only what is real and timely: a need it names, or its season now. Nothing when there is nothing */
+/* only what is real and timely: a need it names, or its season now, or today's heat for a life that suffers in it */
 function alertHTML(r) {
-  if (!r.issue && !(r.sp && r.lines.some(function (l) { return l.s === 'NOW'; }))) return '';
+  if (!r.issue && !r.hot && !(r.sp && r.lines.some(function (l) { return l.s === 'NOW'; }))) return '';
   return '<div class="alert">' + r.lines.map(function (l) { return '<p>' + esc(l.t) + '</p>'; }).join('') +
     (r.call ? '<a class="call" href="' + esc(r.call.tel) + '"><b>' + esc(r.call.label) + '</b><span>' + esc(r.call.n) + '</span></a>' : '') + '</div>';
 }
 /* the chips: the life it may be, the need it names, and the tags chosen before, so what one notices grows what one can say */
-function pastTags() { var seen = []; NOTES.forEach(function (n) { (n.tags || []).forEach(function (t) { if (seen.indexOf(t) < 0 && !ISSUES.some(function (i) { return i.t === t; })) seen.push(t); }); }); return seen.slice(0, 6); }
+function pastTags() { var seen = []; NOTES.forEach(function (n) { (n.tags || []).forEach(function (t) { if (seen.indexOf(t) < 0 && !ISSUES.some(function (i) { return i.t === t; }) && WANTS.indexOf(t) < 0) seen.push(t); }); }); return seen.slice(0, 6); }
 function reading() {
-  if (!cur || !$('#n-chips')) return; var r = read(cur); cur.r = r;
+  if (!cur || !$('#n-chips')) return;
+  if (!cur.wx && !cur.wxAsked) { cur.wxAsked = 1; weather(cur.lat, cur.lng).then(function (w) { if (cur && w) { cur.wx = w; reading(); } }); }
+  var r = read(cur); cur.r = r;
   var chips = [];
   if (r.sp) chips.push({ t: r.sp.cn, on: true, sp: r.sp.id }); r.alts.forEach(function (a) { chips.push({ t: a.cn, on: false, sp: a.id }); });
   if (r.issue) chips.push({ t: r.issue.t, on: true, fixed: true });
@@ -430,6 +475,9 @@ function reading() {
     if (c.sp) cur.spId = c.on ? null : c.sp; else { var k = cur.tags.indexOf(c.t); if (k >= 0) cur.tags.splice(k, 1); else cur.tags.push(c.t); }
     reading();
   }); });
+  var data = context(cur); cur.data = data.filter(function (d) { return cur.off.indexOf(d) < 0; });
+  $('#n-data').innerHTML = data.map(function (d, i) { return '<button class="chip d' + (cur.off.indexOf(d) < 0 ? ' on' : '') + '" data-d="' + i + '">' + esc(d) + '</button>'; }).join('');
+  $$('#n-data .chip').forEach(function (b) { b.addEventListener('click', function () { var d = data[+b.dataset.d], k = cur.off.indexOf(d); if (k >= 0) cur.off.splice(k, 1); else cur.off.push(d); reading(); }); });
   $('#n-alert').innerHTML = alertHTML(r);
 }
 function place() {
@@ -437,8 +485,47 @@ function place() {
   var n = cur.note || { id: cur.id, at: cur.at, mine: true, code: code(cur.id + '|' + cur.at), wants: [] };
   n.lat = +cur.lat.toFixed(5); n.lng = +cur.lng.toFixed(5); n.src = cur.src; n.say = cur.say; n.tags = (r.issue ? [r.issue.t] : []).concat(cur.tags);
   n.sp = r.sp ? r.sp.id : ''; n.cn = r.sp ? r.sp.cn : ''; n.sci = r.sp ? r.sp.n : ''; n.g = r.group || ''; n.issue = r.issue ? r.issue.k : ''; n.thumb = cur.thumb;
+  n.data = (cur.data || []).slice(); n.wx = cur.wx || null;
   if (!cur.note) { NOTES.unshift(n); net.fresh = n.id; } cur.note = n; PHOTOS[n.id] = cur.photo; saveNotes();
   net.focus = n; net.links = r.near; render();
+}
+
+/* ───────── placed: the knot falls onto the ground, and a few sightings of the same and of the most closely related lives near it
+   are revealed and tied to it. Three at most, never everything El Niño touches. Then straight on to the receipt ───────── */
+function reveal(n, r) {
+  var taxa = [r.sp].concat((r.rel || []).filter(function (o) { return o.f; }).map(function (o) { return o.f; })).filter(Boolean).slice(0, 3);
+  if (!taxa.length || !B.inat) return Promise.resolve([]);
+  return Promise.all(taxa.map(function (f) {
+    var u = B.inat + '/observations?taxon_name=' + encodeURIComponent(f.n) + '&lat=' + n.lat.toFixed(4) + '&lng=' + n.lng.toFixed(4) + '&radius=3&per_page=3&order=desc&order_by=observed_on&locale=en';
+    return fetch(u).then(function (x) { return x.json(); }).then(function (j) {
+      return ((j && j.results) || []).map(function (o) {
+        /* only the life asked for, never whatever else comes back */
+        var c = o.geojson && o.geojson.coordinates, tx = o.taxon || {}; if (!c || (tx.name !== f.n && lower(tx.preferred_common_name) !== lower(f.cn))) return null;
+        var s = { id: 'i' + o.id, lat: +c[1], lng: +c[0], cn: (o.taxon && o.taxon.preferred_common_name) || f.cn, at: Date.parse(o.observed_on) || 0, inat: o.id };
+        s.d = Math.round(dist(n, s)); return s;
+      }).filter(Boolean);
+    }).catch(function () { return []; });
+  })).then(function (lists) {
+    var out = [], seen = {}; lists.forEach(function (l) { l.sort(function (a, b) { return a.d - b.d; }); var s = l.filter(function (x) { return !seen[x.id] && x.d > 5; })[0]; if (s) { seen[s.id] = 1; out.push(s); } });
+    return out.slice(0, 3);
+  });
+}
+var far = function (d) { return d < 1000 ? d + ' m' : (d / 1000).toFixed(1) + ' km'; };
+function revealStep(n) {
+  var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
+  open('<div class="hd"><span>' + esc((n.data || []).slice(0, 2).join(' · ') || ll(n.lat, n.lng)) + '</span><button class="x" aria-label="Close">×</button></div>' +
+    '<ul class="seen" id="n-seen"><li class="wait"><span class="gl">· · ·</span></li></ul><button class="go next" id="n-print" aria-label="Next">→</button>', true, 'peek');
+  var t = 0, go = function () { clearTimeout(t); if ($('#n-seen')) stepS(n); };
+  $('#n-print').addEventListener('click', go);
+  net.focus = n; net.links = []; net.fresh = n.id; focusOn(n.lat, n.lng, 16);
+  reveal(n, r).then(function (seen) {
+    if (!$('#n-seen')) return; n.seen = seen; saveNotes();
+    net.focus = n; net.links = seen; net.fresh = n.id;
+    if (seen.length) { var all = [n].concat(seen); fit(all); } else render();
+    $('#n-seen').innerHTML = seen.length ? seen.map(function (s) { return '<li><span>' + esc(s.cn) + '</span><small>' + far(s.d) + (s.at ? ' · ' + when(s.at).slice(0, 6) : '') + '</small></li>'; }).join('') : '<li class="empty">—</li>';
+    t = setTimeout(go, seen.length ? 5200 : 2000);
+    sheet.addEventListener('pointerdown', function () { clearTimeout(t); }, { once: true });
+  });
 }
 /* W.I.S.H., embodied: one key on the design stage writes its four lines from what is known, what would be great, what to do and
    who can help. What would be great starts from the need, and every choice of it stays as a tag */
@@ -500,6 +587,7 @@ var noteURL = function (n) { var base = /\.workers\.dev$|localhost|\.test$/.test
 /* opt: { art: photo | pixel | net, wish: its four lines on, show: which parts print (all, unless said) } */
 function slip(n, photo, r, opt, W, boardArt) {
   opt = opt || {}; var art = opt.art || 'photo', show = opt.show || { line: 1, life: 1, facts: 1, links: 1, code: 1 };
+  if (art === 'sign') return signSlip(n, photo, r, W);
   var F = function (px, w) { return (w || 'bold') + ' ' + px + 'px "Courier New", Courier, monospace'; };
   var u = W / 512, pad = Math.round(W * 0.04), aw = W - pad * 2;
   /* the lower half first, so the photograph can take as much again */
@@ -507,12 +595,16 @@ function slip(n, photo, r, opt, W, boardArt) {
   var y = Math.round(12 * u);
   if (show.line && n.say) { x.font = F(Math.round(28 * u)); wrapText(x, n.say, aw).forEach(function (l) { x.fillText(l, pad, y); y += Math.round(32 * u); }); y += Math.round(6 * u); }
   if (show.life && n.cn) { x.font = F(Math.round(20 * u)); x.fillText(n.cn.toUpperCase(), pad, y); y += Math.round(23 * u); x.font = F(Math.round(16 * u), 'italic bold'); x.fillText(n.sci || '', pad, y); y += Math.round(26 * u); }
-  if (show.facts) {
+  /* W.I.S.H. on, its four lines stand for the facts: nothing is said twice */
+  if (show.facts && !opt.wish) {
     x.font = F(Math.round(16 * u));
     (r.lines || []).forEach(function (l) { x.fillRect(pad + 2, y + Math.round(6 * u), Math.round(6 * u), Math.round(6 * u)); wrapText(x, l.t, aw - Math.round(18 * u)).forEach(function (t) { x.fillText(t, pad + Math.round(18 * u), y); y += Math.round(20 * u); }); y += Math.round(6 * u); });
     if (r.call) { x.font = F(Math.round(17 * u)); x.fillText('CALL ' + r.call.label + ' ' + r.call.n, pad, y); y += Math.round(26 * u); }
   }
-  if (show.links && r.rel && r.rel.length && art !== 'net') { x.font = F(Math.round(16 * u)); r.rel.forEach(function (o) { wrapText(x, '+ ' + o.label, aw).forEach(function (t) { x.fillText(t, pad, y); y += Math.round(19 * u); }); }); y += Math.round(6 * u); }
+  /* what it is tied to: the sightings revealed near it, and a case that worked elsewhere */
+  var ties = linksOf(n, r);
+  if (show.links && ties.length && art !== 'net') { x.font = F(Math.round(16 * u)); ties.forEach(function (o) { wrapText(x, '+ ' + o.label + (o.sub ? '  ' + o.sub : ''), aw).forEach(function (t) { x.fillText(t, pad, y); y += Math.round(19 * u); }); }); y += Math.round(6 * u); }
+  if (n.data && n.data.length) { x.font = F(Math.round(14 * u)); wrapText(x, n.data.join(' · '), aw).forEach(function (t) { x.fillText(t, pad, y); y += Math.round(18 * u); }); y += Math.round(4 * u); }
   if (opt.wish) { x.fillRect(pad, y, aw, Math.max(1, Math.round(2 * u))); y += Math.round(10 * u); wishLines(n, r).forEach(function (l) { x.font = F(Math.round(22 * u)); x.fillText(l[0], pad, y - Math.round(2 * u)); x.font = F(Math.round(16 * u)); wrapText(x, l[1], aw - Math.round(30 * u)).forEach(function (t) { x.fillText(t, pad + Math.round(30 * u), y); y += Math.round(20 * u); }); y += Math.round(6 * u); }); x.fillRect(pad, y, aw, Math.max(1, Math.round(2 * u))); y += Math.round(12 * u); }
   x.font = F(Math.round(14 * u)); x.fillText(ll(n.lat, n.lng) + '  ' + n.code, pad, y); y += Math.round(22 * u);
   return qrLib().then(function (Q) {
@@ -538,6 +630,38 @@ function slip(n, photo, r, opt, W, boardArt) {
       return out;
     });
   });
+}
+/* the sign: for the place itself, read from a step away. What it is, what to do, who to call, a code back to it.
+   The public notice the field had none of: made where it was noticed, printed, taped up */
+var SIGN = { young: 'FLEDGLINGS ON THE GROUND', hurt: 'INJURED WILDLIFE', dead: 'DO NOT TOUCH', heat: 'WATER OUT IN THE HEAT', water: 'KEEP THIS WATER CLEAN', swoop: 'SWOOPING BIRDS',
+  snake: 'SNAKE ABOUT', litter: 'TAKE IT HOME', tree: 'LIFE IN THESE TREES', light: 'LIGHTS OFF AFTER 10 PM', cats: 'KEEP CATS IN', poison: 'NO BAITS HERE' };
+function actions(s, k) { var all = String(s || '').match(/[^.!?]+[.!?]?/g) || []; return all.filter(function (x) { return !/\?\s*$/.test(x); }).slice(0, k || 2).map(function (x) { return x.trim(); }).join(' '); }
+function signSlip(n, photo, r, W) {
+  var F = function (px) { return 'bold ' + px + 'px "Courier New", Courier, monospace'; };
+  var u = W / 512, pad = Math.round(W * 0.05), aw = W - pad * 2;
+  var c = document.createElement('canvas'); c.width = W; c.height = 3000; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, 3000); x.textBaseline = 'top';
+  var head = SIGN[n.issue] || (n.cn ? n.cn.toUpperCase() + ' LIVES HERE' : (n.say || 'NOTICED HERE').toUpperCase());
+  x.font = F(Math.round(46 * u)); var hl = wrapText(x, head, aw); var bh = hl.length * Math.round(50 * u) + Math.round(30 * u);
+  x.fillStyle = '#000'; x.fillRect(0, 0, W, bh); x.fillStyle = '#fff'; hl.forEach(function (l, i) { x.fillText(l, pad, Math.round(16 * u) + i * Math.round(50 * u)); });
+  var y = bh + Math.round(18 * u); x.fillStyle = '#000';
+  if (n.cn) { x.font = F(Math.round(24 * u)); var f = DB && DB.field.filter(function (z) { return z.id === n.sp; })[0]; x.fillText(n.cn.toUpperCase() + (f && f.brd && f.brd[M] === 'B' ? ' · NESTING NOW' : ''), pad, y); y += Math.round(36 * u); }
+  var act = r.issue ? actions(r.issue.say, 2) : r.sp ? (r.sp.help || r.sp.aware) : n.say;
+  if (act) { x.font = F(Math.round(26 * u)); wrapText(x, act, aw).forEach(function (l) { x.fillText(l, pad, y); y += Math.round(31 * u); }); y += Math.round(14 * u); }
+  if (r.call) { var ch = Math.round(86 * u); x.lineWidth = Math.max(2, Math.round(4 * u)); x.strokeRect(pad, y, aw, ch); x.font = F(Math.round(18 * u)); x.fillText(r.call.label, pad + Math.round(14 * u), y + Math.round(12 * u)); x.font = F(Math.round(40 * u)); x.fillText(r.call.n, pad + Math.round(14 * u), y + Math.round(36 * u)); y += ch + Math.round(18 * u); }
+  return Promise.all([photo ? loadImg(photo).catch(function () { return null; }) : null, qrLib()]).then(function (got) {
+    var im = got[0], Q = got[1], side = Math.round(aw * 0.46), top = y;
+    if (im) { var p = document.createElement('canvas'); p.width = p.height = side; var px2 = p.getContext('2d'); var sc = Math.max(side / im.naturalWidth, side / im.naturalHeight); px2.drawImage(im, (side - im.naturalWidth * sc) / 2, (side - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); dither(px2, side, side); x.drawImage(p, pad, top); }
+    if (Q) { try { var q = Q(0, 'L'); q.addData(noteURL(n)); q.make(); var k = q.getModuleCount(), m = Math.max(2, Math.floor(side / k)), ox = im ? W - pad - k * m : Math.round((W - k * m) / 2); for (var i = 0; i < k; i++) for (var j = 0; j < k; j++) if (q.isDark(i, j)) x.fillRect(ox + j * m, top + i * m, m, m); } catch (e) { /* no code */ } }
+    y = top + side + Math.round(16 * u); x.font = F(Math.round(15 * u)); x.fillText(when(n.at) + '  ' + ll(n.lat, n.lng) + '  ' + n.code, pad, y); y += Math.round(30 * u);
+    var out = document.createElement('canvas'); out.width = W; out.height = y; var o = out.getContext('2d'); o.drawImage(c, 0, 0, W, y, 0, 0, W, y);
+    var id = o.getImageData(0, 0, W, y), d = id.data; for (var z = 0; z < d.length; z += 4) { var v = d[z] < 150 ? 0 : 255; d[z] = d[z + 1] = d[z + 2] = v; d[z + 3] = 255; } o.putImageData(id, 0, 0);
+    return out;
+  });
+}
+function linksOf(n, r) {
+  var out = (n.seen || []).map(function (s) { return { label: s.cn, sub: far(s.d) }; });
+  (r.rel || []).forEach(function (o) { if (o.brief && out.length < 4) out.push({ label: o.label, sub: o.sub }); else if (!o.brief && !(n.seen || []).length && out.length < 3) out.push({ label: o.label, sub: '' }); });
+  return out.slice(0, 4);
 }
 /* the net as the art: this noticing and what it connects to, sticks and knots and hanging threads */
 function netArt(x, n, r, ox, oy, w, h) {
@@ -566,21 +690,22 @@ var PRN = null;
 function printers() { if (PRN) return Promise.resolve(PRN); return api('/partners').then(function (j) { PRN = (j && j.partners) || []; return PRN; }).catch(function () { return []; }); }
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art (photograph,
    pixels, the net); W.I.S.H. writes its four lines on; the printer; PRINT. Nothing else */
-var ARTS = ['photo', 'pixel', 'net'];
+var ARTS = ['photo', 'pixel', 'net', 'sign'];
 var STATE_OF = { held: 'HELD FOR A YES', queued: 'QUEUED', printing: 'PRINTING', printed: 'PRINTED', failed: 'NOT PRINTED', waiting: 'HELD FOR A YES', outbox: 'NO SIGNAL · WILL SEND' };
 function stepS(n, boardArt) {
   var photo = PHOTOS[n.id] || n.thumb || n.photoURL || '';
-  var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng });
+  var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
   var o = { art: boardArt ? 'pixel' : photo ? 'photo' : 'net', wish: !!n.wish };
   if (!n.wants || !n.wants.length) n.wants = (WANTS_OF[n.issue] || []).slice();
   open('<div class="hd"><span>' + esc(n.code) + '</span><button class="x" aria-label="Close">×</button></div>' +
     '<button class="slip" id="p-slip" aria-label="Change the art"></button><div class="dots" id="p-dots"></div>' +
-    '<div class="ctl"><button class="k" id="p-wish" aria-pressed="false">W.I.S.H.</button><select class="k" id="p-to" aria-label="Printer"><option value="">…</option></select><a class="k" href="studio#print" aria-label="More tools" title="More tools">+</a></div>' +
-    '<div class="chips" id="p-wants" hidden></div>' +
-    '<button class="go" id="p-send">PRINT</button><div class="status" id="p-st"></div>');
+    '<div class="stick"><div class="chips" id="p-wants" hidden></div>' +
+    '<div class="ctl"><button class="k" id="p-wish" aria-pressed="false">W.I.S.H.</button><select class="k" id="p-to" aria-label="Printer"><option value="">…</option></select><a class="k" href="studio?from=base#print" aria-label="More tools" title="More tools">+</a></div>' +
+    '<button class="go" id="p-send">PRINT</button><div class="status" id="p-st"></div></div>');
   var cv = null, W = 512, sel = $('#p-to');
   var draw = function () {
-    $('#p-dots').innerHTML = ARTS.map(function (a) { return '<i class="' + (a === o.art ? 'on' : '') + '"></i>'; }).join('');
+    $('#p-dots').innerHTML = ARTS.map(function (a) { return '<button class="' + (a === o.art ? 'on' : '') + '" data-a="' + a + '" aria-label="' + a + '" title="' + a + '"><i></i></button>'; }).join('');
+    $$('#p-dots button').forEach(function (b) { b.addEventListener('click', function () { o.art = b.dataset.a; draw(); }); });
     $('#p-wish').classList.toggle('on', o.wish); $('#p-wish').setAttribute('aria-pressed', String(o.wish));
     var ws = $('#p-wants'); ws.hidden = !o.wish;
     ws.innerHTML = WANTS.map(function (w) { return '<button class="chip w' + (n.wants.indexOf(w) >= 0 ? ' on' : '') + '" data-w="' + w + '">' + w + '</button>'; }).join('');
@@ -637,29 +762,31 @@ function reelHTML(list) {
   if (!list.length) return '<p class="empty">—</p>';
   return '<div class="reel">' + list.map(function (n, i) {
     var pic = PHOTOS[n.id] || n.thumb || n.photoURL || '';
-    var r = !n.story && DB ? read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng }) : null;
+    var r = !n.story && DB ? read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx }) : null;
     var al = r && (r.issue || r.lines.some(function (l) { return l.s === 'NOW'; })) ? r.lines[0].t : '';
     return '<article class="card" data-i="' + i + '" id="c-' + esc(n.id) + '">' +
       '<div class="pic' + (n.icon ? ' icon' : '') + '"' + (pic || n.icon ? ' style="background-image:url(\'' + esc(pic || n.icon) + '\')"' : '') + '></div>' +
       (n.say || n.cn ? '<p class="ln">' + esc(n.say || n.cn) + '</p>' : '') +
       '<p class="meta">' + esc([n.cn && n.say ? n.cn : '', when(n.at)].filter(Boolean).join(' · ')) + '</p>' +
       (al ? '<p class="al">' + esc(al) + '</p>' : '') +
+      ((n.tags || []).concat(n.data || []).length ? '<div class="tags">' + (n.tags || []).concat(n.data || []).slice(0, 5).map(function (t) { return '<button data-tag="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' : '') +
       '<div class="acts">' + (n.story ? '<a href="studio#' + esc(n.code) + '" aria-label="Open" title="Open">↗</a>' : '<button data-a="save" aria-label="Save" title="Save">↓</button>') +
         (n.audio || AUDIO[n.id] ? '<button data-a="play" aria-label="Play" title="Play">▶</button>' : '') + '<button data-a="share" aria-label="Share" title="Share">⤴</button>' + (n.mine ? '<button data-a="send" aria-label="Print at a place" title="Print at a place">⎙</button>' : '') +
         '<button data-a="more" aria-label="More" title="More">⋯</button></div>' +
-      '<div class="more" hidden><a href="' + DONATE + '" target="_blank" rel="noopener">GIVE ↗</a><a href="studio#groups">JOIN ↗</a></div>' +
+      '<div class="more" hidden><a href="' + DONATE + '" target="_blank" rel="noopener">GIVE ↗</a><a href="studio?from=base#groups">JOIN ↗</a></div>' +
     '</article>';
   }).join('') + '</div>';
 }
 function wireReel(el, list) {
   $$('.card', el).forEach(function (c) {
     var n = list[+c.dataset.i];
+    $$('[data-tag]', c).forEach(function (b) { b.addEventListener('click', function () { guideSheet(b.dataset.tag.toLowerCase()); }); });
     $$('[data-a]', c).forEach(function (b) { b.addEventListener('click', function () {
       var a = b.dataset.a;
       if (a === 'send') stepS(n);
       else if (a === 'play') { try { new Audio(n.audio || AUDIO[n.id]).play(); } catch (e) { /* no sound */ } }
       else if (a === 'more') { var m = $('.more', c); m.hidden = !m.hidden; }
-      else if (a === 'save') { var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng }); slip(n, PHOTOS[n.id] || n.thumb || n.photoURL, r, { wish: !!n.wish }, 512).then(function (cv) { download(cv, 'novel-global-' + (n.code || 'noticed') + '.png'); }); }
+      else if (a === 'save') { var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx }); slip(n, PHOTOS[n.id] || n.thumb || n.photoURL, r, { wish: !!n.wish }, 512).then(function (cv) { download(cv, 'novel-global-' + (n.code || 'noticed') + '.png'); }); }
       else if (a === 'share') {
         var url = noteURL(n), t = n.say || n.cn || '';
         if (navigator.share) navigator.share({ title: 'novel.global', text: t, url: url }).catch(function () { /* closed */ });
@@ -758,11 +885,15 @@ function results(t) {
     DB.field.forEach(function (f) { var s = lower(f.cn).indexOf(t) >= 0 ? 3 : lower(f.n).indexOf(t) >= 0 ? 2 : lower([f.g, KINDS[f.g], f.where, f.event].join(' ')).indexOf(t) >= 0 ? 1 : 0; if (s) res.push({ s: s, h: '<button data-sp="' + esc(f.id) + '"><span>' + esc(f.cn) + '</span><small>' + esc(KINDS[f.g] || f.g) + '</small></button>' }); });
     DB.briefs.forEach(function (b) { if (lower([b.t, b.i, b.city, b.th].join(' ')).indexOf(t) >= 0) res.push({ s: 0.5, h: '<a href="' + esc(b.url) + '" target="_blank" rel="noopener"><span>' + esc(b.t) + '</span><small>' + esc((b.city || '') + ' ' + (b.yr || '')) + ' ↗</small></a>' }); });
   }
+  /* the stories a tag or a word brings in: one's own, everyone's, with their photographs */
+  var stories = allStories().filter(function (n) { return !n.story && lower([n.say, n.cn, (n.tags || []).join(' '), (n.data || []).join(' ')].join(' ')).indexOf(t) >= 0; }).slice(0, 12);
+  var thumbs = stories.length ? '<div class="strip">' + stories.map(function (n) { var pic = PHOTOS[n.id] || n.thumb || n.photoURL || n.icon || ''; return '<button data-st="' + esc(n.id) + '" style="' + (pic ? 'background-image:url(\'' + esc(pic) + '\')' : '') + '" aria-label="' + esc(n.say || n.cn || '') + '"><span>' + esc((n.cn || n.say || '').slice(0, 18)) + '</span></button>'; }).join('') + '</div>' : '';
   res.sort(function (a, b) { return b.s - a.s; });
-  return '<ul class="list">' + (res.slice(0, 40).map(function (r) { return '<li>' + r.h + '</li>'; }).join('') || '<li class="empty">—</li>') + '</ul>';
+  return thumbs + '<ul class="list">' + (res.slice(0, 40).map(function (r) { return '<li>' + r.h + '</li>'; }).join('') || '<li class="empty">—</li>') + '</ul>';
 }
 function wireGuide() {
   $$('#g-out [data-sp]').forEach(function (b) { b.addEventListener('click', function () { lifeSheet(b.dataset.sp); }); });
+  $$('#g-out [data-st]').forEach(function (b) { b.addEventListener('click', function () { var n = allStories().filter(function (x) { return x.id === b.dataset.st; })[0]; if (n) openNote(n); }); });
   $$('#g-out [data-is]').forEach(function (b) { b.addEventListener('click', function () { needSheet(b.dataset.is); }); });
   $$('#g-out [data-g]').forEach(function (b) { b.addEventListener('click', function () {
     var l = DB.field.filter(function (f) { return f.g === b.dataset.g; }); var li = b.parentNode;
@@ -851,29 +982,49 @@ function loadShared() {
     if (DB) SHARED.forEach(function (x) { if (x.cn && !x.sp) { var f = DB.field.filter(function (ff) { return ff.cn === x.cn; })[0]; if (f) x.sp = f.id; } });
   }).catch(function () { /* no signal: what is here stands */ });
 }
-function radioSheet(way) {
-  radioWay = way || radioWay; net.all = radioWay === 'net'; net.focus = null; net.links = [];
+/* RADIO is the showcase and the emergency line. Ways of seeing: the NET over the ground, the REEL of photographs, SETS (collections
+   by life, by need, by place), HELP. Playing: the net ties itself in the order it was made, each knot a note. Making: tie any two knots
+   yourself, and the net is saved as art. The radar is the studio's, a key away */
+var TIES = store.get('da.base.ties', []);
+var tieOf = function (a, b) { return TIES.some(function (t) { return (t[0] === a.id && t[1] === b.id) || (t[0] === b.id && t[1] === a.id); }); };
+function radioSheet(way, only) {
+  radioWay = way || radioWay; net.all = radioWay === 'net' || radioWay === 'sets'; net.focus = null; net.links = []; net.only = only || null; net.tie = null;
   open(head('RADIO') +
-    '<div class="seg" id="r-way"><button data-w="net">NET</button><button data-w="reel">REEL</button><button data-w="help">HELP</button><a class="k" style="flex:1;border:0;border-left:1px solid var(--ink);font-size:11px;letter-spacing:.1em;line-height:30px" href="studio#radio">RADAR ↗</a></div>' +
-    '<div id="r-body"></div>', radioWay === 'net');
+    '<div class="seg" id="r-way"><button data-w="net">NET</button><button data-w="reel">REEL</button><button data-w="sets">SETS</button><button data-w="help">HELP</button><a class="k" href="studio?from=base#radio">RADAR ↗</a></div>' +
+    '<div id="r-body"></div>', radioWay === 'net' || radioWay === 'sets');
   $$('#r-way button').forEach(function (b) { b.classList.toggle('on', b.dataset.w === radioWay); b.addEventListener('click', function () { radioSheet(b.dataset.w); }); });
   var body = $('#r-body');
-  if (radioWay === 'help') { db().then(function () { body.innerHTML = '<ul class="key" style="margin-top:10px">' + nowItems().map(function (i) { return '<li class="alert"><small>' + esc(i.k) + '</small>' + esc(i.t) + '</li>'; }).join('') + '</ul>' + helpHTML() + packsHTML(); wirePacks(); }); return; }
-  var all = allStories;
+  if (radioWay === 'help') { db().then(function () { body.innerHTML = '<ul class="list" style="margin-top:10px">' + nowItems().map(function (i) { return '<li class="urgent"><p><b>' + esc(i.k) + '</b> ' + esc(i.t) + '</p></li>'; }).join('') + '</ul>' + helpHTML() + packsHTML(); wirePacks(); }); return; }
   var paint = function () {
-    if (radioWay === 'reel') { var all2 = all(); body.innerHTML = reelHTML(all2); wireReel(body, all2); }
-    else {
-      var list = all().filter(function (n) { return !n.story; });
-      body.innerHTML = '<div class="row" style="margin-top:10px"><button class="k" id="r-play">PLAY</button><button class="k" id="r-save">SAVE AS ART</button><a class="k" href="#pixel">PIXEL BOARD</a></div>' +
-        (list.length ? '<ul class="list">' + list.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || 'Noticed') + '</span><small>' + esc(when(n.at)) + (n.mine ? ' · HERE' : '') + '</small></button></li>'; }).join('') + '</ul>' : '<p class="empty">—</p>');
+    var all = allStories().filter(function (n) { return !net.only || net.only.ids.indexOf(n.id) >= 0; });
+    if (radioWay === 'reel') { body.innerHTML = reelHTML(all); wireReel(body, all); }
+    else if (radioWay === 'sets') {
+      var sets = collections(); body.innerHTML = sets.length ? '<ul class="list">' + sets.map(function (c, i) { return '<li><button data-c="' + i + '"><span>' + esc(c.t) + '</span><small>' + c.ids.length + '</small></button></li>'; }).join('') + '</ul>' : '<p class="empty">—</p>';
+      $$('[data-c]', body).forEach(function (b) { b.addEventListener('click', function () { radioSheet('net', sets[+b.dataset.c]); }); });
+    } else {
+      var list = all.filter(function (n) { return !n.story; });
+      body.innerHTML = (net.only ? '<p class="meta">' + esc(net.only.t) + ' · ' + list.length + '</p>' : '') +
+        '<div class="row tools"><button class="k" id="r-play" aria-label="Play" title="Play">▶</button><button class="k" id="r-tie" aria-label="Tie two knots" title="Tie two knots">⋈</button><button class="k" id="r-save" aria-label="Save as art" title="Save as art">↓</button><a class="k" href="#pixel" aria-label="Pixel board" title="Pixel board">▦</a></div>' +
+        (list.length ? '<ul class="list">' + list.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || '·') + '</span><small>' + esc(when(n.at)) + '</small></button></li>'; }).join('') + '</ul>' : '<p class="empty">—</p>');
       $$('.list button', body).forEach(function (b) { b.addEventListener('click', function () { openNote(list[+b.dataset.i]); }); });
       $('#r-play').addEventListener('click', function () { play(list); });
+      $('#r-tie').addEventListener('click', function (e) { net.tie = net.tie ? null : { first: null }; e.currentTarget.classList.toggle('on', !!net.tie); });
       $('#r-save').addEventListener('click', function () { saveNetArt(list); });
       if (list.length) fit(list);
     }
     render();
   };
-  paint(); db().then(loadShared).then(function () { if (!sheet.hidden && $('#r-body') === body && document.contains(body)) paint(); });
+  paint(); db().then(loadShared).then(function () { if (!sheet.hidden && document.contains(body)) paint(); });
+}
+/* collections: what was noticed, gathered by life, by need and by place; each a net of its own */
+function collections() {
+  var by = {}, add = function (k, t, n) { (by[k] = by[k] || { t: t, ids: [] }).ids.push(n.id); };
+  allStories().filter(function (n) { return !n.story; }).forEach(function (n) {
+    if (n.cn) add('sp:' + n.cn, n.cn, n);
+    if (n.issue) { var i = ISSUES.filter(function (x) { return x.k === n.issue; })[0]; if (i) add('is:' + i.k, i.t.charAt(0) + i.t.slice(1).toLowerCase(), n); }
+    if (n.data && n.data[0]) add('pl:' + n.data[0], n.data[0].charAt(0) + n.data[0].slice(1).toLowerCase(), n);
+  });
+  return Object.keys(by).map(function (k) { return by[k]; }).filter(function (c) { return c.ids.length > 1 || allStories().length < 6; }).sort(function (a, b) { return b.ids.length - a.ids.length; }).slice(0, 24);
 }
 function fit(list) {
   var la = list.map(function (n) { return n.lat; }), lo = list.map(function (n) { return n.lng; });
@@ -881,12 +1032,26 @@ function fit(list) {
   var wide = innerWidth >= 760; var z = 17; while (z > 11 && (wx(e, z) - wx(w, z) > (wide ? map.w - 520 : map.w * 0.8) || wy(s, z) - wy(nn, z) > (wide ? map.h * 0.7 : map.h * 0.28))) z--;
   focusOn((s + nn) / 2, (w + e) / 2, z);
 }
-/* PLAY: the net as it was made, a knot at a time, oldest first */
+/* the sound of the net: each knot a note, its pitch by its kind of life, low for the ground, high for the air; a soft pluck */
+var AC = null;
+var PITCH = { bird: 9, parrot: 11, owl: 4, raptor: 7, waterbird: 5, flyingfox: 6, bat: 12, possum: 2, macropod: 0, frog: 3, lizard: 1, snake: -2, turtle: -1, bee: 14, butterfly: 13, moth: 10, spider: 8 };
+var SCALE = [0, 3, 5, 7, 10];
+function pluck(g, at) {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); var t = AC.currentTime + (at || 0);
+    var k = PITCH[g] != null ? PITCH[g] : 5, semi = Math.floor(k / 5) * 12 + SCALE[k % 5], f = 196 * Math.pow(2, semi / 12);
+    var o = AC.createOscillator(), v = AC.createGain(), lp = AC.createBiquadFilter(); o.type = 'triangle'; o.frequency.value = f; lp.type = 'lowpass'; lp.frequency.value = 1800;
+    v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(0.09, t + 0.01); v.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    o.connect(lp); lp.connect(v); v.connect(AC.destination); o.start(t); o.stop(t + 1.3);
+  } catch (e) { /* no sound here */ }
+}
+/* PLAY: the net as it was made, a knot at a time, oldest first, each with its note */
 function play(list) {
   stopPlay(); if (!list.length) return; var order = list.slice().sort(function (a, b) { return a.at - b.at; }), k = 0; playing = { mine: NOTES, keep: SHARED, t: 0 };
   var step = function () {
     k++; var shown = order.slice(0, k); NOTES = shown.filter(function (n) { return n.mine; }); SHARED = shown.filter(function (n) { return !n.mine; });
-    net.fresh = order[k - 1].id; net.focus = order[k - 1]; net.links = []; drawNet();
+    var n = order[k - 1]; pluck(n.g || (DB && n.sp ? (DB.field.filter(function (f) { return f.id === n.sp; })[0] || {}).g : '') || 'bird');
+    net.fresh = n.id; net.focus = n; net.links = []; drawNet();
     playing.t = setTimeout(k < order.length ? step : stopPlay, k < order.length ? 700 : 1600);
   };
   step();
@@ -897,17 +1062,30 @@ function saveNetArt(list) {
   var la = list.map(function (n) { return n.lat; }), lo = list.map(function (n) { return n.lng; });
   var s = Math.min.apply(null, la), nn = Math.max.apply(null, la) + 1e-6, w = Math.min.apply(null, lo), e = Math.max.apply(null, lo) + 1e-6;
   var pts = list.map(function (n) { return [200 + (n.lng - w) / (e - w) * (S - 400), 200 + (nn - n.lat) / (nn - s) * (S - 440)]; });
-  var pairs = []; for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 160; j++) if (kin(list[i], list[j]) || j === i + 1) pairs.push([i, j]);
+  var pairs = []; for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length && pairs.length < 160; j++) if (kin(list[i], list[j]) || tieOf(list[i], list[j]) || j === i + 1) pairs.push([i, j]);
   chartCanvas(x, chart(pts, pairs, seedOf(list)), '#A27B48', '#1E1A16', 'rgba(0,0,0,.13)', 2);
   x.fillStyle = '#1E1A16'; pts.forEach(function (p, i) { x.beginPath(); x.arc(p[0], p[1], list[i].mine ? 10 : 7, 0, 7); x.fill(); });
-  x.font = '20px ui-monospace, Menlo, monospace'; x.fillStyle = '#6E6C66'; x.fillText(list.length + ' · ' + when(Date.now()) + ' · novel.global', 60, S - 50);
-  var a2 = document.createElement('a'); a2.download = 'novel-global-net.png'; a2.href = c.toDataURL('image/png'); document.body.appendChild(a2); a2.click(); a2.remove();
+  x.font = '20px ui-monospace, Menlo, monospace'; x.fillStyle = '#6E6C66'; x.fillText((net.only ? net.only.t + ' · ' : '') + list.length + ' · ' + when(Date.now()) + ' · novel.global', 60, S - 50);
+  download(c, 'novel-global-net.png');
 }
+/* packs: the terrain and the field data switched on or off; one's own noticings out as a file to share, and others' in */
 function packsHTML() {
   var p = function (k, t) { return '<button class="k' + (PACKS[k] ? ' on' : '') + '" data-pack="' + k + '">' + t + '</button>'; };
-  return '<div class="lbl">PACKS</div><div class="row">' + p('terrain', 'TERRAIN') + p('field', 'FIELD DATA') + '<a class="k" href="studio">STUDIO ↗</a></div>';
+  return '<div class="lbl">PACKS</div><div class="row">' + p('terrain', 'TERRAIN') + p('field', 'FIELD DATA') + '<button class="k" id="pk-out" aria-label="Save my noticings as a pack" title="Save my noticings as a pack">↓ ' + NOTES.length + '</button>' +
+    '<label class="k" aria-label="Add a pack" title="Add a pack">+<input id="pk-in" type="file" accept=".json,application/json" hidden></label><a class="k" href="studio?from=base">STUDIO ↗</a></div>';
 }
-function wirePacks() { $$('[data-pack]').forEach(function (b) { b.addEventListener('click', function () { PACKS[b.dataset.pack] = !PACKS[b.dataset.pack]; store.set('da.base.packs', PACKS); b.classList.toggle('on', PACKS[b.dataset.pack]); if (b.dataset.pack === 'field') { DB = null; dbP = null; } credit(); render(); }); }); }
+function wirePacks() {
+  $$('[data-pack]').forEach(function (b) { b.addEventListener('click', function () { PACKS[b.dataset.pack] = !PACKS[b.dataset.pack]; store.set('da.base.packs', PACKS); b.classList.toggle('on', PACKS[b.dataset.pack]); if (b.dataset.pack === 'field') { DB = null; dbP = null; } credit(); render(); }); });
+  var o = $('#pk-out'); if (o) o.addEventListener('click', function () {
+    var pack = { pack: 'novel.global/noticed', v: 1, at: Date.now(), notes: NOTES.map(function (n) { var c = {}; for (var k in n) if (k !== 'audio') c[k] = n[k]; return c; }), ties: TIES };
+    var a = document.createElement('a'); a.download = 'novel-global-pack.json'; a.href = URL.createObjectURL(new Blob([JSON.stringify(pack)], { type: 'application/json' })); document.body.appendChild(a); a.click(); a.remove();
+  });
+  var i = $('#pk-in'); if (i) i.addEventListener('change', function () {
+    var f = i.files[0]; if (!f) return; var fr = new FileReader();
+    fr.onload = function () { try { var j = JSON.parse(fr.result), got = 0; (j.notes || []).forEach(function (n) { if (n && n.id && isFinite(n.lat) && isFinite(n.lng) && !NOTES.some(function (x) { return x.id === n.id; })) { n.mine = false; n.packed = 1; NOTES.push(n); got++; } }); (j.ties || []).forEach(function (t) { if (t && t.length === 2) TIES.push(t); }); saveNotes(); store.set('da.base.ties', TIES); toast('+' + got); render(); } catch (e) { toast('×'); } };
+    fr.readAsText(f);
+  });
+}
 
 /* ───────── the pixel board: paste, drop or pick a picture; it comes back as wonky pixels. Three frames make it move ───────── */
 var board = { frames: [], i: 0, cells: 40, tones: 2, anim: 0 };
@@ -932,7 +1110,7 @@ function boardSheet() {
   var pb = $('#pb'); pb.addEventListener('dragover', function (e) { e.preventDefault(); }); pb.addEventListener('drop', function (e) { e.preventDefault(); add(e.dataTransfer.files[0]); });
   $$('#pb-c button').forEach(function (b) { b.addEventListener('click', function () { board.cells = +b.dataset.v; paint(); }); });
   $$('#pb-t button').forEach(function (b) { b.addEventListener('click', function () { board.tones = +b.dataset.v; paint(); }); });
-  $('#pb-anim').addEventListener('click', function () { if (board.anim) { clearInterval(board.anim); board.anim = 0; return; } if (board.frames.length < 2) { toast('+ +'); return; } board.anim = setInterval(function () { if (!$('#pb')) { clearInterval(board.anim); board.anim = 0; return; } board.i = (board.i + 1) % board.frames.length; paint(); }, 333); });
+  $('#pb-anim').addEventListener('click', function () { if (board.anim) { clearInterval(board.anim); board.anim = 0; return; } if (board.frames.length === 1) { board.frames = [board.frames[0], board.frames[0], board.frames[0]]; }   /* one picture: three wonky takes of it, a sprite */ board.anim = setInterval(function () { if (!$('#pb')) { clearInterval(board.anim); board.anim = 0; return; } board.i = (board.i + 1) % board.frames.length; paint(); }, 333); });
   $('#pb-save').addEventListener('click', function () { if (!board.out) return; var c = board.out[board.i]; var a = document.createElement('a'); a.download = 'novel-global-pixels.png'; a.href = c.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); });
   $('#pb-print').addEventListener('click', function () { if (!board.out) return; var n = { id: 'p' + Date.now().toString(36), at: Date.now(), lat: map.lat, lng: map.lng, say: '', tags: [], mine: true }; n.code = code(n.id); stepS(n, pixelArt(board.frames[board.i], board.cells, 2, 8, 11 + board.i * 7)); });
   paint();
@@ -952,6 +1130,7 @@ document.addEventListener('paste', function (e) {
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
   if (!/^(radio|pixel|search|guide|now|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
+  if (document.body.classList.contains('mapmode')) mapOn(false);
   if (h === 'radio') radioSheet(); else if (h === 'pixel') boardSheet(); else if (h === 'search' || h === 'guide' || h === 'now') guideSheet('');
   else if (/^n=DA-/i.test(h)) {
     var c = h.slice(2).toUpperCase(); var n = NOTES.filter(function (x) { return x.code === c; })[0];
@@ -977,5 +1156,5 @@ glitch($('#ask'), $('#ask').dataset.say, 900);
 /* the field pack after the first paint, then what is happening now */
 setTimeout(function () { db().then(function () { nowTick(); }); flush(); }, 700);
 if (location.hash) route();
-window.__base = { wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
+window.__base = { wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();
