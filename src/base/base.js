@@ -979,7 +979,7 @@ function loadShared() {
     SHARED = ((j && j.stories) || []).map(function (s) {
       if (s.kind === 'record') { try { var d = JSON.parse(s.body);
         if (d.type === 'wish') { WISHES.push({ id: 's' + s.id, re: d.re, lines: d.lines || [], at: s.at }); return null; }
-        if (!isFinite(+d.lat)) return null; return { id: 's' + s.id, code: s.code, at: s.at, lat: +d.lat, lng: +d.lng, say: d.text || '', cn: d.tx ? d.tx.cn : '', sci: d.tx ? d.tx.n : '', sp: '', g: d.g || '', issue: d.issue || '', tags: d.tags || [], data: d.data || [], wishText: d.wish || null, photoURL: s.photo ? API + '/photos/' + s.id : '', thumb: '' }; } catch (e) { return null; } }
+        if (!isFinite(+d.lat) || d.type === 'poster') return null; return { id: 's' + s.id, code: s.code, at: s.at, lat: +d.lat, lng: +d.lng, say: d.text || '', cn: d.tx ? d.tx.cn : '', sci: d.tx ? d.tx.n : '', sp: '', g: d.g || '', issue: d.issue || '', tags: d.tags || [], data: d.data || [], wishText: d.wish || null, booth: d.type === 'booth', photoURL: s.photo ? API + '/photos/' + s.id : '', thumb: '' }; } catch (e) { return null; } }
       return null;
     }).filter(Boolean);
     if (DB) SHARED.forEach(function (x) { if (x.cn && !x.sp) { var f = DB.field.filter(function (ff) { return ff.cn === x.cn; })[0]; if (f) x.sp = f.id; } });
@@ -1114,12 +1114,14 @@ function placeNote(g) {
 function lit(n) { $$('.tiles button.on').forEach(function (b) { b.classList.remove('on'); }); var t = document.getElementById('t-' + n.id); if (t) t.classList.add('on'); }
 var deckEl = null, insTap = { i: -1, t: 0 };
 function deck(el) { deckEl = el; paintDeck(); }
+var songEmpty = function () { return !SONG.tracks.some(function (tr) { return tr.steps.some(function (x) { return x != null; }); }); };
+/* nothing recorded yet: ▶ plays what is about, the eight nearest lives as a figure on the first track, to change or play over */
+function seed() { var l = everything().slice(0, 8); if (!l.length) l = [{ g: 'bird' }, { g: 'frog' }, { g: 'parrot' }, { g: 'owl' }]; l.forEach(function (n, i) { SONG.tracks[0].steps[i * 2] = deg(gOf(n)); }); saveSong(); }
 function paintDeck() {
   if (!deckEl || !document.contains(deckEl)) return;
-  var notes = SONG.tracks.reduce(function (a, tr) { return a + tr.steps.filter(function (x) { return x != null; }).length; }, 0);
   var h = '<div class="tport"><button class="g rec' + (SEQ.rec ? ' on' : '') + '" id="d-rec" aria-label="Record" title="Record">●</button><button class="g" id="d-play" aria-label="Play" title="Play">' + (SEQ.on ? '■' : '▶') + '</button>' +
     '<button class="g' + (radar.on ? ' on' : '') + '" id="d-radar" aria-label="Radar" title="Radar">◎</button><button class="g" id="d-clear" aria-label="Clear the armed track" title="Clear the armed track">⌫</button>' +
-    '<button class="g" id="d-keep" aria-label="Keep this song" title="Keep this song">↓</button><button class="g" id="d-wav" aria-label="Download as sound" title="Download as sound">⇩</button><span class="meta">' + notes + ' ♪</span></div>';
+    '<button class="g" id="d-wav" aria-label="Keep and download" title="Keep and download">⇩</button></div>';
   h += '<div class="deck" id="deck">' + SONG.tracks.map(function (tr, i) {
     var row = '<div class="tr"><button class="ins' + (SEQ.arm === i ? ' arm' : '') + (tr.mute ? ' mute' : '') + '" data-t="' + i + '" aria-label="' + tr.ins + '" title="' + tr.ins + ' · double-tap for its settings">' + INS[tr.ins].g + '</button><div class="cells" data-t="' + i + '">' +
       tr.steps.map(function (d, s) { return '<button data-s="' + s + '" class="' + (d != null ? 'n' + (d > 4 ? ' hi' : '') : '') + '" aria-label="step ' + (s + 1) + '"></button>'; }).join('') + '</div></div>';
@@ -1128,16 +1130,15 @@ function paintDeck() {
       '<span class="v">·</span><button data-oct="-1" title="lower">−</button><span class="v">' + (tr.oct > 0 ? '+' : '') + tr.oct + '</span><button data-oct="1" title="higher">+</button>' +
       '<span class="v">·</span><button data-len class="' + (tr.len ? 'on' : '') + '" title="long or short">' + (tr.len ? '━' : '╸') + '</button><button data-mute class="' + (tr.mute ? 'on' : '') + '" title="mute">∅</button></div></div>';
     return row;
-  }).join('') + '<div class="glob"><button id="d-slow" title="slower">−</button><span class="v">' + SONG.bpm + '</span><button id="d-fast" title="faster">+</button><span class="v">·</span><button id="d-scale" title="' + SONG.scale + '">' + (SONG.scale === 'pelog' ? '5̇' : '5') + '</button><span class="v">' + SONG.scale + '</span></div></div>';
+  }).join('') + '<div class="glob"><button id="d-slow" title="slower">−</button><span class="v">' + SONG.bpm + '</span><button id="d-fast" title="faster">+</button><span class="v">·</span><button id="d-scale" title="' + SONG.scale + '">' + (SONG.scale === 'pelog' ? '5̇' : '5') + '</button></div></div>';
   h += SONGS.length ? '<ul class="songs">' + SONGS.map(function (s, i) { return '<li><button class="t" data-load="' + i + '">♪ ' + esc(when(s.at)) + '</button><button class="g" data-wav="' + i + '" title="Download as sound">⇩</button><button class="g" data-del="' + i + '" title="Remove">×</button></li>'; }).join('') + '</ul>' : '';
   deckEl.innerHTML = h;
   var q = function (s) { return deckEl.querySelector(s); };
   q('#d-rec').addEventListener('click', function () { SEQ.rec = !SEQ.rec; if (SEQ.rec && !SEQ.on) seqStart(); paintDeck(); });
-  q('#d-play').addEventListener('click', function () { if (SEQ.on) seqStop(); else seqStart(); });
+  q('#d-play').addEventListener('click', function () { if (SEQ.on) seqStop(); else { if (songEmpty()) seed(); seqStart(); } });
   q('#d-radar').addEventListener('click', function () { radarOn(!radar.on); paintDeck(); });
   q('#d-clear').addEventListener('click', function () { SONG.tracks[SEQ.arm].steps = blank(); saveSong(); paintDeck(); });
-  q('#d-keep').addEventListener('click', function () { SONGS.unshift({ at: Date.now(), song: JSON.parse(JSON.stringify(SONG)) }); if (SONGS.length > 12) SONGS.pop(); store.set('da.base.songs', SONGS); paintDeck(); });
-  q('#d-wav').addEventListener('click', function () { wavOf(SONG); });
+  q('#d-wav').addEventListener('click', function () { if (!songEmpty()) { SONGS.unshift({ at: Date.now(), song: JSON.parse(JSON.stringify(SONG)) }); if (SONGS.length > 12) SONGS.pop(); store.set('da.base.songs', SONGS); } wavOf(SONG); paintDeck(); });
   q('#d-slow').addEventListener('click', function () { SONG.bpm = Math.max(60, SONG.bpm - 8); saveSong(); paintDeck(); });
   q('#d-fast').addEventListener('click', function () { SONG.bpm = Math.min(180, SONG.bpm + 8); saveSong(); paintDeck(); });
   q('#d-scale').addEventListener('click', function () { SONG.scale = SONG.scale === 'pelog' ? 'slendro' : 'pelog'; saveSong(); paintDeck(); });
@@ -1232,7 +1233,7 @@ function saveNetArt(list) {
 var VOTES = store.get('da.base.votes', {}), REPLIES = store.get('da.base.replies', {});
 function repliesOf(n) { var own = (REPLIES[n.code] || []).slice(); if (n.wishText && n.wishText.some(Boolean)) own.unshift({ id: n.id + '-w', at: n.at, lines: n.wishText, mine: true, sent: n.sent, first: true }); return own.concat(WISHES.filter(function (w) { return w.re === n.code; })); }
 function threads() {
-  return NOTES.filter(function (n) { return n.mine !== false && (n.say || n.cn || n.thumb); }).concat(SHARED.filter(function (s) { return s.say || s.cn; })).map(function (n) {
+  return NOTES.filter(function (n) { return n.mine !== false && !n.booth && (n.say || n.cn || n.thumb); }).concat(SHARED.filter(function (s) { return !s.booth && (s.say || s.cn); })).map(function (n) {
     var reps = repliesOf(n), h = (Date.now() - n.at) / 36e5, up = 1 + (VOTES[n.id] ? 1 : 0) + reps.length;
     return { n: n, reps: reps, up: up, score: (up * (n.issue ? 2 : 1)) / Math.pow(h + 2, 1.5) };
   }).sort(function (a, b) { return b.score - a.score; });
@@ -1286,11 +1287,23 @@ function shopSheet() {
   open(head('shop') +
     '<ul class="list" id="s-rec">' + (mine.length ? mine.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || n.code) + '</span><small id="s-st-' + i + '">' + (n.sent ? pips(n.sent.s) : '○○○') + '</small></button></li>'; }).join('') : '<li class="empty">· · ·</li>') + '</ul>' +
     '<hr><ul class="list" id="s-prn"><li class="empty">· · ·</li></ul>' +
-    '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
+    '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
     '<hr>' + packsHTML());
   wirePacks();
   $$('#s-rec [data-i]').forEach(function (b) { b.addEventListener('click', function () { stepS(mine[+b.dataset.i]); }); });
   var sg = $('#s-sign'); if (sg) sg.addEventListener('click', function () { stepS(mine[0], null, 'sign'); });
+  $('#s-qr').addEventListener('click', function () { boothSticker('novelglobal'); });
+  $('#s-poster').addEventListener('click', function () {
+    var b = this, st = $('#s-pst'); b.disabled = true; st.innerHTML = pips('sending');
+    printers().then(function (list) {
+      var wide = list.filter(function (p) { return +p.paper !== 58; }), p = wide.filter(function (x) { return x.ready; })[0] || wide.filter(function (x) { return x.id === 'novelglobal'; })[0] || wide[0];
+      if (!p) { st.innerHTML = pips('failed'); b.disabled = false; return; }
+      return boothPoster(p.id, 512).then(function (cv) {
+        var id = 'p' + Date.now().toString(36), body = { type: 'poster', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4) };
+        return send({ kind: 'record', code: code(id), body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: p.id, escpos: raster(cv) }).then(function (j) { var n = { sent: { id: j.id, s: j.job ? j.job.status : j.status } }; st.innerHTML = pips(n.sent.s); follow(n, st); b.disabled = false; });
+      });
+    }).catch(function (e) { st.innerHTML = pips(e && e.status ? 'failed' : 'outbox'); b.disabled = false; });
+  });
   mine.slice(0, 30).forEach(function (n, i) { if (n.sent && n.sent.id) follow(n, document.getElementById('s-st-' + i), 29); });
   mine.slice(0, 30).forEach(function (n, i) { if (!n.sent || !n.sent.id) return; api('/receipts/' + n.sent.id).then(function (j) { if (!j) return; n.sent.s = j.job ? j.job.status : j.status; saveNotes(); var el = document.getElementById('s-st-' + i); if (el) el.innerHTML = pips(n.sent.s); }).catch(function () { /* later */ }); });
   printers().then(function (list) { var ul = $('#s-prn'); if (!ul) return; ul.innerHTML = list.length ? list.map(function (p) { return '<li><span class="li"><span>' + (p.ready ? '● ' : '○ ') + esc(p.name || p.id) + '</span><small>' + (p.queued ? p.queued + ' … ' : '') + (p.printed || 0) + ' ⎙</small></span></li>'; }).join('') : '<li class="empty">—</li>'; });
@@ -1352,9 +1365,175 @@ document.addEventListener('paste', function (e) {
 });
 
 /* ───────── wiring ───────── */
+/* ───────── the booth (#booth, or #booth=<printer>): a printer's own page, reached by the QR sticker on it. Nothing but a photograph,
+   then stickers and words, then the print, with a small code on it that opens the site. Two ways on: again, or novel.global.
+   The photograph is made ready for the printer's dots (levels, dot gain, sharpening, then Atkinson's dither by CanvasDither) ───────── */
+var BTH = null, ditherP = null;
+function ditherLib() { if (window.CanvasDither) return Promise.resolve(window.CanvasDither); if (!ditherP) ditherP = new Promise(function (res) { var s = document.createElement('script'); s.src = 'vendor/canvas-dither.js'; s.onload = function () { res(window.CanvasDither || null); }; s.onerror = function () { res(null); }; document.head.appendChild(s); }); return ditherP; }
+var siteURL = function (h) { var base = /\.workers\.dev$|localhost|\.test$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + (h ? '#' + h : ''); };
+var EYE_ASCII = '   _.-~~~~-._\n <(   (o)   )>\n   \'-.____.-\'\n    \'  \'  \'';
+var STICKERS = ['*', '<3', '<(o)>', '~~~', ':)', '\\o/', '+'];
+function boothOn(dest) {
+  BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
+  document.body.classList.add('booth'); sheet.hidden = true; dock.hidden = true;
+  var el = $('#booth') || document.body.appendChild(Object.assign(document.createElement('main'), { id: 'booth' }));
+  printers().then(function (l) { var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384; });
+  boothStart(el);
+}
+function boothStart(el) {
+  el = el || $('#booth'); BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
+  var wait = (+store.get('da.booth.next', 0) || 0) - Date.now(); clearTimeout(BTH.t);
+  if (wait > 0) { el.innerHTML = '<p class="bm">novel.global</p><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre><div class="am"><a href="' + esc(siteURL()) + '" aria-label="novel.global">[ novel.global ]</a></div>'; BTH.t = setTimeout(function () { if ($('#booth .art') && !$('#bt-pv') && !$('#bt-on')) boothStart(); }, wait); return; }
+  el.innerHTML = '<p class="bm">novel.global</p><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre>' +
+    '<div class="am"><label aria-label="Take a photograph" title="Take a photograph">[ (o) ]<input type="file" accept="image/*" capture="environment" hidden></label>' +
+    '<label aria-label="Upload a photograph" title="Upload a photograph">[ ^ ]<input type="file" accept="image/*" hidden></label></div>';
+  $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
+}
+function boothPic(file) {
+  document.body.classList.add('busy'); var url = URL.createObjectURL(file);
+  loadImg(url).catch(function () { return window.createImageBitmap ? createImageBitmap(file) : Promise.reject(); }).then(function (im) {
+    document.body.classList.remove('busy'); var w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height, k = Math.min(1, 1600 / Math.max(w0, h0));
+    var c = document.createElement('canvas'); c.width = Math.round(w0 * k); c.height = Math.round(h0 * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); BTH.im = c; boothEdit();
+  }).catch(function () { document.body.classList.remove('busy'); toast('×'); });
+}
+/* the photograph made ready for the printer's dots: stretched to its own darkest and lightest, lifted for the spread of a hot dot,
+   sharpened a little, then dithered. Stickers go on after, crisp */
+function forPrint(src, W, D) {
+  var H = Math.round(src.height * W / src.width), c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(src, 0, 0, W, H);
+  var img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, L = new Float32Array(n), hist = new Uint32Array(256), i, l;
+  for (l = 0, i = 0; l < n; l++, i += 4) { L[l] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; hist[L[l] | 0]++; }
+  var lo = 0, hi = 255, acc = 0; for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > n * 0.01) { lo = i; break; } } acc = 0; for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > n * 0.01) { hi = i; break; } }
+  if (hi - lo < 40) { lo = 0; hi = 255; } /* a flat picture is left as it is, never stretched to black */
+  var span = hi - lo, B2 = new Float32Array(n);
+  for (l = 0; l < n; l++) L[l] = 255 * Math.pow(Math.max(0, Math.min(1, (L[l] - lo) / span)), 0.8);
+  for (var y = 0; y < H; y++) for (var xx = 0; xx < W; xx++) { var s = 0, m = 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var yy = y + dy, x2 = xx + dx; if (yy >= 0 && yy < H && x2 >= 0 && x2 < W) { s += L[yy * W + x2]; m++; } } B2[y * W + xx] = s / m; }
+  for (l = 0, i = 0; l < n; l++, i += 4) { var v = L[l] + 0.7 * (L[l] - B2[l]); d[i] = d[i + 1] = d[i + 2] = v < 0 ? 0 : v > 255 ? 255 : v; }
+  if (D) D.atkinson(img); else for (i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = d[i] < 128 ? 0 : 255;
+  x.putImageData(img, 0, 0); return c;
+}
+function drawStickers(x, W, H, ink) {
+  BTH.st.forEach(function (s) {
+    var f = Math.round(W * 0.1); x.font = 'bold ' + f + 'px ui-monospace, Menlo, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+    x.lineWidth = Math.max(3, f * 0.22); x.strokeStyle = '#fff'; x.strokeText(s.t, s.x * W, s.y * H); x.fillStyle = ink; x.fillText(s.t, s.x * W, s.y * H);
+  });
+  x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+}
+function boothEdit() {
+  var el = $('#booth');
+  el.innerHTML = '<p class="bm">novel.global</p><div class="pv" id="bt-pv"><canvas></canvas></div>' +
+    '<div class="am sm" id="bt-st">' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" class="' + (i === BTH.pick ? 'on' : '') + '" aria-label="Sticker ' + esc(t) + '">[ ' + esc(t) + ' ]</button>'; }).join('') + '</div>' +
+    '<div class="am sm"><button id="bt-aa" aria-label="Words" title="Words">[ Aa ]</button><button id="bt-un" aria-label="Undo" title="Undo">[ &lt;- ]</button><button id="bt-x" aria-label="Start again" title="Start again">[ x ]</button><button id="bt-go" class="go" aria-label="Print" title="Print">[ &gt;&gt; ]</button></div>' +
+    '<input id="bt-w" class="bw" maxlength="40" aria-label="Words" hidden>';
+  var cv = $('#bt-pv canvas'), paint = function () {
+    ditherLib().then(function (D) { var p = forPrint(BTH.im, BTH.paper, D); cv.width = p.width; cv.height = p.height; var x = cv.getContext('2d'); x.drawImage(p, 0, 0); drawStickers(x, p.width, p.height, '#000'); });
+  };
+  cv.addEventListener('click', function (e) {
+    var r = cv.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    var hit = BTH.st.filter(function (s) { return Math.abs(s.x - px) < 0.06 && Math.abs(s.y - py) < 0.05; })[0];
+    if (hit) BTH.st.splice(BTH.st.indexOf(hit), 1); else BTH.st.push({ t: STICKERS[BTH.pick], x: px, y: py }); paint();
+  });
+  $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { BTH.pick = +b.dataset.k; $$('#bt-st button').forEach(function (o) { o.classList.toggle('on', o === b); }); }); });
+  var w = $('#bt-w'); w.value = BTH.words;
+  $('#bt-aa').addEventListener('click', function () { w.hidden = !w.hidden; if (!w.hidden) w.focus(); });
+  w.addEventListener('input', function () { BTH.words = w.value; });
+  $('#bt-un').addEventListener('click', function () { BTH.st.pop(); paint(); });
+  $('#bt-x').addEventListener('click', function () { boothStart(); });
+  $('#bt-go').addEventListener('click', boothPrint);
+  paint();
+}
+/* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
+function boothSlip(D, code) {
+  var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D);
+  var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace';
+  var lines = words ? wrapText(x, words, W - pad * 2) : [];
+  return qrLib().then(function (Q) {
+    var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
+    var mod = Math.max(3, Math.round(4 * u)), qs = q ? q.getModuleCount() * mod : 0;
+    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0), foot = Math.max(qs, Math.round(40 * u)) + pad * 2;
+    c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
+    x.font = Math.round(16 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText('novel.global', pad, Math.round(8 * u)); var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
+    x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
+    var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
+    y = c.height - foot + pad; x.font = Math.round(14 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(EYE_ASCII.split('\n')[1].trim(), pad, y); x.fillText(code, pad, y + Math.round(22 * u));
+    if (q) { var n = q.getModuleCount(), ox = W - pad - qs; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, y + i * mod, mod, mod); }
+    return c;
+  });
+}
+/* the photograph kept for the site's gallery: in colour, its stickers on, as large as the server takes */
+function boothPhoto() {
+  var im = BTH.im, N = 1280, out = '';
+  for (var k = 0; k < 4; k++) {
+    var s = Math.min(1, N / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+    var x = c.getContext('2d'); x.drawImage(im, 0, 0, c.width, c.height); drawStickers(x, c.width, c.height, '#111');
+    out = c.toDataURL('image/jpeg', 0.86 - k * 0.06); if (out.length < 400e3) return out; N = Math.round(N * 0.8);
+  }
+  return out.length < 400e3 ? out : '';
+}
+function boothPrint() {
+  var el = $('#booth'), id = 'b' + Date.now().toString(36), cd = code(id + '|' + Date.now());
+  ditherLib().then(function (D) { return boothSlip(D, cd); }).then(function (slipCv) {
+    var lat = map.lat, lng = map.lng, words = BTH.words.trim(), photo = boothPhoto();
+    el.innerHTML = '<p class="bm">novel.global</p><div class="pv slip"></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
+      '<div class="am" id="bt-on"><button id="bt-again" aria-label="Again" title="Again" hidden>[ ↺ ]</button><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">[ novel.global ]</a></div>';
+    $('.pv.slip', el).appendChild(slipCv);
+    var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
+    if (photo) PHOTOS[id] = photo; NOTES.unshift(n); saveNotes();
+    var body = { type: 'booth', lat: +lat.toFixed(4), lng: +lng.toFixed(4), text: words };
+    var payload = { kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv) }; if (photo) payload.photo = photo;
+    var pip = $('#bt-pip');
+    send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); })
+      .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); } });
+    /* another photograph only after a wait no one sees, two to five minutes, so the printer stays free for everyone */
+    var next = Date.now() + 120e3 + Math.random() * 180e3; store.set('da.booth.next', next);
+    var ag = $('#bt-again'); ag.addEventListener('click', function () { boothStart(); }); clearTimeout(BTH.t); BTH.t = setTimeout(function () { ag.hidden = false; }, next - Date.now());
+  });
+}
+/* the poster a printer prints for itself, once it is online: PRINT FREE (the print is free, not the printer), the eye, and its booth's code drawn as a terminal draws
+   one, each module a cell with its gap, inside an ASCII frame. Read by any phone's camera */
+function boothPoster(dest, W) {
+  W = W || 512; var u = W / 512, pad = Math.round(20 * u), url = siteURL('booth' + (dest && dest !== 'novelglobal' ? '=' + dest : ''));
+  return qrLib().then(function (Q) {
+    var q = Q ? Q(0, 'M') : null; if (q) { q.addData(url); q.make(); }
+    var n = q ? q.getModuleCount() : 0, cell = Math.floor((W - pad * 2 - 40 * u) / (n + 6)), qs = cell * (n + 6), F = function (px, b) { return (b ? 'bold ' : '') + Math.round(px * u) + 'px ui-monospace, Menlo, monospace'; };
+    var big = bigWord('PRINT').concat(bigWord('FREE')), m = document.createElement('canvas').getContext('2d'); m.font = F(30, 1);
+    var bf = Math.min(30, 30 * (W - pad * 2) / m.measureText(big[0]).width / u), lh = Math.round(bf * 1.05 * u);
+    var c = document.createElement('canvas'); c.width = W; c.height = Math.round(60 * u) + big.length * lh + Math.round(150 * u) + qs + Math.round(140 * u); var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
+    x.font = F(16); x.fillText('novel.global', pad, pad);
+    var y = Math.round(60 * u); x.font = F(bf, 1);
+    big.forEach(function (t, k) { var row = k < 4 ? bigWord('PRINT') : bigWord('FREE'); x.fillText(t, Math.round((W - x.measureText(row[0]).width) / 2), y); y += lh + (k === 3 ? Math.round(10 * u) : 0); });
+    y += Math.round(16 * u); x.font = F(22); var ew = x.measureText(' <(   (o)   )>').width;
+    EYE_ASCII.split('\n').forEach(function (t) { x.fillText(t, Math.round((W - ew) / 2), y); y += Math.round(26 * u); });
+    var top = y + Math.round(30 * u), ox = Math.round((W - qs) / 2);
+    x.font = F(18); var ch = x.measureText('-').width, cols = Math.floor((qs + 2 * ch) / ch);
+    var rule = '+' + new Array(cols - 1).join('-') + '+'; x.fillText(rule, ox - ch, top - Math.round(22 * u)); x.fillText(rule, ox - ch, top + qs + Math.round(4 * u));
+    for (var yy = top; yy < top + qs; yy += Math.round(20 * u)) { x.fillText('|', ox - ch, yy); x.fillText('|', ox + qs, yy); }
+    if (q) { var g = cell >= 8 ? 1 : 0, eye = function (i, j) { return (i < 7 || i >= n - 7) && j < 7 || i < 7 && j >= n - 7; }; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) { var e = eye(i, j) ? 0 : g; x.fillRect(ox + (j + 3) * cell, top + (i + 3) * cell, cell - e, cell - e); } }
+    y = top + qs + Math.round(36 * u); x.font = F(20); var k = '[ (o) ]  [ ^ ]'; x.fillText(k, Math.round((W - x.measureText(k).width) / 2), y);
+    x.font = F(13); var ul = url.replace(/^https?:\/\//, ''); x.fillText(ul, Math.round((W - x.measureText(ul).width) / 2), y + Math.round(40 * u));
+    return c;
+  });
+}
+/* big letters in ASCII, four rows each, as FIGlet's small font draws them */
+var BIG = { P: [' ___ ', '| _ \\', '|  _/', '|_|  '], R: [' ___ ', '| _ \\', '|   /', '|_|_\\'], I: [' ___ ', '|_ _|', ' | | ', '|___|'], N: [' _  _ ', '| \\| |', '| .` |', '|_|\\_|'],
+  T: [' _____ ', '|_   _|', '  | |  ', '  |_|  '], F: [' ___ ', '| __|', '| _| ', '|_|  '], E: [' ___ ', '| __|', '| _| ', '|___|'] };
+function bigWord(w) { return [0, 1, 2, 3].map(function (r) { return w.split('').map(function (l) { return BIG[l][r]; }).join(''); }); }
+/* the sticker for a printer: its booth's code, to stick beside it. Kept with the other downloads in SHOP */
+function boothSticker(dest) {
+  return qrLib().then(function (Q) {
+    var S = 1200, c = document.createElement('canvas'); c.width = S; c.height = Math.round(S * 1.3); var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000';
+    x.font = '44px ui-monospace, Menlo, monospace'; EYE_ASCII.split('\n').forEach(function (t, i) { x.fillText(t, 300, 120 + i * 54); });
+    if (Q) { var q = Q(0, 'M'); q.addData(siteURL('booth' + (dest && dest !== 'novelglobal' ? '=' + dest : ''))); q.make(); var n = q.getModuleCount(), m = Math.floor(860 / n), o = Math.round((S - n * m) / 2); for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(o + j * m, 400 + i * m, m, m); }
+    x.font = '40px ui-monospace, Menlo, monospace'; x.fillText('[ (o) ]  [ ^ ]', 420, 1350); x.font = '52px ui-monospace, Menlo, monospace'; x.fillText('novel.global', 420, 1460);
+    download(c, 'novel-global-photo-qr.png'); return c;
+  });
+}
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
-  if (!/^(radio|wish|shop|pixel|search|guide|now|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
+  if (!/^(radio|wish|shop|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
+  if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }
+  if (BTH) return;
   if (document.body.classList.contains('mapmode')) mapOn(false);
   if (h === 'radio') radioSheet(); else if (h === 'wish') wishSheet(); else if (h === 'shop') shopSheet(); else if (h === 'pixel') boardSheet(); else if (h === 'search' || h === 'guide' || h === 'now') guideSheet('');
   else if (/^n=DA-/i.test(h)) {
@@ -1380,5 +1559,5 @@ credit(); dock.hidden = !NOTES.length; render();
 /* the field pack after the first paint, then what is happening now */
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();
-window.__base = { hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
+window.__base = { poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

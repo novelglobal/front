@@ -149,6 +149,35 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the booth, 24 October** (the owner: "the printer in stores or in public becomes a habit and free service … a small working QR code starts the real story").
+  - **The booth** (`#booth`, or `#booth=<printer id>` for a partner's printer): a printer's own page, with nothing of the site on it.
+    1. **The start.** The ASCII eye and two keys: `[ (o) ]` takes a photograph and `[ ^ ]` uploads one.
+    2. **Editing.** The photograph is shown as it will print. A small ASCII menu holds:
+       - seven stickers, each placed by a tap and taken off by another;
+       - `[ Aa ]` for words, which print large under the photograph;
+       - `[ <- ]` undo, `[ x ]` start again, and `[ >> ]` print.
+    3. **Sent.** The receipt as printed and its pips, then `[ novel.global ]` (the full site) and `[ ↺ ]` (another photograph).
+       - ↺ appears only after a wait no one sees, a random two to five minutes (`da.booth.next`), so no one prints on repeat. The wait survives a reload: until it ends, the page shows only the eye and `[ novel.global ]`. The Worker's own limit (eight sends in ten minutes per address) still stands behind it.
+  - **The receipt** holds:
+    - the photograph made ready for the printer's dots (`forPrint`):
+      - stretched between its own darkest and lightest 1% (a flat picture is left as it is);
+      - lifted for the spread of a hot dot (gamma 0.8);
+      - sharpened a little;
+      - dithered with Atkinson's method from **CanvasDither** (Niels Leenheer, MIT, `repo-static/vendor/canvas-dither.js`). It is ported to plain script, and the error is carried in a float buffer.
+    - the stickers, drawn crisp after the dither;
+    - the words;
+    - a small QR code (`#n=<code>`) that opens its page on the site, and is kept as a way back in.
+  - **The gallery.** The colour photograph, stickers on, is sent with the print, as large as the server takes (1280 px at most, stepped down to stay under 400 KB).
+    - It is `type: 'booth'`. Once approved, it is in RADIO's photographs.
+    - It is never a W.I.S.H. thread, and it is kept on the phone as one's own.
+    - A partner printer prints without approval only when it is set to on the approval page (PRINTS WITHOUT APPROVAL). Otherwise each booth print waits for a yes.
+  - **SHOP's downloads row** has two new keys:
+    - **The QR sticker** for the booth: a PNG with the eye, the code and novel.global.
+    - **The poster**, printed on the 80 mm printer: PRINT FREE in big ASCII letters on two lines (FIGlet's small font), the eye, and the booth's code. The code is drawn in terminal cells inside an ASCII frame; its three corners are kept solid so a camera reads it. It goes to the first 80 mm printer online, else novel.global's, and waits there if that printer is off.
+  - **RADIO, checked again:**
+    - ↓ keep and ⇩ download were two keys for one wish. ⇩ now keeps the song and downloads it.
+    - ▶ on an empty deck played silence. It now lays the eight nearest lives on the first track as a figure, to change or play over.
+    - The note count and the scale's name are gone.
 - **v0.1 alpha, round four, 24 October** (the owner: "the last chance before the showcase … help someone through this journey without words"). The base is cut to the reference art: dark by default (e-ink paper in light), one monospace at 12 px, and no words but novel.global and what is urgent. The sources an addition might come from are in `docs/sources.md`.
   - **The eye** (`#cam`): two bamboo sticks lashed at the corners, a dotted iris, a shell pupil and five threads hanging with beads, after the stick chart and the bark painting. It is the camera. It looks about slowly; while a photograph is read the iris turns (`body.busy`).
   - **Glyphs, not words**: RADIO (a mast), W.I.S.H. (four beads on a stick), SHOP (a receipt), map, guide, light and dark, drawn once as an SVG sprite in `index.html`. Each keeps its name as a label for screen readers.
@@ -613,7 +642,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v77` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v78` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

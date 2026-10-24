@@ -1548,7 +1548,7 @@ if (run('base')) try {
   check('the engine stays narrow: nothing reads as everything, each need finds its own call', broad.every(r => r.rel <= 3 && r.lines <= 3) && broad[0].rel === 0 && broad[2].issue === 'swoop' && broad[3].issue === 'snake' && /DEECA/.test(broad[3].call) && broad[4].issue === 'dead' && /SICK OR DEAD/.test(broad[4].call), JSON.stringify(broad));
   await shot(page, 'b02-notice.png');
   await tap(page, '#n-next');
-  const seen = await (await page.waitForFunction(() => { const l = document.querySelectorAll('#n-seen li:not(.wait)'); const k = document.querySelectorAll('#net circle.seen').length; return l.length && (k || l[0].classList.contains('empty')) ? { rows: [...l].map(x => x.textContent), knots: k } : null; }, null, { timeout: 15000, polling: 50 }).catch(async e => { await shot(page, 'b02x.png'); throw new Error('placed: ' + await page.evaluate(() => (document.querySelector('#sheet') || {}).innerHTML.slice(0, 300) + ' | seen=' + document.querySelectorAll('#net circle.seen').length + ' notes=' + window.__base.notes().length)); })).jsonValue();
+  const seen = await (await page.waitForFunction(() => { const l = document.querySelectorAll('#n-seen li:not(.wait)'); const n0 = window.__base.notes()[0], ids = ((n0 && n0.seen) || []).map(s => s.id); const hk = window.__base.hits().knots; window.__dk = (window.__dk || []).concat([hk.length + ':' + l.length + ':' + ids.join('/') + ':' + document.body.className]).slice(-6); const k = hk.filter(h => ids.includes(h.n.id)).length; return l.length && (k || l[0].classList.contains('empty')) ? { rows: [...l].map(x => x.textContent), knots: k } : null; }, null, { timeout: 15000, polling: 50 }).catch(async e => { await shot(page, 'b02x.png'); throw new Error('placed: ' + await page.evaluate(() => (document.querySelector('#sheet') || {}).innerHTML.slice(0, 40) + ' | seen=' + JSON.stringify((window.__base.notes()[0] || {}).seen) + ' dk=' + JSON.stringify(window.__dk) + ' notes=' + window.__base.notes().length)); })).jsonValue();
   check('placed: the knot falls on the ground and a few nearby sightings of the same and related lives are revealed, three at most', seen.rows.length >= 1 && seen.rows.length <= 3 && /Rainbow Lorikeet/.test(seen.rows[0]) && seen.knots === seen.rows.length, JSON.stringify(seen));
   check('the data travels with it: suburb, nearest water, canopy, today\'s heat, Niño 3.4', (await page.evaluate(() => window.__base.notes()[0].data.join())) === 'CARLTON,CARLTON GARDENS PONDS,CANOPY 22%,29° TODAY,NIÑO 3.4 +2.8');
   await shot(page, 'b02b-placed.png');
@@ -1584,9 +1584,14 @@ if (run('base')) try {
   /* RADIO: a 4-track to play into */
   await page.goto('https://oan.test/'); await page.goto('https://oan.test/#radio'); await page.waitForSelector('#deck', { timeout: 8000 });
   await page.waitForFunction(() => document.querySelectorAll('#r-body .tiles button').length > 3, null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelectorAll('#net circle').length > 10, null, { timeout: 15000 }).catch(() => {});
   const radio = await page.evaluate(() => ({ sos: [...document.querySelectorAll('.sos a')].map(a => a.getAttribute('href')), tracks: document.querySelectorAll('#deck .ins').length, steps: document.querySelectorAll('#deck .cells').length && document.querySelector('#deck .cells').children.length, tiles: document.querySelectorAll('#r-body .tiles button').length, photos: [...document.querySelectorAll('#r-body .tiles button')].filter(b => b.style.backgroundImage).length, mine: document.querySelectorAll('#r-body .tiles button.mine').length, knots: document.querySelectorAll('#net circle').length, studio: !!document.querySelector('#sheet a[href^="studio"]') }));
   check('RADIO: the emergency numbers on top, a 4-track of 16 steps, the sightings about now as photographs with one\'s own, all as knots, no way out to the old site', radio.sos.join() === 'tel:000,tel:0384007300' && radio.tracks === 4 && radio.steps === 16 && radio.tiles > 10 && radio.photos > 5 && radio.mine >= 1 && radio.knots > 10 && !radio.studio, JSON.stringify(radio));
   const url0 = page.url();
+  await tap(page, '#d-play'); await sleep(900);
+  const sd = await page.evaluate(() => ({ notes: window.__base.song().tracks[0].steps.filter(x => x != null).length, on: window.__base.seq().on }));
+  check('▶ on an empty deck never plays silence: the lives about become a figure on the first track', sd.notes >= 4 && sd.on, JSON.stringify(sd));
+  await tap(page, '#d-play'); await tap(page, '#d-clear');
   await tap(page, '#d-rec'); await sleep(300);
   for (let k = 0; k < 4; k++) { await page.click(`#r-body .tiles button:nth-child(${k + 2})`); await sleep(260); }
   const rc = await page.evaluate(() => ({ notes: window.__base.song().tracks.reduce((a, t) => a + t.steps.filter(x => x != null).length, 0), on: window.__base.seq().on, peek: !document.querySelector('#peek').hidden }));
@@ -1596,10 +1601,9 @@ if (run('base')) try {
   const set = await page.evaluate(() => ({ open: !!document.querySelector('#deck .set'), ins: [...document.querySelectorAll('#deck .set [data-ins]')].map(b => b.title) }));
   await page.click('#deck .set [data-ins="taiko"]'); await sleep(150);
   check('a double tap on a track opens its settings: the instruments (gamelan, jegog, voice, kecak, taiko), level, pitch, length, mute', set.open && set.ins.join() === 'gamelan,jegog,voice,chak,taiko' && (await page.evaluate(() => window.__base.song().tracks[1].ins)) === 'taiko', JSON.stringify(set));
-  await tap(page, '#d-keep'); await sleep(200);
   const dl = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await tap(page, '#d-wav'); const file = await dl;
   const kept = await page.evaluate(() => ({ songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
-  check('↓ keeps the song, ⇩ downloads it as a sound file (WAV)', kept.songs === 1 && kept.store === 1 && kept.wav > 100000 && !!file && /\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
+  check('⇩ keeps the song and downloads it as a sound file (WAV): one key, not two', kept.songs === 1 && kept.store === 1 && kept.wav > 100000 && !!file && /\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
   await page.click('#r-body .tiles button:not(.mine)'); await sleep(400);
   const pk = await page.evaluate(() => ({ peek: !document.querySelector('#peek').hidden, name: (document.querySelector('#peek b') || {}).textContent, deck: !!document.querySelector('#deck') }));
   check('a sighting opens as a card in place: RADIO stays, nothing leads away', pk.peek && !!pk.name && pk.deck && page.url() === url0, JSON.stringify(pk) + page.url());
@@ -1633,12 +1637,13 @@ if (run('base')) try {
   check('one field searches the guide', await page.evaluate(() => !!document.querySelector('#g-out [data-sp="tawny-frogmouth"]')));
   /* the map: filled, every mark explains itself, a card in place */
   await page.goto('https://oan.test/'); await sleep(500); await tap(page, '#b-map');
-  await page.waitForFunction(() => window.__base.hits().knots.length > 10, null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => window.__base.hits().knots.length > 10, null, { timeout: 15000 }).catch(() => {}); await sleep(1500);
   const mh = await page.evaluate(() => { const h = window.__base.hits(); const kn = h.knots; const on = kn.find(x => x.x > 80 && x.x < innerWidth - 80 && x.y > 80 && x.y < innerHeight - 120 && !kn.some(o => o !== x && Math.hypot(o.x - x.x, o.y - x.y) < 18)); return { knots: kn.length, sticks: h.sticks.length, at: on ? [on.x, on.y] : null, home: getComputedStyle(document.querySelector('#home')).display }; });
   if (mh.at) await page.mouse.move(mh.at[0], mh.at[1]); await sleep(300);
   const tip = await page.evaluate(() => { const t = document.querySelector('#tip'); return t.hidden ? '' : t.textContent; });
   check('MAP is filled with what is about, and a knot says what it is when the pointer is over it', mh.knots > 10 && mh.home === 'none' && /\S+ · /.test(tip), JSON.stringify(mh) + tip);
-  const u1 = page.url(); if (mh.at) await page.mouse.click(mh.at[0], mh.at[1]); await sleep(500);
+  const at2 = await page.evaluate(() => { const kn = window.__base.hits().knots; const on = kn.find(x => x.x > 80 && x.x < innerWidth - 80 && x.y > 80 && x.y < innerHeight - 120 && !kn.some(o => o !== x && Math.hypot(o.x - x.x, o.y - x.y) < 18)); return on ? [on.x, on.y] : null; });
+  const u1 = page.url(); if (at2) await page.mouse.click(at2[0], at2[1]); await sleep(500);
   check('a knot touched opens its card in place, never another page', await page.evaluate(() => !document.querySelector('#peek').hidden) && page.url() === u1, page.url());
   await page.click('#pk-x');
   const before = await page.evaluate(() => window.__base.notes().length);
@@ -1654,6 +1659,43 @@ if (run('base')) try {
   /* a studio link still opens the studio */
   await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForURL(/\/studio#mix=/, { timeout: 8000 }).catch(() => {});
   check('a link the studio made (#mix=…) goes on to the studio', /\/studio#mix=-37\.7712/.test(page.url()), page.url());
+  /* the booth: a printer's own page, reached by the QR sticker kept with SHOP's downloads */
+  await page.goto('https://oan.test/'); await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-qr');
+  const dq = page.waitForEvent('download', { timeout: 10000 }).catch(() => null); await page.click('#s-qr'); const qf = await dq;
+  const qrTo = qf ? await (async () => { const { data, info } = await sharp(await qf.path()).flatten({ background: '#ffffff' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true }); const q = jsQR(new Uint8ClampedArray(data), info.width, info.height); return q ? q.data : null; })() : null;
+  check('SHOP keeps the booth\'s QR sticker with the other downloads, and it reads as the booth\'s page', qrTo === 'https://oan.test/#booth', String(qrTo));
+  await page.evaluate(() => { window.__said = []; const f = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function (t) { window.__said.push(String(t)); return f.apply(this, arguments); }; });
+  await page.click('#s-poster'); await page.waitForFunction(() => /●/.test(document.querySelector('#s-pst').textContent), null, { timeout: 10000 });
+  const pw = (((await admin('stories?status=waiting')).stories) || []).find(x => x.kind === 'record' && /"poster"/.test(x.body));
+  const pc0 = await page.evaluate(async () => { const c = await window.__base.poster('novelglobal', 512); return { url: c.toDataURL('image/png'), w: c.width, said: [...new Set(window.__said)] }; });
+  const onPoster = await qrIn(pc0.url);
+  check('SHOP prints the poster on the 80 mm printer: PRINT FREE in big ASCII letters on two lines, its only words beside novel.global, its code drawn in terminal cells and still read by a camera', !!pw && pw.dest === 'novelglobal' && pc0.w === 512 && pc0.said.includes('| _ \\| _ \\|_ _|| \\| ||_   _|') && pc0.said.includes('|_|  |_|_\\|___||___|') && !pc0.said.some(t => /PRINT|FREE/.test(t)) && onPoster === 'https://oan.test/#booth', JSON.stringify({ said: pc0.said.slice(0, 12), onPoster, dest: pw && pw.dest }));
+  await page.goto('https://oan.test/'); await page.goto('https://oan.test/#booth'); await page.waitForSelector('#booth .am');
+  const b0 = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#booth label, #booth button, #booth a')].map(k => k.textContent.trim()), cams: [...document.querySelectorAll('#booth input[type=file]')].map(i => i.hasAttribute('capture')), shown: [...document.body.children].filter(e => !/^(SVG|svg|SCRIPT)$/.test(e.tagName) && getComputedStyle(e).display !== 'none').map(e => e.id || e.tagName) }));
+  await shot(page, 'b06-booth.png');
+  check('the booth: nothing but take or upload a photograph, as small ASCII keys; nothing else of the site shows', b0.keys.join() === '[ (o) ],[ ^ ]' && b0.cams.join() === 'true,false' && b0.shown.join() === 'booth', JSON.stringify(b0));
+  await page.setInputFiles('#booth input:not([capture])', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() });
+  await page.waitForFunction(() => { const c = document.querySelector('#bt-pv canvas'); return c && c.width > 100; }, null, { timeout: 10000 }); await sleep(300);
+  const ed = await page.evaluate(() => { const c = document.querySelector('#bt-pv canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, Math.round(c.height * 0.6)).data; let mid = 0, ink = 0; for (let i = 0; i < d.length; i += 4) { if (d[i] > 20 && d[i] < 235) mid++; if (d[i] < 20) ink++; } return { w: c.width, mid, ink: +(ink / (d.length / 4)).toFixed(2), keys: [...document.querySelectorAll('#booth button')].map(b => b.textContent) }; });
+  check('then stickers and words in an ASCII menu, the photograph shown as it will print: dithered to one bit at the printer\'s 512 dots (CanvasDither)', ed.w === 512 && ed.mid === 0 && ed.ink > 0.1 && ed.ink < 0.9 && ed.keys.includes('[ <3 ]') && ed.keys.includes('[ Aa ]') && ed.keys.includes('[ >> ]'), JSON.stringify(ed));
+  await page.click('#bt-st [data-k="1"]'); const bx = await page.locator('#bt-pv canvas').boundingBox(); await page.mouse.click(bx.x + bx.width * 0.3, bx.y + bx.height * 0.3); await sleep(200);
+  await page.click('#bt-aa'); await page.fill('#bt-w', 'hello from carlton'); await shot(page, 'b06b-booth-edit.png'); await page.click('#bt-go');
+  await page.waitForSelector('#bt-again', { timeout: 10000, state: 'attached' }); await page.waitForFunction(() => /●/.test(document.querySelector('#bt-pip').textContent), null, { timeout: 10000 });
+  const bw = (((await admin('stories?status=waiting')).stories) || []).find(x => x.kind === 'record' && /"booth"/.test(x.body));
+  const bb = bw ? JSON.parse(bw.body) : {};
+  const out = await page.evaluate(() => ({ url: document.querySelector('.pv.slip canvas').toDataURL('image/png'), w: document.querySelector('.pv.slip canvas').width, keys: [...document.querySelectorAll('#bt-on > *')].map(k => k.textContent.trim() + '>' + (k.getAttribute('href') || '')), st: window.__base.notes()[0].st }));
+  const onSlip = await qrIn(out.url);
+  check('⎙ prints it: sent to the printer with its colour photograph for the gallery, its words, and the receipt\'s small code opens its page on the site', !!bw && bw.photo && bw.dest === 'novelglobal' && bb.type === 'booth' && bb.text === 'hello from carlton' && out.w === 512 && onSlip === 'https://oan.test/#n=' + bw.code, JSON.stringify({ bb, onSlip, code: bw && bw.code }));
+  await sleep(600); await shot(page, 'b06c-booth-sent.png');
+  const hid = await page.evaluate(() => document.querySelector('#bt-again').hidden);
+  check('once sent, two ways on and no more: again (hidden through an unseen wait of two to five minutes, against printing on repeat), or novel.global', out.keys.join() === '[ ↺ ]>,[ novel.global ]>https://oan.test/' && hid, JSON.stringify(out.keys) + hid);
+  await page.click('#bt-site'); await page.waitForFunction(() => !document.body.classList.contains('booth') && getComputedStyle(document.querySelector('#home')).display !== 'none', null, { timeout: 8000 });
+  check('novel.global opens the full site, and the booth photograph is kept as one\'s own, out of the W.I.S.H. thread', await page.evaluate(() => window.__base.notes()[0].booth === true && !location.hash));
+  const wait = await page.evaluate(() => (+localStorage.getItem('da.booth.next')) - Date.now());
+  await page.goto('https://oan.test/#booth'); await page.waitForSelector('#booth .art'); await sleep(300);
+  const locked = await page.evaluate(() => document.querySelectorAll('#booth label, #booth button').length + '|' + [...document.querySelectorAll('#booth a')].map(a => a.textContent.trim()).join());
+  await page.evaluate(() => localStorage.setItem('da.booth.next', '0')); await page.reload(); await page.waitForSelector('#booth .am');
+  check('the wait holds through a reload: only novel.global until it is over, then the two again', wait > 110e3 && wait < 301e3 && locked === '0|[ novel.global ]', JSON.stringify({ wait, locked }));
   await ctx.close();
   /* on a phone: nothing wider than the screen */
   const pc = await newCtx({ viewport: { width: 375, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(pc); const pp = await pc.newPage(); watch(pp, 'base-phone');
