@@ -55,7 +55,7 @@ function at(x, y) { return { lat: uy(wy(map.lat, map.z) + y - map.h / 2, map.z),
 var tilesEl = $('#tiles'), netEl = $('#net'), terrain = $('#terrain');
 var shown = function () { var c = document.body.classList; return c.contains('mapmode') || c.contains('half'); };
 function drawTiles() {
-  if (!PACKS.terrain || !B.imagery) { tilesEl.innerHTML = ''; map.tiles = {}; terrain.style.background = 'radial-gradient(circle, var(--rule) 1px, transparent 1.2px) 0 0/22px 22px'; return; }
+  if (!PACKS.terrain || !B.imagery) { tilesEl.innerHTML = ''; map.tiles = {}; terrain.style.background = ''; return; }
   terrain.style.background = '';
   var z = map.z, cx = wx(map.lng, z), cy = wy(map.lat, z), n = Math.pow(2, z);
   var x0 = Math.floor((cx - map.w / 2) / TS), x1 = Math.floor((cx + map.w / 2) / TS), y0 = Math.floor((cy - map.h / 2) / TS), y1 = Math.floor((cy + map.h / 2) / TS);
@@ -125,13 +125,13 @@ var TONE = { bird: '#C9A15A', parrot: '#C4643A', waterbird: '#8A9690', owl: '#7A
 var toneOf = function (n) { return TONE[gOf(n)] || '#A89A86'; };
 var WEB = store.get('da.base.web', null); if (!WEB || !WEB.seq) WEB = { nodes: {}, seq: [], sets: [] };
 var webFresh = {};
-function saveWeb() { if (WEB.seq.length > 160) { WEB.seq = WEB.seq.slice(-160); var keep = {}; WEB.seq.forEach(function (id) { keep[id] = WEB.nodes[id]; }); WEB.sets.forEach(function (s) { (s.pts || []).forEach(function (p) { if (WEB.nodes[p.id]) keep[p.id] = WEB.nodes[p.id]; }); }); WEB.nodes = keep; } store.set('da.base.web', WEB); }
+function saveWeb() { if (WEB.seq.length > 160) { WEB.seq = WEB.seq.slice(-160); var keep = {}; WEB.seq.forEach(function (id) { keep[id] = WEB.nodes[id]; }); WEB.sets.forEach(function (s) { (s.pts || []).forEach(function (p) { if (WEB.nodes[p.id]) keep[p.id] = WEB.nodes[p.id]; }); }); WEB.nodes = keep; } store.set('da.base.web', WEB); if (typeof remember === 'function' && SONG) remember(); if (AC) droneSync(); }
 /* a cell opened: kept, and tied to the one opened before it */
 function attend(n) {
   if (!n || !isFinite(n.lat) || !isFinite(n.lng)) return;
   WEB.nodes[n.id] = { id: n.id, at: n.at || Date.now(), lat: +n.lat, lng: +n.lng, cn: n.cn || '', sp: n.sp || '', g: gOf(n), mine: !!n.mine, say: n.say || '', thumb: n.thumb || n.photoURL || '' };
   var last = WEB.seq[WEB.seq.length - 1]; if (last === n.id) return;
-  WEB.seq.push(n.id); if (last) webFresh[last + '>' + n.id] = Date.now(); saveWeb(); render();
+  WEB.seq.push(n.id); if (last) { webFresh[last + '>' + n.id] = Date.now(); if (WEB.nodes[last]) { ac(); glide(WEB.nodes[last], WEB.nodes[n.id]); } } saveWeb(); render();
 }
 var webSets = function () { return WEB.sets || []; };
 function inSets(id) { return webSets().some(function (s) { return s.ids.indexOf(id) >= 0; }); }
@@ -423,13 +423,19 @@ var sheet = $('#sheet'), dock = $('#dock');
 function open(html, half, cls) {
   sheet.innerHTML = html; sheet.hidden = false; document.body.classList.remove('sheetmin'); sheet.dataset.k = ''; sheet.className = (half ? 'half ' : '') + (cls || ''); sheet.scrollTop = 0;
   document.body.classList.add('away'); document.body.classList.toggle('half', !!half); document.body.classList.toggle('wide', /\bwide\b/.test(cls || '')); dock.hidden = false; render();
-  var x = $('.x', sheet); if (x) x.addEventListener('click', close);
+  var x = $('.x', sheet); if (x) x.addEventListener('click', back);
 }
+/* back: a view opened from a page returns to that page when closed (a poster from PRINT goes back to PRINT, a print from a thread
+   back to the thread); a page itself closes to the start */
+var BACKTO = null, PAGE = null;
+function back() { var b = BACKTO; BACKTO = null; if (b) b(); else close(); }
 function close() {
-  sheet.hidden = true; sheet.innerHTML = ''; ['away', 'half', 'wide', 'sheetmin'].forEach(function (c) { document.body.classList.remove(c); }); net.live = document.body.classList.contains('mapmode'); if (radar.on) radarOn(false);
+  dockOn(''); BACKTO = null; PAGE = null; sheet.hidden = true; sheet.innerHTML = ''; radioPaint = null; ['away', 'half', 'wide', 'sheetmin'].forEach(function (c) { document.body.classList.remove(c); }); net.live = document.body.classList.contains('mapmode'); if (radar.on) radarOn(false);
   net.all = document.body.classList.contains('mapmode'); net.focus = null; net.links = []; net.only = null;
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on();
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on(); if (AC) droneSync();
 }
+/* the dock is the tabs: the page one is on is marked, so where one is and where else one can go are always in reach */
+function dockOn(k) { $$('#dock a').forEach(function (a) { var on = a.getAttribute('href') === '#' + k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
 var glyph = function (id) { return '<svg class="gi" aria-hidden="true"><use href="#g-' + id + '"/></svg>'; };
 var head = function (g, extra) { return '<div class="hd">' + (g ? '<span class="hg">' + glyph(g) + '</span>' : '') + (extra || '') + '<button class="x" aria-label="Close" title="Close">×</button></div>'; };
 /* ───────── noticing: the photograph, where and when, a line ───────── */
@@ -531,6 +537,7 @@ function context(n) {
    offered once, as the life it may be; an alert shows only when there is a real one; the place, the canopy, the heat and El Niño
    travel with the record unseen ───────── */
 function stepW() {
+  dockOn('print');
   focusOn(cur.lat, cur.lng, 17); net.focus = cur; net.links = []; render();
   open('<div class="hd"><span id="n-where"></span><button class="g loc" id="n-loc" aria-label="Where I am" title="Where I am">◎</button><button class="x" aria-label="Close" title="Close">×</button></div>' +
     (cur.photo ? '<div class="ph"><img alt="" src="' + cur.photo + '"></div>' : '') +
@@ -798,6 +805,7 @@ function pips(s) {
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art; the W.I.S.H. glyph
    writes its four lines on; the printer; print. Then the thread, where it shows whether or not a printer is on */
 function stepS(n, boardArt, art) {
+  dockOn('print');
   var photo = PHOTOS[n.id] || n.thumb || n.photoURL || '';
   var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
   var o = { art: art || (boardArt ? 'pixel' : photo ? 'photo' : 'net'), wish: !!n.wish };
@@ -931,7 +939,7 @@ function index() {
     }).join(''));
     var th = {}; DB.briefs.forEach(function (b) { (th[b.th] = th[b.th] || []).push(b); });
     h += sec('What worked elsewhere', DB.briefs.length, 'What other places did, with their sources.', Object.keys(th).map(function (k) {
-      return '<details class="sub"><summary><h4>' + esc(THEMES[k] || cap(k)) + ' · ' + th[k].length + '</h4></summary><ul class="list">' + th[k].map(function (b) { return '<li><a href="' + esc(b.url) + '" target="_blank" rel="noopener"><span>' + esc(b.t) + '</span><small>' + esc((b.city || '') + ' ' + (b.yr || '')) + ' ↗</small></a></li>'; }).join('') + '</ul></details>';
+      return '<details class="sub"><summary><h4>' + esc(THEMES[k] || cap(k)) + ' · ' + th[k].length + '</h4></summary><ul class="list">' + th[k].map(function (b) { return caseLi(b); }).join('') + '</ul></details>';
     }).join(''));
   }
   return '<div class="idx">' + h + '</div>';
@@ -942,7 +950,7 @@ function results(t) {
   (B.contacts || []).forEach(function (c) { if (lower(c[1]).indexOf(t) >= 0) res.push({ s: 8, h: '<a href="' + esc(c[2]) + '"><span>' + esc(cap(c[1])) + '</span><small>' + esc(c[0]) + '</small></a>' }); });
   if (DB) {
     DB.field.forEach(function (f) { var s = lower(f.cn).indexOf(t) >= 0 ? 3 : lower(f.n).indexOf(t) >= 0 ? 2 : lower([f.g, KINDS[f.g], f.where, f.event].join(' ')).indexOf(t) >= 0 ? 1 : 0; if (s) res.push({ s: s, h: '<button data-sp="' + esc(f.id) + '"><span>' + esc(f.cn) + '</span><small>' + esc(KINDS[f.g] || f.g) + '</small></button>' }); });
-    DB.briefs.forEach(function (b) { if (lower([b.t, b.i, b.city, b.th].join(' ')).indexOf(t) >= 0) res.push({ s: 0.5, h: '<a href="' + esc(b.url) + '" target="_blank" rel="noopener"><span>' + esc(b.t) + '</span><small>' + esc((b.city || '') + ' ' + (b.yr || '')) + ' ↗</small></a>' }); });
+    DB.briefs.forEach(function (b) { if (lower([b.t, b.i, b.city, b.th].join(' ')).indexOf(t) >= 0) res.push({ s: 0.5, h: caseIn(b) }); });
   }
   var stories = allStories().filter(function (n) { return !n.story && lower([n.say, n.cn, (n.tags || []).join(' '), (n.data || []).join(' ')].join(' ')).indexOf(t) >= 0; }).slice(0, 12);
   var thumbs = stories.length ? '<div class="strip">' + stories.map(function (n) { var pic = PHOTOS[n.id] || n.thumb || n.photoURL || n.icon || ''; return '<button data-st="' + esc(n.id) + '" style="' + (pic ? 'background-image:url(\'' + esc(pic) + '\')' : '') + '" aria-label="' + esc(n.say || n.cn || '') + '"><span>' + esc((n.cn || n.say || '').slice(0, 18)) + '</span></button>'; }).join('') + '</div>' : '';
@@ -954,6 +962,9 @@ function wireGuide() {
   $$('#g-out [data-is]').forEach(function (b) { b.addEventListener('click', function () { needSheet(b.dataset.is); }); });
   $$('#g-out [data-st]').forEach(function (b) { b.addEventListener('click', function () { var n = allStories().filter(function (x) { return x.id === b.dataset.st; })[0]; if (n) openNote(n); }); });
 }
+/* a case opens in place: what was done, its place and year, and its source last and small */
+function caseLi(b, label, sub) { return '<li>' + caseIn(b, label, sub) + '</li>'; }
+function caseIn(b, label, sub) { return '<details class="case"><summary><span>' + esc(label || b.t) + '</span><small>' + esc(sub || ((b.city || '') + ' ' + (b.yr || ''))) + '</small></summary>' + (b.fact ? '<p>' + esc(b.fact) + '</p>' : '') + (b.url ? '<a class="src" href="' + esc(b.url) + '" target="_blank" rel="noopener">' + esc((b.url.match(/^https?:\/\/(?:www\.)?([^/]+)/) || [])[1] || 'source') + ' ↗</a>' : '') + '</details>'; }
 function bars(act, brd) { var s = ''; for (var i = 0; i < 12; i++) s += brd && brd[i] === 'B' ? '▾' : act && act[i] === 'A' ? '■' : act && act[i] === 'a' ? '▪' : '·'; return s; }
 function monthsTable(f) {
   var row = function (label, fn) { var h = '<tr><th>' + label + '</th>'; for (var i = 0; i < 12; i++) h += '<td class="' + (i === M ? 'm ' : '') + fn(i) + '"></td>'; return h + '</tr>'; };
@@ -969,7 +980,7 @@ function lifeSheet(id) {
     '<h2>' + esc(f.cn) + '</h2><p class="sci">' + esc(f.n) + '</p>' +
     '<dl class="spec"><dt>Status</dt><dd>' + esc(STATUS_OF[f.st] || f.st || '—') + '</dd><dt>Where</dt><dd>' + esc(f.where || '—') + '</dd>' + (f.event ? '<dt>Watch for</dt><dd>' + esc(f.event) + '</dd>' : '') + (f.heat ? '<dt>Heat</dt><dd>' + '■■■'.slice(0, f.heat) + '□□□'.slice(f.heat) + '</dd>' : '') + '</dl>' +
     monthsTable(f) + alertHTML(r) + '<ul class="plain">' + lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
-    (r.rel.length ? '<div class="lbl">Near it, now</div><ul class="list">' + r.rel.map(function (o) { return o.brief ? '<li><a href="' + esc(o.brief.url) + '" target="_blank" rel="noopener"><span>' + esc(o.label) + '</span><small>' + esc(o.sub) + ' ↗</small></a></li>' : '<li><button data-sp="' + esc(o.id) + '"><span>' + esc(o.label) + '</span><small>' + esc(o.sub) + '</small></button></li>'; }).join('') + '</ul>' : '') +
+    (r.rel.length ? '<div class="lbl">Near it, now</div><ul class="list">' + r.rel.map(function (o) { return o.brief ? caseLi(o.brief, o.label, o.sub) : '<li><button data-sp="' + esc(o.id) + '"><span>' + esc(o.label) + '</span><small>' + esc(o.sub) + '</small></button></li>'; }).join('') + '</ul>' : '') +
     '<label class="cam sm solo" aria-label="Photograph one"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="18" width="48" height="34" rx="2"/><path d="M22 18l4-7h12l4 7"/><circle cx="32" cy="35" r="10"/></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>', false, 'wide');
   backTo(); $$('#sheet [data-sp]').forEach(function (b) { b.addEventListener('click', function () { lifeSheet(b.dataset.sp); }); });
   var inp = $('.shot', sheet); inp.addEventListener('change', function () { onShot(inp.files[0]); });
@@ -981,7 +992,7 @@ function needSheet(k) {
   open('<div class="hd"><button class="back" aria-label="Back">←</button><span>If you find</span><button class="x" aria-label="Close">×</button></div><h2>' + esc(i.t.charAt(0) + i.t.slice(1).toLowerCase()) + '</h2>' +
     '<div class="alert"><p>' + esc(i.say) + '</p>' + (c ? '<a class="call" href="' + esc(c.tel) + '"><b>' + esc(c.label) + '</b><span>' + esc(c.n) + '</span></a>' : '') + '</div>' +
     (lives ? '<div class="lbl">Most at stake now</div><ul class="list">' + lives + '</ul>' : '') +
-    (cs ? '<div class="lbl">What worked elsewhere</div><ul class="list"><li><a href="' + esc(cs.url) + '" target="_blank" rel="noopener"><span>' + esc(cs.t) + '<br><small>' + esc(cs.fact || '') + '</small></span><small>' + esc((cs.city || '') + ' ' + (cs.yr || '')) + ' ↗</small></a></li></ul>' : ''), false, 'wide');
+    (cs ? '<div class="lbl">What worked elsewhere</div><ul class="list">' + caseLi(cs) + '</ul>' : ''), false, 'wide');
   backTo(); $$('#sheet [data-sp]').forEach(function (b) { b.addEventListener('click', function () { lifeSheet(b.dataset.sp); }); });
 }
 function backTo() { var b = $('#sheet .back'); if (b) b.addEventListener('click', function () { guideSheet(''); }); }
@@ -990,7 +1001,7 @@ function backTo() { var b = $('#sheet .back'); if (b) b.addEventListener('click'
 /* ───────── the map is a key: the ground, what is about, everyone's noticings and one's own, the net between them. A touch on open
    ground places a noticing; + adds many at once: photographs, calls, icons ───────── */
 function mapOn(on) {
-  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close(); if (!on && ORB) ORB.on();
+  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close(); if (!on && ORB) ORB.on(); if (AC) droneSync();
   net.all = on; net.live = on; credit(); tipEl.hidden = true;
   if (on) { render(); db().then(function () { return Promise.all([loadShared(), loadLive(map.lat, map.lng)]); }).then(function () { var l = everything().filter(function (n) { return isFinite(n.lat) && dist(n, map) < 2500; }); if (l.length) fit(l); else render(); }); } else render();
 }
@@ -1053,14 +1064,15 @@ function loadLive(lat, lng) {
 }
 var ago = function (t) { var d = (Date.now() - t) / 36e5; return d < 1 ? Math.max(1, Math.round(d * 60)) + ' min' : d < 48 ? Math.round(d) + ' h' : Math.round(d / 24) + ' d'; };
 function everything() { return allStories().concat(LIVE).filter(function (n) { return !webSets().length || inSets(n.id) || WEB.nodes[n.id]; }).sort(function (a, b) { return b.at - a.at; }); }
-var radioWay = 'live';
+var radioWay = 'live', radioPaint = null;
 function radioSheet(way) {
+  dockOn('radio'); BACKTO = null; PAGE = function () { radioSheet(); };
   radioWay = way || radioWay; net.all = true; net.live = true; net.focus = null; net.links = [];
   open('<div class="pin">' + head('radio', '<span class="sp"></span><button class="g mn" id="r-min" aria-label="Fold away, to see the map" title="Fold away, to see the map">–</button>') + '</div>' +
     '<div id="deck-wrap"></div>' +
     '<div class="seg" id="r-way"><button class="g" data-w="live" aria-label="What is about" title="What is about">' + glyph('tiles') + '</button><button class="g" data-w="sets" aria-label="Collections and the web" title="Collections and the web">' + glyph('jelly') + '</button><button class="g hi" data-w="help" aria-label="Help" title="Help">' + glyph('sos') + '</button></div>' +
     '<div class="chips" id="r-sets"></div><div id="r-body"></div>', true);
-  deck($('#deck-wrap'));
+  deck($('#deck-wrap')); if (AC) droneSync();
   $('#r-min').addEventListener('click', function () { var m = !sheet.classList.contains('min'); sheet.classList.toggle('min', m); document.body.classList.toggle('sheetmin', m); this.textContent = m ? '+' : '–';
     /* what was centred above the sheet is centred on the whole screen, and back */
     var wide = innerWidth >= 760, d = (m ? -1 : 1) * (wide ? 220 : map.h * 0.3); if (wide) map.lng = ux(wx(map.lng, map.z) + d, map.z); else map.lat = uy(wy(map.lat, map.z) + d, map.z); render(); });
@@ -1071,7 +1083,7 @@ function radioSheet(way) {
     el.innerHTML = webSets().map(function (s, i) { return '<button data-x="' + i + '" title="Take this set off">≈ ' + esc(s.t) + ' <i>' + s.ids.length + '</i> ×</button>'; }).join('');
     $$('[data-x]', el).forEach(function (b) { b.addEventListener('click', function () { WEB.sets.splice(+b.dataset.x, 1); saveWeb(); paint(); render(); }); });
   };
-  var paint = function () {
+  var paint = radioPaint = function () {
     if (!document.contains(body)) return; chips();
     if (radioWay === 'help') { body.innerHTML = '<ul class="list" style="margin-top:10px">' + nowItems().map(function (i) { return '<li class="urgent"><p><b>' + esc(i.k) + '</b> ' + esc(i.t) + '</p></li>'; }).join('') + '</ul>' + helpHTML(); render(); return; }
     if (radioWay === 'sets') {
@@ -1201,28 +1213,82 @@ function bus(c) {
 var PITCH = { bird: 6, parrot: 8, owl: 3, raptor: 5, waterbird: 4, flyingfox: 5, bat: 9, possum: 2, macropod: 0, frog: 3, lizard: 1, snake: 0, turtle: 1, bee: 9, butterfly: 8, moth: 7, spider: 6, snail: 1, plant: 0 };
 var deg = function (g) { return PITCH[g] != null ? PITCH[g] : 5; };
 var gOf = function (n) { return n.g || (DB && n.sp ? (DB.field.filter(function (f) { return f.id === n.sp; })[0] || {}).g : '') || 'bird'; };
-var blank = function () { var a = []; for (var i = 0; i < 16; i++) a.push(null); return a; };
+var blank = function (n) { var a = []; for (var i = 0; i < (n || 16); i++) a.push(null); return a; };
+/* a song is one bar of sixteen steps, or four bars: a full sweep of the radar, so a whole turn of the web can be recorded */
+var LEN = function (song) { return ((song || SONG).tracks[0].steps || []).length || 16; };
+function setLen(n) { if (LEN() === n) return; SONG.tracks.forEach(function (tr) { var o = tr.steps, a = blank(n); for (var i = 0; i < n; i++) a[i] = o[i % o.length] || null; tr.steps = a; }); SEQ.page = 0; saveSong(); }
 function newSong() { return { bpm: 104, scale: 'pelog', tracks: INS_K.slice(0, 4).map(function (k, i) { return { ins: k, vol: 1, oct: 0, len: i === 2 ? 1 : 0, mute: false, steps: blank() }; }) }; }
 /* every note is a cell on the map: its pitch from its kind, its id and name kept, so nothing sounds that is not there */
 var tied = function (song) { (song.tracks || []).forEach(function (tr) { tr.steps = (tr.steps || blank()).map(function (x) { return x && typeof x === 'object' && x.id ? x : null; }); }); return song; };
 var SONG = tied(store.get('da.base.song', null) || newSong());
 var SONGS = store.get('da.base.songs', []).map(function (s) { s.song = tied(s.song); return s; });
-var saveSong = function () { store.set('da.base.song', SONG); };
+var saveSong = function () { store.set('da.base.song', SONG); remember(); };
+/* undo: the deck and the sets as they were before each change, the last fifty kept; ↶ steps back one */
+var UNDO = [], lastState = null;
+var stateNow = function () { return JSON.stringify({ song: SONG, sets: WEB.sets }); };
+function remember() { var st = stateNow(); if (lastState && st !== lastState) { UNDO.push(lastState); if (UNDO.length > 50) UNDO.shift(); } lastState = st; var b = $('#d-undo'); if (b) b.disabled = !UNDO.length; }
+function undo() { if (!UNDO.length) return; var st = JSON.parse(UNDO.pop()); SONG = tied(st.song); WEB.sets = st.sets || []; lastState = stateNow(); store.set('da.base.song', SONG); store.set('da.base.web', WEB); paintDeck(); if (radioPaint) radioPaint(); render(); droneSync(); }
+lastState = stateNow();
+/* ───────── the web's voice: not beats, a breath. Each life opened holds a low tone at its kind's place in the scale, louder the more
+   of it was opened (a jellyfish sings fullest); each set added lays its own tone under them; the filter opens as the trail grows and
+   the slow swell of each tone follows how far apart its cells are. A new stick is heard as a glide from the cell before to the cell
+   now. Nothing sounds that is not a cell on the map; it fades when RADIO and the map are closed, and ∿ turns it off ───────── */
+var DRONE = { on: store.get('da.base.drone', true) !== false, v: {}, lp: null, out: null };
+var hz = function (d, oct) { return 110 * Math.pow(2, ((oct || 0) * 12 + Math.floor(d / 5) * 12 + SCALES[SONG.scale][d % 5]) / 12); };
+function droneVoices() {
+  var by = {}; Object.keys(WEB.nodes).forEach(function (id) { var n = WEB.nodes[id]; if (!n.cn) return; var b = by[n.cn] = by[n.cn] || { k: 'l:' + n.cn, g: n.g, ns: [] }; b.ns.push(n); });
+  var V = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return b.ns.length - a.ns.length; }).slice(0, 4).map(function (b) {
+    var far1 = 0; b.ns.forEach(function (a) { b.ns.forEach(function (c) { far1 = Math.max(far1, dist(a, c)); }); });
+    return { k: b.k, f: hz(deg(b.g), -1), g: Math.min(0.05, 0.012 + 0.008 * b.ns.length), lfo: 0.04 + Math.min(0.2, far1 / 20000) };
+  });
+  webSets().slice(0, 3).forEach(function (s) { var g = (s.pts && s.pts[0] && s.pts[0].g) || 'bird'; V.push({ k: 's:' + s.k, f: hz(deg(g), -2), g: 0.03, lfo: 0.03 }); });
+  return V;
+}
+function droneSync() {
+  if (!AC) return; var c = AC, t = c.currentTime, body = document.body.classList;
+  var wanted = DRONE.on && WEB.seq.length >= 2 && (body.contains('mapmode') || ($('#deck') && !sheet.hidden));
+  if (!DRONE.out) { DRONE.lp = c.createBiquadFilter(); DRONE.lp.type = 'lowpass'; DRONE.lp.Q.value = 0.7; DRONE.out = c.createGain(); DRONE.out.gain.value = 0; DRONE.lp.connect(DRONE.out); DRONE.out.connect(bus(c)); }
+  DRONE.out.gain.setTargetAtTime(wanted ? 0.9 : 0, t, wanted ? 1.2 : 0.6);
+  DRONE.lp.frequency.setTargetAtTime(Math.min(2600, 380 + 90 * webEdges().length), t, 1.5);
+  var V = wanted ? droneVoices() : [], keep = {};
+  V.forEach(function (v) {
+    keep[v.k] = 1; var x = DRONE.v[v.k];
+    if (!x) {
+      x = DRONE.v[v.k] = { g: c.createGain(), o1: c.createOscillator(), o2: c.createOscillator(), l: c.createOscillator(), lg: c.createGain() };
+      x.o1.type = 'sine'; x.o2.type = 'triangle'; x.o2.detune.value = 7; x.g.gain.value = 0;
+      x.l.frequency.value = v.lfo; x.lg.gain.value = v.g * 0.5; x.l.connect(x.lg); x.lg.connect(x.g.gain);
+      x.o1.connect(x.g); x.o2.connect(x.g); x.g.connect(DRONE.lp); x.o1.start(); x.o2.start(); x.l.start();
+    }
+    x.o1.frequency.setTargetAtTime(v.f, t, 0.8); x.o2.frequency.setTargetAtTime(v.f * 2, t, 0.8); x.l.frequency.setTargetAtTime(v.lfo, t, 2); x.lg.gain.setTargetAtTime(v.g * 0.5, t, 2); x.g.gain.setTargetAtTime(v.g, t, 1.4);
+  });
+  Object.keys(DRONE.v).forEach(function (k) { if (keep[k]) return; var x = DRONE.v[k]; x.g.gain.setTargetAtTime(0, t, 0.8); setTimeout(function () { try { x.o1.stop(); x.o2.stop(); x.l.stop(); } catch (e) { /* gone */ } }, 4000); delete DRONE.v[k]; });
+}
+/* a stick drawn: heard as a glide from where attention was to where it is now, long and soft, through the room */
+function glide(a, b) {
+  if (!AC || !DRONE.on) return; var c = AC, t = c.currentTime + 0.02, o = c.createOscillator(), g = c.createGain(), f0 = hz(deg(a.g || 'bird'), 0), f1 = hz(deg(b.g || 'bird'), 0);
+  o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + 1.1);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09, t + 0.25); g.gain.setTargetAtTime(0, t + 1.1, 0.7);
+  o.connect(g); g.connect(bus(c)); o.start(t); o.stop(t + 4.5); window.__glides = (window.__glides || 0) + 1;
+}
+
 function noteAt(c, tr, d, t, out) { var I = INS[tr.ins]; var f = I.base ? I.base * Math.pow(2, (tr.oct * 12 + Math.floor(d / 5) * 12 + SCALES[SONG.scale][d % 5]) / 12) : d * 120; I.fn(c, out || bus(c), t, f, tr.len ? 1.7 : 0.75, [0.3, 0.55, 0.9][tr.vol]); }
 function pluck(n) { var c = ac(); noteAt(c, SONG.tracks[SEQ.arm], deg(gOf(n)), c.currentTime + 0.01); }
 var SEQ = { on: false, step: 0, cur: 0, next: 0, timer: 0, rec: false, arm: 0, open: -1 };
 var stepDur = function (s) { return 60 / (s || SONG).bpm / 4; };
-function seqStart() { var c = ac(); SEQ.on = true; SEQ.step = 0; SEQ.next = c.currentTime + 0.06; clearInterval(SEQ.timer); SEQ.timer = setInterval(seqTick, 25); paintDeck(); }
+function seqStart() { var c = ac(); SEQ.on = true; SEQ.step = 0; SEQ.next = c.currentTime + 0.06; SEQ.t0 = SEQ.next; clearInterval(SEQ.timer); SEQ.timer = setInterval(seqTick, 25); paintDeck(); }
 function seqStop() { SEQ.on = false; clearInterval(SEQ.timer); paintDeck(); }
 function seqTick() {
   var c = AC; while (SEQ.next < c.currentTime + 0.12) {
     var s = SEQ.step, t = SEQ.next;
     SONG.tracks.forEach(function (tr) { var d = tr.steps[s]; if (d && !tr.mute) noteAt(c, tr, d.d, t); });
     setTimeout(function () { SEQ.cur = s; showStep(s); }, Math.max(0, (t - c.currentTime) * 1000));
-    SEQ.next += stepDur(); SEQ.step = (SEQ.step + 1) % 16;
+    SEQ.next += stepDur(); SEQ.step = (SEQ.step + 1) % LEN();
   }
 }
-function showStep(s) { $$('#deck .cells').forEach(function (row) { var b = row.children; for (var i = 0; i < b.length; i++) b[i].classList.toggle('now', i === s); }); }
+function showStep(s) {
+  var pg = Math.floor(s / 16); if (pg !== (SEQ.page || 0) && (SEQ.rec || radar.on) && Date.now() - (SEQ.picked || 0) > 4000) { SEQ.page = pg; paintDeck(); return; }
+  $$('#deck .cells').forEach(function (row) { var b = row.children; for (var i = 0; i < b.length; i++) b[i].classList.toggle('now', pg === (SEQ.page || 0) && i === s % 16); });
+}
 /* placing, like tape: armed and recording, a life lands on the step now sounding, as a note of its kind */
 function placeNote(n, at) {
   if (!n || (!SEQ.rec && at == null)) return false; if (!SEQ.on) seqStart();
@@ -1237,30 +1303,34 @@ function paintDeck() {
   if (!deckEl || !document.contains(deckEl)) return;
   var h = '<div class="tport"><button class="g rec' + (SEQ.rec ? ' on' : '') + '" id="d-rec" aria-label="Record" title="Record">●</button><button class="g" id="d-play" aria-label="Play" title="Play">' + (SEQ.on ? '■' : '▶') + '</button>' +
     '<button class="g' + (radar.on ? ' on' : '') + '" id="d-radar" aria-label="Radar" title="Radar">◎</button><button class="g" id="d-clear" aria-label="Clear the armed track" title="Clear the armed track">⌫</button>' +
-    '<button class="g" id="d-wav" aria-label="Keep and download" title="Keep and download">⇩</button></div>';
+    '<button class="g" id="d-wav" aria-label="Keep and download" title="Keep and download">⇩</button><button class="g" id="d-undo" aria-label="Undo" title="Undo"' + (UNDO.length ? '' : ' disabled') + '>↶</button><button class="g' + (DRONE.on ? ' on' : '') + '" id="d-drone" aria-label="The web\'s voice" title="The web\'s voice">∿</button></div>';
   h += '<div class="deck" id="deck">' + SONG.tracks.map(function (tr, i) {
     var row = '<div class="tr"><button class="ins' + (SEQ.arm === i ? ' arm' : '') + (tr.mute ? ' mute' : '') + '" data-t="' + i + '" aria-label="' + tr.ins + '" title="' + tr.ins + ' · double-tap for its settings">' + INS[tr.ins].g + '</button><div class="cells" data-t="' + i + '">' +
-      tr.steps.map(function (d, s) { return '<button data-s="' + s + '"' + (d ? ' class="n" style="--tone:' + (TONE[d.g] || '#A89A86') + '" title="' + esc(d.t) + '"' : '') + ' aria-label="step ' + (s + 1) + (d ? ': ' + esc(d.t) : '') + '"></button>'; }).join('') + '</div></div>';
+      tr.steps.slice((SEQ.page || 0) * 16, (SEQ.page || 0) * 16 + 16).map(function (d, s) { s += (SEQ.page || 0) * 16; return '<button data-s="' + s + '"' + (d ? ' class="n" style="--tone:' + (TONE[d.g] || '#A89A86') + '" title="' + esc(d.t) + '"' : '') + ' aria-label="step ' + (s + 1) + (d ? ': ' + esc(d.t) : '') + '"></button>'; }).join('') + '</div></div>';
     if (SEQ.open === i) row += '<div class="tr"><span></span><div class="set">' + INS_K.map(function (k) { return '<button data-ins="' + k + '" class="' + (tr.ins === k ? 'on' : '') + '" title="' + k + '">' + INS[k].g + '</button>'; }).join('') +
       '<span class="v">·</span>' + [0, 1, 2].map(function (v) { return '<button data-vol="' + v + '" class="' + (tr.vol === v ? 'on' : '') + '" title="volume">' + '▮▮▮'.slice(0, v + 1) + '</button>'; }).join('') +
       '<span class="v">·</span><button data-oct="-1" title="lower">−</button><span class="v">' + (tr.oct > 0 ? '+' : '') + tr.oct + '</span><button data-oct="1" title="higher">+</button>' +
       '<span class="v">·</span><button data-len class="' + (tr.len ? 'on' : '') + '" title="long or short">' + (tr.len ? '━' : '╸') + '</button><button data-mute class="' + (tr.mute ? 'on' : '') + '" title="mute">∅</button></div></div>';
     return row;
-  }).join('') + '<div class="glob"><button id="d-slow" title="slower">−</button><span class="v">' + SONG.bpm + '</span><button id="d-fast" title="faster">+</button><span class="v">·</span><button id="d-scale" title="' + SONG.scale + '">' + (SONG.scale === 'pelog' ? '5̇' : '5') + '</button></div></div>';
+  }).join('') + '<div class="glob">' + (LEN() > 16 ? '<span class="bars">' + [0, 1, 2, 3].map(function (b) { return '<button data-pg="' + b + '" class="' + (b === (SEQ.page || 0) ? 'on' : '') + '" title="bar ' + (b + 1) + '">' + (b + 1) + '</button>'; }).join('') + '</span><span class="v">·</span>' : '') + '<button id="d-len" title="' + (LEN() > 16 ? 'one bar' : 'four bars: a full sweep') + '">' + (LEN() > 16 ? '▮▮▮▮' : '▮') + '</button><span class="v">·</span><button id="d-slow" title="slower">−</button><span class="v">' + SONG.bpm + '</span><button id="d-fast" title="faster">+</button><span class="v">·</span><button id="d-scale" title="' + SONG.scale + '">' + (SONG.scale === 'pelog' ? '5̇' : '5') + '</button></div></div>';
   h += SONGS.length ? '<ul class="songs">' + SONGS.map(function (s, i) { return '<li><button class="t" data-load="' + i + '">♪ ' + esc(when(s.at)) + '</button><button class="g" data-wav="' + i + '" title="Download as sound">⇩</button><button class="g" data-del="' + i + '" title="Remove">×</button></li>'; }).join('') + '</ul>' : '';
   deckEl.innerHTML = h;
   var q = function (s) { return deckEl.querySelector(s); };
   q('#d-rec').addEventListener('click', function () { SEQ.rec = !SEQ.rec; if (SEQ.rec && !SEQ.on) seqStart(); paintDeck(); });
   q('#d-play').addEventListener('click', function () { if (SEQ.on) seqStop(); else seqStart(); });
-  q('#d-radar').addEventListener('click', function () { radarOn(!radar.on); paintDeck(); });
-  q('#d-clear').addEventListener('click', function () { SONG.tracks[SEQ.arm].steps = blank(); saveSong(); paintDeck(); });
+  q('#d-radar').addEventListener('click', function () { if (!radar.on) setLen(64); radarOn(!radar.on); paintDeck(); });
+  q('#d-clear').addEventListener('click', function () { SONG.tracks[SEQ.arm].steps = blank(LEN()); saveSong(); paintDeck(); });
+  q('#d-len').addEventListener('click', function () { setLen(LEN() > 16 ? 16 : 64); paintDeck(); });
+  $$('[data-pg]', deckEl).forEach(function (b) { b.addEventListener('click', function () { SEQ.page = +b.dataset.pg; SEQ.picked = Date.now(); paintDeck(); }); });
+  q('#d-undo').addEventListener('click', undo);
+  q('#d-drone').addEventListener('click', function () { DRONE.on = !DRONE.on; store.set('da.base.drone', DRONE.on); ac(); droneSync(); paintDeck(); });
   q('#d-wav').addEventListener('click', function () { if (!songEmpty()) { SONGS.unshift({ at: Date.now(), song: JSON.parse(JSON.stringify(SONG)) }); if (SONGS.length > 12) SONGS.pop(); store.set('da.base.songs', SONGS); } wavOf(SONG); paintDeck(); });
   q('#d-slow').addEventListener('click', function () { SONG.bpm = Math.max(60, SONG.bpm - 8); saveSong(); paintDeck(); });
   q('#d-fast').addEventListener('click', function () { SONG.bpm = Math.min(180, SONG.bpm + 8); saveSong(); paintDeck(); });
   q('#d-scale').addEventListener('click', function () { SONG.scale = SONG.scale === 'pelog' ? 'slendro' : 'pelog'; saveSong(); paintDeck(); });
   /* a track's key: a touch arms it; two touches open its settings */
   $$('.ins', deckEl).forEach(function (b) { b.addEventListener('click', function () { var i = +b.dataset.t, now = Date.now(); if (insTap.i === i && now - insTap.t < 400) { SEQ.open = SEQ.open === i ? -1 : i; insTap = { i: -1, t: 0 }; } else { SEQ.arm = i; insTap = { i: i, t: now }; } paintDeck(); }); });
-  $$('.cells', deckEl).forEach(function (row) { var t = +row.dataset.t, tr = SONG.tracks[t]; $$('button', row).forEach(function (b) { b.addEventListener('click', function () { var st = +b.dataset.s;
+  $$('.cells', deckEl).forEach(function (row) { var t = +row.dataset.t, tr = SONG.tracks[t]; $$('button', row).forEach(function (b) { b.addEventListener('click', function () { var st = +b.dataset.s; SEQ.picked = Date.now();
     if (tr.steps[st]) { tr.steps[st] = null; saveSong(); paintDeck(); return; }
     if (OPEN) { SEQ.arm = t; placeNote(OPEN, st); } else { b.classList.add('no'); setTimeout(function () { b.classList.remove('no'); }, 400); } }); }); });
   if (SEQ.open >= 0) { var tr = SONG.tracks[SEQ.open], set = deckEl.querySelector('.set');
@@ -1275,13 +1345,18 @@ function paintDeck() {
   $$('[data-del]', deckEl).forEach(function (b) { b.addEventListener('click', function () { SONGS.splice(+b.dataset.del, 1); store.set('da.base.songs', SONGS); paintDeck(); }); });
   if (SEQ.on) showStep(SEQ.cur);
 }
-/* the song as a sound file: four bars rendered offline, the room's tail let ring, written as 16-bit WAV */
+/* the sound file is a loop: whole turns of the song (about four bars), its notes from the first sample, the room's tail folded back
+   onto the start, no fade at the end, so played on repeat it carries on without a seam */
 function wavOf(song) {
   var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC) return;
-  var keep = SONG; SONG = song; var bars = 4, sd = stepDur(song), dur = sd * 16 * bars + 3, c = new OC(2, Math.ceil(44100 * dur), 44100), out = bus(c);
-  for (var b = 0; b < bars; b++) for (var s = 0; s < 16; s++) song.tracks.forEach(function (tr) { var d = tr.steps[s]; if (d && !tr.mute) noteAt(c, tr, d.d, 0.05 + (b * 16 + s) * sd, out); });
+  var keep = SONG; SONG = song; var L = LEN(song), reps = Math.max(1, Math.round(64 / L)), sd = stepDur(song), loop = sd * L * reps, SR = 44100, N = Math.round(loop * SR), tail = 3, c = new OC(2, N + tail * SR, SR), out = bus(c);
+  for (var r = 0; r < reps; r++) for (var st = 0; st < L; st++) song.tracks.forEach(function (tr) { var d = tr.steps[st]; if (d && !tr.mute) noteAt(c, tr, d.d, (r * L + st) * sd, out); });
   SONG = keep;
-  var done = function (buf) { var blob = wav(buf), a = document.createElement('a'); a.download = 'novel-global-song.wav'; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); window.__lastWav = blob.size; };
+  var done = function (buf) {
+    var chans = []; for (var ch = 0; ch < buf.numberOfChannels; ch++) { var d = buf.getChannelData(ch), o = new Float32Array(N); o.set(d.subarray(0, N)); for (var k = N; k < d.length; k++) o[k % N] += d[k]; chans.push(o); }
+    var looped = { numberOfChannels: chans.length, length: N, sampleRate: SR, getChannelData: function (i) { return chans[i]; } };
+    var blob = wav(looped), a = document.createElement('a'); a.download = 'novel-global-song-loop.wav'; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); window.__lastWav = blob.size; window.__lastLoop = { samples: N, seconds: loop };
+  };
   c.oncomplete = function (e) { if (!c.__done) { c.__done = 1; done(e.renderedBuffer); } };
   var p = c.startRendering(); if (p && p.then) p.then(function (buf) { if (!c.__done) { c.__done = 1; done(buf); } });
 }
@@ -1300,7 +1375,7 @@ var sweepEl = (function () { var s = svg('svg', { id: 'sweep', 'aria-hidden': 't
 function radarCentre() { var wide = innerWidth >= 760, sh = sheet.hidden ? 0 : sheet.getBoundingClientRect(); var w = wide && !sheet.hidden ? map.w - sh.width : map.w, h = !wide && !sheet.hidden ? sh.top : map.h; return [w / 2, h / 2 + (wide ? 0 : 20), Math.max(60, Math.min(w, h) / 2 - 24)]; }
 function radarOn(on) {
   radar.on = on; cancelAnimationFrame(radar.raf); sweepEl.style.display = on ? 'block' : 'none';
-  if (on) { ac(); radar.t = 0; var spin = function (now) { if (!radar.on) return; var dt = radar.t ? (now - radar.t) / 1000 : 0; radar.t = now; var a0 = radar.a; radar.a = (radar.a + dt * Math.PI * 2 / 10) % (Math.PI * 2);
+  if (on) { ac(); radar.t = 0; var spin = function (now) { if (!radar.on) return; var dt = radar.t ? (now - radar.t) / 1000 : 0; radar.t = now; var a0 = radar.a; radar.a = SEQ.on && AC ? 2 * Math.PI * ((((AC.currentTime - SEQ.t0) / (LEN() * stepDur())) % 1) + 1) % (2 * Math.PI) : (radar.a + dt * Math.PI * 2 / 10) % (Math.PI * 2);
     var c = radarCentre(); var rim = sweepEl.querySelector('.rim'), hand = sweepEl.querySelector('.hand');
     rim.setAttribute('cx', c[0]); rim.setAttribute('cy', c[1]); rim.setAttribute('r', c[2]);
     hand.setAttribute('x1', c[0]); hand.setAttribute('y1', c[1]); hand.setAttribute('x2', c[0] + Math.cos(radar.a) * c[2]); hand.setAttribute('y2', c[1] + Math.sin(radar.a) * c[2]);
@@ -1317,6 +1392,7 @@ var peekEl = (function () { var d = document.createElement('div'); d.id = 'peek'
 var OPEN = null;
 function peek(n) {
   if (!n) { peekEl.hidden = true; OPEN = null; return; }
+  if (peekEl.hidden && !(history.state && history.state.peek)) history.pushState({ peek: 1 }, '');
   OPEN = n; attend(n); net.focus = n; net.links = n.seen || []; drawNet();
   var pic = PHOTOS[n.id] || n.thumb || n.photoURL || n.icon || '';
   var f = DB && DB.field.filter(function (x) { return x.id === n.sp || (n.sci && x.n === n.sci) || (n.cn && lower(x.cn) === lower(n.cn)); })[0];
@@ -1324,17 +1400,22 @@ function peek(n) {
   var lines = n.wishText || null;
   var here = NOTES[0] && NOTES[0].mine !== false ? NOTES[0] : map;
   peekEl.innerHTML = (pic ? '<div class="pk-ph" style="background-image:url(\'' + esc(pic) + '\')"></div>' : '') + '<div class="pk">' +
-    '<div class="pk-t">' + (f ? '<button class="nm" id="pk-g" title="In the guide">' + esc(nameOf(n)) + ' ›</button>' : '<b>' + esc(nameOf(n)) + '</b>') + (n.sci ? '<i>' + esc(n.sci) + '</i>' : '') + '<small><span class="dot" style="background:' + toneOf(n) + '"></span>' + (n.at ? ago(n.at) : '') + (isFinite(n.lat) && here && isFinite(here.lat) ? ' · ' + far(Math.round(dist(n, here))) : '') + (n.sent ? ' ' + pips(n.sent.s) : '') + (n.credit ? ' · ' + esc(n.credit) : '') + '</small>' +
+    '<div class="pk-t">' + (f ? '<button class="nm" id="pk-g" aria-expanded="false" title="What the guide says">' + esc(nameOf(n)) + ' <i>▸</i></button>' : '<b>' + esc(nameOf(n)) + '</b>') + (n.sci ? '<i>' + esc(n.sci) + '</i>' : '') + '<small><span class="dot" style="background:' + toneOf(n) + '"></span>' + (n.at ? ago(n.at) : '') + (isFinite(n.lat) && here && isFinite(here.lat) ? ' · ' + far(Math.round(dist(n, here))) : '') + (n.sent ? ' ' + pips(n.sent.s) : '') + (n.credit ? ' · ' + esc(n.credit) : '') + '</small>' +
     (r.issue || r.hot ? '<p class="pk-a">' + esc(r.lines[0].t) + '</p>' : f && !n.say ? '<p>' + esc(f.aware || f.help || '') + '</p>' : n.say && n.cn ? '<p>' + esc(n.say) + '</p>' : '') +
     (lines ? '<div class="pk-w">' + lines.filter(Boolean).map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>' : '') +
-    (r.call && (r.issue || r.hot) && !(lines && lines.join(' ').indexOf(r.call.n) >= 0) ? '<a class="call" href="' + esc(r.call.tel) + '"><b>' + esc(r.call.label) + '</b><span>' + esc(r.call.n) + '</span></a>' : '') + '</div>' +
+    (r.call && (r.issue || r.hot) && !(lines && lines.join(' ').indexOf(r.call.n) >= 0) ? '<a class="call" href="' + esc(r.call.tel) + '"><b>' + esc(r.call.label) + '</b><span>' + esc(r.call.n) + '</span></a>' : '') + (f ? '<div class="pk-more" id="pk-more" hidden></div>' : '') + '</div>' +
     '<div class="pk-k"><button class="g" id="pk-snd" title="Hear it">♪</button><button class="g" id="pk-add" title="Into the armed track">＋</button><button class="g" id="pk-x" title="Close">×</button></div></div>';
   peekEl.hidden = false;
-  $('#pk-x').addEventListener('click', function () { peek(null); });
+  $('#pk-x').addEventListener('click', function () { if (history.state && history.state.peek) history.back(); else peek(null); });
   $('#pk-snd').addEventListener('click', function () { pluck(n); });
   /* this cell, into the track armed: at the step sounding, or the first one free */
-  $('#pk-add').addEventListener('click', function () { var tr = SONG.tracks[SEQ.arm], st = SEQ.on ? SEQ.cur : Math.max(0, tr.steps.indexOf(null)); placeNote(n, st); var b = $('#pk-add'); if (b) { b.classList.add('on'); setTimeout(function () { b.classList.remove('on'); }, 500); } });
-  var gb = $('#pk-g'); if (gb) gb.addEventListener('click', function () { peek(null); lifeSheet(f.id); });
+  $('#pk-add').addEventListener('click', function () { var tr = SONG.tracks[SEQ.arm], st = SEQ.on ? SEQ.cur : Math.max(0, tr.steps.indexOf(null, (SEQ.page || 0) * 16)); placeNote(n, st); var b = $('#pk-add'); if (b) { b.classList.add('on'); setTimeout(function () { b.classList.remove('on'); }, 500); } });
+  /* what the guide says, unfolded here in the card: nothing leaves where one is */
+  var gb = $('#pk-g'); if (gb) gb.addEventListener('click', function () {
+    var mo = $('#pk-more'), open1 = mo.hidden; mo.hidden = !open1; gb.setAttribute('aria-expanded', String(open1)); $('i', gb).textContent = open1 ? '▾' : '▸';
+    if (open1 && !mo.innerHTML) mo.innerHTML = '<dl class="spec"><dt>Status</dt><dd>' + esc(STATUS_OF[f.st] || f.st || '—') + '</dd><dt>Where</dt><dd>' + esc(f.where || '—') + '</dd>' + (f.event ? '<dt>Watch for</dt><dd>' + esc(f.event) + '</dd>' : '') + (f.heat ? '<dt>Heat</dt><dd>' + '■■■'.slice(0, f.heat) + '□□□'.slice(f.heat) + '</dd>' : '') + '</dl>' + monthsTable(f) +
+      '<ul class="plain">' + [f.aware, f.harm, f.help].filter(Boolean).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>';
+  });
 }
 /* packs: the terrain and the field data switched on or off; one's own noticings out as a file to share, and others' in */
 /* ───────── W.I.S.H.: a news page of strategies. Each poster made is a thread, ranked as Hacker News ranks (points over time, with
@@ -1350,6 +1431,7 @@ function threads() {
   }).sort(function (a, b) { return b.score - a.score; });
 }
 function wishSheet(sel) {
+  dockOn('wish'); BACKTO = null; PAGE = function () { wishSheet(sel); };
   var T = threads(), wide = innerWidth >= 760, chosen = sel ? T.filter(function (t) { return t.n.id === sel.id || t.n.code === sel.code; })[0] || { n: sel, reps: repliesOf(sel), up: 1 } : null;
   if (!chosen && wide && T.length) chosen = T[0];
   var listHTML = function () {
@@ -1369,16 +1451,19 @@ function wishSheet(sel) {
       '<div class="ctl" style="margin-top:10px"><button class="g" id="w-print" title="Print it">' + glyph('print') + '</button><button class="go" id="w-post" title="Add it to the thread" style="margin:0">→</button></div></div>';
   };
   var paint = function () {
+    /* what was being written stays written when the thread is drawn again (others' replies arriving) */
+    var was = $$('#w-new textarea').map(function (x) { return x.value; }), wasId = chosen && chosen.n.id;
     T = threads(); if (chosen) chosen = T.filter(function (t) { return t.n.id === chosen.n.id; })[0] || chosen;
     var main = !wide && chosen ? '' : '<div>' + listHTML() + '</div>', side = chosen ? '<div>' + threadHTML(chosen) + '</div>' : '';
     open(head('wish') + '<div class="wish-grid">' + main + side + '</div>', false, 'wide');
-    $$('[data-th]').forEach(function (b) { b.addEventListener('click', function () { chosen = T.filter(function (t) { return t.n.id === b.dataset.th; })[0]; paint(); }); });
+    if (was.length && chosen && chosen.n.id === wasId) $$('#w-new textarea').forEach(function (x, i) { if (was[i] != null) x.value = was[i]; });
+    $$('[data-th]').forEach(function (b) { b.addEventListener('click', function () { chosen = T.filter(function (t) { return t.n.id === b.dataset.th; })[0]; was = []; paint(); }); });
     $$('[data-up]').forEach(function (b) { b.addEventListener('click', function () { var id = b.dataset.up; if (VOTES[id]) delete VOTES[id]; else VOTES[id] = 1; store.set('da.base.votes', VOTES); paint(); }); });
     var bk = $('#w-back'); if (bk) bk.addEventListener('click', function () { chosen = null; paint(); });
     var sh = $('#sheet .shot'); if (sh) sh.addEventListener('change', function () { onShot(sh.files[0]); });
     $$('#w-new select').forEach(function (s) { s.addEventListener('change', function () { if (!s.value) return; $('#w-new [data-l="' + s.dataset.o + '"]').value = s.value; s.value = ''; }); });
     var lines = function () { return $$('#w-new textarea').map(function (x) { return x.value.trim(); }); };
-    var pr = $('#w-print'); if (pr) pr.addEventListener('click', function () { var n = chosen.n, L = lines(); if (!L.some(Boolean)) return; if (NOTES.indexOf(n) < 0) { n = Object.assign({}, n, { id: 'w' + Date.now().toString(36), mine: true, at: Date.now() }); n.code = code(n.id); NOTES.unshift(n); } n.wishText = L; n.wish = true; saveNotes(); stepS(n); });
+    var pr = $('#w-print'); if (pr) pr.addEventListener('click', function () { var n = chosen.n, L = lines(); if (!L.some(Boolean)) return; if (NOTES.indexOf(n) < 0) { n = Object.assign({}, n, { id: 'w' + Date.now().toString(36), mine: true, at: Date.now() }); n.code = code(n.id); NOTES.unshift(n); } n.wishText = L; n.wish = true; saveNotes(); var th = chosen.n; BACKTO = function () { wishSheet(th); }; stepS(n); });
     var po = $('#w-post'); if (po) po.addEventListener('click', function () {
       var n = chosen.n, L = lines(); if (!L.some(Boolean)) return;
       var w = { id: 'r' + Date.now().toString(36), at: Date.now(), lines: L, mine: true, sent: { s: 'sending' } }; (REPLIES[n.code] = REPLIES[n.code] || []).push(w); store.set('da.base.replies', REPLIES); paint();
@@ -1394,6 +1479,7 @@ function metaOf(t) { var n = t.n; return '▲ ' + t.up + ' · ' + ((n.data || []
 
 /* ───────── SHOP: one's posters and where each is, as three dots; the printers, listening or not; building one; making; packs ───────── */
 function shopSheet() {
+  dockOn('print'); BACKTO = null; PAGE = shopSheet;
   var mine = NOTES.filter(function (n) { return n.mine !== false; });
   open(head('shop') +
     '<label class="eye solo" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g><g class="threads"><path d="M50 76v16"/><path d="M65 80v22"/><path d="M80 82v26"/><path d="M95 80v22"/><path d="M110 76v16"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>' +
@@ -1402,9 +1488,9 @@ function shopSheet() {
     '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
     '<hr>' + packsHTML());
   wirePacks();
-  var sh = $('#sheet .shot'); sh.addEventListener('change', function () { var f = sh.files && sh.files[0]; onShot(f); setTimeout(function () { sh.value = ''; }, 1500); });
-  $$('#s-rec [data-i]').forEach(function (b) { b.addEventListener('click', function () { stepS(mine[+b.dataset.i]); }); });
-  var sg = $('#s-sign'); if (sg) sg.addEventListener('click', function () { stepS(mine[0], null, 'sign'); });
+  var sh = $('#sheet .shot'); sh.addEventListener('change', function () { var f = sh.files && sh.files[0]; BACKTO = shopSheet; onShot(f); setTimeout(function () { sh.value = ''; }, 1500); });
+  $$('#s-rec [data-i]').forEach(function (b) { b.addEventListener('click', function () { BACKTO = shopSheet; stepS(mine[+b.dataset.i]); }); });
+  var sg = $('#s-sign'); if (sg) sg.addEventListener('click', function () { BACKTO = shopSheet; stepS(mine[0], null, 'sign'); });
   $('#s-qr').addEventListener('click', function () { boothSticker('novelglobal'); });
   $('#s-poster').addEventListener('click', function () {
     var b = this, st = $('#s-pst'); b.disabled = true; st.innerHTML = pips('sending');
@@ -1706,8 +1792,9 @@ function route() {
     if (n) openNote(n); else api('/stories/' + c).then(function (j) { if (j && j.story) { SHARED = []; return loadShared().then(function () { var s = SHARED.filter(function (x) { return x.code === c; })[0]; if (s) openNote(s); }); } }).catch(function () { toast(c + ' is not shown yet'); });
   }
 }
+addEventListener('popstate', function () { if (!peekEl.hidden && !(history.state && history.state.peek)) peek(null); });
 addEventListener('hashchange', function () { if (!location.hash) { if (!sheet.hidden) close(); return; } route(); });
-$$('#shot, .shot').forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; onShot(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
+$$('#shot, .shot').forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; BACKTO = PAGE; onShot(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
 $('#b-search').addEventListener('click', function () { location.hash = 'guide'; });
 $('#b-map').addEventListener('click', function () { mapOn(!document.body.classList.contains('mapmode')); });
 $('#m-close').addEventListener('click', function () { mapOn(false); });
@@ -1717,12 +1804,12 @@ $('#b-theme').addEventListener('click', function () {
   document.documentElement.setAttribute('data-theme', t); try { localStorage.setItem('da.base.theme', t); } catch (e) { /* fine */ } render();
 });
 oled.addEventListener('click', function () { nowTick(); });
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) close(); if (e.key === '/' && sheet.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); location.hash = 'guide'; } });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) back(); if (e.key === '/' && sheet.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); location.hash = 'guide'; } });
 function credit() { $('#credit').textContent = PACKS.terrain && B.credit && document.body.classList.contains('mapmode') ? B.credit : ''; }
 
 credit(); dock.hidden = !NOTES.length; render(); if (ORB) ORB.on();
 /* the field pack after the first paint, then what is happening now */
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();
-window.__base = { poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
+window.__base = { drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

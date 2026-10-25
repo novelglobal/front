@@ -149,6 +149,36 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, flow and sound, 25 October** (the owner: "reduce all instances of clicking to another page … focus on where the joy and need is"; "an undo or back button"; "sound additions … more fluid"; "each song … as a loop"; "a full sweep"; "a poster opened on PRINT … goes back to the start").
+  - **Held still on a phone.**
+    - `maximum-scale=1`, and `touch-action: manipulation` on the page, so a double tap never zooms.
+    - Every field is 16 px on a phone, so touching one never zooms either.
+  - **Paper, never a grid.**
+    - The fine grain of the start lies faintly on the ground, every sheet, the card and the dock (`--grain`, light and dark).
+    - The dotted grid the ground showed without its imagery is gone.
+  - **Fewer jumps away.**
+    - A case that worked elsewhere opens where it is (`caseLi`, `caseIn`): what was done first, its source last and small.
+    - In the card, a cell's name unfolds what the guide says (status, where, what to watch for, its year) inside the card.
+    - The dock is the tabs: the page one is on is marked (`dockOn`).
+  - **Back.**
+    - **Closing a view returns to the page it came from** (`back`, `BACKTO`, `PAGE`):
+      - a poster or SIGN opened from PRINT, and a photograph taken from PRINT's eye, return to PRINT;
+      - a print from a W.I.S.H. thread returns to the thread;
+      - a photograph from the dock returns to the page it was taken on.
+    - Escape does the same.
+    - The phone's back closes an open card before it leaves the page.
+    - **↶ in RADIO undoes** the last change to the deck or the sets, one at a time, the last fifty kept (`remember`, `undo`).
+  - **The web's voice** (`DRONE`, ∿ in RADIO to turn it off):
+    - each new stick is heard as a glide from the cell before to the cell now (`glide`);
+    - each life opened holds a low tone at its kind's place in the scale, fuller the more of it was opened;
+    - each set added lays a lower tone under them;
+    - the filter opens as the web grows, and each tone swells as slowly as its cells are far apart.
+    - It is heard only while RADIO or the map is open, and it is only ever cells.
+  - **The radar records a full sweep.**
+    - Turned on, ◎ makes the song four bars (64 steps), and one turn of the hand is exactly one turn of the song, so recording with the radar on captures the whole web, each cell on the same step every turn.
+    - **▮/▮▮▮▮** sets one bar or four; the bar keys 1–4 show a bar, and the grid follows the playhead only while recording or sweeping.
+  - **The song's file is a loop** (`novel-global-song-loop.wav`): whole turns of the song (about four bars), notes from the first sample, the room's tail folded back onto the start, no fade, so on repeat it carries on.
+  - **A fix.** A W.I.S.H. reply half-written is kept when others' replies arrive and the thread is drawn again.
 - **v0.1 alpha, the start, 25 October** (the owner: "the iconic blueprint blue … 3 semi-thin white rings that look hand drawn that rotate to be a slow 3D planet").
   - **The page.** The start (`#home`, `#orrery`) is blueprint blue (`--blue: #17457F`) with a restrained paper texture: three layers of SVG noise (a fine grain, slow mottling, a faint fibre) and a soft vignette. It has no words, no menus and no heading: the top bar, the box at the foot and the dock are hidden here.
   - **The rings.** Three hand-drawn white rings (`ORB`) are great circles at their own tilts, turning about one axis every 110 s, seen a little from above.
@@ -703,7 +733,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v80` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v81` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

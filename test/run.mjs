@@ -1551,7 +1551,7 @@ if (run('base')) try {
   check('the engine stays narrow: nothing reads as everything, each need finds its own call', broad.every(r => r.rel <= 3 && r.lines <= 3) && broad[0].rel === 0 && broad[2].issue === 'swoop' && broad[3].issue === 'snake' && /DEECA/.test(broad[3].call) && broad[4].issue === 'dead' && /SICK OR DEAD/.test(broad[4].call), JSON.stringify(broad));
   await shot(page, 'b02-notice.png');
   await tap(page, '#n-next');
-  const seen = await (await page.waitForFunction(() => { const l = document.querySelectorAll('#n-seen li:not(.wait)'); const n0 = window.__base.notes()[0], ids = ((n0 && n0.seen) || []).map(s => s.id); const hk = window.__base.hits().knots; window.__dk = (window.__dk || []).concat([hk.length + ':' + l.length + ':' + ids.join('/') + ':' + document.body.className]).slice(-6); const k = hk.filter(h => ids.includes(h.n.id)).length; return l.length && (k || l[0].classList.contains('empty')) ? { rows: [...l].map(x => x.textContent), knots: k } : null; }, null, { timeout: 15000, polling: 50 }).catch(async e => { await shot(page, 'b02x.png'); throw new Error('placed: ' + await page.evaluate(() => (document.querySelector('#sheet') || {}).innerHTML.slice(0, 40) + ' | seen=' + JSON.stringify((window.__base.notes()[0] || {}).seen) + ' dk=' + JSON.stringify(window.__dk) + ' notes=' + window.__base.notes().length)); })).jsonValue();
+  const seen = await (await page.waitForFunction(() => { const l = document.querySelectorAll('#n-seen li:not(.wait)'); const n0 = window.__base.notes()[0], ids = ((n0 && n0.seen) || []).map(s => s.id); const hk = window.__base.hits().knots; var st0 = hk.length + ':' + l.length + ':' + ids.join('/') + ':' + document.body.className + ':' + hk.filter(h => /^i/.test(h.n.id)).map(h => h.n.id).slice(0, 3).join('/'); window.__dk = window.__dk || []; if (window.__dk[window.__dk.length - 1] !== st0) window.__dk.push(st0); const k = hk.filter(h => ids.includes(h.n.id)).length; return l.length && (k || l[0].classList.contains('empty')) ? { rows: [...l].map(x => x.textContent), knots: k } : null; }, null, { timeout: 15000, polling: 50 }).catch(async e => { await shot(page, 'b02x.png'); throw new Error('placed: ' + await page.evaluate(() => (document.querySelector('#sheet') || {}).innerHTML.slice(0, 40) + ' | seen=' + JSON.stringify((window.__base.notes()[0] || {}).seen) + ' dk=' + JSON.stringify(window.__dk) + ' notes=' + window.__base.notes().length)); })).jsonValue();
   check('placed: the knot falls on the ground and a few nearby sightings of the same and related lives are revealed, three at most', seen.rows.length >= 1 && seen.rows.length <= 3 && /Rainbow Lorikeet/.test(seen.rows[0]) && seen.knots === seen.rows.length, JSON.stringify(seen));
   check('the data travels with it: suburb, nearest water, canopy, today\'s heat, Niño 3.4', (await page.evaluate(() => window.__base.notes()[0].data.join())) === 'CARLTON,CARLTON GARDENS PONDS,CANOPY 22%,29° TODAY,NIÑO 3.4 +2.8');
   await shot(page, 'b02b-placed.png');
@@ -1606,29 +1606,42 @@ if (run('base')) try {
   const rc = await page.evaluate(() => { const st = window.__base.song().tracks.flatMap(t => t.steps.filter(Boolean)); const ids = [...document.querySelectorAll('#r-body .tiles button')].slice(1, 5).map(b => b.id.slice(2)); return { notes: st.length, tied: st.every(x => ids.includes(x.id) && x.t && x.g), on: window.__base.seq().on, peek: !document.querySelector('#peek').hidden }; });
   check('● records: each tile touched places its own cell on the armed track, like tape, pitched by its kind and named, and nothing opens over it', rc.notes >= 2 && rc.tied && rc.on && !rc.peek, JSON.stringify(rc));
   await tap(page, '#d-rec');
+  await tap(page, '#d-undo'); await sleep(150);
+  const un = await page.evaluate(() => window.__base.song().tracks.reduce((a, t) => a + t.steps.filter(Boolean).length, 0));
+  check('↶ takes back the last change to the deck, one at a time', un === rc.notes - 1, JSON.stringify({ before: rc.notes, after: un }));
   await page.click('#deck .ins[data-t="1"]'); await page.click('#deck .ins[data-t="1"]'); await sleep(200);
   const set = await page.evaluate(() => ({ open: !!document.querySelector('#deck .set'), ins: [...document.querySelectorAll('#deck .set [data-ins]')].map(b => b.title) }));
   await page.click('#deck .set [data-ins="taiko"]'); await sleep(150);
   check('a double tap on a track opens its settings: the instruments (gamelan, jegog, voice, kecak, taiko), level, pitch, length, mute', set.open && set.ins.join() === 'gamelan,jegog,voice,chak,taiko' && (await page.evaluate(() => window.__base.song().tracks[1].ins)) === 'taiko', JSON.stringify(set));
+  await tap(page, '#d-radar'); await sleep(400);
+  const sw = await page.evaluate(() => ({ len: window.__base.song().tracks[0].steps.length, bars: document.querySelectorAll('#deck .bars [data-pg]').length, kept: window.__base.song().tracks[0].steps.filter(Boolean).length }));
+  await tap(page, '#d-radar');
+  check('◎ the radar turns the song to four bars, one full sweep, to record the whole turn of the web; what was there is kept', sw.len === 64 && sw.bars === 4 && sw.kept >= 1, JSON.stringify(sw));
   const dl = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await tap(page, '#d-wav'); const file = await dl;
-  const kept = await page.evaluate(() => ({ songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
-  check('⇩ keeps the song and downloads it as a sound file (WAV): one key, not two', kept.songs === 1 && kept.store === 1 && kept.wav > 100000 && !!file && /\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
+  const kept = await page.evaluate(() => ({ songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, loop: window.__lastLoop, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
+  check('⇩ keeps the song and downloads it as a loop (WAV): whole turns of the song, the tail folded to the start, no fade, so it carries on when repeated', kept.songs === 1 && kept.store === 1 && !!kept.loop && kept.loop.samples === Math.round(44100 * 64 * 60 / 104 / 4) && kept.wav === 44 + kept.loop.samples * 4 && !!file && /loop\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
   /* a cell opened: its photograph large, its name to the guide here, no link out; ＋ puts it in the track */
   const seq0 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web') || '{"seq":[]}').seq.length);
   const lori = await page.evaluate(() => { const b = [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].find(x => /Rainbow Lorikeet/.test(x.title)); return b ? b.id : null; });
   await page.click(lori ? '#' + lori : '#r-body .tiles button:not(.mine)'); await sleep(500);
   const pk = await page.evaluate(() => ({ peek: !document.querySelector('#peek').hidden, ph: (document.querySelector('#peek .pk-ph') || { offsetHeight: 0 }).offsetHeight, guide: !!document.querySelector('#pk-g'), out: [...document.querySelectorAll('#peek a')].filter(a => a.target === '_blank' || /inaturalist/.test(a.href)).length, deck: !!document.querySelector('#deck') }));
   check('a cell opens as a card in place: its photograph large, its name a way into the guide, no link out to its source; RADIO stays', pk.peek && pk.ph >= 150 && pk.guide && !pk.out && pk.deck && page.url() === url0, JSON.stringify(pk) + page.url());
-  await page.evaluate(() => { window.__base.song().tracks[0].steps = Array(16).fill(null); }); await page.click('#deck .ins[data-t="0"]'); await sleep(450); await page.click('#pk-add'); await sleep(200);
+  await page.click('#pk-g'); await sleep(250);
+  const unf = await page.evaluate(() => ({ more: !document.querySelector('#pk-more').hidden, spec: document.querySelectorAll('#pk-more dl.spec dt').length, yr: !!document.querySelector('#pk-more table.yr'), deck: !!document.querySelector('#deck'), tab: [...document.querySelectorAll('#dock a.on')].map(a => a.getAttribute('href')).join() }));
+  check('its name unfolds what the guide says inside the card, and RADIO stays, marked in the dock as the page one is on', unf.more && unf.spec >= 2 && unf.yr && unf.deck && unf.tab === '#radio' && page.url() === url0, JSON.stringify(unf));
+  await page.evaluate(() => { const t = window.__base.song().tracks[0]; t.steps = Array(t.steps.length).fill(null); }); await page.click('#deck .ins[data-t="0"]'); await sleep(450); await page.click('#pk-add'); await sleep(200);
   const added = await page.evaluate(() => window.__base.song().tracks[0].steps.filter(Boolean).map(x => x.t));
-  await page.click('#deck .cells[data-t="0"] button[data-s="9"]'); await sleep(200);
-  const at9 = await page.evaluate(() => (window.__base.song().tracks[0].steps[9] || {}).t);
-  check('the cell open goes into the armed track by ＋, or onto any step touched while it is open', added.length === 1 && /Rainbow Lorikeet/.test(added[0]) && /Rainbow Lorikeet/.test(at9 || ''), JSON.stringify({ added, at9 }));
+  const s9 = await page.evaluate(() => +document.querySelectorAll('#deck .cells[data-t="0"] button')[9].dataset.s);
+  await page.click(`#deck .cells[data-t="0"] button[data-s="${s9}"]`); await sleep(200);
+  const at9 = await page.evaluate(s9 => (window.__base.song().tracks[0].steps[s9] || {}).t, s9);
+  check('the cell open goes into the armed track by ＋, or onto any step touched while it is open', added.length === 1 && /Rainbow Lorikeet/.test(added[0]) && /Rainbow Lorikeet/.test(at9 || ''), JSON.stringify({ added, at9, s9, dbg: await page.evaluate(() => ({ on: window.__base.seq().on, page: window.__base.seq().page, filled: window.__base.song().tracks.map(t => t.steps.map((x, i) => x ? i : -1).filter(i => i >= 0)), len: window.__base.song().tracks.map(t => t.steps.length), peek: !document.querySelector('#peek').hidden })) }));
   /* the web: built only from what is opened, each line with its reason */
   const tiles2 = await page.evaluate(() => [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].filter(x => !/Rainbow Lorikeet/.test(x.title)).slice(0, 2).map(b => '#' + b.id));
   for (const t of tiles2) { await page.click('#pk-x').catch(() => {}); await page.click(t); await sleep(400); }
   const web = await page.evaluate(() => { const W = JSON.parse(localStorage.getItem('da.base.web')); const why = window.__base.hits().sticks.map(s => s.why).filter(Boolean); return { seq: W.seq.length, trail: document.querySelectorAll('#net path.w.trail').length, why: why.slice(0, 4), opened: why.some(w => /^opened .+, then .+/.test(w)) }; });
   check('the web of noticing builds as cells are opened: kept, each one tied to the one before by a trail stick that says why', web.seq >= seq0 + 3 && web.trail >= 2 && web.opened, JSON.stringify(web));
+  await sleep(300); const dr = await page.evaluate(() => ({ glides: window.__glides || 0, ...window.__base.drone() }));
+  check('the web has a voice, fluid not stepped: each new stick a glide from cell to cell, and a held tone for each life opened', dr.on && dr.glides >= 2 && dr.voices >= 1, JSON.stringify(dr));
   await page.click('#pk-x').catch(() => {}); await tap(page, '#d-play');
   /* collections: each with its own shape; added to the web and kept, not replacing; what prints or downloads, shown */
   await tap(page, '#r-way [data-w="sets"]'); await page.waitForSelector('#r-body .list.sets'); await sleep(300);
@@ -1643,6 +1656,8 @@ if (run('base')) try {
   check('⇩ downloads the web as a picture; ⎙ prints it on novel.global\'s printer', !!wf && /novel-global-web\.png$/.test(wf.suggestedFilename()) && !!wrec && wrec.dest === 'novelglobal', String(wf && wf.suggestedFilename()) + JSON.stringify(wrec || {}).slice(0, 120));
   await page.click('#r-sets button[data-x="0"]'); await sleep(300);
   check('× takes one set off and leaves the other', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 1);
+  await tap(page, '#d-undo'); await sleep(300);
+  check('↶ brings a set taken off back', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 2 && (await page.evaluate(() => document.querySelectorAll('#r-sets button').length)) === 2);
   await tap(page, '#r-way [data-w="help"]'); await sleep(500);
   const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
   check('HELP has every number to call', help.includes('tel:000') && help.includes('tel:0384007300'), help.length + '');
@@ -1653,6 +1668,8 @@ if (run('base')) try {
   await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-prn li:not(.empty)', { timeout: 8000 }).catch(() => {}); await sleep(800);
   const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: !!document.querySelector('#sheet a[href^="studio"]'), prns: [...document.querySelectorAll('#s-prn li')].map(l => l.textContent), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
   check('SHOP: one\'s posters with where each is as pips, novel.global\'s printer and no other, how to build one, packs; no way to the studio; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn === 1 && /novel\.global|novelglobal/i.test(shop.prns[0]) && shop.build && shop.packs && !shop.add && !shop.held, JSON.stringify(shop));
+  await page.click('#s-rec [data-i="0"]'); await page.waitForSelector('#p-slip canvas'); await page.click('#sheet .hd .x'); await sleep(400);
+  check('a poster opened from PRINT closes back to PRINT, not to the start', await page.evaluate(() => !!document.querySelector('#s-rec') && document.body.classList.contains('away')));
   /* the studio is its own site now, the devices site for class: devices on, no bar back to the base over its words */
   { const sp = await ctx.newPage(); await sp.addInitScript(() => { try { localStorage.removeItem('da.devices'); } catch (e) { /* fine */ } }); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
     const so = await sp.evaluate(() => ({ plain: document.documentElement.classList.contains('plain'), veil: !!document.querySelector('#jr-veil'), home: (document.querySelector('#to-base') || {}).getAttribute ? document.querySelector('#to-base').getAttribute('href') : null }));
@@ -1667,6 +1684,9 @@ if (run('base')) try {
   await shot(page, 'b04b-guide.png');
   await page.click('#sheet .back'); await page.fill('#q', 'frogmouth'); await sleep(300);
   check('one field searches the guide', await page.evaluate(() => !!document.querySelector('#g-out [data-sp="tawny-frogmouth"]')));
+  await page.fill('#q', 'lights'); await sleep(300);
+  const cs = await page.evaluate(() => { const d = document.querySelector('#g-out details.case'); if (!d) return null; d.querySelector('summary').click(); return { open: d.open, fact: (d.querySelector('p') || {}).textContent || '', out: [...document.querySelectorAll('#g-out a[target=_blank]')].every(a => a.classList.contains('src')) }; });
+  check('what worked elsewhere opens where it is: what was done, and its source last and small', !!cs && cs.open && cs.fact.length > 20 && cs.out, JSON.stringify(cs));
   /* the map: filled, every mark explains itself, a card in place */
   await page.goto('https://oan.test/'); await page.goto('https://oan.test/#radio'); await sleep(500); await tap(page, '#b-map');
   await page.waitForFunction(() => window.__base.hits().knots.length > 10, null, { timeout: 15000 }).catch(() => {}); await sleep(1500);
@@ -1740,6 +1760,8 @@ if (run('base')) try {
   await pp.goto('https://oan.test/'); await sleep(1500); await shot(pp, 'b05-phone.png');
   await pp.setInputFiles('#dock .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await pp.waitForSelector('#n-next'); await pp.fill('#n-say', 'lorikeet fledgling'); await sleep(700); await shot(pp, 'b07-phone-notice.png');
   await pp.click('#n-next'); await pp.waitForSelector('#p-slip canvas'); await sleep(500); await shot(pp, 'b08-phone-s.png');
+  const still = await pp.evaluate(() => ({ vp: document.querySelector('meta[name=viewport]').content, ta: getComputedStyle(document.documentElement).touchAction, fields: [...document.querySelectorAll('#sheet textarea, #sheet input, #sheet select')].filter(e => e.offsetParent).map(e => getComputedStyle(e).fontSize) }));
+  check('on a phone the page holds still: no zoom on a double tap, none when a field is touched', /maximum-scale=1/.test(still.vp) && still.ta === 'manipulation' && still.fields.length && still.fields.every(f => parseFloat(f) >= 16), JSON.stringify(still));
   const wide = await pp.evaluate(() => Math.max(document.documentElement.scrollWidth, document.querySelector('#sheet').scrollWidth));
   check('on a phone the base fits the screen', wide <= 375, String(wide));
   await pc.close();
