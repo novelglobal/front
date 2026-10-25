@@ -138,6 +138,9 @@ var WEB = store.get('da.base.web', null); if (!WEB || !WEB.seq) WEB = { nodes: {
 var webFresh = {};
 /* one's own path (every cell opened, in order) is a constellation like the sets: shown or hidden, cleared with a check */
 var pathOn = function () { return WEB.path !== false; };
+/* where a sighting really was: iNaturalist moves an obscured one (a threatened life, a private record) up to some 20 km at random,
+   which puts land birds out in the bay. Those, and any placed only roughly, are left off */
+var placedWell = function (o) { return !o.obscured && o.geoprivacy !== 'obscured' && o.taxon_geoprivacy !== 'obscured' && o.geoprivacy !== 'private' && !(o.positional_accuracy > 500); };
 /* fours of a life, in the order they were opened: each four is one irukandji */
 function irukandji(nodes) {
   var at = {}; WEB.seq.forEach(function (id, i) { if (at[id] == null) at[id] = i; });
@@ -148,7 +151,7 @@ function irukandji(nodes) {
 function saveWeb() { if (WEB.seq.length > 160) { WEB.seq = WEB.seq.slice(-160); var keep = {}; WEB.seq.forEach(function (id) { keep[id] = WEB.nodes[id]; }); WEB.sets.forEach(function (s) { (s.pts || []).forEach(function (p) { if (WEB.nodes[p.id]) keep[p.id] = WEB.nodes[p.id]; }); }); WEB.nodes = keep; } store.set('da.base.web', WEB); if (typeof remember === 'function' && SONG) remember(); if (AC) droneSync(); }
 /* a cell opened: kept, and tied to the one opened before it */
 function attend(n) {
-  if (!n || !isFinite(n.lat) || !isFinite(n.lng)) return;
+  if (!n || !isFinite(n.lat) || !isFinite(n.lng) || WEB.rec === false) return;
   WEB.nodes[n.id] = { id: n.id, at: n.at || Date.now(), lat: +n.lat, lng: +n.lng, cn: n.cn || '', sp: n.sp || '', g: gOf(n), mine: !!n.mine, say: n.say || '', thumb: n.thumb || n.photoURL || '' };
   var last = WEB.seq[WEB.seq.length - 1]; if (last === n.id) return;
   WEB.seq.push(n.id); if (last) { webFresh[last + '>' + n.id] = Date.now(); if (WEB.nodes[last] && pathOn()) { ac(); glide(WEB.nodes[last], WEB.nodes[n.id]); } } saveWeb(); render();
@@ -174,6 +177,7 @@ var hits = { knots: [], sticks: [], jellies: [] };
 var nameOf = function (n) { return n.cn || n.say || n.code || '·'; };
 function drawNet() {
   while (netEl.firstChild) netEl.removeChild(netEl.firstChild); hits = { knots: [], sticks: [], jellies: [] }; if (!shown()) return;
+  if (ME && isFinite(ME.lat)) { var mp = px(ME.lat, ME.lng), mr = Math.max(8, ME.acc / (156543 * Math.cos(ME.lat * Math.PI / 180) / Math.pow(2, map.z))); netEl.appendChild(svg('circle', { cx: mp[0], cy: mp[1], r: Math.min(mr, 120), 'class': 'me-acc' })); netEl.appendChild(svg('circle', { cx: mp[0], cy: mp[1], r: 5, 'class': 'me-dot' })); }
   if (net.wish) { drawWish(); return; }
   var onScreen = function (n) { if (!isFinite(n.lat) || !isFinite(n.lng)) return false; var p = px(n.lat, n.lng); return p[0] > -200 && p[1] > -200 && p[0] < map.w + 200 && p[1] < map.h + 200; };
   var list = visible().filter(onScreen), byId = {}; list.forEach(function (n) { byId[n.id] = n; });
@@ -454,23 +458,35 @@ function read(n) {
 }
 
 /* ───────── the sheet: everything opens here. Its head is a glyph and a close; no titles ───────── */
-var sheet = $('#sheet'), dock = $('#dock');
+var sheet = $('#sheet');
 function open(html, half, cls) {
   sheet.innerHTML = html; sheet.hidden = false; document.body.classList.remove('sheetmin'); sheet.dataset.k = ''; sheet.className = (half ? 'half ' : '') + (cls || ''); sheet.scrollTop = 0;
-  net.wish = false; document.body.classList.remove('wishmap'); document.body.classList.add('away'); document.body.classList.toggle('half', !!half); document.body.classList.toggle('wide', /\bwide\b/.test(cls || '')); dock.hidden = false; render();
+  net.wish = false; document.body.classList.remove('wishmap'); if (ORB) ORB.quiet(); document.body.classList.add('away'); document.body.classList.toggle('half', !!half); document.body.classList.toggle('wide', /\bwide\b/.test(cls || '')); sheet.style.height = ''; sheet.style.maxHeight = ''; rail(); render(); backKey();
   var x = $('.x', sheet); if (x) x.addEventListener('click', back);
 }
 /* back: a view opened from a page returns to that page when closed (a poster from PRINT goes back to PRINT, a print from a thread
    back to the thread); a page itself closes to the start */
 var BACKTO = null, PAGE = null, PAGEHASH = '';
+var SHEET_H = 0;
+function rail() {
+  if (innerWidth >= 760 || !sheet.classList.contains('half')) return; var g = document.createElement('div'); g.className = 'grip'; g.setAttribute('aria-label', 'Slide'); sheet.insertBefore(g, sheet.firstChild);
+  if (SHEET_H) { sheet.style.height = SHEET_H + 'px'; sheet.style.maxHeight = 'none'; }
+  var y0 = 0, h0 = 0, on = false;
+  g.addEventListener('pointerdown', function (e) { on = true; y0 = e.clientY; h0 = sheet.getBoundingClientRect().height; try { g.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } sheet.classList.add('sliding'); });
+  g.addEventListener('pointermove', function (e) { if (!on) return; var h = Math.max(56, Math.min(innerHeight - 60, h0 + (y0 - e.clientY))); sheet.style.height = h + 'px'; sheet.style.maxHeight = 'none'; });
+  var up = function () { if (!on) return; on = false; sheet.classList.remove('sliding'); var h = sheet.getBoundingClientRect().height, stops = [56, innerHeight * 0.3, innerHeight * 0.55, innerHeight - 60], best = stops[0];
+    stops.forEach(function (s0) { if (Math.abs(s0 - h) < Math.abs(best - h)) best = s0; }); SHEET_H = Math.round(best); sheet.style.height = SHEET_H + 'px'; render(); };
+  g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+}
+function backKey() { var x = $('#sheet .hd .x'); if (!x) return; if (BACKTO) { x.textContent = '←'; x.setAttribute('aria-label', 'Back'); x.title = 'Back'; x.hidden = false; } else x.hidden = true; }
 function back() { var b = BACKTO; BACKTO = null; if (b) b(); else close(); }
 function close() {
   dockOn(''); BACKTO = null; PAGE = null; PAGEHASH = ''; net.wish = false; net.onWish = null; sheet.hidden = true; sheet.innerHTML = ''; radioPaint = null; ['away', 'half', 'wide', 'sheetmin', 'wishmap'].forEach(function (c) { document.body.classList.remove(c); }); net.live = document.body.classList.contains('mapmode'); if (radar.on) radarOn(false);
   net.all = document.body.classList.contains('mapmode'); net.focus = null; net.links = []; net.only = null;
   if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on(); if (AC) droneSync();
 }
-/* the dock is the tabs: the page one is on is marked, so where one is and where else one can go are always in reach */
-function dockOn(k) { $$('#dock a').forEach(function (a) { var on = a.getAttribute('href') === '#' + k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
+/* the bar is the tabs: the page one is on is marked, so where one is and where else one can go are always in reach */
+function dockOn(k) { $$('#top a.pg').forEach(function (a) { var on = a.getAttribute('href') === '#' + k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
 var glyph = function (id) { return '<svg class="gi" aria-hidden="true"><use href="#g-' + id + '"/></svg>'; };
 var head = function (g, extra) { return '<div class="hd">' + (g ? '<span class="hg">' + glyph(g) + '</span>' : '') + (extra || '') + '<button class="x" aria-label="Close" title="Close">×</button></div>'; };
 /* ───────── noticing: the photograph, where and when, a line ───────── */
@@ -617,11 +633,11 @@ function reveal(n, r) {
   var taxa = [r.sp].concat((r.rel || []).filter(function (o) { return o.f; }).map(function (o) { return o.f; })).filter(Boolean).slice(0, 3);
   if (!taxa.length || !B.inat) return Promise.resolve([]);
   return Promise.all(taxa.map(function (f) {
-    var u = B.inat + '/observations?taxon_name=' + encodeURIComponent(f.n) + '&lat=' + n.lat.toFixed(4) + '&lng=' + n.lng.toFixed(4) + '&radius=3&per_page=3&order=desc&order_by=observed_on&locale=en';
+    var u = B.inat + '/observations?taxon_name=' + encodeURIComponent(f.n) + '&lat=' + n.lat.toFixed(4) + '&lng=' + n.lng.toFixed(4) + '&radius=3&per_page=6&order=desc&order_by=observed_on&geoprivacy=open&locale=en';
     return fetch(u).then(function (x) { return x.json(); }).then(function (j) {
       return ((j && j.results) || []).map(function (o) {
         /* only the life asked for, never whatever else comes back */
-        var c = o.geojson && o.geojson.coordinates, tx = o.taxon || {}; if (!c || (tx.name !== f.n && lower(tx.preferred_common_name) !== lower(f.cn))) return null;
+        var c = o.geojson && o.geojson.coordinates, tx = o.taxon || {}; if (!c || !placedWell(o) || (tx.name !== f.n && lower(tx.preferred_common_name) !== lower(f.cn))) return null;
         var s = { id: 'i' + o.id, lat: +c[1], lng: +c[0], cn: (o.taxon && o.taxon.preferred_common_name) || f.cn, at: Date.parse(o.observed_on) || 0, inat: o.id };
         s.d = Math.round(dist(n, s)); return s;
       }).filter(Boolean);
@@ -664,17 +680,16 @@ var IB = {
   cats: ['Cats kept in from dusk to dawn', 'Dogs on leads near nests'],
   poison: ['No baits here: traps instead', 'Footpaths left unsprayed'],
 };
-var IB_G = function (name) { return ['Water and shade for the ' + name + ' on hot days', 'This place kept for the ' + name, 'Neighbours who know the ' + name + ' is here']; };
 var cap = function (s) { s = String(s || '').toLowerCase(); return s.replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); }); };
 function uniq(a) { var o = []; a.forEach(function (x) { x = String(x || '').trim(); if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
 function wishOptions(n, r) {
   var sp = r.sp, iss = r.issue, place = (n.data || [])[1] || (n.data || [])[0] || '', o = outlookNow(), cs = caseOf(r.group, iss);
-  var name = sp ? sp.cn.replace(/^(Common|Australian|Eastern) /, '') : 'life here';
   var W = [sp && (sp.cn + (place ? ' at ' + cap(place) : '') + ', ' + when(n.at).slice(0, 6)), sp && sp.aware, n.say,
     sp && sp.brd && sp.brd[M] === 'B' ? 'Nesting now, ' + months(sp.brd, 'B') : '', o && o.win && r.group && o.win.g.indexOf(r.group) >= 0 ? 'El Niño: ' + o.win.why : ''];
-  var I = (IB[iss && iss.k] || []).concat(IB_G(name));
-  var S = [iss && actions(iss.say, 1), sp && sp.help, iss && SIGN[iss.k] ? 'A sign at the spot: ' + SIGN[iss.k].toLowerCase() : 'A sign at the spot, printed here', cs && cs.i, sp && sp.harm];
-  var H = [r.call && r.call.label + ' ' + r.call.n, cs && ('As ' + (cs.after || 'others') + ' did' + (cs.city ? ', ' + cs.city : '') + (cs.yr ? ' ' + cs.yr : '') + (cs.fact ? ': ' + cs.fact : '')), 'Printed at a partner place and taped up here', 'Passed on through the neighbours’ net'];
+  /* only lines that say something true and particular: the need's own, or this life's own care; never a stock line about it */
+  var I = (IB[iss && iss.k] || []).concat([sp && sp.help]);
+  var S = [iss && actions(iss.say, 1), sp && sp.harm, cs && cs.i];
+  var H = [r.call && r.call.label + ' ' + r.call.n, cs && ('As ' + (cs.after || 'others') + ' did' + (cs.city ? ', ' + cs.city : '') + (cs.yr ? ' ' + cs.yr : '') + (cs.fact ? ': ' + cs.fact : ''))];
   return [W, I, S, H].map(function (a) { return uniq(a).slice(0, 6); });
 }
 function wishLines(n, r) {
@@ -724,6 +739,7 @@ function qrLib() { if (window.qrcode) return Promise.resolve(window.qrcode); if 
 var noteURL = function (n) { var base = /\.workers\.dev$|localhost|\.test$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + '#n=' + n.code; };
 /* opt: { art: photo | pixel | net, wish: its four lines on, show: which parts print (all, unless said) } */
 function slip(n, photo, r, opt, W, boardArt) {
+  if (!window.CanvasDither && !slip.waited) { slip.waited = 1; return ditherLib().then(function () { return slip(n, photo, r, opt, W, boardArt); }); }
   opt = opt || {}; var art = opt.art || 'photo', show = opt.show || { line: 1, life: 1, facts: 1, links: 1, code: 1 };
   if (art === 'sign') return signSlip(n, photo, r, W);
   var F = function (px, w) { return (w || 'bold') + ' ' + px + 'px "Courier New", Courier, monospace'; };
@@ -762,7 +778,7 @@ function slip(n, photo, r, opt, W, boardArt) {
       } else {
         var c2 = document.createElement('canvas'); c2.width = aw; c2.height = ph; var cx = c2.getContext('2d');
         var sc = Math.max(aw / im.naturalWidth, ph / im.naturalHeight); cx.drawImage(im, (aw - im.naturalWidth * sc) / 2, (ph - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc);
-        dither(cx, aw, ph); o.drawImage(c2, pad, top);
+        printReady(cx, aw, ph, window.CanvasDither); o.drawImage(c2, pad, top);
       }
       /* its icon, stamped in the corner of the art: pixel art, a pack's icon or a sprite of one's own */
       if (ic) { var iw = ic.naturalWidth || ic.width, ih = ic.naturalHeight || ic.height, sz = Math.round(aw * 0.26), kk = sz / Math.max(iw, ih), sw = Math.round(iw * kk), sh = Math.round(ih * kk), sx = pad + aw - sw - 8, sy = top + ph - sh - 8; o.fillStyle = '#fff'; o.fillRect(sx - 5, sy - 5, sw + 10, sh + 10); o.imageSmoothingEnabled = false; o.drawImage(ic, sx, sy, sw, sh); o.fillStyle = '#000'; }
@@ -791,7 +807,7 @@ function signSlip(n, photo, r, W) {
   if (r.call) { var ch = Math.round(86 * u); x.lineWidth = Math.max(2, Math.round(4 * u)); x.strokeRect(pad, y, aw, ch); x.font = F(Math.round(18 * u)); x.fillText(r.call.label, pad + Math.round(14 * u), y + Math.round(12 * u)); x.font = F(Math.round(40 * u)); x.fillText(r.call.n, pad + Math.round(14 * u), y + Math.round(36 * u)); y += ch + Math.round(18 * u); }
   return Promise.all([photo ? loadImg(photo).catch(function () { return null; }) : null, qrLib()]).then(function (got) {
     var im = got[0], Q = got[1], side = Math.round(aw * 0.46), top = y;
-    if (im) { var p = document.createElement('canvas'); p.width = p.height = side; var px2 = p.getContext('2d'); var sc = Math.max(side / im.naturalWidth, side / im.naturalHeight); px2.drawImage(im, (side - im.naturalWidth * sc) / 2, (side - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); dither(px2, side, side); x.drawImage(p, pad, top); }
+    if (im) { var p = document.createElement('canvas'); p.width = p.height = side; var px2 = p.getContext('2d'); var sc = Math.max(side / im.naturalWidth, side / im.naturalHeight); px2.drawImage(im, (side - im.naturalWidth * sc) / 2, (side - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); printReady(px2, side, side, window.CanvasDither); x.drawImage(p, pad, top); }
     if (Q) { try { var q = Q(0, 'L'); q.addData(noteURL(n)); q.make(); var k = q.getModuleCount(), m = Math.max(2, Math.floor(side / k)), ox = im ? W - pad - k * m : Math.round((W - k * m) / 2); for (var i = 0; i < k; i++) for (var j = 0; j < k; j++) if (q.isDark(i, j)) x.fillRect(ox + j * m, top + i * m, m, m); } catch (e) { /* no code */ } }
     y = top + side + Math.round(16 * u); x.font = F(Math.round(15 * u)); x.fillText(when(n.at) + '  ' + ll(n.lat, n.lng) + '  ' + n.code, pad, y); y += Math.round(30 * u);
     var out = document.createElement('canvas'); out.width = W; out.height = y; var o = out.getContext('2d'); o.drawImage(c, 0, 0, W, y, 0, 0, W, y);
@@ -1039,19 +1055,26 @@ function backTo() { var b = $('#sheet .back'); if (b) b.addEventListener('click'
 /* ───────── the map is a key: the ground, the knots, a touch to place one, and many at once: photographs, calls, icons ───────── */
 /* ───────── the map is a key: the ground, what is about, everyone's noticings and one's own, the net between them. A touch on open
    ground places a noticing; + adds many at once: photographs, calls, icons ───────── */
+var mapFrom = '', ME = null;
+function locateMe(btn) {
+  if (!navigator.geolocation) { if (btn) btn.classList.add('no'); return; } if (btn) btn.classList.add('wait');
+  navigator.geolocation.getCurrentPosition(function (p) { ME = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 30 }; if (btn) { btn.classList.remove('wait'); btn.classList.add('on'); } moveTo(ME.lat, ME.lng, 17); },
+    function () { if (btn) { btn.classList.remove('wait'); btn.classList.add('no'); setTimeout(function () { btn.classList.remove('no'); }, 1500); } }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+}
 function mapOn(on) {
-  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close(); if (!on && ORB) ORB.on(); if (AC) droneSync();
+  if (on && PAGEHASH) mapFrom = PAGEHASH;
+  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close(); if (on && ORB) ORB.quiet(); if (!on) { var f = mapFrom; mapFrom = ''; if (f) { location.hash = f; } else if (ORB) ORB.on(); } if (AC) droneSync();
   net.all = on; net.live = on; credit(); tipEl.hidden = true;
   if (on) { render(); db().then(function () { return Promise.all([loadShared(), loadLive(map.lat, map.lng)]); }).then(function () { var l = everything().filter(function (n) { return isFinite(n.lat) && dist(n, map) < 2500; }); if (l.length) fit(l); else render(); }); } else render();
 }
 function batch(files) {
   var list = Array.prototype.slice.call(files || []); if (!list.length) return; var done = 0;
-  var add = function (n) { NOTES.unshift(n); done++; if (done === list.length) { saveNotes(); net.fresh = n.id; render(); toast('+' + done); } };
+  var added = [], add = function (n) { NOTES.unshift(n); added.push(n); done++; if (done === list.length) { saveNotes(); net.fresh = n.id; toast('+' + added.length); if (added.length) { fit(added); peek(added[0]); } else render(); } };
   list.forEach(function (file, k) {
     var base = { id: 'n' + Date.now().toString(36) + k, at: file.lastModified || Date.now(), lat: map.lat + (k % 5) * 0.0004, lng: map.lng + Math.floor(k / 5) * 0.0004, say: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '), tags: [], mine: true };
     base.code = code(base.id);
     if (/^audio\//.test(file.type)) { base.tags = ['CALL']; base.call = 1; if (file.size < 300e3) { var fa = new FileReader(); fa.onload = function () { base.audio = fa.result; add(base); }; fa.onerror = function () { add(base); }; fa.readAsDataURL(file); } else { AUDIO[base.id] = URL.createObjectURL(file); add(base); } return; }
-    if (!/^image\//.test(file.type)) { done++; return; }
+    if (!/^image\//.test(file.type)) { done++; if (done === list.length && added.length) { saveNotes(); fit(added); peek(added[0]); } return; }
     var icon = /svg/.test(file.type) || /icon|sticker|glyph/i.test(file.name);
     var fr = new FileReader(); fr.onload = function () {
       var ex = icon ? {} : exif(fr.result); var url = URL.createObjectURL(file);
@@ -1073,10 +1096,11 @@ function placeAt(lat, lng) { cur = { id: 'n' + Date.now().toString(36), at: Date
    below, as photographs. A song is kept, played back, and taken away as a sound file ───────── */
 function loadShared() {
   return api('/stories').then(function (j) {
-    WISHES = [];
+    WISHES = []; PIECES_SHARED = [];
     SHARED = ((j && j.stories) || []).map(function (s) {
       if (s.kind === 'record') { try { var d = JSON.parse(s.body);
         if (d.type === 'wish') { WISHES.push({ id: 's' + s.id, re: d.re, lines: d.lines || [], at: s.at }); return null; }
+        if (d.type === 'piece') { if (s.photo) PIECES_SHARED.push({ src: API + '/photos/' + s.id, at: s.at }); return null; }
         if (!isFinite(+d.lat) || d.type === 'poster' || d.type === 'web') return null; return { id: 's' + s.id, code: s.code, at: s.at, lat: +d.lat, lng: +d.lng, say: d.text || '', cn: d.tx ? d.tx.cn : '', sci: d.tx ? d.tx.n : '', sp: '', g: d.g || '', issue: d.issue || '', tags: d.tags || [], data: d.data || [], wishText: d.wish || null, booth: d.type === 'booth', photoURL: s.photo ? API + '/photos/' + s.id : '', thumb: '' }; } catch (e) { return null; } }
       return null;
     }).filter(Boolean);
@@ -1090,10 +1114,10 @@ function loadLive(lat, lng) {
   var key = lat.toFixed(2) + ',' + lng.toFixed(2); if (liveAt === key) return Promise.resolve(LIVE);
   if (!B.inat) return Promise.resolve([]);
   var d1 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-  return fetch(B.inat + '/observations?lat=' + lat.toFixed(4) + '&lng=' + lng.toFixed(4) + '&radius=2&per_page=60&order=desc&order_by=observed_on&photos=true&d1=' + d1 + '&locale=en')
+  return fetch(B.inat + '/observations?lat=' + lat.toFixed(4) + '&lng=' + lng.toFixed(4) + '&radius=2&per_page=80&order=desc&order_by=observed_on&photos=true&geoprivacy=open&d1=' + d1 + '&locale=en')
     .then(function (r) { return r.json(); }).then(function (j) {
       var got = ((j && j.results) || []).map(function (o) {
-        var c = o.geojson && o.geojson.coordinates, tx = o.taxon || {}, ph = (o.photos || [])[0]; if (!c) return null;
+        var c = o.geojson && o.geojson.coordinates, tx = o.taxon || {}, ph = (o.photos || [])[0]; if (!c || !placedWell(o)) return null;
         return { id: 'i' + o.id, inat: o.id, live: true, lat: +c[1], lng: +c[0], cn: tx.preferred_common_name || tx.name || '', sci: tx.name || '', g: ICON_G[tx.iconic_taxon_name] || 'bird',
           at: Date.parse(o.time_observed_at || o.observed_on) || 0, photoURL: ph && ph.license_code ? String(ph.url).replace('square', 'small') : '', credit: ph ? ph.attribution || '' : '', url: o.uri || '' };
       }).filter(Boolean);
@@ -1107,11 +1131,12 @@ var radioWay = 'live', radioPaint = null;
 function radioSheet(way) {
   dockOn('radio'); BACKTO = null; PAGE = function () { radioSheet(); }; PAGEHASH = 'radio';
   radioWay = way || radioWay; net.all = true; net.live = true; net.focus = null; net.links = [];
-  open('<div class="pin">' + head('radio', '<span class="sp"></span><button class="g mn" id="r-min" aria-label="Fold away, to see the map" title="Fold away, to see the map">–</button>') + '</div>' +
+  open('<div class="pin">' + head('radio', '<span class="sp"></span><button class="g' + (WEB.rec === false ? '' : ' on') + '" id="r-rec" aria-label="Remember the path: each cell opened is tied into the web" title="Remember the path: each cell opened is tied into the web">' + glyph('trail') + '</button><button class="g mn" id="r-min" aria-label="Fold away, to see the map" title="Fold away, to see the map">–</button>') + '</div>' +
     '<div id="deck-wrap"></div>' +
     '<div class="seg" id="r-way"><button class="g" data-w="live" aria-label="What is about" title="What is about">' + glyph('tiles') + '</button><button class="g" data-w="sets" aria-label="Collections and the web" title="Collections and the web">' + glyph('jelly') + '</button><button class="g hi" data-w="help" aria-label="Help" title="Help">' + glyph('sos') + '</button></div>' +
     '<div class="chips" id="r-sets"></div><div id="r-body"></div>', true);
   deck($('#deck-wrap')); if (AC) droneSync();
+  $('#r-rec').addEventListener('click', function () { WEB.rec = WEB.rec === false; this.classList.toggle('on', WEB.rec !== false); saveWeb(); });
   $('#r-min').addEventListener('click', function () { var m = !sheet.classList.contains('min'); sheet.classList.toggle('min', m); document.body.classList.toggle('sheetmin', m); this.textContent = m ? '+' : '–';
     /* what was centred above the sheet is centred on the whole screen, and back */
     var wide = innerWidth >= 760, d = (m ? -1 : 1) * (wide ? 220 : map.h * 0.3); if (wide) map.lng = ux(wx(map.lng, map.z) + d, map.z); else map.lat = uy(wy(map.lat, map.z) + d, map.z); render(); });
@@ -1132,13 +1157,14 @@ function radioSheet(way) {
       var sets = collections(), on = function (c) { return webSets().some(function (s) { return s.k === c.k; }); };
       var pathPts = WEB.seq.map(function (id) { return WEB.nodes[id]; }).filter(Boolean).map(function (n, i) { return { id: n.id, lat: n.lat, lng: n.lng, at: i, g: n.g }; });
       body.innerHTML = '<div class="art-pv" id="r-pv">' + ((pathOn() && WEB.seq.length) || webSets().length ? '<canvas></canvas>' : '<p class="empty">· · ·</p>') + '</div>' +
-        '<div class="row"><button class="g" id="r-dl" aria-label="Download the web" title="Download the web">⇩</button><button class="g" id="r-pr" aria-label="Print the web" title="Print the web">' + glyph('print') + '</button><span id="r-pst"></span></div>' +
+        '<div class="row"><button class="g" id="r-dl" aria-label="Download the web" title="Download the web">⇩</button><button class="g" id="r-pr" aria-label="Print the web" title="Print the web">' + glyph('print') + '</button><button class="g" id="r-cp" aria-label="Into PRINT, to compose" title="Into PRINT, to compose">→' + glyph('shop') + '</button><span id="r-pst"></span></div>' +
         '<ul class="list sets path"><li><button id="r-path" class="' + (pathOn() ? 'on' : '') + '">' + shapeSVG(pathPts) + '<span>Your path</span><small>' + WEB.seq.length + (pathOn() ? ' ✓' : ' +') + '</small></button>' + (WEB.seq.length ? '<button class="rm" id="r-path-x" aria-label="Clear your path" title="Clear your path">×</button>' : '') + '</li></ul>' +
         (sets.length ? '<ul class="list sets">' + sets.map(function (c, i) { return '<li><button data-c="' + i + '" class="' + (on(c) ? 'on' : '') + '">' + shapeSVG(c.pts) + '<span>' + esc(c.t) + '</span><small>' + c.ids.length + (on(c) ? ' ✓' : ' +') + '</small></button></li>'; }).join('') + '</ul>' : '<p class="empty">· · ·</p>');
       $$('[data-c]', body).forEach(function (b) { b.addEventListener('click', function () { var c = sets[+b.dataset.c]; if (on(c)) WEB.sets = webSets().filter(function (s) { return s.k !== c.k; }); else WEB.sets.push(c); saveWeb(); paint(); fit(everything()); sheet.scrollTop = 0; }); });
       $('#r-path').addEventListener('click', function () { WEB.path = !pathOn(); saveWeb(); paint(); render(); });
       var px0 = $('#r-path-x'); if (px0) sureTap(px0, function () { var was = JSON.stringify({ n: WEB.nodes, q: WEB.seq }); WEB.nodes = {}; WEB.seq = []; saveWeb(); paint(); render(); undoToast(function () { var w = JSON.parse(was); WEB.nodes = w.n; WEB.seq = w.q; saveWeb(); if (radioPaint) radioPaint(); render(); }); });
       var cv = $('#r-pv canvas'); if (cv) webArt({ S: 720, colour: true }).then(function (art) { if (!document.contains(cv)) return; cv.width = art.width; cv.height = art.height; cv.getContext('2d').drawImage(art, 0, 0); });
+      $('#r-cp').addEventListener('click', function () { compAdd({ k: 'web' }); location.hash = 'print'; });
       $('#r-dl').addEventListener('click', function () { webArt({ S: 1600, colour: true }).then(function (art) { download(art, 'novel-global-web.png'); }); });
       $('#r-pr').addEventListener('click', function () { var st = $('#r-pst'); st.innerHTML = pips('sending'); webArt({ S: 512, colour: false }).then(function (art) {
         var id = 'w' + Date.now().toString(36), body2 = { type: 'web', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4) };
@@ -1243,24 +1269,53 @@ function noiseBuf(c) { if (c.__nb) return c.__nb; var b = c.createBuffer(1, Math
 function env(c, g, t, peak, a, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
 function noiseHit(c, out, t, freq, dec, v) { var s = c.createBufferSource(); s.buffer = noiseBuf(c); var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 1.4; var g = c.createGain(); env(c, g, t, v, 0.002, dec); s.connect(bp); bp.connect(g); g.connect(out); s.start(t); s.stop(t + dec + 0.05); }
 function osc(c, out, type, f, t, peak, a, dec, det) { var o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f; if (det) o.detune.value = det; env(c, g, t, peak, a, dec); o.connect(g); g.connect(out); o.start(t); o.stop(t + a + dec + 0.05); return o; }
+/* ───────── the voices, recast for space (after Enya's layered rooms and the Geinoh Yamashirogumi gamelan and choirs of Akira):
+   nothing starts with a click, everything rings out long and is carried into a wide room ───────── */
+function swell(c, g, t, peak, a, hold, rel) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.setValueAtTime(Math.max(0.0002, peak), t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); }
 var INS = {
-  gamelan: { g: '◇', base: 392, fn: function (c, out, t, f, L, v) { [[1, 1], [2.76, 0.45], [5.4, 0.22], [8.93, 0.1]].forEach(function (p, i) { [0, 4.5].forEach(function (b) { osc(c, out, 'sine', f * p[0] + b, t, v * p[1] * 0.11, 0.004, (1.8 - i * 0.35) * L); }); }); } },
-  jegog: { g: '‖', base: 98, fn: function (c, out, t, f, L, v) { osc(c, out, 'sine', f, t, v * 0.32, 0.003, 0.9 * L); osc(c, out, 'sine', f * 3.9, t, v * 0.1, 0.003, 0.35 * L); noiseHit(c, out, t, 2200, 0.03, v * 0.15); } },
+  /* paired bronze, tuned a few beats apart as Balinese pairs are (ombak), so every note shimmers; a soft mallet, a long ring */
+  gamelan: { g: '◇', base: 392, fn: function (c, out, t, f, L, v) { [[1, 1, 4.6], [2.01, 0.32, 2.6], [2.76, 0.42, 3.1], [4.07, 0.16, 1.3], [5.43, 0.1, 0.9]].forEach(function (p) { [0, 3.6].forEach(function (b) { osc(c, out, 'sine', f * p[0] + b, t, v * p[1] * 0.05, 0.014, p[2] * (0.6 + 0.4 * L)); }); }); } },
+  /* bamboo bass: round, warm, a breath of knock */
+  jegog: { g: '‖', base: 98, fn: function (c, out, t, f, L, v) { osc(c, out, 'sine', f, t, v * 0.3, 0.016, 2.6 * (0.6 + 0.4 * L)); osc(c, out, 'sine', f * 2, t, v * 0.07, 0.02, 1.4 * L + 0.4); osc(c, out, 'triangle', f * 3, t, v * 0.025, 0.02, 0.7); noiseHit(c, out, t, 420, 0.04, v * 0.05); } },
+  /* a choir on 'ah': three voices a few cents apart through the vowel's formants, rising slowly and fading long */
   voice: { g: '∿', base: 196, fn: function (c, out, t, f, L, v) {
-    var d = 0.7 * L + 0.3, g = c.createGain(), f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(); f1.type = f2.type = 'bandpass'; f1.frequency.value = 700; f2.frequency.value = 1150; f1.Q.value = f2.Q.value = 5;
-    var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 5.2; lg.gain.value = f * 0.006; lfo.connect(lg);
-    [-8, 8].forEach(function (ct) { var o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = ct; lg.connect(o.frequency); o.connect(f1); o.connect(f2); o.start(t); o.stop(t + d + 0.1); });
-    f1.connect(g); f2.connect(g); g.connect(out); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * 0.6, t + 0.09); g.gain.setValueAtTime(v * 0.6, t + d * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + d); lfo.start(t); lfo.stop(t + d + 0.1); } },
-  chak: { g: '⁘', base: 0, fn: function (c, out, t, f, L, v) { noiseHit(c, out, t, 1600 + f, 0.05 * L + 0.03, v * 0.9); } },
-  taiko: { g: '◉', base: 55, fn: function (c, out, t, f, L, v) { var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * 2.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.18); env(c, g, t, v * 0.85, 0.004, 0.55 * L + 0.2); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.9 * L + 0.4); noiseHit(c, out, t, 400, 0.08, v * 0.3); } },
+    var d = 0.9 + 1.6 * L, g = c.createGain(), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3000; lp.connect(g); g.connect(out);
+    var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 4.6; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.0035, t + 0.7); lfo.connect(lg);
+    [[730, 3.5, 1], [1090, 4, 0.5], [2440, 6, 0.22]].forEach(function (F) { var bp = c.createBiquadFilter(), bg = c.createGain(); bp.type = 'bandpass'; bp.frequency.value = F[0] * (f > 260 ? 1.08 : 1); bp.Q.value = F[1]; bg.gain.value = F[2]; bp.connect(bg); bg.connect(lp); [-9, 0, 9].forEach(function (ct) { var o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = ct; lg.connect(o.frequency); o.connect(bp); o.start(t); o.stop(t + d + 1.8); }); });
+    swell(c, g, t, v * 0.09, 0.55, d * 0.5, 1.6); lfo.start(t); lfo.stop(t + d + 1.8); } },
+  /* a harp, plucked: each harmonic dying faster than the one below, as a string does */
+  harp: { g: '⌇', base: 262, fn: function (c, out, t, f, L, v) { for (var n = 1; n <= 6; n++) osc(c, out, n % 2 ? 'sine' : 'triangle', f * n, t, v * 0.085 / Math.pow(n, 1.35), 0.005, (2.4 / Math.pow(n, 0.65)) * (0.6 + 0.4 * L), (n - 1) * 1.5); } },
+  /* kecak, breathed rather than barked */
+  chak: { g: '⁘', base: 0, fn: function (c, out, t, f, L, v) { var s = c.createBufferSource(); s.buffer = noiseBuf(c); var bp = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain(); bp.type = 'bandpass'; bp.frequency.value = 900 + f * 0.4; bp.Q.value = 1.2; lp.type = 'lowpass'; lp.frequency.value = 2200; env(c, g, t, v * 0.32, 0.012, 0.09 + 0.08 * L); s.connect(bp); bp.connect(lp); lp.connect(g); g.connect(out); s.start(t); s.stop(t + 0.4); } },
+  /* a soft drum, felt more than heard */
+  taiko: { g: '◉', base: 55, fn: function (c, out, t, f, L, v) { var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.12); env(c, g, t, v * 0.5, 0.008, 0.7 * L + 0.4); o.connect(g); g.connect(out); o.start(t); o.stop(t + 1.6); noiseHit(c, out, t, 160, 0.06, v * 0.08); } }
 };
-var INS_K = ['gamelan', 'jegog', 'voice', 'chak', 'taiko'];
-function bus(c) {
-  if (c.__bus) return c.__bus;
-  var m = c.createGain(); m.gain.value = 0.8; var comp = c.createDynamicsCompressor(); var rv = c.createConvolver(), n = Math.floor(c.sampleRate * 2.6), ir = c.createBuffer(2, n, c.sampleRate);
-  for (var ch = 0; ch < 2; ch++) { var d = ir.getChannelData(ch); for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3); }
-  rv.buffer = ir; var wet = c.createGain(); wet.gain.value = 0.32; m.connect(comp); m.connect(rv); rv.connect(wet); wet.connect(comp); comp.connect(c.destination); c.__bus = m; return m;
+var INS_K = ['gamelan', 'jegog', 'voice', 'harp', 'chak', 'taiko'];
+/* the room every voice goes into. Freeverb (livejs/freeverb, after Tone.js) for a long soft hall, a slow chorus to widen it, Tuna's
+   ping-pong delay to carry each note across; warmed below, softened above, gently held together. Until they load (or offline without
+   them) a convolved room of its own stands in. The input is fixed, so what is behind it can be swapped once they arrive */
+var soundP = null;
+function soundLibs() { if (!soundP) soundP = Promise.all([lib('freeverb', function () { return window.Freeverb; }), lib('tuna', function () { return window.Tuna; })]).then(function () { if (AC && AC.__bus) room(AC); return true; }); return soundP; }
+function room(c) {
+  var m = c.__bus; if (!m) return; try { m.disconnect(); } catch (e) { /* first time */ }
+  var lo = c.createBiquadFilter(), hi = c.createBiquadFilter(), comp = c.createDynamicsCompressor(), out = c.createGain();
+  lo.type = 'lowshelf'; lo.frequency.value = 220; lo.gain.value = 2; hi.type = 'highshelf'; hi.frequency.value = 5200; hi.gain.value = -6;
+  comp.threshold.value = -20; comp.ratio.value = 2.5; comp.knee.value = 24; comp.attack.value = 0.02; comp.release.value = 0.4; out.gain.value = 0.9;
+  m.connect(lo); lo.connect(hi); comp.connect(out); out.connect(c.destination);
+  var dry = c.createGain(); dry.gain.value = 0.62; hi.connect(dry); dry.connect(comp);
+  var T = window.Tuna && new window.Tuna(c), fv = window.Freeverb && window.Freeverb(c);
+  /* the chorus, native: two short delays swayed slowly and out of step, one to each side */
+  var mg = c.createChannelMerger(2); [[0.33, 0, 0.0062], [0.27, 1, 0.0081]].forEach(function (q) { var dl = c.createDelay(0.05), lf = c.createOscillator(), lg = c.createGain(), wg = c.createGain(); dl.delayTime.value = q[2]; lf.frequency.value = q[0]; lg.gain.value = 0.0022; lf.connect(lg); lg.connect(dl.delayTime); wg.gain.value = 0.32; hi.connect(dl); dl.connect(wg); wg.connect(mg, 0, q[1]); lf.start(); });
+  mg.connect(comp);
+  if (T) { try { var pp = new T.PingPongDelay({ wetLevel: 0.2, feedback: 0.42, delayTimeLeft: 375, delayTimeRight: 250 }); hi.connect(pp.input); pp.connect(comp); } catch (e) { T = null; } }
+  var rg = c.createGain(); rg.gain.value = 0.48; rg.connect(comp);
+  if (fv) { fv.roomSize = 0.88; fv.dampening = 2600; fv.wet.value = 1; fv.dry.value = 0; var pre = c.createDelay(0.1); pre.delayTime.value = 0.03; hi.connect(pre); pre.connect(fv); fv.connect(rg); }
+  else { var rv = c.createConvolver(), n = Math.floor(c.sampleRate * 4.8), ir = c.createBuffer(2, n, c.sampleRate);
+    for (var ch2 = 0; ch2 < 2; ch2++) { var d = ir.getChannelData(ch2), y = 0; for (var i = 0; i < n; i++) { var k = Math.exp(-i / n * 3.2 * (1 + i / n)), a = 0.25 + 0.7 * (1 - i / n); y = y * (1 - a) + (Math.random() * 2 - 1) * a; d[i] = y * k * (i < c.sampleRate * 0.025 ? i / (c.sampleRate * 0.025) : 1); } }
+    rv.buffer = ir; hi.connect(rv); rv.connect(rg); }
+  c.__room = { tuna: !!T, freeverb: !!fv };
 }
+function bus(c) { if (c.__bus) return c.__bus; c.__bus = c.createGain(); c.__bus.gain.value = 0.8; room(c); if (c === AC) soundLibs(); return c.__bus; }
 /* the song: four tracks of sixteen steps, each step empty or a degree of the scale */
 var PITCH = { bird: 6, parrot: 8, owl: 3, raptor: 5, waterbird: 4, flyingfox: 5, bat: 9, possum: 2, macropod: 0, frog: 3, lizard: 1, snake: 0, turtle: 1, bee: 9, butterfly: 8, moth: 7, spider: 6, snail: 1, plant: 0 };
 var deg = function (g) { return PITCH[g] != null ? PITCH[g] : 5; };
@@ -1269,7 +1324,7 @@ var blank = function (n) { var a = []; for (var i = 0; i < (n || 16); i++) a.pus
 /* a song is one bar of sixteen steps, or four bars: a full sweep of the radar, so a whole turn of the web can be recorded */
 var LEN = function (song) { return ((song || SONG).tracks[0].steps || []).length || 16; };
 function setLen(n) { if (LEN() === n) return; SONG.tracks.forEach(function (tr) { var o = tr.steps, a = blank(n); for (var i = 0; i < n; i++) a[i] = o[i % o.length] || null; tr.steps = a; }); SEQ.page = 0; saveSong(); }
-function newSong() { return { bpm: 104, scale: 'pelog', tracks: INS_K.slice(0, 4).map(function (k, i) { return { ins: k, vol: 1, oct: 0, len: i === 2 ? 1 : 0, mute: false, steps: blank() }; }) }; }
+function newSong() { return { bpm: 80, scale: 'pelog', tracks: INS_K.slice(0, 4).map(function (k, i) { return { ins: k, vol: 1, oct: 0, len: i === 2 ? 1 : 0, mute: false, steps: blank() }; }) }; }
 /* every note is a cell on the map: its pitch from its kind, its id and name kept, so nothing sounds that is not there */
 var tied = function (song) { (song.tracks || []).forEach(function (tr) { tr.steps = (tr.steps || blank()).map(function (x) { return x && typeof x === 'object' && x.id ? x : null; }); }); return song; };
 var SONG = tied(store.get('da.base.song', null) || newSong());
@@ -1355,7 +1410,7 @@ function paintDeck() {
   if (!deckEl || !document.contains(deckEl)) return;
   var h = '<div class="tport"><button class="g rec' + (SEQ.rec ? ' on' : '') + '" id="d-rec" aria-label="Record" title="Record">●</button><button class="g" id="d-play" aria-label="Play" title="Play">' + (SEQ.on ? '■' : '▶') + '</button>' +
     '<button class="g' + (radar.on ? ' on' : '') + '" id="d-radar" aria-label="Radar" title="Radar">◎</button><button class="g" id="d-clear" aria-label="Clear the armed track" title="Clear the armed track">⌫</button>' +
-    '<button class="g" id="d-wav" aria-label="Keep and download" title="Keep and download">⇩</button><button class="g" id="d-undo" aria-label="Undo" title="Undo"' + (UNDO.length ? '' : ' disabled') + '>↶</button><button class="g' + (DRONE.on ? ' on' : '') + '" id="d-drone" aria-label="The web\'s voice" title="The web\'s voice">∿</button></div>';
+    '<button class="g" id="d-wav" aria-label="Keep and download" title="Keep and download">⇩</button><button class="g" id="d-undo" aria-label="Undo" title="Undo"' + (UNDO.length ? '' : ' disabled') + '>↶</button><button class="g" id="d-cp" aria-label="The song into PRINT, to compose" title="The song into PRINT, to compose">→' + glyph('shop') + '</button><button class="g' + (DRONE.on ? ' on' : '') + '" id="d-drone" aria-label="The web\'s voice" title="The web\'s voice">∿</button></div>';
   h += '<div class="deck" id="deck">' + SONG.tracks.map(function (tr, i) {
     var row = '<div class="tr"><button class="ins' + (SEQ.arm === i ? ' arm' : '') + (tr.mute ? ' mute' : '') + '" data-t="' + i + '" aria-label="' + tr.ins + '" title="' + tr.ins + ' · double-tap for its settings">' + INS[tr.ins].g + '</button><div class="cells" data-t="' + i + '">' +
       tr.steps.slice((SEQ.page || 0) * 16, (SEQ.page || 0) * 16 + 16).map(function (d, s) { s += (SEQ.page || 0) * 16; return '<button data-s="' + s + '"' + (d ? ' class="n" style="--tone:' + (TONE[d.g] || '#A89A86') + '" title="' + esc(d.t) + '"' : '') + ' aria-label="step ' + (s + 1) + (d ? ': ' + esc(d.t) : '') + '"></button>'; }).join('') + '</div></div>';
@@ -1375,6 +1430,7 @@ function paintDeck() {
   q('#d-len').addEventListener('click', function () { setLen(LEN() > 16 ? 16 : 64); paintDeck(); });
   $$('[data-pg]', deckEl).forEach(function (b) { b.addEventListener('click', function () { SEQ.page = +b.dataset.pg; SEQ.picked = Date.now(); paintDeck(); }); });
   q('#d-undo').addEventListener('click', undo);
+  q('#d-cp').addEventListener('click', function () { if (songEmpty()) return; compAdd({ k: 'song', song: JSON.parse(JSON.stringify(SONG)) }); location.hash = 'print'; });
   q('#d-drone').addEventListener('click', function () { DRONE.on = !DRONE.on; store.set('da.base.drone', DRONE.on); ac(); droneSync(); paintDeck(); });
   q('#d-wav').addEventListener('click', function () { if (!songEmpty()) { SONGS.unshift({ at: Date.now(), song: JSON.parse(JSON.stringify(SONG)) }); if (SONGS.length > 12) SONGS.pop(); store.set('da.base.songs', SONGS); } wavOf(SONG); paintDeck(); });
   q('#d-slow').addEventListener('click', function () { SONG.bpm = Math.max(60, SONG.bpm - 8); saveSong(); paintDeck(); });
@@ -1399,9 +1455,10 @@ function paintDeck() {
 }
 /* the sound file is a loop: whole turns of the song (about four bars), its notes from the first sample, the room's tail folded back
    onto the start, no fade at the end, so played on repeat it carries on without a seam */
-function wavOf(song) {
+function wavOf(song) { soundLibs().then(function () { wavNow(song); }); }
+function wavNow(song) {
   var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC) return;
-  var keep = SONG; SONG = song; var L = LEN(song), reps = Math.max(1, Math.round(64 / L)), sd = stepDur(song), loop = sd * L * reps, SR = 44100, N = Math.round(loop * SR), tail = 3, c = new OC(2, N + tail * SR, SR), out = bus(c);
+  var keep = SONG; SONG = song; var L = LEN(song), reps = Math.max(1, Math.round(64 / L)), sd = stepDur(song), loop = sd * L * reps, SR = 44100, N = Math.round(loop * SR), tail = 6, c = new OC(2, N + tail * SR, SR), out = bus(c);
   for (var r = 0; r < reps; r++) for (var st = 0; st < L; st++) song.tracks.forEach(function (tr) { var d = tr.steps[st]; if (d && !tr.mute) noteAt(c, tr, d.d, (r * L + st) * sd, out); });
   SONG = keep;
   var done = function (buf) {
@@ -1482,10 +1539,37 @@ function threads() {
     return { n: n, reps: reps, up: up, score: (up * (n.issue ? 2 : 1)) / Math.pow(h + 2, 1.5) };
   }).sort(function (a, b) { return b.score - a.score; });
 }
+/* a thread as a small tree: what it is, and everything it touches, each branch one line; the data behind each (dates, distances,
+   sources) kept back until pointed at or touched */
+function treeHTML(n, r, t) {
+  var dp = function (x) { return x ? ' <span class="dp">' + esc(x) + '</span>' : ''; };
+  var f = DB && DB.field.filter(function (x) { return x.id === n.sp || (n.cn && lower(x.cn) === lower(n.cn)); })[0];
+  var rows = [];
+  if (f) rows.push(['life', esc(f.cn), [STATUS_OF[f.st] || f.st, f.where, f.event].filter(Boolean).join(' · ')]);
+  (n.seen || []).slice(0, 3).forEach(function (o) { rows.push(['near', esc(o.cn || '·'), [o.d ? far(o.d) : '', o.at ? when(o.at).slice(0, 6) : ''].filter(Boolean).join(' · ')]); });
+  var notes = []; SONG.tracks.forEach(function (tr) { tr.steps.forEach(function (d, s) { if (d && (d.id === n.id || (n.cn && d.t === n.cn))) notes.push(INS[tr.ins].g + ' ' + (s + 1)); }); });
+  if (notes.length) rows.push(['song', notes.length + ' ♪', notes.slice(0, 6).join(' · ') + ' · ' + SONG.bpm + ' ' + SONG.scale]);
+  var at = WEB.seq.indexOf(n.id); if (at >= 0) { var nb = [WEB.nodes[WEB.seq[at - 1]], WEB.nodes[WEB.seq[at + 1]]].filter(Boolean).map(nameOf); rows.push(['web', nb.length ? esc(nb.join(' — ')) : '◌', 'opened ' + (at + 1) + ' of ' + WEB.seq.length]); }
+  (r.rel || []).filter(function (o) { return o.brief; }).slice(0, 2).concat(r.case ? [{ brief: r.case }] : []).forEach(function (o) { var b = o.brief; rows.push(['research', esc(b.t), [b.city, b.yr, b.fact].filter(Boolean).join(' · ') + (b.url ? ' · ' + ((b.url.match(/^https?:\/\/(?:www\.)?([^/]+)/) || [])[1] || '') : '')]); });
+  if (t.reps.length) rows.push(['replies', t.reps.length + ' ✎', t.reps.map(function (w) { return ago(w.at); }).slice(0, 4).join(' · ')]);
+  return '<ul class="tree"><li class="root"><b>◉ ' + esc(n.say || n.cn || '·') + '</b>' + dp(when(n.at) + ((n.data || [])[0] ? ' · ' + cap(n.data[0]) : '')) + '</li>' +
+    rows.map(function (rw, i) { return '<li tabindex="0"><i>' + (i === rows.length - 1 ? '└─' : '├─') + ' ' + rw[0] + '</i> ' + rw[1] + dp(rw[2]) + '</li>'; }).join('') + '</ul>';
+}
+/* a W.I.S.H. begun without a noticing: a life if there is one, the place where the map is (or where one is), an icon for its picture,
+   and its four lines, each with the lines that fit */
+function newWishHTML(st) {
+  var sp = st.sp && DB ? DB.field.filter(function (x) { return x.id === st.sp; })[0] : null, pseudo = { id: 'new', at: Date.now(), cn: sp ? sp.cn : '', sp: sp ? sp.id : '', lat: (ME || map).lat, lng: (ME || map).lng, data: [] };
+  var r = read({ id: 'new', say: st.L[0] || '', tags: [], spId: pseudo.sp, lat: pseudo.lat, lng: pseudo.lng }), opts = wishOptions(pseudo, r);
+  return '<div class="lbl">A NEW W.I.S.H.</div><div class="say-row"><span class="pr">◠</span><input id="nw-life" class="say" list="nw-lives" aria-label="A life (or none)" value="' + esc(sp ? sp.cn : '') + '"><datalist id="nw-lives">' + (DB ? DB.field.map(function (x) { return '<option value="' + esc(x.cn) + '">'; }).join('') : '') + '</datalist></div>' +
+    (ICONS.length ? '<div class="lbl">ITS PICTURE</div>' + iconsRow(st.icon, 'nw-ico') : '') +
+    '<div class="lbl">ITS FOUR LINES</div><div class="compose" id="nw-lines">' + [0, 1, 2, 3].map(function (i) { return '<div class="ln"><textarea rows="2" data-l="' + i + '">' + esc(st.L[i] || '') + '</textarea><select data-o="' + i + '" title="Lines that fit"><option value="">▾</option>' + opts[i].map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div>' +
+    '<div class="row"><button class="g rm" id="nw-x" title="Leave it">×</button><span class="sp"></span><button class="go" id="nw-ok" title="Make it" style="margin:0">✓</button></div>';
+}
 function wishSheet(sel) {
   dockOn('wish'); BACKTO = null; PAGE = function () { wishSheet(sel); }; PAGEHASH = 'wish';
   var T = threads(), wide = innerWidth >= 760, chosen = sel ? T.filter(function (t) { return t.n.id === sel.id || t.n.code === sel.code; })[0] || { n: sel, reps: repliesOf(sel), up: 1 } : null;
   if (!chosen && wide && T.length) chosen = T[0];
+  var making = null, editing = false;
   var wq = '', found = function () { return !wq ? T : T.filter(function (t) { var n = t.n; return lower([n.say, n.cn, n.sci, (n.tags || []).join(' '), (n.data || []).join(' '), (n.wishText || []).join(' '), t.reps.map(function (w) { return (w.lines || []).join(' '); }).join(' ')].join(' ')).indexOf(wq) >= 0; }); };
   var listHTML = function () {
     var T = found(); if (!T.length && wq) return '<p class="empty">—</p>';
@@ -1499,14 +1583,16 @@ function wishSheet(sel) {
     var pic = PHOTOS[n.id] || n.thumb || n.photoURL || '';
     return (wide ? '' : '<button class="g back" id="w-back" title="Back">←</button>') +
       (pic ? '<div class="hero"><span class="art" style="background-image:url(\'' + esc(pic) + '\')"></span></div>' : '') +
-      '<h2>' + esc(n.say || n.cn) + '</h2><p class="meta">' + metaOf(t) + '</p>' + alertHTML(r) +
+      '<h2>' + esc(n.say || n.cn) + (n.mine !== false && NOTES.indexOf(n) >= 0 ? ' <button class="g ed" id="w-edit" aria-label="Change its lines" title="Change its lines">✎</button>' : '') + '</h2><p class="meta">' + metaOf(t) + '</p>' +
+      (editing ? '<div class="compose" id="w-ed">' + [0, 1, 2, 3].map(function (i) { return '<div class="ln"><textarea rows="2" data-l="' + i + '">' + esc(((n.wishText || draft)[i]) || '') + '</textarea><select data-o="' + i + '" title="Lines that fit"><option value="">▾</option>' + opts[i].map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>'; }).join('') + '<div class="row"><span class="sp"></span><button class="go" id="w-save" title="Keep these lines" style="margin:0">✓</button></div></div>' : '') +
+      alertHTML(r) + '<div class="lbl">WHAT IT TOUCHES</div>' + treeHTML(n, r, t) + (t.reps.length ? '<div class="lbl">REPLIES</div>' : '') +
       t.reps.map(function (w) { return '<div class="reply">' + (w.mine && !w.first && REPLIES[n.code] ? '<button class="rm" data-rr="' + esc(w.id) + '" aria-label="Delete" title="Delete">×</button>' : '') + (w.lines || []).filter(Boolean).map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '<p class="meta">' + (w.mine ? '● ' : '○ ') + ago(w.at) + (w.sent ? ' ' + pips(w.sent.s) : '') + '</p></div>'; }).join('') +
-      '<div class="compose" id="w-new">' + 'WISH'.split('').map(function (k, i) { return '<div class="ln"><i>' + k + '</i><textarea rows="2" data-l="' + i + '">' + esc(t.reps.length ? '' : draft[i] || '') + '</textarea><select data-o="' + i + '" title="Lines that fit"><option value="">▾</option>' + opts[i].map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>'; }).join('') +
+      '<div class="lbl">ANSWER</div><div class="compose" id="w-new">' + 'WISH'.split('').map(function (k, i) { return '<div class="ln"><i>' + k + '</i><textarea rows="2" data-l="' + i + '">' + esc(t.reps.length ? '' : draft[i] || '') + '</textarea><select data-o="' + i + '" title="Lines that fit"><option value="">▾</option>' + opts[i].map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>'; }).join('') +
       '<div class="ctl" style="margin-top:10px"><button class="g" id="w-print" title="Print it">' + glyph('print') + '</button><button class="go" id="w-post" title="Add it to the thread" style="margin:0">→</button></div></div>';
   };
   /* the map beside the threads (on a wide screen): the posters found, the one open with its constellation; one touched there opens here */
   var placed = false, onMap = function (refit) {
-    net.wish = innerWidth >= 760; document.body.classList.toggle('wishmap', net.wish); net.wishList = found(); net.focus = chosen ? chosen.n : null; net.links = []; net.onWish = function (t) { chosen = t; was = []; paint(); };
+    net.wish = innerWidth >= 760; document.body.classList.toggle('wishmap', net.wish); net.wishList = found(); net.focus = chosen ? chosen.n : null; net.links = []; net.onWish = function (t) { chosen = t; paint(); };
     var l = net.wishList.map(function (t) { return t.n; }).filter(function (n) { return isFinite(n.lat); });
     if (net.wish && l.length && (!placed || refit)) { placed = true; fitBeside(l, innerWidth - Math.min(1040, innerWidth)); } else render();
   };
@@ -1514,13 +1600,32 @@ function wishSheet(sel) {
     /* what was being written stays written when the thread is drawn again (others' replies arriving) */
     var was = $$('#w-new textarea').map(function (x) { return x.value; }), wasId = chosen && chosen.n.id;
     T = threads(); if (chosen) chosen = T.filter(function (t) { return t.n.id === chosen.n.id; })[0] || chosen;
-    var main = !wide && chosen ? '' : '<div>' + (T.length ? '<div class="say-row wq"><span class="pr">⌕</span><input id="w-q" class="say" type="search" aria-label="Search the threads" value="' + esc(wq) + '"></div>' : '') + '<div id="w-list">' + listHTML() + '</div></div>', side = chosen ? '<div>' + threadHTML(chosen) + '</div>' : '';
+    var main = !wide && (chosen || making) ? '' : '<div>' + '<div class="say-row wq"><span class="pr">⌕</span><input id="w-q" class="say" type="search" aria-label="Search the threads" value="' + esc(wq) + '"><button class="g" id="w-make" aria-label="A new W.I.S.H., without a noticing" title="A new W.I.S.H., without a noticing">+</button></div>' + '<div id="w-list">' + listHTML() + '</div></div>', side = making ? '<div>' + newWishHTML(making) + '</div>' : chosen ? '<div>' + threadHTML(chosen) + '</div>' : '';
     open(head('wish') + '<div class="wish-grid">' + main + side + '</div>', false, 'wide');
     if (was.length && chosen && chosen.n.id === wasId) $$('#w-new textarea').forEach(function (x, i) { if (was[i] != null) x.value = was[i]; });
     var wireList = function () {
       $$('#w-list [data-th], .wish-grid > div:last-child [data-th]').forEach(function (b) { if (b.__w) return; b.__w = 1; b.addEventListener('click', function () { chosen = T.filter(function (t) { return t.n.id === b.dataset.th; })[0]; was = []; paint(); }); });
     };
     wireList(); onMap();
+    /* a new W.I.S.H.: a life, a picture, four lines; ✓ makes it a thread of its own */
+    var mk = $('#w-make'); if (mk) mk.addEventListener('click', function () { making = { sp: '', L: ['', '', '', ''], icon: null }; chosen = null; paint(); });
+    if (making) {
+      var li = $('#nw-life'); li.addEventListener('change', function () { var v = lower(li.value.trim()), f = DB && DB.field.filter(function (x) { return lower(x.cn) === v; })[0]; making.sp = f ? f.id : ''; paint(); });
+      $$('#nw-ico [data-ic]').forEach(function (b) { b.addEventListener('click', function () { var ic = iconOf(b.dataset.ic); making.icon = making.icon === ic.src ? null : ic.src; paint(); }); });
+      $$('#nw-lines textarea').forEach(function (x) { x.addEventListener('input', function () { making.L[+x.dataset.l] = x.value; }); });
+      $$('#nw-lines select').forEach(function (sl) { sl.addEventListener('change', function () { if (!sl.value) return; making.L[+sl.dataset.o] = sl.value; paint(); }); });
+      $('#nw-x').addEventListener('click', function () { making = null; paint(); });
+      $('#nw-ok').addEventListener('click', function () {
+        var L = making.L.map(function (x) { return String(x || '').trim(); }); if (!L.some(Boolean)) return;
+        var f = making.sp && DB ? DB.field.filter(function (x) { return x.id === making.sp; })[0] : null, here = ME || map, id = 'w' + Date.now().toString(36);
+        var n = { id: id, at: Date.now(), mine: true, wish: true, lat: +(+here.lat).toFixed(5), lng: +(+here.lng).toFixed(5), say: L[0] || (f ? f.cn : ''), cn: f ? f.cn : '', sci: f ? f.n : '', sp: f ? f.id : '', g: f ? f.g : '', tags: [], wishText: L, icon: making.icon || '', data: [] };
+        n.code = code(id); NOTES.unshift(n); saveNotes(); attend(n); making = null; T = threads(); chosen = T.filter(function (x) { return x.n.id === id; })[0] || { n: n, reps: [], up: 1 }; paint();
+      });
+    }
+    var we = $('#w-edit'); if (we) we.addEventListener('click', function () { editing = !editing; paint(); });
+    if (editing) { $$('#w-ed select').forEach(function (sl) { sl.addEventListener('change', function () { if (!sl.value) return; $('#w-ed [data-l="' + sl.dataset.o + '"]').value = sl.value; sl.value = ''; }); });
+      $('#w-save').addEventListener('click', function () { var n = chosen.n; n.wishText = $$('#w-ed textarea').map(function (x) { return x.value.trim(); }); saveNotes(); editing = false; paint(); }); }
+    $$('.tree li').forEach(function (li2) { li2.addEventListener('click', function () { li2.classList.toggle('open'); }); });
     var qi = $('#w-q'); if (qi) qi.addEventListener('input', function () { wq = lower(qi.value.trim()); $('#w-list').innerHTML = listHTML(); wireList(); wireUp(); onMap(true); });
     var wireUp = function () { $$('[data-up]').forEach(function (b) { if (b.__u) return; b.__u = 1; b.addEventListener('click', function () { var id = b.dataset.up; if (VOTES[id]) delete VOTES[id]; else VOTES[id] = 1; store.set('da.base.votes', VOTES); paint(); }); }); };
     wireUp();
@@ -1549,15 +1654,17 @@ function shopSheet() {
   var mine = NOTES.filter(function (n) { return n.mine !== false; });
   open(head('shop') +
     '<label class="eye solo" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g><g class="threads"><path d="M56 76v18"/><path d="M72 79v26"/><path d="M88 79v26"/><path d="M104 76v18"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>' +
-    '<ul class="list" id="s-rec">' + (mine.length ? mine.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || n.code) + '</span><small id="s-st-' + i + '">' + (n.sent ? pips(n.sent.s) : '○○○') + '</small></button><button class="rm" data-rm="' + i + '" aria-label="Delete" title="Delete">×</button></li>'; }).join('') : '<li class="empty">· · ·</li>') + '</ul>' +
-    '<hr><ul class="list" id="s-prn"><li class="empty">· · ·</li></ul>' +
+    '<div class="lbl">COMPOSE · 80 MM</div><div id="comp"></div>' +
+    '<div class="lbl">POSTERS</div><ul class="list" id="s-rec">' + (mine.length ? mine.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || n.code) + '</span><small id="s-st-' + i + '">' + (n.sent ? pips(n.sent.s) : '○○○') + '</small></button><button class="rm" data-rm="' + i + '" aria-label="Delete" title="Delete">×</button></li>'; }).join('') : '<li class="empty">· · ·</li>') + '</ul>' +
+    '<div class="lbl">PRINTER</div><ul class="list" id="s-prn"><li class="empty">· · ·</li></ul>' +
+    '<div class="lbl">MAKE · DOWNLOAD</div>' +
     '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
-    '<div class="row icons-row">' + iconsRow(ICON_NEXT && iconOf(ICON_NEXT) ? iconOf(ICON_NEXT).src : null, 's-ico') +
+    '<div class="lbl">ICONS</div><div class="row icons-row">' + iconsRow(ICON_NEXT && iconOf(ICON_NEXT) ? iconOf(ICON_NEXT).src : null, 's-ico') +
       '<label class="g" aria-label="Add icons: pictures, GIFs or a pack" title="Add icons: pictures, GIFs or a pack">+<input id="s-ico-in" type="file" accept="image/*,.json,application/json" multiple hidden></label>' +
       (ICONS.length ? '<button class="g" id="s-ico-out" aria-label="Save the icons as a pack" title="Save the icons as a pack">⇩</button>' : '') + (ICON_NEXT ? '<button class="g rm" id="s-ico-x" aria-label="Delete this icon" title="Delete this icon">×</button>' : '') + '</div>' +
-    '<hr>' + packsHTML() +
-    '<div class="row wipe"><button class="g" id="s-wipe" aria-label="Wipe this device: every noticing, song, path and reply" title="Wipe this device: every noticing, song, path and reply">' + glyph('wipe') + '</button></div>');
-  wirePacks();
+    '<div class="lbl">PACKS · CLASS</div>' + packsHTML() +
+    '<div class="lbl">THIS DEVICE</div><div class="row wipe"><button class="g" id="s-wipe" aria-label="Wipe this device: every noticing, song, path and reply" title="Wipe this device: every noticing, song, path and reply">' + glyph('wipe') + '</button></div>');
+  wirePacks(); composer($('#comp'));
   $$('#s-ico [data-ic]').forEach(function (b) { b.addEventListener('click', function () { ICON_NEXT = ICON_NEXT === b.dataset.ic ? null : b.dataset.ic; shopSheet(); }); });
   $('#s-ico-in').addEventListener('change', function () { iconFiles(this.files, function (got) { toast('◫ +' + got); shopSheet(); }); });
   var io = $('#s-ico-out'); if (io) io.addEventListener('click', function () { var a = document.createElement('a'); a.download = 'novel-global-icons.json'; a.href = URL.createObjectURL(new Blob([JSON.stringify({ pack: 'novel.global/icons', name: 'novel.global icons', icons: ICONS.map(function (i) { return { src: i.src, t: i.t }; }) })], { type: 'application/json' })); document.body.appendChild(a); a.click(); a.remove(); });
@@ -1601,6 +1708,115 @@ function wirePacks() {
     fr.onload = function () { try { var j = JSON.parse(fr.result), got = 0; (j.notes || []).forEach(function (n) { if (n && n.id && isFinite(n.lat) && isFinite(n.lng) && !NOTES.some(function (x) { return x.id === n.id; })) { n.mine = false; n.packed = 1; NOTES.push(n); got++; } }); (j.songs || []).forEach(function (s) { if (s && s.song) SONGS.push(s); }); store.set('da.base.songs', SONGS.slice(0, 24)); saveNotes(); toast('+' + got); render(); } catch (e) { toast('×'); } };
     fr.readAsText(f);
   });
+}
+/* ───────── the composer: an 80 mm piece built from what was made. Blocks stacked as a receipt is: a poster, the web, a song as its
+   score, an icon, words, a rule, the eye. One chosen moves up or down, grows or shrinks, or goes (with a check); the piece undoes,
+   resets, prints at novel.global, saves as a picture, or goes to the showcase ───────── */
+var COMP = store.get('da.base.comp', null) || { blocks: [] }, COMP_UNDO = [], COMP_SEL = -1;
+function compSave(before) { if (before) { COMP_UNDO.push(before); if (COMP_UNDO.length > 40) COMP_UNDO.shift(); } store.set('da.base.comp', COMP); }
+function compEdit(fn) { var before = JSON.stringify(COMP); fn(); compSave(before); }
+function compAdd(b) { compEdit(function () { b.size = b.size || 2; COMP.blocks.push(b); COMP_SEL = COMP.blocks.length - 1; }); }
+var BLOCK_G = { poster: 'shop', web: 'jelly', song: 'radio', icon: 'pixel', text: 'sign', rule: 'tiles', eye: 'wish' };
+/* a song as its score: four rows, a mark on each step that holds a cell, darker the longer it rings; its tempo and scale under */
+function scoreArt(song, W) {
+  var L = LEN(song), rows = song.tracks.length, cw = (W - 40) / L, rh = 26, c = document.createElement('canvas'); c.width = W; c.height = rows * rh + 64; var x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.strokeStyle = '#000';
+  song.tracks.forEach(function (tr, r) {
+    var y = 10 + r * rh + rh / 2; x.font = '14px ui-monospace, Menlo, monospace'; x.fillText(INS[tr.ins] ? INS[tr.ins].g : '·', 4, y + 5);
+    x.lineWidth = 1; x.beginPath(); x.moveTo(30, y); x.lineTo(W - 6, y); x.setLineDash([1, 3]); x.stroke(); x.setLineDash([]);
+    tr.steps.forEach(function (d, s) { if (!d) return; var cx = 34 + s * cw + cw / 2, rad = Math.max(2.5, Math.min(cw * 0.42, 6)); x.beginPath(); x.arc(cx, y - (d.d % 5 - 2) * 2.2, rad, 0, 7); x.fill(); });
+  });
+  for (var b = 0; b <= L; b += 16) { var bx = 34 + b * cw; x.fillRect(bx, 6, 1, rows * rh + 8); }
+  x.font = '13px ui-monospace, Menlo, monospace'; var names = []; song.tracks.forEach(function (tr) { tr.steps.forEach(function (d) { if (d && names.indexOf(d.t) < 0) names.push(d.t); }); });
+  x.fillText('♪ ' + song.bpm + ' · ' + song.scale + ' · ' + L + ' steps', 4, rows * rh + 32); x.fillText(names.slice(0, 4).join(' · ').slice(0, 60), 4, rows * rh + 52);
+  return c;
+}
+function blockArt(b, W) {
+  var w = Math.round(W * [0, 0.45, 0.72, 1][b.size || 2]);
+  if (b.k === 'web') return webArt({ S: w, colour: false });
+  if (b.k === 'song') { var s = b.song || SONG; return Promise.resolve(scoreArt(s, w)); }
+  if (b.k === 'poster') { var n = NOTES.filter(function (x) { return x.id === b.ref; })[0]; if (!n) return Promise.resolve(null); var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx }); return slip(n, PHOTOS[n.id] || n.thumb || '', r, { art: (PHOTOS[n.id] || n.thumb) ? 'photo' : 'net', wish: !!n.wishText, show: { line: 1, life: 1, facts: 0, links: 0, code: 0 } }, w); }
+  if (b.k === 'icon') { var ic = iconOf(b.ref); if (!ic) return Promise.resolve(null); return loadImg(ic.src).then(function (im) { var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, k = Math.round(W * [0, 0.25, 0.45, 0.7][b.size || 2]) / Math.max(iw, ih), c = document.createElement('canvas'); c.width = Math.round(iw * k); c.height = Math.round(ih * k); var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, c.width, c.height); return c; }).catch(function () { return null; }); }
+  var c = document.createElement('canvas'), x = c.getContext('2d'), F = function (px, bd) { return (bd ? 'bold ' : '') + px + 'px ui-monospace, Menlo, monospace'; };
+  if (b.k === 'text') { var fs = [0, 18, 26, 38][b.size || 2]; x.font = F(fs, true); var lines = wrapText(x, b.t || '·', W - 8); c.width = W; c.height = lines.length * fs * 1.25 + 8; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.font = F(fs, true); x.textBaseline = 'top'; lines.forEach(function (t, i) { x.fillText(t, 4, 4 + i * fs * 1.25); }); return Promise.resolve(c); }
+  if (b.k === 'rule') { c.width = W; c.height = 18; x.fillStyle = '#fff'; x.fillRect(0, 0, W, 18); x.strokeStyle = '#000'; x.lineWidth = [0, 1, 2, 3][b.size || 2]; x.beginPath(); for (var i = 0; i <= W; i += 6) x.lineTo(i, 9 + Math.sin(i * 0.11) * 1.4); x.stroke(); return Promise.resolve(c); }
+  if (b.k === 'eye') { var fz = [0, 14, 20, 28][b.size || 2]; x.font = F(fz); var ln = EYE_ASCII.split('\n'), ww = x.measureText(' <(   (o)   )>').width; c.width = W; c.height = ln.length * fz * 1.2 + 8; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.font = F(fz); x.textBaseline = 'top'; ln.forEach(function (t, i) { x.fillText(t, (W - ww) / 2, 4 + i * fz * 1.2); }); return Promise.resolve(c); }
+  return Promise.resolve(null);
+}
+/* the whole piece at 80 mm: its blocks centred, a breath between each, novel.global and the date at the head, a small code to the site at the foot */
+function compose(W) {
+  W = W || 512; var pad = 16;
+  return Promise.all(COMP.blocks.map(function (b) { return blockArt(b, W - pad * 2); })).then(function (arts) {
+    return qrLib().then(function (Q) {
+      var q = null; if (Q) { try { q = Q(0, 'L'); q.addData(siteURL('showcase')); q.make(); } catch (e) { q = null; } }
+      var mod = 3, qs = q ? q.getModuleCount() * mod : 0, H = 46, ys = [];
+      arts.forEach(function (a) { ys.push(H); H += (a ? a.height : 0) + 18; }); H += Math.max(qs, 30) + 30;
+      var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#000'; x.textBaseline = 'top';
+      x.font = '16px ui-monospace, Menlo, monospace'; x.fillText('novel.global', pad, 14); var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, 14);
+      arts.forEach(function (a, i) { if (a) x.drawImage(a, Math.round((W - a.width) / 2), ys[i]); });
+      if (q) { var n = q.getModuleCount(), ox = W - pad - qs, oy = H - qs - 16; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, oy + i * mod, mod, mod); }
+      x.font = '13px ui-monospace, Menlo, monospace'; x.fillText(COMP.blocks.length + ' · ' + EYE_ASCII.split('\n')[1].trim(), pad, H - 34);
+      var id = x.getImageData(0, 0, W, H), d = id.data; for (var k = 0; k < d.length; k += 4) { var v = d[k] * 0.3 + d[k + 1] * 0.59 + d[k + 2] * 0.11 < 150 ? 0 : 255; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255; } x.putImageData(id, 0, 0);
+      return { c: c, ys: ys, arts: arts };
+    });
+  });
+}
+var PIECES = store.get('da.base.pieces', []), PIECES_SHARED = [];
+function composer(el) {
+  if (!el) return; var B = COMP.blocks;
+  var add = function (k, g, t) { return '<button class="g" data-add="' + k + '" aria-label="' + t + '" title="' + t + '">' + glyph(g) + '</button>'; };
+  el.innerHTML = '<div class="comp-pv" id="c-pv">' + (B.length ? '<canvas></canvas>' : '<p class="empty">80 mm</p>') + '</div>' +
+    '<div class="lbl">ADD</div><div class="row">' + add('poster', 'shop', 'A poster') + add('web', 'jelly', 'The web') + add('song', 'radio', 'The song') + add('icon', 'pixel', 'An icon') + add('text', 'sign', 'Words') + add('rule', 'tiles', 'A rule') + add('eye', 'wish', 'The eye') + '</div>' +
+    '<div class="pick" id="c-pick" hidden></div>' +
+    (B.length ? '<div class="lbl">BLOCKS</div><div class="chips blocks">' + B.map(function (b, i) { return '<button data-b="' + i + '" class="' + (i === COMP_SEL ? 'on' : '') + '">' + (i + 1) + ' ' + glyph(BLOCK_G[b.k] || 'tiles') + '</button>'; }).join('') + '</div>' : '') +
+    (B[COMP_SEL] ? '<div class="row"><button class="g" id="c-up" title="Up">↑</button><button class="g" id="c-dn" title="Down">↓</button><button class="g" id="c-sz" title="Smaller, larger">' + ['', 'S', 'M', 'L'][B[COMP_SEL].size || 2] + '</button><button class="g rm" id="c-rm" title="Take it off">×</button></div>' + (B[COMP_SEL].k === 'text' ? '<input id="c-text" class="say" maxlength="120" aria-label="Words" value="' + esc(B[COMP_SEL].t || '') + '">' : '') : '') +
+    '<div class="lbl">PIECE</div><div class="row"><button class="g" id="c-undo" title="Undo"' + (COMP_UNDO.length ? '' : ' disabled') + '>↶</button><button class="g rm" id="c-reset" title="Start the piece again">⟲</button><span class="sp"></span><button class="g" id="c-dl" title="Save as a picture">⇩</button><button class="g" id="c-show" title="To the showcase">★</button><button class="g go" id="c-pr" title="Print at novel.global, 80 mm">' + glyph('print') + '</button><span id="c-st"></span></div>';
+  var again = function () { composer(el); };
+  if (B.length) compose(512).then(function (o) { var cv = $('#c-pv canvas', el); if (!cv) return; cv.width = o.c.width; cv.height = o.c.height; cv.getContext('2d').drawImage(o.c, 0, 0);
+    cv.addEventListener('click', function (e) { var r = cv.getBoundingClientRect(), y = (e.clientY - r.top) * cv.height / r.height, hit = -1; o.ys.forEach(function (y0, i) { var a = o.arts[i]; if (a && y >= y0 && y <= y0 + a.height) hit = i; }); if (hit >= 0) { COMP_SEL = hit; again(); } }); });
+  $$('[data-add]', el).forEach(function (b) { b.addEventListener('click', function () {
+    var k = b.dataset.add, pick = $('#c-pick', el);
+    if (k === 'web') return compAdd({ k: 'web' }), again();
+    if (k === 'song') return compAdd({ k: 'song', song: JSON.parse(JSON.stringify(SONG)) }), again();
+    if (k === 'text') return compAdd({ k: 'text', t: '' }), again();
+    if (k === 'rule' || k === 'eye') return compAdd({ k: k }), again();
+    var list = k === 'poster' ? NOTES.filter(function (n) { return n.mine !== false; }).slice(0, 20).map(function (n) { var p = PHOTOS[n.id] || n.thumb || ''; return '<button data-p="' + esc(n.id) + '" title="' + esc(n.cn || n.say || n.code) + '"' + (p ? ' style="background-image:url(\'' + esc(p) + '\')"' : '') + '>' + (p ? '' : esc((n.cn || n.say || '·').slice(0, 2))) + '</button>'; }) : ICONS.map(function (i) { return '<button data-p="' + esc(i.id) + '" title="' + esc(i.t || 'icon') + '"><img alt="" src="' + esc(i.src) + '"></button>'; });
+    pick.innerHTML = list.length ? list.join('') : '<p class="empty">—</p>'; pick.hidden = false;
+    $$('[data-p]', pick).forEach(function (p) { p.addEventListener('click', function () { compAdd({ k: k, ref: p.dataset.p }); again(); }); });
+  }); });
+  $$('[data-b]', el).forEach(function (b) { b.addEventListener('click', function () { COMP_SEL = COMP_SEL === +b.dataset.b ? -1 : +b.dataset.b; again(); }); });
+  var mv = function (d) { compEdit(function () { var i = COMP_SEL, j = i + d; if (j < 0 || j >= B.length) return; var t = B[i]; B[i] = B[j]; B[j] = t; COMP_SEL = j; }); again(); };
+  var u = $('#c-up', el); if (u) { u.addEventListener('click', function () { mv(-1); }); $('#c-dn', el).addEventListener('click', function () { mv(1); });
+    $('#c-sz', el).addEventListener('click', function () { compEdit(function () { var b = B[COMP_SEL]; b.size = (b.size || 2) % 3 + 1; }); again(); });
+    sureTap($('#c-rm', el), function () { compEdit(function () { B.splice(COMP_SEL, 1); COMP_SEL = -1; }); again(); }); }
+  var ti = $('#c-text', el), tt = 0; if (ti) { ti.focus(); ti.addEventListener('input', function () { clearTimeout(tt); tt = setTimeout(function () { compEdit(function () { B[COMP_SEL].t = ti.value; }); compose(512).then(function (o) { var cv = $('#c-pv canvas', el); if (cv) { cv.width = o.c.width; cv.height = o.c.height; cv.getContext('2d').drawImage(o.c, 0, 0); } }); }, 350); }); }
+  $('#c-undo', el).addEventListener('click', function () { if (!COMP_UNDO.length) return; COMP = JSON.parse(COMP_UNDO.pop()); store.set('da.base.comp', COMP); COMP_SEL = -1; again(); });
+  sureTap($('#c-reset', el), function () { compEdit(function () { COMP.blocks = []; COMP_SEL = -1; }); again(); });
+  $('#c-dl', el).addEventListener('click', function () { if (!B.length) return; compose(512).then(function (o) { download(o.c, 'novel-global-piece.png'); }); });
+  $('#c-pr', el).addEventListener('click', function () { if (!B.length) return; var st = $('#c-st', el); st.innerHTML = pips('sending'); compose(512).then(function (o) {
+    var id = 'k' + Date.now().toString(36), body = { type: 'piece', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4), blocks: B.map(function (b) { return b.k; }) };
+    return send({ kind: 'record', code: code(id), body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: 'novelglobal', escpos: raster(o.c) }).then(function (j) { var n = { sent: { id: j.id, s: j.job ? j.job.status : j.status } }; st.innerHTML = pips(n.sent.s); follow(n, st); });
+  }).catch(function (e) { st.innerHTML = pips(e && e.status ? 'failed' : 'outbox'); }); });
+  /* to the showcase: kept here at once, and sent to be shown to everyone once approved */
+  $('#c-show', el).addEventListener('click', function () { if (!B.length) return; compose(512).then(function (o) {
+    var jpg = o.c.toDataURL('image/jpeg', 0.8); PIECES.unshift({ id: 'k' + Date.now().toString(36), at: Date.now(), src: jpg, blocks: B.map(function (b) { return b.k; }) }); while (PIECES.length > 8) PIECES.pop(); if (!store.set('da.base.pieces', PIECES)) { PIECES.pop(); store.set('da.base.pieces', PIECES); }
+    var body = { type: 'piece', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4), blocks: B.map(function (b) { return b.k; }) };
+    send({ kind: 'record', code: code(PIECES[0].id), body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: '', photo: jpg.length < 400e3 ? jpg : undefined }).catch(function () { /* kept here */ });
+    location.hash = 'showcase';
+  }); });
+}
+/* ───────── the showcase: on the start's blueprint paper. The piece most recent is the hero, large; beside it the journey (the web
+   of one's own path, in colour); then every piece kept here, and the pieces others made, once shown ───────── */
+function showcaseSheet() {
+  dockOn(''); BACKTO = null; PAGE = showcaseSheet; PAGEHASH = 'showcase';
+  var all = PIECES.map(function (p) { return { src: p.src, at: p.at, mine: true }; }).concat(PIECES_SHARED), hero = all[0];
+  open('<div class="hd"><span class="hg">★</span><span class="sp"></span><button class="x" aria-label="Back" title="Back">←</button></div>' +
+    '<div class="show-grid"><div class="show-hero">' + (hero ? '<img alt="" src="' + esc(hero.src) + '" id="sh-hero">' : '<p class="empty">★</p>') + '</div>' +
+    '<div class="show-side"><div class="lbl">JOURNEY</div><div class="show-web"><canvas id="sh-web"></canvas></div>' +
+    '<div class="lbl">PIECES</div><div class="show-strip">' + all.map(function (p, i) { return '<button data-sh="' + i + '"' + (i === 0 ? ' class="on"' : '') + '><img alt="" src="' + esc(p.src) + '"></button>'; }).join('') + '</div></div></div>', false, 'wide show');
+  BACKTO = function () { location.hash = 'print'; }; backKey();
+  $$('[data-sh]').forEach(function (b) { b.addEventListener('click', function () { var p = all[+b.dataset.sh]; $('#sh-hero').src = p.src; $$('[data-sh]').forEach(function (o) { o.classList.toggle('on', o === b); }); }); });
+  webArt({ S: 640, colour: true }).then(function (a) { var cv = $('#sh-web'); if (!cv) return; cv.width = a.width; cv.height = a.height; cv.getContext('2d').drawImage(a, 0, 0); });
 }
 /* ───────── icons: pixel art made here, packs added, sprites and GIFs of one's own. Chosen on a poster, an icon is stamped in the
    corner of its art and stands for it on the map. Kept on the device; a pack goes out as a file and comes in from one ───────── */
@@ -1689,7 +1905,7 @@ var EYE_ASCII = '   _.-~~~~-._\n <(   (o)   )>\n   \'-.____.-\'\n    \' \' \' \'
 var STICKERS = ['*', '<3', '<(o)>', '~~~', ':)', '\\o/', '+'];
 function boothOn(dest) {
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
-  document.body.classList.add('booth'); sheet.hidden = true; dock.hidden = true;
+  document.body.classList.add('booth'); sheet.hidden = true;
   var el = $('#booth') || document.body.appendChild(Object.assign(document.createElement('main'), { id: 'booth' }));
   printers().then(function (l) { var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384; });
   boothStart(el);
@@ -1712,19 +1928,23 @@ function boothPic(file) {
 }
 /* the photograph made ready for the printer's dots: stretched to its own darkest and lightest, lifted for the spread of a hot dot,
    sharpened a little, then dithered. Stickers go on after, crisp */
-function forPrint(src, W, D) {
-  var H = Math.round(src.height * W / src.width), c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(src, 0, 0, W, H);
+/* every photograph that goes on paper is made ready for the dots the same way: stretched to its own darkest and lightest (a flat
+   one is left as it is), lifted for the spread of a hot dot, sharpened a little, then dithered (CanvasDither's Atkinson) */
+function printReady(x, W, H, D) {
   var img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, L = new Float32Array(n), hist = new Uint32Array(256), i, l;
   for (l = 0, i = 0; l < n; l++, i += 4) { L[l] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; hist[L[l] | 0]++; }
   var lo = 0, hi = 255, acc = 0; for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > n * 0.01) { lo = i; break; } } acc = 0; for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > n * 0.01) { hi = i; break; } }
-  if (hi - lo < 40) { lo = 0; hi = 255; } /* a flat picture is left as it is, never stretched to black */
+  if (hi - lo < 40) { lo = 0; hi = 255; }
   var span = hi - lo, B2 = new Float32Array(n);
   for (l = 0; l < n; l++) L[l] = 255 * Math.pow(Math.max(0, Math.min(1, (L[l] - lo) / span)), 0.8);
   for (var y = 0; y < H; y++) for (var xx = 0; xx < W; xx++) { var s = 0, m = 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var yy = y + dy, x2 = xx + dx; if (yy >= 0 && yy < H && x2 >= 0 && x2 < W) { s += L[yy * W + x2]; m++; } } B2[y * W + xx] = s / m; }
   for (l = 0, i = 0; l < n; l++, i += 4) { var v = L[l] + 0.7 * (L[l] - B2[l]); d[i] = d[i + 1] = d[i + 2] = v < 0 ? 0 : v > 255 ? 255 : v; }
-  if (D) D.atkinson(img); else for (i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = d[i] < 128 ? 0 : 255;
-  x.putImageData(img, 0, 0); return c;
+  if (D) D.atkinson(img); else { x.putImageData(img, 0, 0); dither(x, W, H); return; }
+  x.putImageData(img, 0, 0);
+}
+function forPrint(src, W, D) {
+  var H = Math.round(src.height * W / src.width), c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(src, 0, 0, W, H); printReady(x, W, H, D); return c;
 }
 function drawStickers(x, W, H, ink) {
   BTH.st.forEach(function (s) {
@@ -1865,6 +2085,18 @@ var ORB = (function () {
     return [x1, -y2, z2];
   };
   var raf = 0, t0 = 0, last = 0, still = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* the start's hum: quiet, one low tone for each page, nearer and brighter as its dot comes round to the front, panned where it is.
+     It begins at the first touch on the paper (a browser lets no sound play before one) and stops on leaving the start */
+  var hum = null, HZ = [110, 164.81, 220];
+  function humStart() {
+    if (hum || !(window.AudioContext || window.webkitAudioContext)) return; var c = ac(), out = c.createGain(); out.gain.value = 0; out.connect(bus(c));
+    hum = { out: out, v: rings.map(function (k, i) { var o = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), p = c.createStereoPanner ? c.createStereoPanner() : null;
+      o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = HZ[i]; o2.frequency.value = HZ[i] * 2.004; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0;
+      o.connect(f); o2.connect(f); f.connect(g); if (p) { g.connect(p); p.connect(out); } else g.connect(out); o.start(); o2.start(); return { f: f, g: g, p: p }; }) };
+    out.gain.setTargetAtTime(0.55, c.currentTime, 1.8); window.__hum = 1;
+  }
+  function humSet(on) { if (!hum || !AC) return; hum.out.gain.setTargetAtTime(on ? 0.55 : 0, AC.currentTime, on ? 1.2 : 0.35); window.__hum = on ? 1 : 0; }
+  document.addEventListener('pointerdown', function (e) { var b = document.body.classList; if (b.contains('away') || b.contains('mapmode') || b.contains('booth') || (e.target.closest && e.target.closest('.orb'))) return; humStart(); });
   function frame(now) {
     raf = 0; if (!t0) t0 = now; var t = (now - t0) / 1000, spin = 0.6 + (still ? 0 : t * 2 * Math.PI / 110);
     var k2 = $('#rings').getBoundingClientRect().width / 400;
@@ -1882,21 +2114,22 @@ var ORB = (function () {
       var x = (q[0] + 200) * k2, y = (q[1] + 200) * k2;
       k.orb.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + (0.72 + 0.4 * depth).toFixed(3) + ')';
       k.orb.style.opacity = (0.5 + 0.5 * depth).toFixed(2); k.orb.style.zIndex = q[2] >= 0 ? 3 : 1;
+      if (hum && AC) { var v = hum.v[ri], tt = AC.currentTime; v.g.gain.setTargetAtTime(0.006 + 0.03 * depth * depth, tt, 0.3); v.f.frequency.setTargetAtTime(260 + 1400 * depth, tt, 0.3); if (v.p) v.p.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, q[0] / 200)), tt, 0.3); }
     });
     last = now; if (!still) go();
   }
-  function go() { if (raf || document.hidden || document.body.classList.contains('away') || document.body.classList.contains('mapmode') || document.body.classList.contains('booth')) return; raf = requestAnimationFrame(frame); }
+  function go() { if (document.hidden || document.body.classList.contains('away') || document.body.classList.contains('mapmode') || document.body.classList.contains('booth')) { humSet(false); return; } humSet(true); if (raf) return; raf = requestAnimationFrame(frame); }
   document.addEventListener('visibilitychange', go); addEventListener('resize', function () { if (!raf) raf = requestAnimationFrame(frame); });
-  return { on: function () { if (still) { if (!raf) raf = requestAnimationFrame(frame); } else go(); } };
+  return { on: function () { if (still) { if (!raf) raf = requestAnimationFrame(frame); } else go(); }, quiet: function () { humSet(false); } };
 })();
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
-  if (!/^(radio|wish|shop|print|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
+  if (!/^(radio|wish|shop|print|showcase|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
   if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }
   if (BTH) return;
-  if (document.body.classList.contains('mapmode')) mapOn(false);
+  if (document.body.classList.contains('mapmode')) { mapFrom = ''; mapOn(false); }
   var from = PAGEHASH;
-  if (h === 'radio') radioSheet(); else if (h === 'wish') wishSheet(); else if (h === 'shop' || h === 'print') shopSheet(); else if (h === 'pixel') { boardSheet(); BACKTO = function () { location.hash = 'print'; }; } else if (h === 'search' || h === 'guide' || h === 'now') { guideSheet(''); if (from) BACKTO = function () { location.hash = from; }; }
+  if (h === 'radio') radioSheet(); else if (h === 'wish') wishSheet(); else if (h === 'shop' || h === 'print') shopSheet(); else if (h === 'showcase') showcaseSheet(); else if (h === 'pixel') { boardSheet(); BACKTO = function () { location.hash = 'print'; }; backKey(); } else if (h === 'search' || h === 'guide' || h === 'now') { guideSheet(''); if (from) BACKTO = function () { location.hash = from; }; backKey(); }
   else if (/^n=DA-/i.test(h)) {
     var c = h.slice(2).toUpperCase(); var n = NOTES.filter(function (x) { return x.code === c; })[0];
     if (n) openNote(n); else api('/stories/' + c).then(function (j) { if (j && j.story) { SHARED = []; return loadShared().then(function () { var s = SHARED.filter(function (x) { return x.code === c; })[0]; if (s) openNote(s); }); } }).catch(function () { toast(c + ' is not shown yet'); });
@@ -1907,7 +2140,8 @@ addEventListener('hashchange', function () { if (!location.hash) { if (!sheet.hi
 $$('#shot, .shot').forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; BACKTO = PAGE; onShot(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
 $('#b-search').addEventListener('click', function () { location.hash = 'guide'; });
 $('#b-map').addEventListener('click', function () { mapOn(!document.body.classList.contains('mapmode')); });
-$('#m-close').addEventListener('click', function () { mapOn(false); });
+$('#b-me').addEventListener('click', function () { locateMe(this); });
+terrain.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 $('#m-add').addEventListener('change', function () { batch(this.files); this.value = ''; });
 $('#b-theme').addEventListener('click', function () {
   var t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
@@ -1917,9 +2151,9 @@ oled.addEventListener('click', function () { nowTick(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) back(); if (e.key === '/' && sheet.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); location.hash = 'guide'; } });
 function credit() { $('#credit').textContent = PACKS.terrain && B.credit && document.body.classList.contains('mapmode') ? B.credit : ''; }
 
-credit(); dock.hidden = !NOTES.length; render(); if (ORB) ORB.on();
+credit(); render(); if (ORB) ORB.on();
 /* the field pack after the first paint, then what is happening now */
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();
-window.__base = { iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
+window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

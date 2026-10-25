@@ -179,3 +179,13 @@ The first thing seen is not an interface but a drawing: blueprint paper and thre
   - W.I.S.H., the irukandji, the smallest and most easily missed of lives, gathers;
   - PRINT, the receipt, makes it real on paper.
 - **Each page is a dot on a line in motion.** You go in by catching one, which is the act the whole site asks for: noticing something passing.
+
+## The composer: what was made goes to paper
+
+Every round so far made things: a path through the cells, a web, a song, posters, icons. Until now they stayed where they were made. PRINT now gathers them.
+
+- **The 80 mm strip is the one canvas.** Posters, the web's art, a song drawn as a score, icons and words are laid as blocks on the printer's own width. What you see is what prints, so there is no layout to learn. Each block can be moved, sized, removed or undone.
+- **The showcase is where a strip ends up.** It shows pieces on blueprint paper beside the art of the journey that made them, the same paper the start is drawn on.
+- **W.I.S.H. no longer needs a photograph.** A wish can be made from the life alone, and a thread shows what it touches as a tree: the lives near, its song, its place in the web, the research and the replies. Its data shows only when asked for. The stock lines that read like a template were cut. Every line now comes from the life and its issue.
+- **The sound was the weakest part, so it was rebuilt rather than tuned.** The voices were close and dry, so a click sounded like a click. They now play in one room, built from Freeverb's hall, a slow chorus and Tuna's delay. The bells beat in pairs, as gamelan is tuned, and the choir swells. The tempo slows to 80.
+- **Paper is the measure of an image.** Every photograph printed is levelled, sharpened and dithered for thermal dots by the same steps.

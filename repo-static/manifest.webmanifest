@@ -6,12 +6,29 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#06090B",
-  "theme_color": "#06090B",
+  "background_color": "#17457F",
+  "theme_color": "#17457F",
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-mask.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "iruk.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "iruk-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "iruk-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "iruk-mask.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

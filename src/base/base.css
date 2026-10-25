@@ -471,3 +471,64 @@ body.wishmap #terrain { pointer-events: auto; }
 .icons-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; }
 #p-ico { margin: 8px 0; }
 .row.wipe { margin-top: 18px; justify-content: flex-start; }
+/* the page numbers, written by hand beside each: 1 RADIO, 2 W.I.S.H., 3 PRINT */
+.orb svg.num { width: 9px; height: 14px; margin: -44px 0 0 16px; stroke-width: 1.2; }
+
+/* ───── one bar, in order: the pages, then the map and the guide; + only while the map is open ───── */
+#top .bar-gap { width: 8px; flex: none; }
+#b-add { display: none; font-size: 18px; } body.mapmode:not(.away) #b-add { display: inline-grid; }
+#top a.pg.on { border-color: transparent; box-shadow: inset 0 -2px 0 var(--stick); }
+@media (max-width: 759px) { #top { gap: 2px; padding-left: 10px; padding-right: 8px; } #top .g { width: 32px; height: 32px; } #mark { font-size: 10px; letter-spacing: .1em; } #top .bar-gap { width: 4px; } }
+body.mapmode #oled { bottom: max(16px, env(safe-area-inset-bottom)); }
+#sheet { bottom: 0; }
+@media (max-width: 759px) { #sheet { padding-bottom: max(20px, env(safe-area-inset-bottom)); } }
+@media (min-width: 760px) { body.wide #sheet { bottom: 0; } }
+
+/* ───── PRINT's groups, each under a small head ───── */
+#sheet .lbl { margin: 18px 0 6px; font-size: 9px; letter-spacing: .16em; color: var(--dim); }
+/* the composer: the 80 mm piece as it will print */
+.comp-pv { width: min(100%, 300px); margin: 6px auto 0; background: #fff; border: 1px solid var(--rule); }
+.comp-pv canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; cursor: pointer; }
+.comp-pv .empty { color: #6E6C66; text-align: center; padding: 40px 0; margin: 0; font-size: 10px; letter-spacing: .2em; }
+.pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.pick button { width: 44px; height: 44px; border: 1px solid var(--rule); background: var(--rule) center/cover no-repeat; font-size: 10px; color: var(--ink); }
+.pick img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.chips.blocks button { display: inline-flex; align-items: center; gap: 4px; }
+.chips.blocks .gi { width: 14px; height: 14px; }
+.chips.blocks button.on { background: var(--ink); color: var(--paper); }
+#c-text { width: 100%; margin-top: 8px; }
+/* the showcase: on the start's blueprint paper */
+#sheet.show { background-color: var(--blue); color: #F4F1E8; }
+#sheet.show .lbl { color: rgba(244, 241, 232, .6); }
+.show-grid { display: grid; gap: 22px; }
+@media (min-width: 760px) { .show-grid { grid-template-columns: 1.1fr 1fr; } }
+.show-hero { display: grid; place-items: center; min-height: 40vh; }
+.show-hero img { max-width: 100%; max-height: 78vh; background: #fff; box-shadow: 0 10px 40px rgba(0, 0, 0, .35); image-rendering: pixelated; }
+.show-web canvas { display: block; width: 100%; height: auto; }
+.show-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.show-strip button { width: 64px; height: 96px; padding: 0; border: 1px solid rgba(244, 241, 232, .4); background: #fff; overflow: hidden; }
+.show-strip button.on { border-color: #F4F1E8; box-shadow: 0 0 0 2px #F4F1E8; }
+.show-strip img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+
+/* ───── where I am; the ground never offers its pictures to a long press ───── */
+#b-me { display: none; } body.mapmode:not(.away) #b-me, body.half #b-me { display: inline-grid; }
+#b-me.wait { animation: blink 1s steps(2) infinite; } #b-me.no { color: var(--hi); } #b-me.on { color: var(--sol); }
+#net .me-acc { fill: rgba(156, 195, 160, .12); stroke: var(--sol); stroke-width: 1; stroke-dasharray: 2 3; }
+#net .me-dot { fill: var(--sol); stroke: var(--paper); stroke-width: 2; }
+#terrain, #terrain img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+/* ───── a phone's sheet slides on a rail ───── */
+.grip { position: sticky; top: -12px; z-index: 5; height: 22px; margin: -12px -14px 4px; background: var(--paper); cursor: ns-resize; touch-action: none; }
+.grip::after { content: ''; position: absolute; left: 50%; top: 8px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--dim); }
+#sheet.sliding { transition: none; }
+
+/* ───── a thread as a tree: one line a branch, the data kept back until pointed at or touched ───── */
+.tree { list-style: none; margin: 4px 0 10px; padding: 0; font-size: 12px; }
+.tree li { padding: 4px 0; line-height: 1.5; cursor: default; }
+.tree li i { font-style: normal; color: var(--dim); white-space: pre; }
+.tree li.root b { font-weight: 400; }
+.tree .dp { display: none; color: var(--dim); font-size: 10px; margin-left: 6px; }
+.tree li:hover .dp, .tree li:focus .dp, .tree li.open .dp { display: inline; }
+#w-edit { width: 26px; height: 26px; font-size: 13px; vertical-align: 2px; margin-left: 6px; }
+.wq { display: flex; gap: 6px; align-items: center; } .wq #w-q { flex: 1; }
+#nw-lines .ln, #w-ed .ln { display: flex; gap: 6px; }
+body.wishmap:not(.mapmode):not(.half) #terrain { pointer-events: auto; }
