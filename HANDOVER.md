@@ -149,6 +149,38 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, in hand, 25 October** (the owner: "deselecting all the constellations … a drone sound always plays"; "delete or undo with a check … for anything created"; "W.I.S.H. … the main side shows nothing but map"; "pixel maker icons … placed in the PRINT section … 128"; "back … to PRINT … every instance"; "4 tears … jellyfish limited to 4"; "reset … with a check"; "the crayon educational version").
+  - **Your path is a constellation of its own** (`WEB.path`, `pathOn`).
+    - It is shown as a chip and as the first row in the sets, with its own shape.
+    - Hidden, it leaves the map and the print free of its lines. With no sets either, nothing is tied, the preview is empty and the web's voice falls quiet.
+    - × (with a check) clears it, and ↶ puts it back. Hiding it is undoable with ↶ in the deck.
+  - **Anything made is taken away only with a check** (`sureTap`): the first touch turns the key to ✓, the second does it. Then ↶ shows for six seconds to put it back (`undoToast`). This covers:
+    - posters in PRINT;
+    - one's own replies in a thread;
+    - kept songs;
+    - icons;
+    - one's path;
+    - a track cleared;
+    - **the wipe** (PRINT, the bin at the foot), which clears everything this device made except light and dark, and starts again.
+  - **W.I.S.H. beside its map** (wide screens; `drawWish`, `fitBeside`):
+    - Only its posters show, each its photograph in a frame, red-edged when urgent, with its count of replies.
+    - The one open is larger and ringed, and tied to the sightings revealed beside it.
+    - A search over the threads narrows the list and the map together.
+    - A poster touched on the map opens its thread beside it.
+  - **Icons** (`ICONS`, `da.base.icons`, up to 48):
+    - **Sources:** the pixel maker makes them (◫; a moving sprite becomes a GIF). In PRINT, + adds pictures, GIFs, SVGs or a pack (`.json`), and ⇩ saves them all as a pack.
+    - **Choosing:** chosen in PRINT, an icon goes on the next noticing. On the design stage, any icon can be put on the poster or taken off.
+    - **On the poster:** it is stamped in the corner of the art and printed black.
+    - **On the map:** it stands for the poster.
+  - **The pixel maker** goes to 128 cells.
+  - **Back:**
+    - Closing the pixel maker returns to PRINT, always.
+    - The guide returns to the page it was opened from (`PAGEHASH`).
+    - Every view opened from a page returns there.
+  - **Fours:**
+    - The eye has four tears (the ASCII eye too), as the irukandji has four tentacles.
+    - On the map and in the print, an irukandji (`irukandji`) forms for every four cells opened of one life, in the order opened: a small box bell with four tentacles, one to each, sized by how far apart the four are. Three makes none.
+  - **novel.global for class:** a crayon beside "add a pack" in PRINT opens the studio, the devices site for class.
 - **v0.1 alpha, flow and sound, 25 October** (the owner: "reduce all instances of clicking to another page … focus on where the joy and need is"; "an undo or back button"; "sound additions … more fluid"; "each song … as a loop"; "a full sweep"; "a poster opened on PRINT … goes back to the start").
   - **Held still on a phone.**
     - `maximum-scale=1`, and `touch-action: manipulation` on the page, so a double tap never zooms.
@@ -733,7 +765,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v81` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v82` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
