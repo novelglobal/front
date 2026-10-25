@@ -1643,11 +1643,13 @@ if (run('base')) try {
   await sleep(300); const dr = await page.evaluate(() => ({ glides: window.__glides || 0, ...window.__base.drone() }));
   check('the web has a voice, fluid not stepped: each new stick a glide from cell to cell, and a held tone for each life opened', dr.on && dr.glides >= 2 && dr.voices >= 1, JSON.stringify(dr));
   await page.click('#pk-x').catch(() => {}); await tap(page, '#d-play');
+  const ik = await page.evaluate(() => window.__base.iruk(Array.from({ length: 9 }, (_, i) => ({ id: 'x' + i, cn: 'Rainbow Lorikeet', lat: -37.8, lng: 144.97 }))).concat(['|'], window.__base.iruk(Array.from({ length: 3 }, (_, i) => ({ id: 'y' + i, cn: 'Noisy Miner', lat: -37.8, lng: 144.97 })))));
+  check('an irukandji forms for every four of a life opened, never more than four tentacles, none for three', ik.join() === '4,4,|', JSON.stringify(ik));
   /* collections: each with its own shape; added to the web and kept, not replacing; what prints or downloads, shown */
   await tap(page, '#r-way [data-w="sets"]'); await page.waitForSelector('#r-body .list.sets'); await sleep(300);
   const sets = await page.evaluate(() => ({ t: [...document.querySelectorAll('#r-body [data-c] span')].map(s => s.textContent), shapes: [...document.querySelectorAll('#r-body [data-c] svg.shape')].map(s => s.innerHTML).filter(Boolean) }));
   await page.click('#r-body [data-c="0"]'); await sleep(400); await page.click('#r-body [data-c="1"]'); await sleep(900);
-  const sel = await page.evaluate(() => { const c = document.querySelector('#r-pv canvas'); let ink = 0; if (c && c.width) { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 16) if (d[i] < 150) ink++; } return { sets: JSON.parse(localStorage.getItem('da.base.web')).sets.map(s => s.t), chips: document.querySelectorAll('#r-sets button').length, w: c ? c.width : 0, ink, swell: document.querySelectorAll('#net path.w.swell').length, rough: !!window.rough, d3: !!(window.d3 && window.d3.forceSimulation) }; });
+  const sel = await page.evaluate(() => { const c = document.querySelector('#r-pv canvas'); let ink = 0; if (c && c.width) { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 16) if (d[i] < 150) ink++; } return { sets: JSON.parse(localStorage.getItem('da.base.web')).sets.map(s => s.t), chips: document.querySelectorAll('#r-sets button[data-x]').length, w: c ? c.width : 0, ink, swell: document.querySelectorAll('#net path.w.swell').length, rough: !!window.rough, d3: !!(window.d3 && window.d3.forceSimulation) }; });
   check('SETS: every collection with its own shape; two touched are both added to the web and kept, each shown as a swell and a chip to take off', sets.t.includes('Rainbow Lorikeet') && sets.shapes.length === sets.t.length && new Set(sets.shapes).size > 1 && sel.sets.length === 2 && sel.chips === 2 && sel.swell >= 1, JSON.stringify({ t: sets.t.slice(0, 4), sel }));
   check('what prints or downloads is shown first: the web laid out by d3-force and drawn by hand with Rough.js', sel.w === 720 && sel.ink > 50 && sel.rough && sel.d3, JSON.stringify(sel));
   const wd = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await page.click('#r-dl'); const wf = await wd;
@@ -1657,17 +1659,47 @@ if (run('base')) try {
   await page.click('#r-sets button[data-x="0"]'); await sleep(300);
   check('× takes one set off and leaves the other', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 1);
   await tap(page, '#d-undo'); await sleep(300);
-  check('↶ brings a set taken off back', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 2 && (await page.evaluate(() => document.querySelectorAll('#r-sets button').length)) === 2);
+  check('↶ brings a set taken off back', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 2 && (await page.evaluate(() => document.querySelectorAll('#r-sets button[data-x]').length)) === 2);
+  /* the path, a constellation of its own: hidden, and with no sets the map and the print are free of lines and the voice is quiet */
+  await page.click('#r-pc'); await sleep(200);
+  while (await page.$('#r-sets button[data-x]')) { await page.click('#r-sets button[data-x]'); await sleep(200); }
+  await sleep(2500);
+  const bare = await page.evaluate(() => ({ path: JSON.parse(localStorage.getItem('da.base.web')).path, lines: document.querySelectorAll('#net path.w').length, jelly: document.querySelectorAll('#net .jelly').length, pv: !!document.querySelector('#r-pv .empty'), voices: window.__base.drone().voices }));
+  check('your path hides like any set: with none shown, the map and the print are free of lines and the web\'s voice falls quiet', bare.path === false && !bare.lines && !bare.jelly && bare.pv && bare.voices === 0, JSON.stringify(bare));
+  await tap(page, '#r-path'); await sleep(400);
+  check('and shows again', await page.evaluate(() => document.querySelectorAll('#net path.w.trail').length > 0 && !!document.querySelector('#r-pv canvas')));
+  await page.click('#r-path-x'); await sleep(100);
+  const asked = await page.evaluate(() => ({ sure: document.querySelector('#r-path-x').classList.contains('sure'), seq: JSON.parse(localStorage.getItem('da.base.web')).seq.length }));
+  await page.click('#r-path-x'); await sleep(300);
+  const cleared = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).seq.length);
+  await page.click('.toast.undo'); await sleep(300);
+  const back1 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).seq.length);
+  check('anything made is taken away only with a check (✓), and ↶ puts it back: your path cleared and restored', asked.sure && asked.seq > 0 && cleared === 0 && back1 === asked.seq, JSON.stringify({ asked, cleared, back1 }));
   await tap(page, '#r-way [data-w="help"]'); await sleep(500);
   const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
   check('HELP has every number to call', help.includes('tel:000') && help.includes('tel:0384007300'), help.length + '');
   /* W.I.S.H.: a news page of strategies */
   await page.goto('https://oan.test/'); await page.goto('https://oan.test/#wish'); await page.waitForSelector('.wish-grid');
   const wl = await page.evaluate(() => ({ hero: (document.querySelector('.wish-grid .hero h3') || {}).textContent, rows: document.querySelectorAll('ol.hn li').length, meta: (document.querySelector('ol.hn .meta') || {}).textContent }));
+  const wm = await page.evaluate(() => ({ cls: document.body.classList.contains('wishmap'), posters: document.querySelectorAll('#net .wishmap .poster').length, me: document.querySelectorAll('#net .wishmap .poster.me').length, q: !!document.querySelector('#w-q') }));
+  check('beside W.I.S.H., the map shows only its posters, framed, the one open ringed with its constellation, and a search over the threads', wm.cls && wm.posters >= 1 && wm.me === 1 && wm.q, JSON.stringify(wm));
+  await page.fill('#w-q', 'zzzz no such thing'); await sleep(300);
+  const none = await page.evaluate(() => ({ posters: document.querySelectorAll('#net .wishmap .poster').length, empty: !!document.querySelector('#w-list .empty') }));
+  await page.fill('#w-q', 'fledgling'); await sleep(300);
+  const some = await page.evaluate(() => ({ posters: document.querySelectorAll('#net .wishmap .poster').length, rows: document.querySelectorAll('#w-list ol.hn li').length }));
+  check('the search narrows the threads and the map together', none.posters === 0 && none.empty && some.posters >= 1 && some.rows >= 1, JSON.stringify({ none, some }));
+  const pk2 = await page.evaluate(() => { const k = window.__base.hits().knots.find(h => h.wish); return k ? [k.x, k.y] : null; });
+  if (pk2) { await page.mouse.click(pk2[0], pk2[1]); await sleep(400); }
+  check('a poster touched on the map opens its thread beside it, nothing else', !!pk2 && await page.evaluate(() => !!document.querySelector('.wish-grid h2') && /lorikeet fledgling/.test(document.querySelector('.wish-grid h2').textContent)) && page.url().endsWith('#wish'), String(pk2) + page.url());
   check('W.I.S.H. is a ranked thread of strategies: the hero poster and its headline, then the list with points, place, age, replies and pips', /lorikeet fledgling/.test(wl.hero) && wl.rows >= 1 && /^▲ \d+ · Carlton · .* · 2 ✎ ●/.test(wl.meta), JSON.stringify(wl));
   await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-prn li:not(.empty)', { timeout: 8000 }).catch(() => {}); await sleep(800);
-  const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: !!document.querySelector('#sheet a[href^="studio"]'), prns: [...document.querySelectorAll('#s-prn li')].map(l => l.textContent), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
-  check('SHOP: one\'s posters with where each is as pips, novel.global\'s printer and no other, how to build one, packs; no way to the studio; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn === 1 && /novel\.global|novelglobal/i.test(shop.prns[0]) && shop.build && shop.packs && !shop.add && !shop.held, JSON.stringify(shop));
+  const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: [...document.querySelectorAll('#sheet a[href^="studio"]')].map(a => a.getAttribute('href') + '|' + !!a.querySelector('use[href="#g-crayon"]')).join(), tears: document.querySelectorAll('#sheet .eye .threads path').length, wipe: !!document.querySelector('#s-wipe'), prns: [...document.querySelectorAll('#s-prn li')].map(l => l.textContent), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
+  check('SHOP: one\'s posters with where each is as pips, novel.global\'s printer and no other, how to build one, packs and beside them a crayon to novel.global for class; the eye with four tears; a wipe key; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn === 1 && /novel\.global|novelglobal/i.test(shop.prns[0]) && shop.build && shop.packs && shop.add === 'studio|true' && shop.tears === 4 && shop.wipe && !shop.held, JSON.stringify(shop));
+  const n0 = await page.evaluate(() => window.__base.notes().length);
+  await page.click('#s-rec [data-rm="0"]'); await sleep(100); const n1 = await page.evaluate(() => window.__base.notes().length);
+  await page.click('#s-rec [data-rm="0"]'); await sleep(300); const n2 = await page.evaluate(() => window.__base.notes().length);
+  await page.click('.toast.undo'); await sleep(300); const n3 = await page.evaluate(() => window.__base.notes().length);
+  check('a poster in PRINT is deleted only on the second touch (✓), and ↶ brings it back', n1 === n0 && n2 === n0 - 1 && n3 === n0, JSON.stringify([n0, n1, n2, n3]));
   await page.click('#s-rec [data-i="0"]'); await page.waitForSelector('#p-slip canvas'); await page.click('#sheet .hd .x'); await sleep(400);
   check('a poster opened from PRINT closes back to PRINT, not to the start', await page.evaluate(() => !!document.querySelector('#s-rec') && document.body.classList.contains('away')));
   /* the studio is its own site now, the devices site for class: devices on, no bar back to the base over its words */
@@ -1710,10 +1742,29 @@ if (run('base')) try {
   await page.setInputFiles('#pb-in', { name: 'a.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#pb canvas', { timeout: 5000 });
   const px = await page.evaluate(() => { const c = document.querySelector('#pb canvas'); return { w: c.width, frames: document.querySelectorAll('#pb-f button').length }; });
   check('the pixel board turns a picture into wonky pixels', px.w > 100 && px.frames === 1, JSON.stringify(px));
+  await page.click('#pb-c [data-v="128"]'); await sleep(300);
+  const p128 = await page.evaluate(() => document.querySelector('#pb canvas').width);
+  await page.click('#pb-icon'); await sleep(500);
+  const ic1 = await page.evaluate(() => window.__base.icons().length);
+  check('the pixel maker goes to 128 cells, and its art becomes an icon for posters', p128 >= 512 && ic1 === 1, JSON.stringify({ p128, ic1 }));
   const gd = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await page.click('#pb-gif'); const gf = await gd;
   check('its sprite saves moving, as a GIF (gifenc)', !!gf && /\.gif$/.test(gf.suggestedFilename()) && (await page.evaluate(() => window.__lastGif || 0)) > 200, String(gf && gf.suggestedFilename()));
+  await page.click('#sheet .hd .x'); await sleep(600);
+  check('closing the pixel maker goes back to PRINT, not the start', page.url().endsWith('#print') && await page.evaluate(() => !!document.querySelector('#s-rec') && !!document.querySelector('#s-ico [data-ic]')), page.url());
+  const png1 = (await sharp({ create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } } }).png().toBuffer()).toString('base64');
+  await page.setInputFiles('#s-ico-in', { name: 'pack.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ pack: 'novel.global/icons', name: 'test', icons: [{ src: 'data:image/png;base64,' + png1, t: 'dot' }] })) }); await sleep(800);
+  check('an icon pack adds its icons to PRINT', (await page.evaluate(() => window.__base.icons().length)) === 2);
+  await page.click('#s-ico [data-ic]'); await sleep(300); await page.click('#s-rec [data-i="0"]'); await page.waitForSelector('#p-ico [data-ic]'); await page.click('#p-ico [data-ic]'); await sleep(900);
+  const iconOn = await page.evaluate(() => ({ icon: (window.__base.notes()[0].icon || '').slice(0, 10), on: document.querySelectorAll('#p-ico button.on').length }));
+  check('on the design stage an icon goes on the poster, stamped in its art, and stands for it on the map', iconOn.icon === 'data:image' && iconOn.on === 1, JSON.stringify(iconOn));
+  await page.click('#sheet .hd .x'); await sleep(400);
   const ex = await page.evaluate(async b64 => { await new Promise(r => { const s = document.createElement('script'); s.src = 'vendor/exifr.js'; s.onload = r; s.onerror = r; document.head.appendChild(s); }); const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); const o = await window.exifr.parse(bin.buffer, { gps: true }); return o ? [o.latitude, o.longitude] : null; }, (await exifJPEG()).toString('base64'));
   check('exifr reads where a photograph was taken when the small reader cannot (HEIC and others)', !!ex && Math.abs(ex[0] + 37.806) < 0.01 && Math.abs(ex[1] - 144.971) < 0.01, JSON.stringify(ex));
+  await page.goto('https://oan.test/#print'); await page.waitForSelector('#s-wipe'); await page.click('#s-wipe'); await sleep(200);
+  const w1 = await page.evaluate(() => ({ sure: document.querySelector('#s-wipe').classList.contains('sure'), notes: window.__base.notes().length }));
+  await Promise.all([page.waitForNavigation({ timeout: 10000 }).catch(() => null), page.click('#s-wipe')]); await sleep(1200);
+  const w2 = await page.evaluate(() => ({ keys: Object.keys(localStorage).filter(k => /^da\.base\./.test(k) && k !== 'da.base.theme'), hash: location.hash, home: getComputedStyle(document.querySelector('#home')).display }));
+  check('wipe asks first (✓), then everything this device made is gone and the start returns', w1.sure && w1.notes > 0 && !w2.keys.filter(k => !/da\.base\.(packs|song|web)$/.test(k)).length && !w2.hash && w2.home !== 'none', JSON.stringify({ w1, w2 }));
   /* a studio link still opens the studio */
   await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForURL(/\/studio#mix=/, { timeout: 8000 }).catch(() => {});
   check('a link the studio made (#mix=…) goes on to the studio', /\/studio#mix=-37\.7712/.test(page.url()), page.url());
@@ -1765,7 +1816,7 @@ if (run('base')) try {
   const wide = await pp.evaluate(() => Math.max(document.documentElement.scrollWidth, document.querySelector('#sheet').scrollWidth));
   check('on a phone the base fits the screen', wide <= 375, String(wide));
   await pc.close();
-} catch (e) { results.push(`FAIL  section base: ${e.message.split('\n')[0]}`); }
+} catch (e) { results.push(`FAIL  section base: ${e.message.split('\n')[0]} — after: ${(results[results.length - 1] || '').slice(6, 90)}`); }
 
 // ───────── walk: every way through the base, on a phone, as a first visitor (ONLY=walk, screenshots for review) ─────────
 if (ONLY.includes('walk')) try {

@@ -442,3 +442,32 @@ details.case .src { display: inline-block; margin: 0 0 8px 14px; font-size: 10px
 #peek .pk-more ul.plain { margin: 6px 0 0; padding-left: 14px; }
 .deck .bars { display: inline-flex; gap: 2px; }
 .deck .bars button.on { background: var(--ink); color: var(--paper); }
+
+/* ───── taking away, with a check ───── */
+.rm { flex: none; width: 30px; height: 30px; color: var(--dim); font-size: 14px; }
+.rm:hover { color: var(--ink); }
+.sure { background: var(--hi) !important; color: #000 !important; border-color: var(--hi) !important; }
+#s-rec li, .list.sets.path li { display: flex; align-items: center; gap: 4px; }
+#s-rec li > button[data-i], .list.sets.path li > button#r-path { flex: 1; min-width: 0; }
+.reply { position: relative; } .reply .rm { position: absolute; right: 0; top: 0; }
+.toast.undo { cursor: pointer; font-size: 20px; padding: 8px 18px; border: 1px solid var(--ink); }
+
+/* ───── W.I.S.H. beside its map: the posters, framed; the one open larger and ringed in red; touched, it opens ───── */
+body.wishmap #terrain { pointer-events: auto; }
+#net .wishmap .frame { fill: var(--paper); stroke: var(--stick); stroke-width: 1.4; }
+#net .wishmap .poster.u .frame { stroke: var(--hi); }
+#net .wishmap .poster.me .frame { stroke: var(--hi); stroke-width: 2.4; }
+#net .wishmap .poster { cursor: pointer; }
+#net .wishmap text { font-size: 9px; }
+.wq { margin: 0 0 12px; }
+.list .rm, .reply .rm { width: 30px; flex: none; padding: 0; justify-content: center; }
+.list button.rm, .list.sets button.rm { width: 30px; flex: none; padding: 0; justify-content: center; }
+
+/* ───── icons: pixel art, packs, sprites; one chosen goes on the poster and on the map ───── */
+.icons { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.icons button { width: 40px; height: 40px; padding: 3px; border: 1px solid var(--rule); background: var(--paper); }
+.icons button.on { border-color: var(--stick); box-shadow: inset 0 0 0 1px var(--stick); }
+.icons img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.icons-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; }
+#p-ico { margin: 8px 0; }
+.row.wipe { margin-top: 18px; justify-content: flex-start; }
