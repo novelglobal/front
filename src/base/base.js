@@ -428,7 +428,7 @@ function open(html, half, cls) {
 function close() {
   sheet.hidden = true; sheet.innerHTML = ''; ['away', 'half', 'wide', 'sheetmin'].forEach(function (c) { document.body.classList.remove(c); }); net.live = document.body.classList.contains('mapmode'); if (radar.on) radarOn(false);
   net.all = document.body.classList.contains('mapmode'); net.focus = null; net.links = []; net.only = null;
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render();
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on();
 }
 var glyph = function (id) { return '<svg class="gi" aria-hidden="true"><use href="#g-' + id + '"/></svg>'; };
 var head = function (g, extra) { return '<div class="hd">' + (g ? '<span class="hg">' + glyph(g) + '</span>' : '') + (extra || '') + '<button class="x" aria-label="Close" title="Close">×</button></div>'; };
@@ -990,7 +990,7 @@ function backTo() { var b = $('#sheet .back'); if (b) b.addEventListener('click'
 /* ───────── the map is a key: the ground, what is about, everyone's noticings and one's own, the net between them. A touch on open
    ground places a noticing; + adds many at once: photographs, calls, icons ───────── */
 function mapOn(on) {
-  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close();
+  document.body.classList.toggle('mapmode', on); $('#b-map').classList.toggle('on', on); if (on && !sheet.hidden) close(); if (!on && ORB) ORB.on();
   net.all = on; net.live = on; credit(); tipEl.hidden = true;
   if (on) { render(); db().then(function () { return Promise.all([loadShared(), loadLive(map.lat, map.lng)]); }).then(function () { var l = everything().filter(function (n) { return isFinite(n.lat) && dist(n, map) < 2500; }); if (l.length) fit(l); else render(); }); } else render();
 }
@@ -1396,11 +1396,13 @@ function metaOf(t) { var n = t.n; return '▲ ' + t.up + ' · ' + ((n.data || []
 function shopSheet() {
   var mine = NOTES.filter(function (n) { return n.mine !== false; });
   open(head('shop') +
+    '<label class="eye solo" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g><g class="threads"><path d="M50 76v16"/><path d="M65 80v22"/><path d="M80 82v26"/><path d="M95 80v22"/><path d="M110 76v16"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>' +
     '<ul class="list" id="s-rec">' + (mine.length ? mine.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || n.code) + '</span><small id="s-st-' + i + '">' + (n.sent ? pips(n.sent.s) : '○○○') + '</small></button></li>'; }).join('') : '<li class="empty">· · ·</li>') + '</ul>' +
     '<hr><ul class="list" id="s-prn"><li class="empty">· · ·</li></ul>' +
     '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
     '<hr>' + packsHTML());
   wirePacks();
+  var sh = $('#sheet .shot'); sh.addEventListener('change', function () { var f = sh.files && sh.files[0]; onShot(f); setTimeout(function () { sh.value = ''; }, 1500); });
   $$('#s-rec [data-i]').forEach(function (b) { b.addEventListener('click', function () { stepS(mine[+b.dataset.i]); }); });
   var sg = $('#s-sign'); if (sg) sg.addEventListener('click', function () { stepS(mine[0], null, 'sign'); });
   $('#s-qr').addEventListener('click', function () { boothSticker('novelglobal'); });
@@ -1646,13 +1648,59 @@ function boothSticker(dest) {
     download(c, 'novel-global-photo-qr.png'); return c;
   });
 }
+/* ───────── the start: three rings drawn by hand, turning slowly as one planet. Each is a great circle at its own tilt; the whole
+   turns about its axis, seen a little from above. The half of a ring behind is fainter, the half in front full. A dot rides each
+   ring carrying its page, larger and brighter as it comes round to the front. Still when motion is reduced; idle when hidden ───────── */
+var ORB = (function () {
+  var g = $('#rg'), R = 150, tiltX = -0.38, rings = [
+    { ax: 0.0, inc: 1.2, r: 1.0, w: [0.010, 0.006, 0.004], ph: [0.3, 2.1, 4.0], orb: $('#o-radio'), sp: 0.21, a0: 0.4 },
+    { ax: 2.1, inc: 1.05, r: 0.965, w: [0.008, 0.009, 0.003], ph: [1.7, 0.4, 2.9], orb: $('#o-wish'), sp: -0.16, a0: 2.6 },
+    { ax: 4.2, inc: 0.5, r: 0.93, w: [0.012, 0.005, 0.005], ph: [5.1, 3.3, 0.9], orb: $('#o-print'), sp: 0.13, a0: 4.4 }
+  ];
+  /* each ring's plane: two axes u, v, from where its node lies (ax) and how far it leans (inc) */
+  rings.forEach(function (k) { var c = Math.cos(k.ax), s = Math.sin(k.ax); k.u = [c, 0, s]; k.v = [-s * Math.cos(k.inc), Math.sin(k.inc), c * Math.cos(k.inc)]; });
+  if (!g) return { on: function () {} };
+  rings.forEach(function (k) { k.back = svg('path', { 'class': 'rb' }); k.front = svg('path', { 'class': 'rf' }); k.echo = svg('path', { 'class': 're' }); g.appendChild(k.back); g.appendChild(k.echo); g.appendChild(k.front); });
+  /* a point on a ring, turned by the planet's spin (about y) and the tilt toward the eye (about x) */
+  var at = function (k, th, spin, wob) {
+    var rr = R * k.r * (1 + (wob ? k.w[0] * Math.sin(2 * th + k.ph[0]) + k.w[1] * Math.sin(5 * th + k.ph[1]) + k.w[2] * Math.sin(11 * th + k.ph[2]) : 0));
+    var x = rr * (Math.cos(th) * k.u[0] + Math.sin(th) * k.v[0]), y = rr * (Math.cos(th) * k.u[1] + Math.sin(th) * k.v[1]), z = rr * (Math.cos(th) * k.u[2] + Math.sin(th) * k.v[2]);
+    var cs = Math.cos(spin), sn = Math.sin(spin), x1 = x * cs + z * sn, z1 = -x * sn + z * cs;
+    var ct = Math.cos(tiltX), st = Math.sin(tiltX), y2 = y * ct - z1 * st, z2 = y * st + z1 * ct;
+    return [x1, -y2, z2];
+  };
+  var raf = 0, t0 = 0, last = 0, still = matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function frame(now) {
+    raf = 0; if (!t0) t0 = now; var t = (now - t0) / 1000, spin = 0.6 + (still ? 0 : t * 2 * Math.PI / 110);
+    var k2 = $('#rings').getBoundingClientRect().width / 400;
+    rings.forEach(function (k, ri) {
+      /* the line: a hand closes a circle a little past where it began, so it overlaps there; the echo is the pencil's second pass */
+      var dF = '', dB = '', dE = '', prevF = false, prevB = false, N = 140, over = 0.16;
+      for (var i = 0; i <= N; i++) {
+        var th = k.ph[0] + (2 * Math.PI + over) * i / N, p = at(k, th, spin, true), xy = p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+        if (p[2] >= 0) { dF += (prevF ? 'L' : 'M') + xy; prevF = true; prevB = false; } else { dB += (prevB ? 'L' : 'M') + xy; prevB = true; prevF = false; }
+        if (i % 2 === 0 && i < N * 0.9) { var e = at(k, th + 0.02, spin, true); dE += (i ? 'L' : 'M') + (e[0] * 1.006 + 0.6).toFixed(1) + ' ' + (e[1] * 1.006 - 0.4).toFixed(1); }
+      }
+      k.front.setAttribute('d', dF); k.back.setAttribute('d', dB); k.echo.setAttribute('d', dE);
+      /* the dot and its page, on the line */
+      var th2 = k.a0 + (still ? 0 : t * k.sp), q = at(k, th2, spin, true), depth = (q[2] / (R * k.r) + 1) / 2;
+      var x = (q[0] + 200) * k2, y = (q[1] + 200) * k2;
+      k.orb.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + (0.72 + 0.4 * depth).toFixed(3) + ')';
+      k.orb.style.opacity = (0.5 + 0.5 * depth).toFixed(2); k.orb.style.zIndex = q[2] >= 0 ? 3 : 1;
+    });
+    last = now; if (!still) go();
+  }
+  function go() { if (raf || document.hidden || document.body.classList.contains('away') || document.body.classList.contains('mapmode') || document.body.classList.contains('booth')) return; raf = requestAnimationFrame(frame); }
+  document.addEventListener('visibilitychange', go); addEventListener('resize', function () { if (!raf) raf = requestAnimationFrame(frame); });
+  return { on: function () { if (still) { if (!raf) raf = requestAnimationFrame(frame); } else go(); } };
+})();
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
-  if (!/^(radio|wish|shop|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
+  if (!/^(radio|wish|shop|print|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
   if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }
   if (BTH) return;
   if (document.body.classList.contains('mapmode')) mapOn(false);
-  if (h === 'radio') radioSheet(); else if (h === 'wish') wishSheet(); else if (h === 'shop') shopSheet(); else if (h === 'pixel') boardSheet(); else if (h === 'search' || h === 'guide' || h === 'now') guideSheet('');
+  if (h === 'radio') radioSheet(); else if (h === 'wish') wishSheet(); else if (h === 'shop' || h === 'print') shopSheet(); else if (h === 'pixel') boardSheet(); else if (h === 'search' || h === 'guide' || h === 'now') guideSheet('');
   else if (/^n=DA-/i.test(h)) {
     var c = h.slice(2).toUpperCase(); var n = NOTES.filter(function (x) { return x.code === c; })[0];
     if (n) openNote(n); else api('/stories/' + c).then(function (j) { if (j && j.story) { SHARED = []; return loadShared().then(function () { var s = SHARED.filter(function (x) { return x.code === c; })[0]; if (s) openNote(s); }); } }).catch(function () { toast(c + ' is not shown yet'); });
@@ -1672,7 +1720,7 @@ oled.addEventListener('click', function () { nowTick(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) close(); if (e.key === '/' && sheet.hidden && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); location.hash = 'guide'; } });
 function credit() { $('#credit').textContent = PACKS.terrain && B.credit && document.body.classList.contains('mapmode') ? B.credit : ''; }
 
-credit(); dock.hidden = !NOTES.length; render();
+credit(); dock.hidden = !NOTES.length; render(); if (ORB) ORB.on();
 /* the field pack after the first paint, then what is happening now */
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();

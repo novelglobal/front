@@ -168,3 +168,14 @@ The net was drawn all at once, a frame of sticks around whatever was on screen. 
 - **Sound is only what is there.** The 4-track plays cells and nothing else. A song is a walk through what was noticed.
 - **A collection has a shape.** Each set is drawn as its cells joined in the order seen, so two sets are never the same. Sets add up rather than replace each other, and the print is shown before it is made.
 - **The studio is for class; the base is the showcase.** They no longer point at each other.
+
+## The start: a planet on blueprint paper
+
+The first thing seen is not an interface but a drawing: blueprint paper and three rings turning as one small planet. It is drawn by hand, with no words on it.
+
+- **Blueprint** is the colour of a plan before anything is built. The site is a plan for noticing, and each visitor builds on it.
+- **The rings** are three paths around the same world:
+  - RADIO, the signal, listens;
+  - W.I.S.H., the irukandji, the smallest and most easily missed of lives, gathers;
+  - PRINT, the receipt, makes it real on paper.
+- **Each page is a dot on a line in motion.** You go in by catching one, which is the act the whole site asks for: noticing something passing.
