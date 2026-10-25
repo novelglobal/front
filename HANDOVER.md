@@ -149,6 +149,18 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the start, 25 October** (the owner: "the iconic blueprint blue … 3 semi-thin white rings that look hand drawn that rotate to be a slow 3D planet").
+  - **The page.** The start (`#home`, `#orrery`) is blueprint blue (`--blue: #17457F`) with a restrained paper texture: three layers of SVG noise (a fine grain, slow mottling, a faint fibre) and a soft vignette. It has no words, no menus and no heading: the top bar, the box at the foot and the dock are hidden here.
+  - **The rings.** Three hand-drawn white rings (`ORB`) are great circles at their own tilts, turning about one axis every 110 s, seen a little from above.
+    - Each is redrawn every frame with a slight wobble, overlapping where the hand closes it, with a faint second pass beside it.
+    - The half behind is fainter than the half in front.
+  - **The pages.** A dot rides each ring at its own pace, carrying a page; it grows and brightens as it comes round to the front.
+    - **RADIO** (`#o-radio`): a signal mast.
+    - **W.I.S.H.** (`#o-wish`): an irukandji as the bark painting draws one: a dotted bell with four dotted tentacles.
+    - **PRINT** (`#o-print`, `#print`): a receipt.
+  - **Motion.** The rings stop when the page is hidden, when a sheet or the map is open, and when motion is reduced.
+  - **PRINT (once SHOP)** opens on the eye: take a photograph, and the noticing begins. One's receipts, the printer, the downloads and the packs follow. `#shop` still opens it.
+  - **The box at the foot** now belongs to the map, where the season matters. The top bar shows once inside a page.
 - **v0.1 alpha, round five, 25 October: the web of noticing** (the owner: "the nets and web lines should be something built and created dynamically … each line or image should have a reason").
   - **The eye** is two lids that meet and are lashed at the corners, never crossing, so it no longer reads as a fish. The tears are dotted threads with no beads at their ends.
   - **The box at the foot** (`#oled`) no longer crawls.
@@ -691,7 +703,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v79` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v80` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

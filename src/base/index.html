@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>novel.global</title>
 <meta name="description" content="What have you noticed?">
-<meta name="theme-color" content="#050505">
+<meta name="theme-color" content="#17457F">
 <meta name="da-build" content="%BUILD%">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* a link made by the studio (a mix, a story code, a page by name) goes on to the studio, so every printed code still opens */
-(function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
+(function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|print|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
 try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { /* no storage */ }
 /*BASE*/
 </script>
@@ -49,23 +49,14 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
 </header>
 
 <main id="home">
-  <!-- the eye: two bent sticks meeting and lashed at the corners, never crossing; a ring of beads, a shell for its pupil, tears falling as dotted threads -->
-  <label id="cam" class="eye" aria-label="What have you noticed? Photograph it" title="What have you noticed?">
-    <svg viewBox="0 0 160 120" aria-hidden="true">
-      <g class="shadow"><path d="M16 54Q80 4 144 54"/><path d="M16 54Q80 104 144 54"/></g>
-      <path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/>
-      <rect class="lash" x="10" y="51" width="6" height="6" transform="rotate(45 13 54)"/><rect class="lash" x="144" y="51" width="6" height="6" transform="rotate(45 147 54)"/>
-      <circle class="iris" cx="80" cy="54" r="19"/>
-      <g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/><path d="M80 49v10"/></g>
-      <g class="threads"><path d="M50 76v16"/><path d="M65 80v22"/><path d="M80 82v26"/><path d="M95 80v22"/><path d="M110 76v16"/></g>
-    </svg>
-    <input id="shot" type="file" accept="image/*" capture="environment">
-  </label>
-  <nav id="ways">
-    <a href="#radio" class="g" aria-label="RADIO" title="RADIO"><svg><use href="#g-radio"/></svg></a>
-    <a href="#wish" class="g" aria-label="W.I.S.H." title="W.I.S.H."><svg><use href="#g-wish"/></svg></a>
-    <a href="#shop" class="g" aria-label="SHOP" title="SHOP"><svg><use href="#g-shop"/></svg></a>
-  </nav>
+  <!-- the start: blueprint paper and three hand-drawn rings turning slowly as one planet. On each ring a dot carries a page:
+       RADIO a signal, W.I.S.H. an irukandji as the bark painting draws one, PRINT a receipt. No words -->
+  <div id="orrery">
+    <svg id="rings" viewBox="-200 -200 400 400" aria-hidden="true"><g id="rg"></g></svg>
+    <a class="orb" id="o-radio" href="#radio" aria-label="RADIO" title="RADIO"><i class="pt"></i><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="19" r="2.2" class="f"/><path d="M16 21.5v8.5M12.4 15.2a5.2 5.2 0 0 1 7.2 0M9.3 12.1a9.6 9.6 0 0 1 13.4 0M6.2 9a14 14 0 0 1 19.6 0"/><path d="M11.5 30h9" /></svg></a>
+    <a class="orb" id="o-wish" href="#wish" aria-label="W.I.S.H." title="W.I.S.H."><i class="pt"></i><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 13.5C9 8 12 5 16 5s7 3 7 8.5v1.2H9z"/><g class="f"><circle cx="13" cy="9.6" r=".9"/><circle cx="16" cy="8.6" r=".9"/><circle cx="19" cy="9.6" r=".9"/><circle cx="12.4" cy="12.4" r=".9"/><circle cx="15.2" cy="12" r=".9"/><circle cx="18" cy="12" r=".9"/><circle cx="20.4" cy="12.6" r=".9"/></g><path d="M10 14.7c-.6 5 .8 9-1 15M14 14.7c.4 5-.6 9 .4 15M18 14.7c-.4 5 .6 9-.4 15M22 14.7c.6 5-.8 9 1 15" class="t"/></svg></a>
+    <a class="orb" id="o-print" href="#print" aria-label="PRINT" title="PRINT"><i class="pt"></i><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 3h14v24l-2.3-1.6-2.3 1.6-2.4-1.6-2.4 1.6-2.3-1.6L9 27z"/><path d="M12 9h8M12 13h8M12 17h5"/></svg></a>
+  </div>
 </main>
 
 <!-- the only words: a small screen, as an unhoused OLED module; pressed, the guide -->
@@ -75,7 +66,7 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
   <a href="#radio" class="g" aria-label="RADIO" title="RADIO"><svg><use href="#g-radio"/></svg></a>
   <label class="eye sm" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>
   <a href="#wish" class="g" aria-label="W.I.S.H." title="W.I.S.H."><svg><use href="#g-wish"/></svg></a>
-  <a href="#shop" class="g" aria-label="SHOP" title="SHOP"><svg><use href="#g-shop"/></svg></a>
+  <a href="#print" class="g" aria-label="PRINT" title="PRINT"><svg><use href="#g-shop"/></svg></a>
 </nav>
 
 <section id="sheet" hidden></section>
