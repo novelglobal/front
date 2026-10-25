@@ -1526,6 +1526,10 @@ if (run('base')) try {
   const home = await page.evaluate(() => ({ orbs: [...document.querySelectorAll('#orrery .orb')].map(a => a.getAttribute('aria-label') + '>' + a.getAttribute('href') + (a.textContent.trim() ? '+words' : '')), rings: document.querySelectorAll('#rg path.rf').length, words: document.body.innerText.trim(), shown: ['#top', '#oled', '#dock', '#sheet'].filter(q => { const e = document.querySelector(q); return e && !e.hidden && getComputedStyle(e).display !== 'none'; }), bg: getComputedStyle(document.querySelector('#home')).backgroundColor, paper: (getComputedStyle(document.querySelector('#home')).backgroundImage.match(/feTurbulence/g) || []).length, knots: document.querySelectorAll('#net circle').length, gl: !!document.querySelector('canvas'), now: window.__base.nowItems().map(i => i.k + ': ' + i.t) }));
   check('the start is blueprint paper with three hand-drawn rings turning, a page riding each (RADIO, W.I.S.H., PRINT): no words, no menus, no heading', home.orbs.join() === 'RADIO>#radio,W.I.S.H.>#wish,PRINT>#print' && home.rings === 3 && home.words === '' && !home.shown.length && home.bg === 'rgb(23, 69, 127)' && home.paper >= 2 && !home.knots && !home.gl, JSON.stringify(home).slice(0, 400));
   check('the rings turn and the pages ride them', t1.join() !== t2.join() && t1.every(Boolean), JSON.stringify([t1[0], t2[0]]));
+  const st1 = await page.evaluate(() => ({ fav: document.querySelector('link[rel=icon]').getAttribute('href'), nums: document.querySelectorAll('#orrery .orb svg.num').length }));
+  await page.mouse.click(30, 30); await sleep(600);
+  const humOn = await page.evaluate(() => window.__hum);
+  check('the start: the irukandji-globe as the icon, each page numbered by hand (1, 2, 3), and a quiet hum that begins at the first touch', st1.fav === 'iruk.svg' && st1.nums === 3 && humOn === 1, JSON.stringify({ st1, humOn }));
   check('the base loads no map library, nothing of the studio, and one small pixel font for the box (Departure Mono)', !loaded.some(p => /maplibre|fonts|app\.js|style\.css|config\.js|field\.js/.test(p)) && loaded.filter(p => /\.woff2$/.test(p)).every(p => /departure-mono\.woff2$/.test(p)), loaded.filter(p => !/tile/.test(p)).join(' '));
   check('NOW in October: fledglings on the ground and El Niño\'s early heat, a line each, four at most', home.now.length <= 4 && home.now.some(t => /^YOUNG: Fledglings on the ground: .*magpies.*lorikeets/.test(t)) && home.now.some(t => /^EL NIÑO: Early heat/.test(t)), JSON.stringify(home.now));
   await shot(page, 'b01-home.png');
@@ -1536,9 +1540,11 @@ if (run('base')) try {
   const w = await page.evaluate(() => ({ where: document.querySelector('#n-where').textContent, img: !!document.querySelector('#sheet .ph img'), loc: document.querySelector('#n-loc').classList.contains('on') }));
   check('the photograph reaches the next screen, with where and when it says it was taken (Carlton Gardens)', w.img && w.loc && /^23 OCT 14:05 · 37\.806\dS 144\.971\dE$/.test(w.where), JSON.stringify(w));
   /* a photograph that will not draw still goes on, without its picture */
-  const broken = await page.evaluate(() => new Promise(r => { const f = new File([new Uint8Array([1, 2, 3, 4])], 'x.jpg', { type: 'image/jpeg' }); const s = document.querySelector('#dock .shot'); const dt = new DataTransfer(); dt.items.add(f); s.files = dt.files; s.dispatchEvent(new Event('change')); setTimeout(() => r({ next: !!document.querySelector('#n-next'), img: !!document.querySelector('#sheet .ph img') }), 4000); }));
+  await page.goto('https://oan.test/'); await page.goto('https://oan.test/#print'); await page.waitForSelector('#sheet .eye .shot', { state: 'attached' });
+  const broken = await page.evaluate(() => new Promise(r => { const f = new File([new Uint8Array([1, 2, 3, 4])], 'x.jpg', { type: 'image/jpeg' }); const s = document.querySelector('#sheet .eye .shot'); const dt = new DataTransfer(); dt.items.add(f); s.files = dt.files; s.dispatchEvent(new Event('change')); setTimeout(() => r({ next: !!document.querySelector('#n-next'), img: !!document.querySelector('#sheet .ph img') }), 4000); }));
   check('a photograph that will not draw never stalls: the noticing goes on without its picture', broken.next && !broken.img, JSON.stringify(broken));
-  await page.setInputFiles('#dock .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#sheet .ph img', { timeout: 8000 });
+  await page.goto('https://oan.test/'); await page.goto('https://oan.test/#print'); await page.waitForSelector('#sheet .eye .shot', { state: 'attached' });
+  await page.setInputFiles('#sheet .eye .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#sheet .ph img', { timeout: 8000 });
   await page.fill('#n-say', 'lorikeet fledgling on the path, not flying'); await sleep(900);
   await page.waitForFunction(() => document.querySelector('#n-sp'), null, { timeout: 8000 }).catch(() => {});
   const n = await page.evaluate(() => ({ who: [...document.querySelectorAll('#n-sp option')].map(o => o.textContent), key: [...document.querySelectorAll('#n-alert .alert p')].map(l => l.textContent), call: (document.querySelector('#n-alert .call') || {}).textContent || '', chips: document.querySelectorAll('#sheet .chip').length, data: (window.__base.notes()[0] || {}).data }));
@@ -1551,8 +1557,9 @@ if (run('base')) try {
   check('the engine stays narrow: nothing reads as everything, each need finds its own call', broad.every(r => r.rel <= 3 && r.lines <= 3) && broad[0].rel === 0 && broad[2].issue === 'swoop' && broad[3].issue === 'snake' && /DEECA/.test(broad[3].call) && broad[4].issue === 'dead' && /SICK OR DEAD/.test(broad[4].call), JSON.stringify(broad));
   await shot(page, 'b02-notice.png');
   await tap(page, '#n-next');
-  const seen = await (await page.waitForFunction(() => { const l = document.querySelectorAll('#n-seen li:not(.wait)'); const n0 = window.__base.notes()[0], ids = ((n0 && n0.seen) || []).map(s => s.id); const hk = window.__base.hits().knots; var st0 = hk.length + ':' + l.length + ':' + ids.join('/') + ':' + document.body.className + ':' + hk.filter(h => /^i/.test(h.n.id)).map(h => h.n.id).slice(0, 3).join('/'); window.__dk = window.__dk || []; if (window.__dk[window.__dk.length - 1] !== st0) window.__dk.push(st0); const k = hk.filter(h => ids.includes(h.n.id)).length; return l.length && (k || l[0].classList.contains('empty')) ? { rows: [...l].map(x => x.textContent), knots: k } : null; }, null, { timeout: 15000, polling: 50 }).catch(async e => { await shot(page, 'b02x.png'); throw new Error('placed: ' + await page.evaluate(() => (document.querySelector('#sheet') || {}).innerHTML.slice(0, 40) + ' | seen=' + JSON.stringify((window.__base.notes()[0] || {}).seen) + ' dk=' + JSON.stringify(window.__dk) + ' notes=' + window.__base.notes().length)); })).jsonValue();
-  check('placed: the knot falls on the ground and a few nearby sightings of the same and related lives are revealed, three at most', seen.rows.length >= 1 && seen.rows.length <= 3 && /Rainbow Lorikeet/.test(seen.rows[0]) && seen.knots === seen.rows.length, JSON.stringify(seen));
+  /* the reveal: read from what it keeps (the sightings tied to the noticing); the knots counted if the moment is still on screen */
+  const seen = await (await page.waitForFunction(() => { const n0 = window.__base.notes()[0]; if (!n0 || !n0.seen) return null; const l = [...document.querySelectorAll('#n-seen li:not(.wait)')]; const ids = n0.seen.map(s => s.id); const k = l.length ? window.__base.hits().knots.filter(h => ids.includes(h.n.id)).length : ids.length; if (l.length && k < ids.length && !window.__kw) { window.__kw = Date.now(); return null; } if (l.length && k < ids.length && Date.now() - window.__kw < 3000) return null; return { rows: n0.seen.map(s => s.cn + ' ' + (s.d || '')), shown: l.length, knots: k }; }, null, { timeout: 15000, polling: 50 })).jsonValue();
+  check('placed: the knot falls on the ground and a few nearby sightings of the same and related lives are revealed and tied to it, three at most', seen.rows.length >= 1 && seen.rows.length <= 3 && /Rainbow Lorikeet/.test(seen.rows[0]) && seen.knots === seen.rows.length, JSON.stringify(seen));
   check('the data travels with it: suburb, nearest water, canopy, today\'s heat, Niño 3.4', (await page.evaluate(() => window.__base.notes()[0].data.join())) === 'CARLTON,CARLTON GARDENS PONDS,CANOPY 22%,29° TODAY,NIÑO 3.4 +2.8');
   await shot(page, 'b02b-placed.png');
   await page.waitForSelector('#p-slip canvas', { timeout: 10000 });
@@ -1577,6 +1584,8 @@ if (run('base')) try {
   await tap(page, '#p-send'); await page.waitForSelector('.wish-grid #w-new');
   const th = await page.evaluate(() => ({ h: (document.querySelector('.wish-grid h2') || {}).textContent, hero: !!document.querySelector('.wish-grid .hero'), first: [...document.querySelectorAll('.reply')].map(r => r.innerText), opts: [...document.querySelectorAll('#w-new select')].map(s => s.options.length), shut: [...document.querySelectorAll('#w-new select')].every(s => s.value === '' && s.options[0].textContent === '▾') }));
   check('then its thread: the poster as hero, the poem it was sent with, and four lines to answer, each with a minimised list of lines that fit it', /lorikeet fledgling/.test(th.h) && th.hero && th.first.length === 1 && /Rainbow Lorikeet/.test(th.first[0]) && th.opts.length === 4 && th.opts.every(k => k >= 3) && th.shut, JSON.stringify(th));
+  const stock = await page.evaluate(() => [...document.querySelectorAll('#w-new select option, #w-new textarea')].map(o => o.textContent || o.value).filter(t => /water and shade|sign at the spot|printed here|taped up|neighbours. net|this place kept for|who know the/i.test(t)));
+  check('no stock lines in W.I.S.H.: every suggestion is the need\'s own, the life\'s own, a number to call or a case that worked', !stock.length, JSON.stringify(stock));
   await page.selectOption('#w-new select[data-o="1"]', { index: 1 }); await sleep(200);
   const picked = await page.evaluate(() => document.querySelector('#w-new [data-l="1"]').value);
   await page.fill('#w-new [data-l="2"]', 'A sign on the gate, and water out'); await tap(page, '#w-post');
@@ -1594,6 +1603,8 @@ if (run('base')) try {
   const mn = await page.evaluate(() => ({ h: document.querySelector('#sheet').getBoundingClientRect().height, min: document.querySelector('#sheet').classList.contains('min') }));
   await page.click('#r-min'); await sleep(200);
   check('RADIO folds away to show the whole map, and back', mn.min && mn.h <= 120 && !(await page.evaluate(() => document.querySelector('#sheet').classList.contains('min'))), JSON.stringify(mn));
+  const bar = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#top a.pg, #top button, #top label')].map(k => k.getAttribute('href') || k.id), dock: !!document.querySelector('#dock'), x: (() => { const x = document.querySelector('#sheet .hd .x'); return x ? !x.hidden : false; })(), hum: window.__hum || 0, rec: !!document.querySelector('#r-rec.on') }));
+  check('one bar, in order: the three pages, then the map, the guide, + and where-I-am, light and dark; no dock; no × on a page; the start\'s hum stopped', bar.keys.join() === '#radio,#wish,#print,b-map,b-search,b-add,b-me,b-theme' && !bar.dock && !bar.x && bar.hum === 0, JSON.stringify(bar));
   const url0 = page.url();
   await page.evaluate(() => { window.__notes = 0; const A = window.AudioContext; window.AudioContext = function () { const c = new A(); const o = c.createOscillator.bind(c); c.createOscillator = function () { window.__notes++; return o(); }; return c; }; });
   await tap(page, '#d-play'); await sleep(1200);
@@ -1612,14 +1623,15 @@ if (run('base')) try {
   await page.click('#deck .ins[data-t="1"]'); await page.click('#deck .ins[data-t="1"]'); await sleep(200);
   const set = await page.evaluate(() => ({ open: !!document.querySelector('#deck .set'), ins: [...document.querySelectorAll('#deck .set [data-ins]')].map(b => b.title) }));
   await page.click('#deck .set [data-ins="taiko"]'); await sleep(150);
-  check('a double tap on a track opens its settings: the instruments (gamelan, jegog, voice, kecak, taiko), level, pitch, length, mute', set.open && set.ins.join() === 'gamelan,jegog,voice,chak,taiko' && (await page.evaluate(() => window.__base.song().tracks[1].ins)) === 'taiko', JSON.stringify(set));
+  check('a double tap on a track opens its settings: the instruments (paired gamelan, bamboo bass, choir, harp, kecak breath, soft drum), level, pitch, length, mute', set.open && set.ins.join() === 'gamelan,jegog,voice,harp,chak,taiko' && (await page.evaluate(() => window.__base.song().tracks[1].ins)) === 'taiko', JSON.stringify(set));
   await tap(page, '#d-radar'); await sleep(400);
   const sw = await page.evaluate(() => ({ len: window.__base.song().tracks[0].steps.length, bars: document.querySelectorAll('#deck .bars [data-pg]').length, kept: window.__base.song().tracks[0].steps.filter(Boolean).length }));
   await tap(page, '#d-radar');
   check('◎ the radar turns the song to four bars, one full sweep, to record the whole turn of the web; what was there is kept', sw.len === 64 && sw.bars === 4 && sw.kept >= 1, JSON.stringify(sw));
   const dl = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await tap(page, '#d-wav'); const file = await dl;
-  const kept = await page.evaluate(() => ({ songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, loop: window.__lastLoop, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
-  check('⇩ keeps the song and downloads it as a loop (WAV): whole turns of the song, the tail folded to the start, no fade, so it carries on when repeated', kept.songs === 1 && kept.store === 1 && !!kept.loop && kept.loop.samples === Math.round(44100 * 64 * 60 / 104 / 4) && kept.wav === 44 + kept.loop.samples * 4 && !!file && /loop\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
+  const kept = await page.evaluate(() => ({ bpm: window.__base.song().bpm, room: window.__base.room(), songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, loop: window.__lastLoop, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
+  check('every voice goes into one room: Freeverb\'s long hall, a slow chorus, Tuna\'s ping-pong delay', !!kept.room && kept.room.freeverb && kept.room.tuna, JSON.stringify(kept.room));
+  check('⇩ keeps the song and downloads it as a loop (WAV): whole turns of the song, the tail folded to the start, no fade, so it carries on when repeated', kept.songs === 1 && kept.store === 1 && !!kept.loop && kept.loop.samples === Math.round(44100 * 64 * 60 / kept.bpm / 4) && kept.wav === 44 + kept.loop.samples * 4 && !!file && /loop\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
   /* a cell opened: its photograph large, its name to the guide here, no link out; ＋ puts it in the track */
   const seq0 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web') || '{"seq":[]}').seq.length);
   const lori = await page.evaluate(() => { const b = [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].find(x => /Rainbow Lorikeet/.test(x.title)); return b ? b.id : null; });
@@ -1627,7 +1639,7 @@ if (run('base')) try {
   const pk = await page.evaluate(() => ({ peek: !document.querySelector('#peek').hidden, ph: (document.querySelector('#peek .pk-ph') || { offsetHeight: 0 }).offsetHeight, guide: !!document.querySelector('#pk-g'), out: [...document.querySelectorAll('#peek a')].filter(a => a.target === '_blank' || /inaturalist/.test(a.href)).length, deck: !!document.querySelector('#deck') }));
   check('a cell opens as a card in place: its photograph large, its name a way into the guide, no link out to its source; RADIO stays', pk.peek && pk.ph >= 150 && pk.guide && !pk.out && pk.deck && page.url() === url0, JSON.stringify(pk) + page.url());
   await page.click('#pk-g'); await sleep(250);
-  const unf = await page.evaluate(() => ({ more: !document.querySelector('#pk-more').hidden, spec: document.querySelectorAll('#pk-more dl.spec dt').length, yr: !!document.querySelector('#pk-more table.yr'), deck: !!document.querySelector('#deck'), tab: [...document.querySelectorAll('#dock a.on')].map(a => a.getAttribute('href')).join() }));
+  const unf = await page.evaluate(() => ({ more: !document.querySelector('#pk-more').hidden, spec: document.querySelectorAll('#pk-more dl.spec dt').length, yr: !!document.querySelector('#pk-more table.yr'), deck: !!document.querySelector('#deck'), tab: [...document.querySelectorAll('#top a.pg.on')].map(a => a.getAttribute('href')).join() }));
   check('its name unfolds what the guide says inside the card, and RADIO stays, marked in the dock as the page one is on', unf.more && unf.spec >= 2 && unf.yr && unf.deck && unf.tab === '#radio' && page.url() === url0, JSON.stringify(unf));
   await page.evaluate(() => { const t = window.__base.song().tracks[0]; t.steps = Array(t.steps.length).fill(null); }); await page.click('#deck .ins[data-t="0"]'); await sleep(450); await page.click('#pk-add'); await sleep(200);
   const added = await page.evaluate(() => window.__base.song().tracks[0].steps.filter(Boolean).map(x => x.t));
@@ -1639,6 +1651,10 @@ if (run('base')) try {
   const tiles2 = await page.evaluate(() => [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].filter(x => !/Rainbow Lorikeet/.test(x.title)).slice(0, 2).map(b => '#' + b.id));
   for (const t of tiles2) { await page.click('#pk-x').catch(() => {}); await page.click(t); await sleep(400); }
   const web = await page.evaluate(() => { const W = JSON.parse(localStorage.getItem('da.base.web')); const why = window.__base.hits().sticks.map(s => s.why).filter(Boolean); return { seq: W.seq.length, trail: document.querySelectorAll('#net path.w.trail').length, why: why.slice(0, 4), opened: why.some(w => /^opened .+, then .+/.test(w)) }; });
+  await page.click('#pk-x').catch(() => {}); await page.click('#r-rec'); const s0 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).seq.length);
+  await page.click('#r-body .tiles button:nth-child(9)'); await sleep(300); const s1 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).seq.length);
+  await page.click('#pk-x').catch(() => {}); await page.click('#r-rec');
+  check('the path\'s memory turns off and on: off, a cell opened is not tied into the web', s1 === s0 && await page.evaluate(() => !!document.querySelector('#r-rec.on')), JSON.stringify({ s0, s1 }));
   check('the web of noticing builds as cells are opened: kept, each one tied to the one before by a trail stick that says why', web.seq >= seq0 + 3 && web.trail >= 2 && web.opened, JSON.stringify(web));
   await sleep(300); const dr = await page.evaluate(() => ({ glides: window.__glides || 0, ...window.__base.drone() }));
   check('the web has a voice, fluid not stepped: each new stick a glide from cell to cell, and a held tone for each life opened', dr.on && dr.glides >= 2 && dr.voices >= 1, JSON.stringify(dr));
@@ -1681,6 +1697,16 @@ if (run('base')) try {
   /* W.I.S.H.: a news page of strategies */
   await page.goto('https://oan.test/'); await page.goto('https://oan.test/#wish'); await page.waitForSelector('.wish-grid');
   const wl = await page.evaluate(() => ({ hero: (document.querySelector('.wish-grid .hero h3') || {}).textContent, rows: document.querySelectorAll('ol.hn li').length, meta: (document.querySelector('ol.hn .meta') || {}).textContent }));
+  const tr = await page.evaluate(() => { const li = document.querySelector('.tree li:not(.root)'); const dp = li && li.querySelector('.dp'); return { rows: [...document.querySelectorAll('.tree li:not(.root)')].map(l => l.querySelector('i').textContent.replace(/[├└─ ]/g, '')), hidden: dp ? getComputedStyle(dp).display : '' }; });
+  await page.hover('.tree li:not(.root)'); const shownDp = await page.evaluate(() => getComputedStyle(document.querySelector('.tree li:not(.root) .dp')).display);
+  check('a thread as a small tree of what it touches (its life, what was near, …), the data behind each kept back until pointed at', tr.rows.includes('life') && tr.rows.includes('near') && tr.hidden === 'none' && shownDp === 'inline', JSON.stringify({ tr, shownDp }));
+  await page.click('#w-edit'); await page.fill('#w-ed [data-l="1"]', 'Pets kept in while they learn to fly'); await page.click('#w-save'); await sleep(300);
+  check('one\'s own W.I.S.H. can be changed and kept', (await page.evaluate(() => window.__base.notes().find(n => n.wishText && /fledgling/.test(n.say)).wishText[1])) === 'Pets kept in while they learn to fly');
+  await page.click('#w-make'); await page.fill('#nw-life', 'Tawny Frogmouth'); await page.dispatchEvent('#nw-life', 'change'); await sleep(300);
+  const nwOpts = await page.evaluate(() => document.querySelectorAll('#nw-lines select[data-o="1"] option').length);
+  await page.fill('#nw-lines [data-l="0"]', 'Lights down along the creek'); await page.dispatchEvent('#nw-lines [data-l="0"]', 'input'); await page.click('#nw-ok'); await sleep(400);
+  const nw = await page.evaluate(() => { const n = window.__base.notes()[0]; return { wish: n.wish, cn: n.cn, say: n.say, h: (document.querySelector('.wish-grid h2') || {}).textContent }; });
+  check('a W.I.S.H. begun without a noticing: a life, its lines (with the lines that fit it), made into a thread of its own', nw.wish && nw.cn === 'Tawny Frogmouth' && nw.say === 'Lights down along the creek' && /Lights down/.test(nw.h) && nwOpts >= 2, JSON.stringify({ nw, nwOpts }));
   const wm = await page.evaluate(() => ({ cls: document.body.classList.contains('wishmap'), posters: document.querySelectorAll('#net .wishmap .poster').length, me: document.querySelectorAll('#net .wishmap .poster.me').length, q: !!document.querySelector('#w-q') }));
   check('beside W.I.S.H., the map shows only its posters, framed, the one open ringed with its constellation, and a search over the threads', wm.cls && wm.posters >= 1 && wm.me === 1 && wm.q, JSON.stringify(wm));
   await page.fill('#w-q', 'zzzz no such thing'); await sleep(300);
@@ -1690,11 +1716,31 @@ if (run('base')) try {
   check('the search narrows the threads and the map together', none.posters === 0 && none.empty && some.posters >= 1 && some.rows >= 1, JSON.stringify({ none, some }));
   const pk2 = await page.evaluate(() => { const k = window.__base.hits().knots.find(h => h.wish); return k ? [k.x, k.y] : null; });
   if (pk2) { await page.mouse.click(pk2[0], pk2[1]); await sleep(400); }
-  check('a poster touched on the map opens its thread beside it, nothing else', !!pk2 && await page.evaluate(() => !!document.querySelector('.wish-grid h2') && /lorikeet fledgling/.test(document.querySelector('.wish-grid h2').textContent)) && page.url().endsWith('#wish'), String(pk2) + page.url());
+  const h2now = await page.evaluate(() => (document.querySelector('.wish-grid h2') || {}).textContent || '');
+  check('a poster touched on the map opens its thread beside it, nothing else', !!pk2 && /lorikeet fledgling/.test(h2now) && page.url().endsWith('#wish'), String(pk2) + page.url() + ' ' + h2now);
   check('W.I.S.H. is a ranked thread of strategies: the hero poster and its headline, then the list with points, place, age, replies and pips', /lorikeet fledgling/.test(wl.hero) && wl.rows >= 1 && /^▲ \d+ · Carlton · .* · 2 ✎ ●/.test(wl.meta), JSON.stringify(wl));
   await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-prn li:not(.empty)', { timeout: 8000 }).catch(() => {}); await sleep(800);
   const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: [...document.querySelectorAll('#sheet a[href^="studio"]')].map(a => a.getAttribute('href') + '|' + !!a.querySelector('use[href="#g-crayon"]')).join(), tears: document.querySelectorAll('#sheet .eye .threads path').length, wipe: !!document.querySelector('#s-wipe'), prns: [...document.querySelectorAll('#s-prn li')].map(l => l.textContent), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
   check('SHOP: one\'s posters with where each is as pips, novel.global\'s printer and no other, how to build one, packs and beside them a crayon to novel.global for class; the eye with four tears; a wipe key; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn === 1 && /novel\.global|novelglobal/i.test(shop.prns[0]) && shop.build && shop.packs && shop.add === 'studio|true' && shop.tears === 4 && shop.wipe && !shop.held, JSON.stringify(shop));
+  /* the composer: an 80 mm piece of what was made */
+  const heads = await page.evaluate(() => [...document.querySelectorAll('#sheet .lbl')].map(l => l.textContent));
+  await page.click('#comp [data-add="web"]'); await sleep(900); await page.click('#comp [data-add="song"]'); await sleep(600);
+  await page.click('#comp [data-add="text"]'); await page.fill('#c-text', 'what holds'); await sleep(900);
+  await page.click('#comp [data-add="poster"]'); await page.click('#c-pick [data-p]'); await sleep(1200);
+  const c1 = await page.evaluate(() => ({ blocks: JSON.parse(localStorage.getItem('da.base.comp')).blocks.map(b => b.k), w: (document.querySelector('#c-pv canvas') || {}).width, h: (document.querySelector('#c-pv canvas') || {}).height }));
+  await page.click('#comp [data-b="0"]'); await page.click('#c-dn'); await page.click('#c-sz'); await sleep(400);
+  const c2 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.comp')).blocks.map(b => b.k + b.size));
+  await page.click('#c-undo'); await sleep(300); const c3 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.comp')).blocks.map(b => b.k + b.size));
+  check('PRINT composes an 80 mm piece from what was made (the web, the song as its score, words, a poster), each block moved, sized, undone; every group under a small head', c1.blocks.join() === 'web,song,text,poster' && c1.w === 512 && c1.h > 900 && c2.join() === 'song2,web3,text2,poster2' && c3.join() === 'song2,web2,text2,poster2' && heads.includes('COMPOSE · 80 MM') && heads.includes('ADD') && heads.includes('PIECE'), JSON.stringify({ c1, c2, c3, heads }));
+  await page.click('#c-pr'); await page.waitForFunction(() => { const p = document.querySelector('#c-st .pips'); return p && p.title && p.title !== 'sending'; }, null, { timeout: 10000 });
+  const pce = (((await admin('stories?status=waiting')).stories) || []).find(x => x.kind === 'record' && /"piece"/.test(x.body));
+  check('the piece prints at novel.global, 80 mm', !!pce && pce.dest === 'novelglobal' && JSON.parse(pce.body).blocks.length === 4, JSON.stringify(pce || {}).slice(0, 160));
+  await page.click('#c-show'); await page.waitForSelector('#sh-hero', { timeout: 10000 }); await sleep(800);
+  const sh = await page.evaluate(() => ({ hash: location.hash, hero: (document.querySelector('#sh-hero') || {}).src || '', web: (document.querySelector('#sh-web') || {}).width || 0, pieces: document.querySelectorAll('.show-strip [data-sh]').length, blue: getComputedStyle(document.querySelector('#sheet')).backgroundColor }));
+  check('★ sends it to the showcase: on blueprint paper, the piece as hero, the journey\'s web beside it, every piece kept below', sh.hash === '#showcase' && /^data:image\/jpeg/.test(sh.hero) && sh.web > 100 && sh.pieces === 1 && sh.blue === 'rgb(23, 69, 127)', JSON.stringify(sh).slice(0, 200));
+  await page.click('#sheet .hd .x'); await sleep(500);
+  check('back from the showcase is PRINT', page.url().endsWith('#print'));
+  await page.click('#comp [data-b="0"]').catch(() => {});
   const n0 = await page.evaluate(() => window.__base.notes().length);
   await page.click('#s-rec [data-rm="0"]'); await sleep(100); const n1 = await page.evaluate(() => window.__base.notes().length);
   await page.click('#s-rec [data-rm="0"]'); await sleep(300); const n2 = await page.evaluate(() => window.__base.notes().length);
@@ -1735,7 +1781,12 @@ if (run('base')) try {
   const before = await page.evaluate(() => window.__base.notes().length);
   await page.setInputFiles('#m-add', [{ name: 'creek.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }, { name: 'frog-call.mp3', mimeType: 'audio/mpeg', buffer: Buffer.alloc(2000) }]); await sleep(1200);
   const mp = await page.evaluate(() => ({ tiles: document.querySelectorAll('#tiles img').length, notes: window.__base.notes().length, call: window.__base.notes().some(n => n.call && n.audio) }));
-  check('+ adds photographs and calls at once, a photograph where it was taken', mp.tiles > 3 && mp.notes === before + 2 && mp.call, JSON.stringify(mp));
+  check('+ adds photographs and calls at once, a photograph where it was taken; the map goes to them and the first opens', mp.tiles > 3 && mp.notes === before + 2 && mp.call && await page.evaluate(() => !document.querySelector('#peek').hidden), JSON.stringify(mp));
+  await page.context().grantPermissions(['geolocation']); await page.context().setGeolocation({ latitude: -37.8001, longitude: 144.9652 });
+  await page.click('#pk-x').catch(() => {}); await page.click('#b-me'); await sleep(800);
+  check('◎ finds where one is on the map and marks it', await page.evaluate(() => !!document.querySelector('#net .me-dot')));
+  await page.click('#b-map'); await sleep(800);
+  check('closing the map returns to the page it was opened from, not the start', page.url().endsWith('#radio') && await page.evaluate(() => !!document.querySelector('#deck')), page.url());
   await shot(page, 'b04c-map.png');
   /* the pixel board */
   await page.goto('https://oan.test/#pixel'); await page.waitForSelector('#pb-in', { state: 'attached' });
@@ -1809,8 +1860,16 @@ if (run('base')) try {
   /* on a phone: nothing wider than the screen */
   const pc = await newCtx({ viewport: { width: 375, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(pc); const pp = await pc.newPage(); watch(pp, 'base-phone');
   await pp.goto('https://oan.test/'); await sleep(1500); await shot(pp, 'b05-phone.png');
-  await pp.setInputFiles('#dock .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await pp.waitForSelector('#n-next'); await pp.fill('#n-say', 'lorikeet fledgling'); await sleep(700); await shot(pp, 'b07-phone-notice.png');
+  await pp.goto('https://oan.test/'); await pp.goto('https://oan.test/#print'); await pp.waitForSelector('#sheet .eye .shot', { state: 'attached' });
+  await pp.setInputFiles('#sheet .eye .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await pp.waitForSelector('#n-next'); await pp.fill('#n-say', 'lorikeet fledgling'); await sleep(700); await shot(pp, 'b07-phone-notice.png');
   await pp.click('#n-next'); await pp.waitForSelector('#p-slip canvas'); await sleep(500); await shot(pp, 'b08-phone-s.png');
+  await pp.goto('https://oan.test/'); await pp.goto('https://oan.test/#radio'); await pp.waitForSelector('#sheet .grip'); await sleep(600);
+  const g = await pp.locator('#sheet .grip').boundingBox(), hA = await pp.evaluate(() => document.querySelector('#sheet').getBoundingClientRect().height);
+  await pp.mouse.move(g.x + g.width / 2, g.y + 8); await pp.mouse.down(); await pp.mouse.move(g.x + g.width / 2, g.y + 260, { steps: 8 }); await pp.mouse.up(); await sleep(300);
+  const hB = await pp.evaluate(() => document.querySelector('#sheet').getBoundingClientRect().height);
+  check('on a phone RADIO slides down on a rail to show the map, and settles', hB < hA - 120, JSON.stringify({ hA, hB }));
+  await pp.goto('https://oan.test/'); await pp.goto('https://oan.test/#print'); await pp.waitForSelector('#sheet .eye .shot', { state: 'attached' });
+  await pp.setInputFiles('#sheet .eye .shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await pp.waitForSelector('#n-next'); await pp.click('#n-next'); await pp.waitForSelector('#p-slip canvas'); await sleep(500);
   const still = await pp.evaluate(() => ({ vp: document.querySelector('meta[name=viewport]').content, ta: getComputedStyle(document.documentElement).touchAction, fields: [...document.querySelectorAll('#sheet textarea, #sheet input, #sheet select')].filter(e => e.offsetParent).map(e => getComputedStyle(e).fontSize) }));
   check('on a phone the page holds still: no zoom on a double tap, none when a field is touched', /maximum-scale=1/.test(still.vp) && still.ta === 'manipulation' && still.fields.length && still.fields.every(f => parseFloat(f) >= 16), JSON.stringify(still));
   const wide = await pp.evaluate(() => Math.max(document.documentElement.scrollWidth, document.querySelector('#sheet').scrollWidth));

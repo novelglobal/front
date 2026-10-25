@@ -149,6 +149,52 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the composer, 25 October** (the owner: "the created web or net art and song needs to be able to go to print shop … an 80mm canvas that resets, undo, allows assets, songs, web and net art"; "WISH needs an overhaul … a simple tree"; "the music … is still jarring … an ambient Enya, Akira soundtrack overhaul").
+  - **The start.**
+    - The icon is the irukandji as a globe: a white hand-drawn bell with latitude and longitude lines and four tentacles, on blueprint blue (`repo-static/iruk.svg`, `iruk-192.png`, `iruk-512.png`, `iruk-mask.png`; the manifest's colours `#17457F`).
+    - Hand-drawn numerals ride beside the pages: 1 RADIO, 2 W.I.S.H., 3 PRINT.
+    - A quiet hum (`ORB`, `humStart`, `humSet`): three soft voices, one to each page, louder, brighter and wider as its page comes to the front. It starts at the first touch on the start, and it stops when a page or the map opens.
+  - **The top bar holds everything, in order:** RADIO, W.I.S.H., PRINT, then MAP, GUIDE, + (on the map only), ◎ where I am, and light or dark. The dock and the map's own keys are gone.
+    - The page one is on is marked. No page has an ×. Where a view was opened from a page, ← takes it back there (`backKey`).
+    - **MAP returns to the page it was opened from** (`mapFrom`). It returns to the start only when opened from the start.
+  - **RADIO.**
+    - The trail key (`#r-rec`) turns path memory on or off. With it off, opening cells adds nothing to one's path (`WEB.rec`).
+    - ⎙ beside the web's art and beside a kept song sends each to PRINT's composer (`#r-cp`, `#d-cp`).
+    - On a phone the sheet runs on a rail (`rail`, `.grip`). It can be dragged down to a strip of 56 px or up to nearly full, and it stays where it was left.
+  - **The map.**
+    - ◎ finds where one is (`locateMe`), with a dot and its accuracy ring.
+    - Holding the map no longer opens the phone's image menu.
+    - Sightings whose place iNaturalist hides or blurs, or that are known only to within 500 m, are dropped (`placedWell`, `geoprivacy=open`). These were the lives out at sea.
+    - + now shows what it placed: the map fits to the new knots and opens the first one's card.
+  - **PRINT's composer** (`COMP`, `da.base.comp`; `composer`, `compose`, `blockArt`, `scoreArt`):
+    - An 80 mm strip of blocks: a poster, the web's art, a song (as a score: four staves, a mark for each step), an icon, words, a rule, the eye.
+    - A block can be moved up or down, made smaller or larger, or removed with a check. ↶ undoes, and ⟲ starts the strip again with a check.
+    - ⎙ prints it to novel.global, and ⇩ saves it as a PNG.
+    - ★ hangs it on the showcase.
+    - PRINT's groups now have small headings: COMPOSE · 80 MM, POSTERS, PRINTER, MAKE · DOWNLOAD, ICONS, PACKS · CLASS, THIS DEVICE.
+  - **The showcase** (`#showcase`, `showcaseSheet`, `PIECES`, `da.base.pieces`):
+    - Blueprint paper. The last piece hangs as the hero, the rest of one's pieces and the shared ones in a row, and the journey's art (the web of one's path) beside them.
+    - Shared pieces arrive as records of type `piece`.
+    - ← returns to PRINT.
+  - **W.I.S.H.**
+    - **+ makes a wish without noticing** (`newWishHTML`): a life (named or chosen), an icon, and four lines, each with ▾ choices drawn from the life and its issue. ✓ makes it a poster in the thread, where the device is or where the map is.
+    - **A thread shows what it touches as a simple tree** (`treeHTML`): the life, the lives near, its song, its place in the web, the research and the replies. Each row's data (counts, distance, source, date) shows on hover, or on a touch.
+    - **One's own poster can be edited** (✎): its four lines, saved in place.
+    - **The stock lines are gone**, such as "Water and shade for the life here on hot days", "a sign at the spot, printed here", "Printed at a partner place" and "Passed on through the neighbours' net". The lines now come only from the life, its issue and its case.
+    - **A fix.** Touching a poster on W.I.S.H.'s map had thrown an error and done nothing. It now opens that thread beside the map.
+  - **Sound, recast as ambient** (the biggest weakness, after a search of open projects):
+    - Brought in **Freeverb** (Matt McKegg, after Tone.js) and **Tuna** (Oskar Eriksson), both MIT, in `vendor/` and loaded with the first sound (`soundLibs`).
+    - Every voice goes through one room (`room`): Freeverb's hall, a slow chorus, Tuna's ping-pong delay, a gentle EQ and a compressor. Without the libraries, the old convolver is used.
+    - The voices are recast (`INS`):
+      - gamelan: paired bells that beat slowly (ombak);
+      - jegog: bamboo bass;
+      - voice: a choir's "ah" that swells;
+      - harp: new;
+      - chak: the kecak as breath;
+      - taiko: a soft drum.
+    - A new song starts at 80 BPM, and the loop's file carries six seconds of the room folded back onto its start.
+  - **Every photograph printed goes through one pipeline** (`printReady`): levels, a lifted gamma, an unsharp mask, then CanvasDither's Atkinson. This covers the booth, the receipt's photograph and SIGN.
+  - Not done: a fuller pixel maker with image filters (the owner's alternative to the sound). The print pipeline covers the quality of what is printed.
 - **v0.1 alpha, in hand, 25 October** (the owner: "deselecting all the constellations … a drone sound always plays"; "delete or undo with a check … for anything created"; "W.I.S.H. … the main side shows nothing but map"; "pixel maker icons … placed in the PRINT section … 128"; "back … to PRINT … every instance"; "4 tears … jellyfish limited to 4"; "reset … with a check"; "the crayon educational version").
   - **Your path is a constellation of its own** (`WEB.path`, `pathOn`).
     - It is shown as a chip and as the first row in the sets, with its own shape.
@@ -765,7 +811,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v82` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v83` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

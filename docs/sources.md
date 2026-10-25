@@ -1,6 +1,6 @@
 # Sources: open projects that could be brought in, stage by stage
 
-24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Six projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (the booth's prints), exifr, d3-force, Rough.js, gifenc and Departure Mono. The others are candidates.
+24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Eight projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb and Tuna. The others are candidates.
 
 Each project is listed with what it would replace and what it costs. Bring one in only when the base's own version fails someone in the field. A pack, loaded only when it is used, is the way to add one.
 
@@ -47,6 +47,8 @@ Each project is listed with what it would replace and what it costs. Bring one i
 
 | Project | What it would do | Cost, and when |
 |---|---|---|
+| [Freeverb](https://github.com/mmckegg/freeverb) | **Brought in.** The Schroeder–Moorer hall reverb, after Tone.js, as plain Web Audio nodes. | About 2 KB, `vendor/freeverb.js`. The room every voice plays in (`room`); it made the bells and the choir sound far off instead of thin. |
+| [Tuna](https://github.com/Theodeus/tuna) | **Brought in.** Web Audio effects. Only its ping-pong delay is used; its chorus runs on the old ScriptProcessor, so the chorus is the base's own. | About 36 KB, `vendor/tuna.js`. The echo that crosses left and right behind the bells. |
 | [Tone.js](https://github.com/Tonejs/Tone.js) | Synths, a transport, effects and sample players on Web Audio. | About 150 KB. The base's own voices (gamelan, jegog, chant, kecak, taiko) and scheduler do the job in a few KB. Bring Tone in only for recorded samples of real instruments. |
 | [Strudel](https://strudel.cc) | TidalCycles patterns in the browser. | Large. A song could be saved as a line of pattern text, readable and shared as a code on the receipt. |
 | [audiobuffer-to-wav](https://github.com/Jam3/audiobuffer-to-wav) | WAV from a Web Audio buffer. | The base already has its own 16-bit encoder (`wavOf`). Kept as the reference it follows. |
