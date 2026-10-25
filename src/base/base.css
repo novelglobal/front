@@ -418,3 +418,27 @@ body.mapmode:not(.away) #oled { display: block !important; }
 body.mapmode #oled { bottom: calc(70px + env(safe-area-inset-bottom)); }
 .orb svg { width: 34px; height: 34px; margin: -40px 0 0 -17px; }
 #home { background-size: 100% 100%, 100% 100%, 240px 240px, 300px 300px; background-repeat: no-repeat, no-repeat, repeat, repeat; }
+
+/* ───── held still on a phone: no zoom on a double tap, none when a field is touched (16 px, the size a phone will not zoom past) ───── */
+html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (max-width: 759px) { input, textarea, select { font-size: 16px !important; } }
+/* ───── paper everywhere, never a grid: the same fine grain as the start, faint, on the ground and every sheet ───── */
+:root { --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch' seed='5'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .045 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); }
+:root[data-theme="light"] { --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"); }
+#sheet, #peek, #dock, #terrain { background-image: var(--grain); }
+/* ───── the dock as tabs: where one is, marked ───── */
+#dock a.on { border-color: transparent; box-shadow: inset 0 -2px 0 var(--stick); }
+/* ───── a case opens where it is; the source is last and small ───── */
+details.case summary { list-style: none; display: flex; justify-content: space-between; gap: 10px; cursor: pointer; padding: 8px 0; }
+details.case summary::-webkit-details-marker { display: none; }
+details.case summary span::before { content: '▸ '; color: var(--dim); } details.case[open] summary span::before { content: '▾ '; }
+details.case summary small { color: var(--dim); white-space: nowrap; }
+details.case p { margin: 0 0 6px 14px; font-size: 12px; line-height: 1.5; }
+details.case .src { display: inline-block; margin: 0 0 8px 14px; font-size: 10px; color: var(--dim); }
+/* ───── the card unfolds what the guide says ───── */
+#peek .nm i { font-style: normal; color: var(--dim); }
+#peek .pk-more { margin-top: 8px; font-size: 11px; }
+#peek .pk-more dl.spec { margin: 0 0 6px; } #peek .pk-more table.yr { width: 100%; }
+#peek .pk-more ul.plain { margin: 6px 0 0; padding-left: 14px; }
+.deck .bars { display: inline-flex; gap: 2px; }
+.deck .bars button.on { background: var(--ink); color: var(--paper); }
