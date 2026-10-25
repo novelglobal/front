@@ -49,16 +49,15 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
 </header>
 
 <main id="home">
-  <!-- the eye: two bamboo sticks lashed at the corners, a ring of beads, a shell for its pupil, threads hanging from it -->
+  <!-- the eye: two bent sticks meeting and lashed at the corners, never crossing; a ring of beads, a shell for its pupil, tears falling as dotted threads -->
   <label id="cam" class="eye" aria-label="What have you noticed? Photograph it" title="What have you noticed?">
     <svg viewBox="0 0 160 120" aria-hidden="true">
-      <g class="shadow"><path d="M6 58Q80 -6 154 50"/><path d="M8 46Q80 116 152 62"/></g>
-      <path class="stick" d="M6 58Q80 -6 154 50"/><path class="stick" d="M8 46Q80 116 152 62"/>
-      <rect class="lash" x="19" y="49" width="6" height="6" transform="rotate(45 22 52)"/><rect class="lash" x="135" y="50" width="6" height="6" transform="rotate(45 138 53)"/>
+      <g class="shadow"><path d="M16 54Q80 4 144 54"/><path d="M16 54Q80 104 144 54"/></g>
+      <path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/>
+      <rect class="lash" x="10" y="51" width="6" height="6" transform="rotate(45 13 54)"/><rect class="lash" x="144" y="51" width="6" height="6" transform="rotate(45 147 54)"/>
       <circle class="iris" cx="80" cy="54" r="19"/>
       <g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/><path d="M80 49v10"/></g>
-      <g class="threads"><path d="M50 78v22"/><path d="M65 84v28"/><path d="M80 86v30"/><path d="M95 84v28"/><path d="M110 78v22"/></g>
-      <g class="beads"><circle cx="50" cy="102" r="2.4"/><circle cx="65" cy="114" r="2.4"/><circle cx="80" cy="118" r="2.4"/><circle cx="95" cy="114" r="2.4"/><circle cx="110" cy="102" r="2.4"/></g>
+      <g class="threads"><path d="M50 76v16"/><path d="M65 80v22"/><path d="M80 82v26"/><path d="M95 80v22"/><path d="M110 76v16"/></g>
     </svg>
     <input id="shot" type="file" accept="image/*" capture="environment">
   </label>
@@ -74,7 +73,7 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
 
 <nav id="dock" hidden>
   <a href="#radio" class="g" aria-label="RADIO" title="RADIO"><svg><use href="#g-radio"/></svg></a>
-  <label class="eye sm" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M6 58Q80 -6 154 50"/><path class="stick" d="M8 46Q80 116 152 62"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>
+  <label class="eye sm" aria-label="Photograph" title="What have you noticed?"><svg viewBox="0 0 160 120" aria-hidden="true"><path class="stick" d="M16 54Q80 4 144 54"/><path class="stick" d="M16 54Q80 104 144 54"/><circle class="iris" cx="80" cy="54" r="19"/><g class="pupil"><ellipse cx="80" cy="54" rx="8" ry="6"/></g></svg><input class="shot" type="file" accept="image/*" capture="environment"></label>
   <a href="#wish" class="g" aria-label="W.I.S.H." title="W.I.S.H."><svg><use href="#g-wish"/></svg></a>
   <a href="#shop" class="g" aria-label="SHOP" title="SHOP"><svg><use href="#g-shop"/></svg></a>
 </nav>

@@ -1521,10 +1521,12 @@ if (run('base')) try {
   await page.clock.setFixedTime(new Date('2026-10-23T14:20:00+11:00'));
   await page.goto('https://oan.test/'); await page.waitForFunction(() => document.querySelector('#oled .l1').textContent.length > 3, null, { timeout: 8000 });
   await page.waitForFunction(() => window.__base.nowItems().length > 0, null, { timeout: 8000 }).catch(() => {});
-  const home = await page.evaluate(() => ({ eye: !!document.querySelector('#cam.eye svg .iris') && !!document.querySelector('#cam #shot'), ways: [...document.querySelectorAll('#ways a')].map(a => a.getAttribute('aria-label') + '>' + a.getAttribute('href') + (a.textContent.trim() ? '+words' : '')), keys: [...document.querySelectorAll('#top button')].map(b => b.getAttribute('aria-label') + (b.textContent.trim() ? '+words' : '')).join(), words: document.querySelector('#home').innerText.trim(), oled: document.querySelector('#oled .l1').textContent, tiles: document.querySelectorAll('#tiles img').length, knots: document.querySelectorAll('#net circle').length, gl: !!document.querySelector('canvas'), now: window.__base.nowItems().map(i => i.k + ': ' + i.t), dark: getComputedStyle(document.body).backgroundColor }));
-  check('the base opens wordless: the eye is the camera, RADIO, W.I.S.H. and SHOP and the top keys as glyphs, the ground with no marks, dark, no WebGL', home.eye && home.ways.join() === 'RADIO>#radio,W.I.S.H.>#wish,SHOP>#shop' && home.keys === 'Map,Guide,Light or dark' && home.words === '' && home.tiles > 3 && !home.knots && !home.gl && home.dark === 'rgb(5, 5, 5)', JSON.stringify(home).slice(0, 400));
-  check('the only words: one small OLED line, novel.global first', home.oled === 'novel.global', home.oled);
-  check('the base loads no map library, no webfonts, nothing of the studio', !loaded.some(p => /maplibre|fonts|app\.js|style\.css|config\.js|field\.js/.test(p)), loaded.filter(p => !/tile/.test(p)).join(' '));
+  const home = await page.evaluate(() => ({ eye: !!document.querySelector('#cam.eye svg .iris') && !!document.querySelector('#cam #shot'), beads: document.querySelectorAll('#cam .beads circle').length, lids: [...document.querySelectorAll('#cam path.stick')].map(p => p.getAttribute('d').match(/^M([\d.]+ [\d.]+)Q[\d.]+ [\d.]+ ([\d.]+ [\d.]+)$/)).map(m => m ? m[1] + '>' + m[2] : 'x').join(), box: getComputedStyle(document.querySelector('#oled .l2')).whiteSpace + '|' + getComputedStyle(document.querySelector('#oled .l2 span')).animationName, ways: [...document.querySelectorAll('#ways a')].map(a => a.getAttribute('aria-label') + '>' + a.getAttribute('href') + (a.textContent.trim() ? '+words' : '')), keys: [...document.querySelectorAll('#top button')].map(b => b.getAttribute('aria-label') + (b.textContent.trim() ? '+words' : '')).join(), words: document.querySelector('#home').innerText.trim(), oled: document.querySelector('#oled .l1').textContent, tiles: document.querySelectorAll('#tiles img').length, knots: document.querySelectorAll('#net circle').length, gl: !!document.querySelector('canvas'), now: window.__base.nowItems().map(i => i.k + ': ' + i.t), dark: getComputedStyle(document.body).backgroundColor }));
+  check('the base opens wordless: the eye is the camera (two lids that meet at the corners, never crossing like a fish\'s tail; tears with no beads), RADIO, W.I.S.H. and SHOP and the top keys as glyphs, the ground with no marks, dark, no WebGL', home.eye && !home.beads && home.lids === '16 54>144 54,16 54>144 54' && home.ways.join() === 'RADIO>#radio,W.I.S.H.>#wish,SHOP>#shop' && home.keys === 'Map,Guide,Light or dark' && home.words === '' && home.tiles > 3 && !home.knots && !home.gl && home.dark === 'rgb(5, 5, 5)', JSON.stringify(home).slice(0, 400));
+  check('the only words: a small, still box at the foot, novel.global first, the whole of each line wrapped, never crawling', /^novel\.global1\/\d+$/.test(home.oled) && home.box === 'normal|none', home.oled + ' ' + home.box);
+  const o2 = await page.evaluate(() => { document.querySelector('#oled').click(); return document.querySelector('#oled .l1 b').textContent; });
+  check('a touch on the box shows the next: what is urgent now, in full', o2 !== 'novel.global' && o2.length > 1, o2);
+  check('the base loads no map library, nothing of the studio, and one small pixel font for the box (Departure Mono)', !loaded.some(p => /maplibre|fonts|app\.js|style\.css|config\.js|field\.js/.test(p)) && loaded.filter(p => /\.woff2$/.test(p)).every(p => /departure-mono\.woff2$/.test(p)), loaded.filter(p => !/tile/.test(p)).join(' '));
   check('NOW in October: fledglings on the ground and El Niño\'s early heat, a line each, four at most', home.now.length <= 4 && home.now.some(t => /^YOUNG: Fledglings on the ground: .*magpies.*lorikeets/.test(t)) && home.now.some(t => /^EL NIÑO: Early heat/.test(t)), JSON.stringify(home.now));
   await shot(page, 'b01-home.png');
   /* a lorikeet fledgling in Carlton Gardens: the photograph says where */
@@ -1581,21 +1583,27 @@ if (run('base')) try {
   const wr = (((await admin('stories?status=waiting')).stories) || []).map(s => JSON.parse(s.body)).find(b => b.type === 'wish');
   check('a W.I.S.H. answered: a line picked from the list, a line written, kept in the thread at once and sent as a reply to its poster', !!picked && !!wr && wr.re === rec.code && wr.lines[1] === picked && wr.lines[2] === 'A sign on the gate, and water out', JSON.stringify(wr) + picked);
   await shot(page, 'b03b-thread.png');
-  /* RADIO: a 4-track to play into */
+  /* RADIO: a 4-track played from the map's own cells, and the web of noticing */
   await page.goto('https://oan.test/'); await page.goto('https://oan.test/#radio'); await page.waitForSelector('#deck', { timeout: 8000 });
   await page.waitForFunction(() => document.querySelectorAll('#r-body .tiles button').length > 3, null, { timeout: 15000 }).catch(() => {});
   await page.waitForFunction(() => document.querySelectorAll('#net circle').length > 10, null, { timeout: 15000 }).catch(() => {});
-  const radio = await page.evaluate(() => ({ sos: [...document.querySelectorAll('.sos a')].map(a => a.getAttribute('href')), tracks: document.querySelectorAll('#deck .ins').length, steps: document.querySelectorAll('#deck .cells').length && document.querySelector('#deck .cells').children.length, tiles: document.querySelectorAll('#r-body .tiles button').length, photos: [...document.querySelectorAll('#r-body .tiles button')].filter(b => b.style.backgroundImage).length, mine: document.querySelectorAll('#r-body .tiles button.mine').length, knots: document.querySelectorAll('#net circle').length, studio: !!document.querySelector('#sheet a[href^="studio"]') }));
-  check('RADIO: the emergency numbers on top, a 4-track of 16 steps, the sightings about now as photographs with one\'s own, all as knots, no way out to the old site', radio.sos.join() === 'tel:000,tel:0384007300' && radio.tracks === 4 && radio.steps === 16 && radio.tiles > 10 && radio.photos > 5 && radio.mine >= 1 && radio.knots > 10 && !radio.studio, JSON.stringify(radio));
+  const radio = await page.evaluate(() => ({ sos: document.querySelectorAll('#sheet .sos').length, tracks: document.querySelectorAll('#deck .ins').length, steps: document.querySelectorAll('#deck .cells').length && document.querySelector('#deck .cells').children.length, tiles: document.querySelectorAll('#r-body .tiles button').length, photos: [...document.querySelectorAll('#r-body .tiles button')].filter(b => b.style.backgroundImage).length, mine: document.querySelectorAll('#r-body .tiles button.mine').length, knots: document.querySelectorAll('#net circle').length, tones: new Set([...document.querySelectorAll('#net circle.cell')].map(c => c.style.fill)).size, studio: !!document.querySelector('#sheet a[href^="studio"]') }));
+  check('RADIO: no numbers on top (they are under HELP), a 4-track of 16 steps, the sightings about now as photographs with one\'s own, every cell a dot in the earth tone of its kind', !radio.sos && radio.tracks === 4 && radio.steps === 16 && radio.tiles > 10 && radio.photos > 5 && radio.mine >= 1 && radio.knots > 10 && radio.tones >= 3 && !radio.studio, JSON.stringify(radio));
+  await page.click('#r-min'); await sleep(300);
+  const mn = await page.evaluate(() => ({ h: document.querySelector('#sheet').getBoundingClientRect().height, min: document.querySelector('#sheet').classList.contains('min') }));
+  await page.click('#r-min'); await sleep(200);
+  check('RADIO folds away to show the whole map, and back', mn.min && mn.h <= 120 && !(await page.evaluate(() => document.querySelector('#sheet').classList.contains('min'))), JSON.stringify(mn));
   const url0 = page.url();
-  await tap(page, '#d-play'); await sleep(900);
-  const sd = await page.evaluate(() => ({ notes: window.__base.song().tracks[0].steps.filter(x => x != null).length, on: window.__base.seq().on }));
-  check('▶ on an empty deck never plays silence: the lives about become a figure on the first track', sd.notes >= 4 && sd.on, JSON.stringify(sd));
-  await tap(page, '#d-play'); await tap(page, '#d-clear');
+  await page.evaluate(() => { window.__notes = 0; const A = window.AudioContext; window.AudioContext = function () { const c = new A(); const o = c.createOscillator.bind(c); c.createOscillator = function () { window.__notes++; return o(); }; return c; }; });
+  await tap(page, '#d-play'); await sleep(1200);
+  const sd = await page.evaluate(() => ({ placed: window.__base.song().tracks.reduce((a, t) => a + t.steps.filter(Boolean).length, 0), sounds: window.__notes }));
+  await tap(page, '#d-play'); await page.click('#deck .cells[data-t="0"] button[data-s="3"]'); await sleep(200);
+  const empty = await page.evaluate(() => window.__base.song().tracks[0].steps.filter(Boolean).length);
+  check('▶ on an empty deck plays nothing, and an empty step touched with no cell open stays empty: no sound that is not a cell on the map', sd.placed === 0 && sd.sounds === 0 && empty === 0, JSON.stringify({ sd, empty }));
   await tap(page, '#d-rec'); await sleep(300);
   for (let k = 0; k < 4; k++) { await page.click(`#r-body .tiles button:nth-child(${k + 2})`); await sleep(260); }
-  const rc = await page.evaluate(() => ({ notes: window.__base.song().tracks.reduce((a, t) => a + t.steps.filter(x => x != null).length, 0), on: window.__base.seq().on, peek: !document.querySelector('#peek').hidden }));
-  check('● records: each tile touched places a note of its life on the armed track, like tape, and nothing opens over it', rc.notes >= 2 && rc.on && !rc.peek, JSON.stringify(rc));
+  const rc = await page.evaluate(() => { const st = window.__base.song().tracks.flatMap(t => t.steps.filter(Boolean)); const ids = [...document.querySelectorAll('#r-body .tiles button')].slice(1, 5).map(b => b.id.slice(2)); return { notes: st.length, tied: st.every(x => ids.includes(x.id) && x.t && x.g), on: window.__base.seq().on, peek: !document.querySelector('#peek').hidden }; });
+  check('● records: each tile touched places its own cell on the armed track, like tape, pitched by its kind and named, and nothing opens over it', rc.notes >= 2 && rc.tied && rc.on && !rc.peek, JSON.stringify(rc));
   await tap(page, '#d-rec');
   await page.click('#deck .ins[data-t="1"]'); await page.click('#deck .ins[data-t="1"]'); await sleep(200);
   const set = await page.evaluate(() => ({ open: !!document.querySelector('#deck .set'), ins: [...document.querySelectorAll('#deck .set [data-ins]')].map(b => b.title) }));
@@ -1604,13 +1612,36 @@ if (run('base')) try {
   const dl = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await tap(page, '#d-wav'); const file = await dl;
   const kept = await page.evaluate(() => ({ songs: document.querySelectorAll('.songs li').length, wav: window.__lastWav || 0, store: JSON.parse(localStorage.getItem('da.base.songs') || '[]').length }));
   check('⇩ keeps the song and downloads it as a sound file (WAV): one key, not two', kept.songs === 1 && kept.store === 1 && kept.wav > 100000 && !!file && /\.wav$/.test(file.suggestedFilename()), JSON.stringify(kept));
-  await page.click('#r-body .tiles button:not(.mine)'); await sleep(400);
-  const pk = await page.evaluate(() => ({ peek: !document.querySelector('#peek').hidden, name: (document.querySelector('#peek b') || {}).textContent, deck: !!document.querySelector('#deck') }));
-  check('a sighting opens as a card in place: RADIO stays, nothing leads away', pk.peek && !!pk.name && pk.deck && page.url() === url0, JSON.stringify(pk) + page.url());
-  await page.click('#pk-x'); await tap(page, '#d-play');
-  await tap(page, '#r-way [data-w="sets"]'); await sleep(400);
-  const sets = await page.evaluate(() => [...document.querySelectorAll('#r-body [data-c] span')].map(s => s.textContent));
-  check('SETS gathers what is about by life, by need and by place', sets.includes('Rainbow Lorikeet') && sets.length >= 3, JSON.stringify(sets));
+  /* a cell opened: its photograph large, its name to the guide here, no link out; ＋ puts it in the track */
+  const seq0 = await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web') || '{"seq":[]}').seq.length);
+  const lori = await page.evaluate(() => { const b = [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].find(x => /Rainbow Lorikeet/.test(x.title)); return b ? b.id : null; });
+  await page.click(lori ? '#' + lori : '#r-body .tiles button:not(.mine)'); await sleep(500);
+  const pk = await page.evaluate(() => ({ peek: !document.querySelector('#peek').hidden, ph: (document.querySelector('#peek .pk-ph') || { offsetHeight: 0 }).offsetHeight, guide: !!document.querySelector('#pk-g'), out: [...document.querySelectorAll('#peek a')].filter(a => a.target === '_blank' || /inaturalist/.test(a.href)).length, deck: !!document.querySelector('#deck') }));
+  check('a cell opens as a card in place: its photograph large, its name a way into the guide, no link out to its source; RADIO stays', pk.peek && pk.ph >= 150 && pk.guide && !pk.out && pk.deck && page.url() === url0, JSON.stringify(pk) + page.url());
+  await page.evaluate(() => { window.__base.song().tracks[0].steps = Array(16).fill(null); }); await page.click('#deck .ins[data-t="0"]'); await sleep(450); await page.click('#pk-add'); await sleep(200);
+  const added = await page.evaluate(() => window.__base.song().tracks[0].steps.filter(Boolean).map(x => x.t));
+  await page.click('#deck .cells[data-t="0"] button[data-s="9"]'); await sleep(200);
+  const at9 = await page.evaluate(() => (window.__base.song().tracks[0].steps[9] || {}).t);
+  check('the cell open goes into the armed track by ＋, or onto any step touched while it is open', added.length === 1 && /Rainbow Lorikeet/.test(added[0]) && /Rainbow Lorikeet/.test(at9 || ''), JSON.stringify({ added, at9 }));
+  /* the web: built only from what is opened, each line with its reason */
+  const tiles2 = await page.evaluate(() => [...document.querySelectorAll('#r-body .tiles button:not(.mine)')].filter(x => !/Rainbow Lorikeet/.test(x.title)).slice(0, 2).map(b => '#' + b.id));
+  for (const t of tiles2) { await page.click('#pk-x').catch(() => {}); await page.click(t); await sleep(400); }
+  const web = await page.evaluate(() => { const W = JSON.parse(localStorage.getItem('da.base.web')); const why = window.__base.hits().sticks.map(s => s.why).filter(Boolean); return { seq: W.seq.length, trail: document.querySelectorAll('#net path.w.trail').length, why: why.slice(0, 4), opened: why.some(w => /^opened .+, then .+/.test(w)) }; });
+  check('the web of noticing builds as cells are opened: kept, each one tied to the one before by a trail stick that says why', web.seq >= seq0 + 3 && web.trail >= 2 && web.opened, JSON.stringify(web));
+  await page.click('#pk-x').catch(() => {}); await tap(page, '#d-play');
+  /* collections: each with its own shape; added to the web and kept, not replacing; what prints or downloads, shown */
+  await tap(page, '#r-way [data-w="sets"]'); await page.waitForSelector('#r-body .list.sets'); await sleep(300);
+  const sets = await page.evaluate(() => ({ t: [...document.querySelectorAll('#r-body [data-c] span')].map(s => s.textContent), shapes: [...document.querySelectorAll('#r-body [data-c] svg.shape')].map(s => s.innerHTML).filter(Boolean) }));
+  await page.click('#r-body [data-c="0"]'); await sleep(400); await page.click('#r-body [data-c="1"]'); await sleep(900);
+  const sel = await page.evaluate(() => { const c = document.querySelector('#r-pv canvas'); let ink = 0; if (c && c.width) { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 16) if (d[i] < 150) ink++; } return { sets: JSON.parse(localStorage.getItem('da.base.web')).sets.map(s => s.t), chips: document.querySelectorAll('#r-sets button').length, w: c ? c.width : 0, ink, swell: document.querySelectorAll('#net path.w.swell').length, rough: !!window.rough, d3: !!(window.d3 && window.d3.forceSimulation) }; });
+  check('SETS: every collection with its own shape; two touched are both added to the web and kept, each shown as a swell and a chip to take off', sets.t.includes('Rainbow Lorikeet') && sets.shapes.length === sets.t.length && new Set(sets.shapes).size > 1 && sel.sets.length === 2 && sel.chips === 2 && sel.swell >= 1, JSON.stringify({ t: sets.t.slice(0, 4), sel }));
+  check('what prints or downloads is shown first: the web laid out by d3-force and drawn by hand with Rough.js', sel.w === 720 && sel.ink > 50 && sel.rough && sel.d3, JSON.stringify(sel));
+  const wd = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await page.click('#r-dl'); const wf = await wd;
+  await page.click('#r-pr'); await page.waitForFunction(() => /●/.test(document.querySelector('#r-pst').textContent), null, { timeout: 10000 });
+  const wrec = (((await admin('stories?status=waiting')).stories) || []).find(x => x.kind === 'record' && /"web"/.test(x.body));
+  check('⇩ downloads the web as a picture; ⎙ prints it on novel.global\'s printer', !!wf && /novel-global-web\.png$/.test(wf.suggestedFilename()) && !!wrec && wrec.dest === 'novelglobal', String(wf && wf.suggestedFilename()) + JSON.stringify(wrec || {}).slice(0, 120));
+  await page.click('#r-sets button[data-x="0"]'); await sleep(300);
+  check('× takes one set off and leaves the other', (await page.evaluate(() => JSON.parse(localStorage.getItem('da.base.web')).sets.length)) === 1);
   await tap(page, '#r-way [data-w="help"]'); await sleep(500);
   const help = await page.evaluate(() => [...document.querySelectorAll('#r-body .list a')].map(a => a.getAttribute('href')));
   check('HELP has every number to call', help.includes('tel:000') && help.includes('tel:0384007300'), help.length + '');
@@ -1619,16 +1650,16 @@ if (run('base')) try {
   const wl = await page.evaluate(() => ({ hero: (document.querySelector('.wish-grid .hero h3') || {}).textContent, rows: document.querySelectorAll('ol.hn li').length, meta: (document.querySelector('ol.hn .meta') || {}).textContent }));
   check('W.I.S.H. is a ranked thread of strategies: the hero poster and its headline, then the list with points, place, age, replies and pips', /lorikeet fledgling/.test(wl.hero) && wl.rows >= 1 && /^▲ \d+ · Carlton · .* · 2 ✎ ●/.test(wl.meta), JSON.stringify(wl));
   await page.goto('https://oan.test/#shop'); await page.waitForSelector('#s-prn li:not(.empty)', { timeout: 8000 }).catch(() => {}); await sleep(800);
-  const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: !!document.querySelector('a[href="studio?from=base"]'), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
-  check('SHOP: one\'s posters with where each is as pips, the printers, how to build one, packs, the studio as an addition; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn >= 1 && shop.build && shop.packs && shop.add && !shop.held, JSON.stringify(shop));
-  /* the studio is an addition: plain, and a key home */
-  { const sp = await ctx.newPage(); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
+  const shop = await page.evaluate(() => ({ rec: [...document.querySelectorAll('#s-rec small')].map(s => s.textContent), prn: document.querySelectorAll('#s-prn li').length, build: !!document.querySelector('a[href="build-a-solar-printer.txt"]'), packs: !!document.querySelector('#pk-out'), add: !!document.querySelector('#sheet a[href^="studio"]'), prns: [...document.querySelectorAll('#s-prn li')].map(l => l.textContent), held: /HELD/.test(document.querySelector('#sheet').innerText) }));
+  check('SHOP: one\'s posters with where each is as pips, novel.global\'s printer and no other, how to build one, packs; no way to the studio; never "held for a yes"', /^[●○]{3}$/.test(shop.rec[0]) && shop.prn === 1 && /novel\.global|novelglobal/i.test(shop.prns[0]) && shop.build && shop.packs && !shop.add && !shop.held, JSON.stringify(shop));
+  /* the studio is its own site now, the devices site for class: devices on, no bar back to the base over its words */
+  { const sp = await ctx.newPage(); await sp.addInitScript(() => { try { localStorage.removeItem('da.devices'); } catch (e) { /* fine */ } }); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
     const so = await sp.evaluate(() => ({ plain: document.documentElement.classList.contains('plain'), veil: !!document.querySelector('#jr-veil'), home: (document.querySelector('#to-base') || {}).getAttribute ? document.querySelector('#to-base').getAttribute('href') : null }));
-    check('the full studio, an addition: plain, no first visit, and ← novel.global home', so.plain && !so.veil && so.home === './', JSON.stringify(so)); await sp.close(); }
+    check('the studio stands apart: its devices on by default, no first visit from a link, and no bar back to the base', !so.plain && !so.veil && so.home === null, JSON.stringify(so)); await sp.close(); }
   /* the guide: grouped and minimised first */
-  await page.goto('https://oan.test/'); await tap(page, '#oled'); await page.waitForSelector('.idx'); await page.waitForFunction(() => document.querySelectorAll('.idx details.sec').length >= 5, null, { timeout: 8000 });
+  await page.goto('https://oan.test/'); await tap(page, '#b-search'); await page.waitForSelector('.idx'); await page.waitForFunction(() => document.querySelectorAll('.idx details.sec').length >= 5, null, { timeout: 8000 });
   const idx = await page.evaluate(() => [...document.querySelectorAll('.idx details.sec')].map(d => d.querySelector('h3').firstChild.textContent + (d.open ? '+' : '')));
-  check('the OLED opens the GUIDE: Now open, the rest minimised: If you find, Who to call, In season, Neighbours, What worked elsewhere', idx.join() === 'Now+,If you find,Who to call,In season · Oct,Neighbours,What worked elsewhere', JSON.stringify(idx));
+  check('the GUIDE: Now open, the rest minimised: If you find, Who to call, In season, Neighbours, What worked elsewhere', idx.join() === 'Now+,If you find,Who to call,In season · Oct,Neighbours,What worked elsewhere', JSON.stringify(idx));
   await page.evaluate(() => { document.querySelectorAll('.idx details.sec')[4].open = true; }); await page.click('.idx details.sub summary:has-text("Owls and frogmouths")'); await sleep(200); await page.click('.idx details.sub [data-sp="tawny-frogmouth"]'); await sleep(300);
   const life = await page.evaluate(() => ({ h: document.querySelector('#sheet h2').textContent, yr: document.querySelectorAll('#sheet table.yr td.f2').length, now: !!document.querySelector('#sheet table.yr td.m'), spec: document.querySelectorAll('#sheet dl.spec dt').length }));
   check('a neighbour in the guide: its status, where, what to watch for, its year as a data sheet', life.h === 'Tawny Frogmouth' && life.yr >= 5 && life.now && life.spec >= 3, JSON.stringify(life));
@@ -1656,6 +1687,10 @@ if (run('base')) try {
   await page.setInputFiles('#pb-in', { name: 'a.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#pb canvas', { timeout: 5000 });
   const px = await page.evaluate(() => { const c = document.querySelector('#pb canvas'); return { w: c.width, frames: document.querySelectorAll('#pb-f button').length }; });
   check('the pixel board turns a picture into wonky pixels', px.w > 100 && px.frames === 1, JSON.stringify(px));
+  const gd = page.waitForEvent('download', { timeout: 15000 }).catch(() => null); await page.click('#pb-gif'); const gf = await gd;
+  check('its sprite saves moving, as a GIF (gifenc)', !!gf && /\.gif$/.test(gf.suggestedFilename()) && (await page.evaluate(() => window.__lastGif || 0)) > 200, String(gf && gf.suggestedFilename()));
+  const ex = await page.evaluate(async b64 => { await new Promise(r => { const s = document.createElement('script'); s.src = 'vendor/exifr.js'; s.onload = r; s.onerror = r; document.head.appendChild(s); }); const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); const o = await window.exifr.parse(bin.buffer, { gps: true }); return o ? [o.latitude, o.longitude] : null; }, (await exifJPEG()).toString('base64'));
+  check('exifr reads where a photograph was taken when the small reader cannot (HEIC and others)', !!ex && Math.abs(ex[0] + 37.806) < 0.01 && Math.abs(ex[1] - 144.971) < 0.01, JSON.stringify(ex));
   /* a studio link still opens the studio */
   await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForURL(/\/studio#mix=/, { timeout: 8000 }).catch(() => {});
   check('a link the studio made (#mix=…) goes on to the studio', /\/studio#mix=-37\.7712/.test(page.url()), page.url());
@@ -1714,7 +1749,7 @@ if (ONLY.includes('walk')) try {
   const W = async (n) => { await sleep(700); await shot(page, `w${D ? 'd' : ''}${n}.png`); };
   const step = async (n, f) => { try { await f(); } catch (e) { const at = await page.evaluate(() => { const s = document.querySelector('#sheet'); return (s.hidden ? 'hidden ' : '') + s.className + ' | ' + s.textContent.slice(0, 160) + ' | ' + [...s.querySelectorAll('[id]')].map(e => e.id).join(','); }).catch(() => ''); results.push(`FAIL  walk ${n}: ${e.message.split('\n')[0]} — ${at}`); } };
   await page.goto('https://oan.test/'); await sleep(2500); await W('01-open');
-  await step('oled', async () => { await tap(page, '#oled'); await page.waitForSelector('.idx'); await W('02-guide'); });
+  await step('oled', async () => { await tap(page, '#oled'); await sleep(400); await W('02-box'); await tap(page, '#b-search'); await page.waitForSelector('.idx'); await W('02-guide'); });
   await page.goto('https://oan.test/'); await sleep(800);
   await step('photo', async () => { await page.setInputFiles('#shot', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#n-say', { timeout: 10000 }); await W('03-photo'); });
   await step('line', async () => { await page.fill('#n-say', 'lorikeet fledgling on the path'); await sleep(1200); await W('04-line'); });
@@ -1728,7 +1763,9 @@ if (ONLY.includes('walk')) try {
     await page.click('#deck .ins[data-t="1"]'); await page.click('#deck .ins[data-t="1"]'); await sleep(300); await W('12b-settings');
     await tap(page, '#d-rec'); await tap(page, '#d-radar'); await sleep(2500); await W('12c-radar'); await tap(page, '#d-radar'); await tap(page, '#d-play');
     await page.click('.tiles button:nth-child(3)'); await sleep(800); await W('12d-peek'); });
-  await step('sets', async () => { await tap(page, '#pk-x').catch(() => {}); await tap(page, '#r-way [data-w="sets"]'); await sleep(600); await W('12e-sets'); await tap(page, '#r-way [data-w="help"]'); await sleep(600); await W('12f-help'); });
+  await step('sets', async () => { for (const k of [4, 5, 6, 7]) { await tap(page, '#pk-x').catch(() => {}); await page.click(`.tiles button:nth-child(${k})`); await sleep(500); } await tap(page, '#pk-x').catch(() => {});
+    await tap(page, '#r-min'); await sleep(900); await W('12g-folded'); await tap(page, '#r-min'); await sleep(300);
+    await tap(page, '#r-way [data-w="sets"]'); await sleep(600); await page.click('#r-body [data-c="0"]'); await sleep(500); await page.click('#r-body [data-c="1"]'); await sleep(1800); await W('12e-sets'); await tap(page, '#r-way [data-w="help"]'); await sleep(600); await W('12f-help'); });
   await step('wish', async () => { await page.goto('https://oan.test/'); await page.goto('https://oan.test/#wish'); await page.waitForSelector('.wish-grid'); await sleep(1200); await W('13-wish'); });
   await step('shop', async () => { await page.goto('https://oan.test/'); await page.goto('https://oan.test/#shop'); await sleep(1500); await W('14-shop'); });
   await step('map', async () => { await page.goto('https://oan.test/'); await sleep(600); await tap(page, '#b-map'); await sleep(3000); await W('15-map');

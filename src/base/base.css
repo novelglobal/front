@@ -331,3 +331,60 @@ body.busy #booth pre.art { animation: blink 1s steps(2) infinite; }
 #booth .pv canvas { display: block; width: 100%; height: auto; background: #fff; image-rendering: pixelated; cursor: crosshair; }
 #booth .pv.slip canvas { cursor: default; max-height: 62vh; width: auto; max-width: 100%; margin: 0 auto; }
 #booth .bw { width: min(100%, 360px); font: inherit; font-size: 16px; background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--ink); padding: 6px 0; outline: 0; }
+
+/* the alert box: still, small, whole. Departure Mono, a pixel face drawn for small screens; a touch shows the next */
+@font-face { font-family: 'Departure Mono'; src: url(vendor/departure-mono.woff2) format('woff2'); font-display: swap; }
+#oled { height: auto; min-height: 52px; max-height: 40vh; overflow: hidden; font-family: 'Departure Mono', ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.4; width: min(340px, calc(100vw - 32px)); }
+#oled .l1 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+#oled .l1 i { font-style: normal; opacity: .45; }
+#oled .l2 { white-space: normal; overflow: visible; }
+#oled .l2 span { display: inline; padding-left: 0; animation: none; }
+
+/* ───── the web of noticing: each mark with its reason (see drawNet) ───── */
+#net circle.cell { stroke: none; }
+#net circle.cell.seen { stroke: var(--bead); stroke-width: 1.6; }
+#net circle.cell.mine { stroke: var(--ink); stroke-width: 1.2; }
+#net circle.cell.me { stroke: var(--hi); stroke-width: 2.2; }
+#net path.w { fill: none; stroke-linecap: round; }
+#net path.w.trail { stroke: var(--stick); stroke-width: 1.4; }
+#net path.w.kin { stroke: var(--stick); stroke-width: 2.6; }
+#net path.w.kind { stroke: var(--stick); stroke-width: 1; stroke-dasharray: 4 4; opacity: .8; }
+#net path.w.near { stroke: var(--bead); stroke-width: 1.4; stroke-dasharray: 1 4; }
+#net path.w.swell { stroke: var(--bead); stroke-width: 1.8; opacity: .7; }
+#net .jelly path.dome { fill: var(--tone, var(--ochre)); fill-opacity: .55; }
+#net rect.lash { fill: var(--lash, var(--stick)); }
+/* RADIO folds away to show the whole map */
+.hd .sp { flex: 1; }
+#sheet.min { overflow: hidden !important; }
+@media (max-width: 759px) { #sheet.min { top: auto !important; max-height: 56px !important; } }
+@media (min-width: 760px) { #sheet.min { bottom: auto !important; height: 112px; } }
+body.sheetmin #peek { bottom: 130px; }
+/* the sets on the web, each taken off by its × */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.chips button { font: inherit; font-size: 11px; color: var(--ink); border: 1px solid var(--stick); padding: 3px 7px; }
+.chips button i { font-style: normal; color: var(--dim); }
+/* what will print or download, as it will be */
+.art-pv { margin: 10px 0 6px; border: 1px solid var(--rule); background: #EDEBE4; }
+.art-pv canvas { display: block; width: 100%; height: auto; }
+.art-pv .empty { color: #6E6C66; text-align: center; padding: 30px 0; margin: 0; }
+.list.sets button { display: flex; align-items: center; gap: 10px; width: 100%; }
+.list.sets button.on { background: var(--rule); }
+.list.sets svg.shape { width: 60px; height: 36px; flex: none; }
+.list.sets svg.shape polyline { fill: none; stroke: var(--stick); stroke-width: 1; }
+/* the cell open: its photograph large; its name opens the guide here; ＋ puts its sound in the track */
+#peek { flex-direction: column; align-items: stretch; gap: 0; padding: 0; }
+@media (min-width: 760px) { #peek { width: 420px; } }
+#peek .pk-ph { flex: none; width: 100%; height: min(34vh, 260px); background: var(--rule) center/cover no-repeat; filter: none; }
+#peek .pk { display: flex; gap: 10px; padding: 8px; }
+#peek .nm { font: inherit; font-size: 14px; color: var(--ink); padding: 0; text-align: left; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--stick); }
+#peek .dot, .tiles .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+#peek .g.on { background: var(--ink); color: var(--paper); }
+.tiles button.seen { outline: 1px solid var(--bead); outline-offset: -1px; }
+.deck .cells button.n::after { background: var(--tone, var(--bead)); }
+.deck .cells button.no { outline: 1px solid var(--hi); outline-offset: -2px; }
+.art-pv canvas { max-height: 40vh; width: auto; max-width: 100%; margin: 0 auto; }
+#net path.w.swell { stroke-linejoin: round; stroke-dasharray: 6 3; }
+#peek { max-height: 70vh; }
+#peek .pk-ph { height: min(28vh, 240px); }
+.art-pv { width: min(100%, 300px); margin: 10px auto 6px; }
+.art-pv canvas { width: 100%; height: auto; max-height: none; }
