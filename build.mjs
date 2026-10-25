@@ -84,8 +84,8 @@ fs.writeFileSync(path.join(out, 'studio.html'), `<!doctype html>
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
 <script>
-/* plain unless the devices were turned back on; and a visitor sent here by the base never walks the first visit again: the base is the first visit now */
-try { var dp = JSON.parse(localStorage.getItem('da.prefs') || '{}'); if (localStorage.getItem('da.devices') !== '1') document.documentElement.classList.add('plain');
+/* the studio is the devices site, the one for class: its devices on unless turned off in Settings; a link from the base still skips the first visit */
+try { var dp = JSON.parse(localStorage.getItem('da.prefs') || '{}'); if (localStorage.getItem('da.devices') === '0') document.documentElement.classList.add('plain');
   if (/[?&]from=base/.test(location.search)) { window.__fromBase = true; if ((dp.journey || 0) < 4) { dp.journey = 4; localStorage.setItem('da.prefs', JSON.stringify(dp)); } history.replaceState(null, '', location.pathname + location.hash); } } catch (e) { document.documentElement.classList.add('plain'); }
 </script>
 </head>

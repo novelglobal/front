@@ -150,3 +150,21 @@ A printer in a shop or a public place prints anyone's photograph for free. That 
 - The receipt carries a small code that opens the site. A photograph people keep becomes the door they keep.
 - After printing there are only two ways on: novel.global, or another photograph. Another photograph comes only after an unseen wait of two to five minutes, so the printer stays a free service and not a toy.
 - The photograph is prepared for the paper, not the screen. Thermal dots spread, so it is lifted, sharpened, and dithered by a method made for receipt printers.
+
+## Round five: the web of noticing
+
+The net was drawn all at once, a frame of sticks around whatever was on screen. It looked like the reference art but meant nothing. Now it is built by looking.
+
+- **Nothing is tied until someone opens it.** Each cell opened is kept, and the web grows from those cells, so the art is a record of attention.
+- **Every mark has one reason, and says it when pointed at:**
+  - a trail stick: the order things were opened;
+  - a kin stick: the same life, found again;
+  - a kind stick: the nearest of the same kind;
+  - a lashing: three or more ties meeting, a story gathering;
+  - a jellyfish: three or more of one life attended;
+  - a swell: a collection added;
+  - a near tie: what is near one's own noticing now.
+- **Colour is information.** Each cell takes the earth tone of its kind: ochre birds, terracotta parrots, moss frogs, umber owls.
+- **Sound is only what is there.** The 4-track plays cells and nothing else. A song is a walk through what was noticed.
+- **A collection has a shape.** Each set is drawn as its cells joined in the order seen, so two sets are never the same. Sets add up rather than replace each other, and the print is shown before it is made.
+- **The studio is for class; the base is the showcase.** They no longer point at each other.

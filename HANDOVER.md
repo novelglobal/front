@@ -149,6 +149,55 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, round five, 25 October: the web of noticing** (the owner: "the nets and web lines should be something built and created dynamically … each line or image should have a reason").
+  - **The eye** is two lids that meet and are lashed at the corners, never crossing, so it no longer reads as a fish. The tears are dotted threads with no beads at their ends.
+  - **The box at the foot** (`#oled`) no longer crawls.
+    - It holds one line whole, wrapped, in Departure Mono at 11 px, with its count (3/8).
+    - A touch shows the next line; each one stays for a while in proportion to its length.
+    - The guide is its own key at the top.
+  - **The web of noticing replaces the stick-chart decoration on the map** (`drawNet`, `WEB` in `da.base.web`). Nothing is tied until it is looked at, and every mark has a reason:
+    - **Cells:** a dot in the earth tone of its kind (`TONE`); opened, it is ringed; one's own is larger.
+    - **Trail stick:** joins each cell opened to the one before it. It shows the way attention went.
+    - **Kin stick:** bowed; joins cells of the same life, in the order they were seen.
+    - **Kind stick:** dashed; goes to the nearest opened cell of the same kind.
+    - **Lashing:** marks where three or more sticks meet.
+    - **Jellyfish:** forms over three or more opened cells of one life. Its dome grows with each one and takes that life's tone.
+    - **Swell:** joins a collection's cells in the order they were seen, one swell per set added.
+    - **Near tie:** joins one's own noticing to the sightings revealed beside it.
+    - New sticks draw themselves in. Every mark says why it is there when the pointer is over it, for example "opened Noisy Miner, then Rainbow Lorikeet" or "both Rainbow Lorikeet".
+  - **RADIO:**
+    - **Layout:**
+      - The emergency numbers are gone from the top. HELP keeps every number.
+      - **–** folds the sheet away to show the whole map, re-centred; **+** brings it back.
+    - **The 4-track is the map's own:** every note is a cell, with its id, kind and name (`placeNote(n, step)`).
+      - Nothing sounds that is not a cell: ▶ on an empty deck plays nothing, and an empty step touched with no cell open stays empty.
+      - Old songs' bare notes are dropped on load (`tied`).
+      - A cell open in the card goes into the armed track with **＋**, or onto any step touched while it is open.
+      - Notes show in their cell's tone and name.
+    - **The card** (`peek`):
+      - The photograph is large.
+      - Its name opens the guide's page for that life, in the same window.
+      - There is no link out to the source record.
+      - Keys: ♪ (hear it), ＋ (into the track) and ×.
+    - **Collections** (the jellyfish key):
+      - Each set is shown with its own shape: its cells where they are, joined in the order seen (`shapeSVG`).
+      - A set touched is added to the web and kept. More touched add to it, never replace it.
+      - Each added set is a chip; × takes it off.
+      - Above the list is what will print or download, drawn as it will be (`webArt`):
+        - **Layout:** **d3-force** lays it out, so what is tied pulls together and each cell is still drawn toward where it is.
+        - **Drawing:** **Rough.js** draws it by hand.
+        - **Keys:** ⇩ downloads a PNG; ⎙ prints it on novel.global's printer (`type: 'web'`, never a gallery story).
+    - The receipt's NET art draws only its ties, with no frame and no swell.
+  - **Five open projects brought in** (`repo-static/vendor/`, licences in `LICENSES.md`), each loaded only when used:
+    - **exifr:** reads where and when from HEIC and other photos the small reader cannot read, within three seconds.
+    - **d3-force** and **Rough.js:** the web as art.
+    - **gifenc:** the pixel board's sprite saved moving, as a GIF.
+    - **Departure Mono:** the box at the foot.
+  - **The studio is its own site,** the devices site for class.
+    - Its devices are on unless turned off in Settings (`da.devices` = 0).
+    - The ← novel.global bar over its words is gone.
+    - The base no longer links to it.
+  - **Printers:** only novel.global's printer is shown in this version (`printers()` filters to `novelglobal`).
 - **v0.1 alpha, the booth, 24 October** (the owner: "the printer in stores or in public becomes a habit and free service … a small working QR code starts the real story").
   - **The booth** (`#booth`, or `#booth=<printer id>` for a partner's printer): a printer's own page, with nothing of the site on it.
     1. **The start.** The ASCII eye and two keys: `[ (o) ]` takes a photograph and `[ ^ ]` uploads one.
@@ -642,7 +691,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v78` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v79` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
