@@ -227,7 +227,7 @@
       panel: { l: (W - pw) / 2, t: panelTop, w: pw, h: Math.max(160, panelBot - panelTop) } };
     [panel, deep].forEach(function (p) { if (p) { p.style.left = L.panel.l + 'px'; p.style.top = L.panel.t + 'px'; p.style.width = L.panel.w + 'px'; p.style.height = L.panel.h + 'px'; } });
     /* the keys stay where they are: the tentacles move between them, never the things one reaches for */
-    tabs.forEach(function (b, i) { b.style.transform = 'translate(' + L.tips[i][0].toFixed(1) + 'px,' + L.tips[i][1].toFixed(1) + 'px)'; });
+    tabs.forEach(function (b, i) { var tr = 'translate(' + L.tips[i][0].toFixed(1) + 'px,' + L.tips[i][1].toFixed(1) + 'px)'; b.style.setProperty('--at', tr); b.style.transform = tr; });
     if (catchK) { catchK.style.setProperty('--at', 'translate(' + L.bx + 'px,' + gy + 'px)'); catchK.style.transform = 'translate(' + L.bx + 'px,' + gy + 'px)'; catchK.style.width = catchK.style.height = cr * 2 + 'px'; catchK.style.margin = -cr + 'px 0 0 ' + -cr + 'px'; }
     var bl = $('#au-bell'); if (bl) { bl.style.transform = 'translate(' + (L.bx - L.bw * 0.55) + 'px,' + (L.by - 4) + 'px)'; bl.style.width = L.bw * 1.1 + 'px'; bl.style.height = L.bh * 1.15 + 'px'; }
     x.setTransform(dpr, 0, 0, dpr, 0, 0); root.classList.toggle('big', big); root.style.setProperty('--ph', L.panel.h + 'px');
@@ -268,8 +268,41 @@
     }
     return { pts: out, p: p, bot: bot, w: w, top: top };
   }
+  /* where the tentacles are put to work, read from the page each frame: W.I.S.H.'s four lines, or the four sides of the piece */
+  var FORM = { key: 'hang', lines: null, rect: null };
+  function readForm() {
+    FORM.lines = null; FORM.rect = null; var key = 'hang';
+    if (S.mode === 'iruk' && !S.deep && panel) {
+      if (S.stage === 1) { var tas = panel.querySelectorAll('.au-wish textarea'); if (tas.length === 4) { var ls = [].map.call(tas, function (ta) { var r = ta.getBoundingClientRect(); return [r.left, r.right, r.bottom - 1]; }); if (ls[0][1] > ls[0][0]) { FORM.lines = ls; key = 'wish'; } } }
+      else if (S.stage >= 2) { var el = panel.querySelector('.au-drag canvas, .au-hero canvas, .au-wall img'); if (el) { var r = el.getBoundingClientRect(), P0 = L.panel; if (r.width > 20) { FORM.rect = [r.left - 9, Math.max(P0.t - 6, r.top - 9), r.right + 9, Math.min(P0.t + P0.h + 6, r.bottom + 9)]; key = 'frame' + S.stage; } } }
+    }
+    if (key !== FORM.key) { FORM.from = LAST; FORM.at = performance.now() / 1000; FORM.key = key; }
+    root.classList.toggle('loose', key !== 'hang');
+  }
+  var LAST = null;
   function tentPts(i, t, bell) {
     var root = [L.bx + (i - 1.5) / 1.5 * bell.w * 0.82, bell.bot - 1], g = L.hold[i], tip = L.tips[i], P0 = L.panel, mob = L.mob, left = i < 2;
+    var held = [root, [(root[0] + g[0]) / 2, root[1] + (g[1] - root[1]) * 0.4], g], ctl = null, k0 = 0;
+    if (FORM.lines) {
+      /* W.I.S.H.: each tentacle sweeps down from the catch to the margin and lies along its own line; W and I from the left, S and H from the right */
+      var ln = FORM.lines[i], sx = left ? ln[0] - (i === 0 ? 7 : 14) : ln[1] + (i === 3 ? 7 : 14), a0 = left ? ln[0] : ln[1], a1 = left ? ln[1] : ln[0];
+      ctl = held.concat([[g[0] + (sx - g[0]) * 0.7, g[1] + (ln[2] - g[1]) * 0.3], [sx, ln[2] - 18], [a0 + (left ? 6 : -6), ln[2]]]); k0 = ctl.length - 1;
+      for (var q = 1; q <= 6; q++) ctl.push([a0 + (a1 - a0) * q / 6, ln[2]]);
+    } else if (FORM.rect) {
+      /* the piece: they cross at the catch, go down outside it, and close the four sides as one loop: left, bottom, right, top */
+      var R = FORM.rect, TL = [R[0], R[1]], TR = [R[2], R[1]], BR = [R[2], R[3]], BL = [R[0], R[3]], o = mob ? 5 : 16, side, L1 = Math.max(2, R[0] - o), L2 = Math.max(2, R[0] - 2 * o), R1 = Math.min(L.W - 2, R[2] + o), R2 = Math.min(L.W - 2, R[2] + 2 * o);
+      if (i === 0) { ctl = held.concat([[L1, g[1] + 14], [L1, R[1] - 12], TL]); side = [TL, BL]; }
+      else if (i === 1) { ctl = held.concat([[L2, g[1] + 18], [L2, R[3] - 14], BL]); side = [BL, BR]; }
+      else if (i === 3) { ctl = held.concat([[R2, g[1] + 18], [R2, R[3] - 14], BR]); side = [BR, TR]; }
+      else { ctl = held.concat([[R1, g[1] + 14], [R1, R[1] - 12], TR]); side = [TR, TL]; }
+      k0 = ctl.length - 1; for (var q2 = 1; q2 <= 6; q2++) ctl.push([side[0][0] + (side[1][0] - side[0][0]) * q2 / 6, side[0][1] + (side[1][1] - side[0][1]) * q2 / 6]);
+    }
+    if (ctl) {
+      /* at work, they are steady where they lie and drift only on the way there */
+      var pw = catmull(ctl, NT), seg = ctl.length - 1, amp2 = mob ? 6 : 12; if (still) return pw;
+      return pw.map(function (q3, j) { var u = j / (NT - 1) * seg, s = j / (NT - 1), env = u >= k0 ? 0.04 : Math.sin(Math.PI * Math.min(1, u / k0)) * Math.min(1, Math.abs(j - NT * 0.1) / 5);
+        return [q3[0] + noise(i * 3.3, s * 2.2, t * 0.22) * amp2 * env, q3[1] + noise(i * 7.1, s * 3, t * 0.18) * amp2 * 0.4 * env + Math.sin(t * 1.1 + j * 0.35 + i) * 0.5 * (u >= k0 ? 1 : 0)]; });
+    }
     /* they hang: from the bell, round the one thing they hold, drifting down to their steps; over the step's page they go faint */
     var lx = function (f) { return g[0] + (tip[0] - g[0]) * f + (left ? -1 : 1) * Math.sin(f * Math.PI) * (mob ? 12 : 44); };
     var pts = catmull([root, [(root[0] + g[0]) / 2, root[1] + (g[1] - root[1]) * 0.4], g, [lx(0.2), P0.t + P0.h * 0.15], [lx(0.5), P0.t + P0.h * 0.5], [lx(0.8), P0.t + P0.h * 0.85], tip], NT);
@@ -278,7 +311,11 @@
       var wave = Math.sin(s * (22 + i * 3) - t * 1.3 + i * 1.7) * (mob ? 2.4 : 3.2) * env;
       return [q[0] + (noise(i * 3.3, s * 2.2, t * 0.22) * amp + lean * bell.p * 2.5) * env + wave, q[1] + noise(i * 7.1, s * 3, t * 0.18) * amp * 0.4 * env]; });
   }
-  function irukTargets(t) { var b = bellPts(t), T = [0, 1, 2, 3].map(function (i) { return tentPts(i, t, b); }); return { bell: b, tents: T, rings: [b.pts, T[0].concat(T[1].slice().reverse()), T[2].concat(T[3].slice().reverse())] }; }
+  function irukTargets(t) {
+    var b = bellPts(t), T = [0, 1, 2, 3].map(function (i) { return tentPts(i, t, b); });
+    /* from one shape to the next, they move, they do not jump */
+    if (FORM.from && !still) { var e = Math.min(1, (performance.now() / 1000 - FORM.at) / 0.9); e = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
+      if (e < 1) T = T.map(function (pts, i) { var f = FORM.from[i]; return f ? pts.map(function (q, j) { return [f[j][0] + (q[0] - f[j][0]) * e, f[j][1] + (q[1] - f[j][1]) * e]; }) : pts; }); else FORM.from = null; } return { bell: b, tents: T, rings: [b.pts, T[0].concat(T[1].slice().reverse()), T[2].concat(T[3].slice().reverse())] }; }
 
   /* ───────── drawing ───────── */
   function stroke(pts, w, a, taper, closed) {
@@ -312,12 +349,12 @@
   /* the step that would come next, once this one has something: a light runs down its tentacle to the tip */
   var nextStep = function () { return S.deep || S.stage >= 3 || !ready() ? -1 : S.stage + 1; };
   function drawIruk(t, a) {
-    var T = irukTargets(t), b = T.bell, k0 = a, nx = nextStep();
+    readForm(); var T = irukTargets(t), b = T.bell, k0 = a, nx = nextStep(), work = FORM.key !== 'hang'; LAST = T.tents;
     /* the aura: a slow light round the bell, breathing with it */
     var g = x.createRadialGradient(L.bx, b.top + L.bh * 0.5, 4, L.bx, b.top + L.bh * 0.5, L.bw * 1.7); g.addColorStop(0, 'rgba(244,241,232,' + (0.13 + 0.07 * b.p) * a + ')'); g.addColorStop(1, 'rgba(244,241,232,0)');
     x.fillStyle = g; x.fillRect(L.bx - L.bw * 2, b.top - L.bw, L.bw * 4, L.bw * 3.4);
     var P0 = L.panel, faint = function (inside) { x.save(); x.beginPath(); x.rect(P0.l, P0.t, P0.w, P0.h); if (!inside) { x.rect(L.W, 0, -L.W, L.H); x.clip('evenodd'); } else x.clip(); };
-    [false, true].forEach(function (inside) { faint(inside); var A = inside ? (S.deep || P && P.photo ? 0.08 : 0.14) : 1;
+    [false, true].forEach(function (inside) { if (work && inside) return; if (!work) faint(inside); else x.save(); var A = inside ? (S.deep || P && P.photo ? 0.08 : 0.14) : 1;
       T.tents.forEach(function (pts, i) {
         var on = i === S.stage, nxt = i === nx, w = on ? 1.15 : 0.8, a2 = A * k0;
         stroke(pts, w, (on ? 0.9 : nxt ? 0.7 : 0.5) * a2, true);
@@ -446,7 +483,12 @@
   /* ───────── the frame ───────── */
   var raf = 0, last = 0, asleep = false;
   function frame(now) {
-    raf = 0; if (asleep || document.hidden) return;
+    raf = 0; if (asleep || document.hidden) return; S.frames = (S.frames || 0) + 1;
+    /* the next frame is asked for first: one bad frame never stops the creature */
+    raf = requestAnimationFrame(frame);
+    try { draw1(now); } catch (e) { if (!frame.told) { frame.told = 1; console.error('aura frame: ' + (e && e.stack || e)); } }
+  }
+  function draw1(now) {
     var t = now / 1000, dt = Math.max(0, Math.min(0.05, last ? (now - last) / 1000 : 0.016)), k = Math.max(0, (now - S.t0) / 1000); last = now;
     x.clearRect(0, 0, L.W, L.H);
     if (!still && (S.mode === 'globe' || S.mode === 'bang')) S.spin += dt * 2 * Math.PI / 110;
@@ -460,7 +502,6 @@
     else if (S.mode === 'iruk') { S.fade = Math.min(1, S.fade + dt * 2); T = drawIruk(t, 1); keys(); }
     if (S.mode === 'bang' && k > 1.4) rs = place3(t, Math.min(1, (k - 1.4) / 1.0));
     humFrame(rs, T && T.bell);
-    raf = requestAnimationFrame(frame);
   }
   /* the pages ride their rings: larger and brighter at the front */
   function place3(t, a) {
@@ -484,7 +525,7 @@
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
     setMode('bang'); store.set('da.aura.seen', 1);
   }
-  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); }
+  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.from = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
   function step(i) { if (i === S.stage && !S.deep) return; S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
@@ -808,7 +849,7 @@
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
-  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '' } : null, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
+  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '' } : null, form: FORM.key, frames: S.frames || 0, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
   api.go = function (m, s) { if (m === 'globe') { if (S.mode === 'seed') bang(); setMode('globe'); } if (m === 'iruk') { setMode('globe'); toIruk(s || 0); } };
   addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); if (!showEl.hidden) pinX(); selBox(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) go(); });
