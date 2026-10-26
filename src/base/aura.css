@@ -184,3 +184,42 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-find + .au-names { border-top: 0; padding-top: 6px; }
 #aura.big .au-tab .au-n { left: 46px; }
 #aura textarea:focus-visible, #aura input:focus-visible { outline: none; }
+
+/* the question: not there at first; after a breath it comes quickly, then all but goes */
+.au-line { position: relative; display: block; }
+.au-ask { position: absolute; left: 2px; top: 7px; font-size: 20px; pointer-events: none; opacity: 0; animation: au-ask 5s 1s forwards; }
+.au-line.has .au-ask { display: none; }
+@keyframes au-ask { 0% { opacity: 0; } 6% { opacity: .62; } 40% { opacity: .5; } 100% { opacity: .14; } }
+@media (max-width: 759px) { .au-ask { font-size: 18px; } }
+#aura ::placeholder { color: transparent; }
+/* W.I.S.H.: each letter's sentence, only when looked for */
+.au-wish li { position: relative; }
+.au-wish b { cursor: help; }
+.au-wish b::after { content: attr(data-say); position: absolute; left: 36px; top: -10px; font-size: 13px; letter-spacing: .02em; white-space: nowrap; opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; pointer-events: none; }
+.au-wish b:hover::after, .au-wish li:focus-within b::after { opacity: .7; transform: none; }
+/* the eye and the catch breathe a little: they can be touched */
+#au-catch { animation: au-breathe 3.6s ease-in-out infinite; }
+@keyframes au-breathe { 0%, 100% { transform: var(--at) scale(1); } 50% { transform: var(--at) scale(1.06); } }
+/* the tray: marks, words, one's own icons, to put on the poster */
+.au-tray { display: flex; gap: 4px; overflow-x: auto; padding: 2px 2px 10px; margin: 0 0 6px; scrollbar-width: none; }
+.au-tray > :first-child { margin-left: auto; } .au-tray > :last-child { margin-right: auto; }
+.au-tray button { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; opacity: .7; transition: opacity .2s, background .2s; }
+.au-tray button:hover { opacity: 1; background: rgba(244, 241, 232, .1); }
+.au-tray .au-i { width: 24px; height: 24px; }
+.au-tray img { width: 24px; height: 24px; image-rendering: pixelated; object-fit: contain; }
+.au-drag { position: relative; }
+.au-sel { position: absolute; border: 1.4px dashed var(--ink); border-radius: 4px; pointer-events: none; }
+#aura .au-rm { position: absolute; right: -16px; top: -16px; width: 30px; height: 30px; border-radius: 50%; background: #17457F; box-shadow: 0 0 0 1.4px var(--ink); font-size: 18px; line-height: 28px; text-align: center; pointer-events: auto; }
+.au-tline { display: block; margin: 8px 0 0; }
+.au-tline[hidden] { display: none; }
+/* the press: start again, save, print (or begin anew), and where it is */
+#aura .au-reset { border-style: dotted; opacity: .7; }
+#aura .au-reset.sure { opacity: 1; font-size: 18px; }
+/* the wall: one finished piece at a time */
+.au-wall { cursor: zoom-in; }
+.au-wall img { display: block; max-width: 100%; max-height: calc(var(--ph, 500px) - 120px); width: auto; height: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4), 0 12px 30px rgba(6, 24, 52, .4); }
+#aura .au-nav { border: 0; font-size: 28px; }
+.au-wdots { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.au-wdots i { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid var(--ink); }
+.au-wdots i.on { background: var(--ink); }
+#au-catch { transform: var(--at); }
