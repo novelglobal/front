@@ -208,3 +208,9 @@ The irukandji is almost invisible and does its harm out of all proportion to its
 - **Its four tears are the tentacles.** They are the four steps: noticing, wishing, making, printing. The eye looks down the one that is open, and a light runs down the next when there is something to take on.
 - **What it holds, it caught.** The map, the life, the readings and El Niño are prey, not menus. Nothing is shown until it is caught, and no life is offered. The engine reads underneath, but a name only appears if you said it, found it or chose it. Attention is the user's, never the system's.
 - **The print is the sting:** one press, a light down all four, and the poster goes to the wall.
+
+## One piece, all the way to the wall
+
+Each visit makes one thing. The piece is kept while it is made and comes back when you do. Printing puts it on the wall, and changing it puts the new version in the same place on the wall. Only then does the press offer a new beginning. The wall is the only place many pieces appear: one at a time, each one whole, and each can be brought back to work on or taken down. Nothing is a draft among drafts.
+
+W.I.S.H.'s letters stay letters until you look for them: Witness, Intention, Strategy, Hope.

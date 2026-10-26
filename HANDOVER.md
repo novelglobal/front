@@ -150,6 +150,35 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, one piece at a time, 26 October** (the owner: "too much grouped up in one spot at the start … remove this hover copy … make the eye and catch pulse … a deep tone when hovered … only show the copy What have you noticed after a second … the WISH full sentence for each letter on hover … no stickers or text, or icon additions … things should be able to be brought back or edited or removed … reset when completed … each entry or process is for one final art").
+  - **Room at the top.** The catch hangs lower under the bell, clear of it.
+  - **No words on hover:** no `title` anywhere in the aura. The names stay for screen readers (`aria-label`).
+  - **The eye and the catch breathe** (the pupil, the dotted lid, the catch's slow scale). When the pointer finds either, a deep tone sounds (`deepTone`: 55 Hz for the eye, 73 Hz for the catch, a fifth above each).
+  - **"what have you noticed?"** is not there at first. After a second it comes quickly, then all but goes (`.au-ask`). The field's placeholder is gone.
+  - **W.I.S.H.: each letter's sentence**, shown on hover or when its line is in hand:
+    - **W** Witness: what you saw, where, and when.
+    - **I** Intention: what you want for it.
+    - **S** Strategy: what will be done, and by whom.
+    - **H** Hope: how it ends well, and who helps.
+
+    (The repo never spelled the letters out; these are new.)
+  - **The eye works from any step.** A photograph taken from W.I.S.H. or art stays there: it goes into the pupil and the poster, not back to the start.
+  - **Art: what one adds by hand** (`P.adds`, `drawAdds`). Under the four ways of drawing it sits a tray:
+    - eight marks drawn by hand (star, heart, irukandji, eye, waves, arrow, sun, leaf);
+    - words (Aa);
+    - one's own icons from the pixel maker.
+
+    Each lands on the poster, is moved by hand, and, once touched, is outlined with an × on its corner to take it off. Words open their own line to be rewritten. The caught things are taken off the same way, which lets them go from the catch.
+  - **One piece at a time, kept** (`draftSave`, IndexedDB `novelglobal/piece`, version 2).
+    - The piece being made is kept as it is made, and is there when one comes back.
+    - Once printed, the press becomes a seed that begins a new piece.
+    - Changed after printing, it prints again and takes the same place on the wall (`P.folioId`).
+    - ⟲ (with a check) lets the piece go.
+  - **Print is only this piece:** the poster, ⟲, save, and the press. The strip of others is gone.
+  - **With nothing being made, print is the wall** (`wallHTML`): one finished piece at a time, whole, turned with ‹ ›.
+    - ↩ brings it back to be worked on, everything as it was: photograph, lines, catch, places, marks.
+    - The bin (with a check) takes it down.
+    - The composer's pieces show on the wall but are not brought back.
 - **v0.1 alpha, the aura refined, 26 October** (the owner: "remove all copy … remove all WISH templates … make the top toggles and buttons (map species data el nino) join into one thing … only clickable icons are the bottom of the current jellyfish tentacles … the close button is also not near on the poster … make sure no examples of species pops up without someone selecting, finding, or making it"; "the main eye can also be the jellyfish body eye at the top").
   - **The myth, as the interface.**
     - **The bell is the eye that notices** (`#au-bell`, a file input). It is drawn in dots, as the bark painting draws it.
@@ -900,7 +929,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v85` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v86` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

@@ -17,7 +17,7 @@
   function folioDB() {
     if (idb) return idb;
     idb = new Promise(function (res) {
-      try { var q = indexedDB.open('novelglobal', 1); q.onupgradeneeded = function () { q.result.createObjectStore('folio', { keyPath: 'id' }); }; q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(null); }; } catch (e) { res(null); }
+      try { var q = indexedDB.open('novelglobal', 2); q.onupgradeneeded = function () { var d0 = q.result; ['folio', 'piece'].forEach(function (n) { if (!d0.objectStoreNames.contains(n)) d0.createObjectStore(n, { keyPath: 'id' }); }); }; q.onsuccess = function () { res(q.result); }; q.onerror = function () { res(null); }; } catch (e) { res(null); }
     });
     return idb;
   }
@@ -33,6 +33,9 @@
     var drop = FOLIO.slice(24); FOLIO = FOLIO.slice(0, 24);
     return folioDB().then(function (d) { if (!d) return; try { var s = d.transaction('folio', 'readwrite').objectStore('folio'); s.put(item); drop.forEach(function (f) { s.delete(f.id); }); } catch (e) { /* kept for this visit */ } });
   }
+  /* the piece being made, kept as it is made: one at a time, there when one comes back */
+  function draftSave(o) { return folioDB().then(function (d) { if (!d) return; try { var s = d.transaction('piece', 'readwrite').objectStore('piece'); if (o) { o.id = 'now'; s.put(o); } else s.delete('now'); } catch (e) { /* this visit only */ } }); }
+  function draftLoad() { return folioDB().then(function (d) { if (!d) return null; return new Promise(function (res) { try { var g = d.transaction('piece').objectStore('piece').get('now'); g.onsuccess = function () { res(g.result || null); }; g.onerror = function () { res(null); }; } catch (e) { res(null); } }); }); }
   function folioDrop(id) { FOLIO = FOLIO.filter(function (f) { return f.id !== id; }); return folioDB().then(function (d) { if (d) try { d.transaction('folio', 'readwrite').objectStore('folio').delete(id); } catch (e) { /* fine */ } }); }
   var slides = function () { return FOLIO.concat(NG.pieces().map(function (p) { return { id: p.id, at: p.at, src: p.src, cap: 'A piece' + (p.at ? ', ' + NG.when(p.at).slice(0, 6) : '') }; })); };
 
@@ -156,12 +159,31 @@
     });
     return boxes;
   }
+  var MARKS = {
+    star: 'M16 3l3.6 8.4 9 .8-6.8 6 2 8.8L16 22.4 8.2 27l2-8.8-6.8-6 9-.8z', heart: 'M16 27C6 20 3 14 5.5 9.5 8 5 13 6 16 10c3-4 8-5 10.5-.5C29 14 26 20 16 27z',
+    iruk: 'M8 15C8 8 11.5 5 16 5s8 3 8 10zM10 17v10M14 17v11M18 17v11M22 17v10', eye: 'M2 16C8 8 12 6 16 6s8 2 14 10c-6 8-10 10-14 10S8 24 2 16zM20.5 16a4.5 4.5 0 1 1-9 0 4.5 4.5 0 1 1 9 0',
+    wave: 'M2 14c4-6 8-6 12 0s8 6 12 0 4-4 4-4M2 22c4-6 8-6 12 0s8 6 12 0 4-4 4-4', arrow: 'M4 27C10 19 16 13 26 6M18 5.5h8.5V14',
+    sun: 'M22 16a6 6 0 1 1-12 0 6 6 0 1 1 12 0M16 3v4M16 25v4M3 16h4M25 16h4M7 7l3 3M22 22l3 3M7 25l3-3M22 10l3-3', leaf: 'M6 26C8 12 16 6 27 5c-1 11-7 19-21 21zM6 26c6-6 11-11 16-16'
+  };
+  var ICON_IMG = {};
+  function iconImg(src, then) { var im = ICON_IMG[src]; if (im) return im.complete ? im : null; im = ICON_IMG[src] = new Image(); im.onload = then; im.src = src; return null; }
+  function drawAdds(x, P, W, H, boxes, again) {
+    (P.adds || []).forEach(function (a, i) {
+      var X = a.x * W, Y = a.y * H, w = 0, h = 0; x.save();
+      if (a.k === 's' && MARKS[a.g]) { w = h = 132; x.translate(X + 6, Y + 6); x.scale(3.75, 3.75); x.strokeStyle = INK; x.lineWidth = 0.75; x.lineCap = x.lineJoin = 'round'; x.stroke(new Path2D(MARKS[a.g])); }
+      else if (a.k === 't') { x.font = '34px ' + FONT; var ls = wrap(x, a.t || ' ', 420); w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return x.measureText(l).width; })) + 40); h = ls.length * 44 + 22;
+        scrap(x, X, Y, w, h, 11 + i); x.fillStyle = INK; x.textBaseline = 'top'; ls.forEach(function (l, k) { x.fillText(l, X + 20, Y + 12 + k * 44); }); }
+      else if (a.k === 'i') { var im = iconImg(a.src, again); w = h = 128; if (im) { x.imageSmoothingEnabled = false; var iw = im.naturalWidth, ih = im.naturalHeight, k2 = 128 / Math.max(iw, ih); x.drawImage(im, X + (128 - iw * k2) / 2, Y + (128 - ih * k2) / 2, iw * k2, ih * k2); } }
+      x.restore(); boxes['a' + i] = [X, Y, w, h];
+    });
+    return boxes;
+  }
   function posterKey(P, art) { return [art, P.say, (P.lines || []).join('|'), (P.photo || '').length, !!P.img, P.note && P.note.code, caught(P).length > 0, P.catch && P.catch.life, P.note && (P.note.seen || []).length].join('~'); }
   function posterNow(P, art) {
     /* → { c, boxes }: the base kept, the caught things drawn over it */
     var key = posterKey(P, art); if (!P._base || P._base.key !== key) { P._base = posterBase(P, art); P._base.key = key; }
     var B0 = P._base, c = document.createElement('canvas'); c.width = B0.W; c.height = B0.H; var x = c.getContext('2d'); x.drawImage(B0.c, 0, 0);
-    return { c: c, boxes: drawCatch(x, P, B0) };
+    return { c: c, boxes: drawAdds(x, P, B0.W, B0.H, drawCatch(x, P, B0), function () { if (window.AURA && AURA.redraw) AURA.redraw(); }) };
   }
   function poster(P, art) { return fontReady().then(function () { return posterNow(P, art || 'photo').c; }); }
   function keepCanvas(c, cap, codeT) {
@@ -197,8 +219,8 @@
   function layout() {
     dpr = Math.min(2, window.devicePixelRatio || 1); var W = innerWidth, H = innerHeight; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     var mob = W < 760, R = Math.min(W * 0.86, H * 0.74, 560) * 150 / 400;
-    var big = !mob && H > 760 && W > 1200, bw = mob ? 116 : big ? 196 : 160, bh = bw * 0.58, by = mob ? 16 : 22, cr = mob ? 23 : big ? 28 : 25, gy = by + bh + (mob ? 34 : 42);
-    var tipY = H - (mob ? 34 : 42), panelTop = gy + cr + (mob ? 18 : 26), panelBot = tipY - (mob ? 44 : 52), pw = mob ? W - 40 : Math.min(big ? 720 : 640, W - 380);
+    var big = !mob && H > 760 && W > 1200, bw = mob ? 116 : big ? 196 : 160, bh = bw * 0.58, by = mob ? 16 : 22, cr = mob ? 22 : big ? 27 : 24, gy = by + bh + (mob ? 60 : 76);
+    var tipY = H - (mob ? 34 : 42), panelTop = gy + cr + (mob ? 16 : 24), panelBot = tipY - (mob ? 44 : 52), pw = mob ? W - 40 : Math.min(big ? 720 : 640, W - 380);
     L = { W: W, H: H, mob: mob, big: big, R: R, cx: W / 2, cy: H / 2, bx: W / 2, by: by, bw: bw, bh: bh, gy: gy, cr: cr,
       hold: [0, 1, 2, 3].map(function (i) { return [W / 2 + [-1.55, -0.55, 0.55, 1.55][i] * cr, gy + (i === 0 || i === 3 ? 4 : cr * 0.6)]; }),
       tips: [0, 1, 2, 3].map(function (i) { return [mob ? W * (0.125 + 0.25 * i) : W / 2 + (i - 1.5) * Math.min(W * 0.2, big ? 300 : 240), tipY]; }),
@@ -206,7 +228,7 @@
     [panel, deep].forEach(function (p) { if (p) { p.style.left = L.panel.l + 'px'; p.style.top = L.panel.t + 'px'; p.style.width = L.panel.w + 'px'; p.style.height = L.panel.h + 'px'; } });
     /* the keys stay where they are: the tentacles move between them, never the things one reaches for */
     tabs.forEach(function (b, i) { b.style.transform = 'translate(' + L.tips[i][0].toFixed(1) + 'px,' + L.tips[i][1].toFixed(1) + 'px)'; });
-    if (catchK) { catchK.style.transform = 'translate(' + L.bx + 'px,' + gy + 'px)'; catchK.style.width = catchK.style.height = cr * 2 + 'px'; catchK.style.margin = -cr + 'px 0 0 ' + -cr + 'px'; }
+    if (catchK) { catchK.style.setProperty('--at', 'translate(' + L.bx + 'px,' + gy + 'px)'); catchK.style.transform = 'translate(' + L.bx + 'px,' + gy + 'px)'; catchK.style.width = catchK.style.height = cr * 2 + 'px'; catchK.style.margin = -cr + 'px 0 0 ' + -cr + 'px'; }
     var bl = $('#au-bell'); if (bl) { bl.style.transform = 'translate(' + (L.bx - L.bw * 0.55) + 'px,' + (L.by - 4) + 'px)'; bl.style.width = L.bw * 1.1 + 'px'; bl.style.height = L.bh * 1.15 + 'px'; }
     x.setTransform(dpr, 0, 0, dpr, 0, 0); root.classList.toggle('big', big); root.style.setProperty('--ph', L.panel.h + 'px');
     if (panel) regrow();
@@ -310,8 +332,8 @@
        It looks toward the step that is open; what it has seen sits in its pupil; with nothing seen yet, the pupil breathes */
     var bk = still ? 1 : Math.min(1, Math.abs(((t + 2.2) % 7.3) - 0.14) / 0.14, S.blink ? Math.min(1, Math.abs(t - S.blink - 0.14) / 0.14) : 1);
     var eh = (b.bot - b.top) * 0.27 * Math.max(0.08, bk), ew = b.w * 0.74, ex = L.bx, ey = b.top + (b.bot - b.top) * 0.5, look = (S.stage - 1.5) / 1.5 * ew * 0.16;
-    for (var j2 = 0; j2 < 30; j2++) { var u2 = j2 / 30 * Math.PI * 2, cu = Math.cos(u2), su = Math.sin(u2); dot(ex + cu * ew, ey + su * eh * (0.35 + 0.65 * Math.abs(su)), 1.15, 0.8 * a); }
-    var pr = (b.bot - b.top) * 0.27 * 0.95 * Math.max(0.08, bk), px = ex + look * 0.6, wait = !ready(), glow = wait && !still ? 0.5 + 0.5 * Math.sin(t * 2.4) : 0;
+    for (var j2 = 0; j2 < 30; j2++) { var u2 = j2 / 30 * Math.PI * 2, cu = Math.cos(u2), su = Math.sin(u2); dot(ex + cu * ew, ey + su * eh * (0.35 + 0.65 * Math.abs(su)), 1.15, (S.hEye ? 1 : 0.62 + 0.18 * Math.sin(t * 1.75)) * a); }
+    var pr = (b.bot - b.top) * 0.27 * 0.95 * Math.max(0.08, bk) * (1 + (still ? 0 : 0.04 * Math.sin(t * 1.75)) + (S.hEye ? 0.06 : 0)), px = ex + look * 0.6, wait = !ready(), glow = wait && !still ? 0.5 + 0.5 * Math.sin(t * 2.4) : 0;
     if (glow) { var gg = x.createRadialGradient(px, ey, 1, px, ey, pr * 2.4); gg.addColorStop(0, 'rgba(244,241,232,' + 0.35 * glow * a + ')'); gg.addColorStop(1, 'rgba(244,241,232,0)'); x.fillStyle = gg; x.fillRect(px - pr * 3, ey - pr * 3, pr * 6, pr * 6); }
     if (P && P.eye) { x.save(); x.beginPath(); x.arc(px, ey, pr, 0, 7); x.clip(); x.globalAlpha = a; x.drawImage(P.eye, px - pr, ey - pr, pr * 2, pr * 2); x.restore(); }
     else dot(px, ey, pr * (0.42 + 0.12 * glow), 0.95 * a);
@@ -372,7 +394,16 @@
     s.connect(f); f.connect(g2); g2.connect(NG.bus(c)); s.start(t);
   }
 
-  /* ───────── the keys: the three pages on the globe; the bell; the four steps, icons alone at the tentacles' tips; the one thing held ───────── */
+  /* a deep tone when the pointer finds what can be touched: the eye, the catch */
+  var toneAt = 0;
+  function deepTone(f0) {
+    window.__auraTone = f0;
+    if (mute || !AC0()) return; var c = NG.ac(), t = c.currentTime; if (t - toneAt < 0.7) return; toneAt = t;
+    [f0, f0 * 1.5].forEach(function (f, i) { var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(i ? 0.025 : 0.06, t + 0.09); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6); o.connect(g); g.connect(NG.bus(c)); o.start(t); o.stop(t + 1.7); });
+  }
+
+  /* ───────── the keys: the three pages on the globe; the bell, which is the eye; the four steps, icons alone at the tentacles' tips;
+     the one thing held. No words on hover: the names are for those who listen for them (aria) ───────── */
   var STEPS = [['notice', 'radio'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
   var NUMS = ['M2.6 4.4c1.4-.6 2.6-1.7 3.4-2.8.3 3.9 0 8.1.4 11.8', 'M1.8 4.6c.8-2.3 5.1-2.7 5.5.2.3 2.3-2.7 4.7-5.3 8.4 1.9-.5 3.9-.3 5.7.1',
     'M2 3.4c1.7-1.7 5.5-1.5 5.3 1.1-.1 1.6-1.9 2.4-3.5 2.6 2.5-.2 4.1.8 3.9 3.1-.3 2.9-4.5 3.3-5.9 1.6', 'M6.4 13.6c-.2-3.8 0-7.6.4-11.6-1.8 2.6-3.6 5.2-5.3 7.6 2.1-.2 4.6-.3 6.9 0'];
@@ -381,27 +412,30 @@
     wish: '<path d="M9 13.5C9 8 12 5 16 5s7 3 7 8.5v1.2H9z"/><path d="M10.5 15v13M14 15v14M18 15v14M21.5 15v13" class="t"/>',
     art: '<path d="M5 26c6-3 4-10 11-12s9-8 11-9"/><circle cx="9" cy="9" r="3"/><path d="M20 22l6 4M22 18h6" class="d"/>',
     print: '<path d="M9 3h14v24l-2.3-1.6-2.3 1.6-2.4-1.6-2.4 1.6-2.3-1.6L9 27z"/><path d="M12 9h8M12 13h8M12 17h5"/>',
-    map: '<path d="M4 8l7-3 10 3 7-3v19l-7 3-10-3-7 3z"/><path d="M11 5v19M21 8v19" class="d"/><circle cx="16" cy="15" r="1.8" class="f"/>',
     /* the catch: one bundle, four things in it (the ground, a leaf, the readings, the sun over the water) */
     catch: '<circle cx="16" cy="16" r="13.5" class="d"/><path d="M8 13l3-1.5 3 1.5 3-1.5v7l-3 1.5-3-1.5-3 1.5z"/><path d="M18.5 11c2-2.8 5-3.6 7-3-.4 2.8-3 5-7 3z"/><circle cx="21.5" cy="21" r="2.2"/><path d="M17 26c1.4-1 2.6-1 4 0s2.6 1 4 0" /><circle cx="11" cy="23" r="1" class="f"/><circle cx="13.5" cy="21.5" r="1" class="f"/>',
     save: '<path d="M16 5v15M10 15l6 6 6-6"/><path d="M7 26h18" class="d"/>',
     seed: '<circle cx="16" cy="16" r="3" class="f"/><circle cx="16" cy="16" r="9" class="d"/>',
-    eye: '<path d="M2 16C8 8 12 6 16 6s8 2 14 10c-6 8-10 10-14 10S8 24 2 16z"/><circle cx="16" cy="16" r="4.5"/><circle cx="16" cy="16" r="1.5" class="f"/>'
+    again: '<path d="M8 9a10 10 0 1 1-2 9"/><path d="M8 3.5V9h5.5"/>',
+    back: '<path d="M25 9H12a7 7 0 0 0 0 14h10"/><path d="M17 4l-5 5 5 5"/>',
+    bin: '<path d="M7 9h18M13 9V6h6v3M9 9l1.2 17h11.6L23 9"/><path d="M14 13v9M18 13v9" class="d"/>',
+    text: '<path d="M6 25L13 6h2l7 19M9 18h10"/><path d="M23 25c0-3 1.5-5 4-5s3 2 3 5" class="d"/>'
   };
-  var svgI = function (k, cls) { return '<svg class="' + (cls || 'au-i') + '" viewBox="0 0 32 32" aria-hidden="true">' + ICON[k] + '</svg>'; };
+  var svgI = function (k, cls2) { return '<svg class="' + (cls2 || 'au-i') + '" viewBox="0 0 32 32" aria-hidden="true">' + ICON[k] + '</svg>'; };
+  var markI = function (g) { return '<svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><path d="' + MARKS[g] + '"/></svg>'; };
   var numI = function (i) { return '<svg class="au-n" viewBox="0 0 10 16" aria-hidden="true"><path d="' + NUMS[i] + '"/></svg>'; };
   ui.innerHTML =
     '<button id="au-seed" aria-label="Begin"></button>' +
-    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '" title="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + numI(i) + svgI(['radio', 'wish', 'print'][i]) + '</button>'; }).join('') +
-    '<a id="au-base" href="?base" aria-label="The base" title="The base"><i></i></a>' +
-    '<label id="au-bell" aria-label="Photograph: what have you noticed?" title="What have you noticed?"><input type="file" accept="image/*" id="au-file" hidden></label>' +
-    '<button id="au-up" aria-label="Back to the globe" title="Back to the globe"><i></i></button>' +
-    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" aria-label="' + s[0] + '" title="' + s[0] + '">' + numI(i) + svgI(s[1]) + '</button>'; }).join('') +
-    '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño" title="What it has caught">' + svgI('catch') + '<b></b></button>' +
-    '<button id="au-snd" aria-label="Sound" title="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
+    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + numI(i) + svgI(['radio', 'wish', 'print'][i]) + '</button>'; }).join('') +
+    '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
+    '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
+    '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
+    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" aria-label="' + s[0] + '">' + numI(i) + svgI(s[1]) + '</button>'; }).join('') +
+    '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
+    '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
     '<section id="au-panel" aria-live="polite"></section><section id="au-deep" hidden></section>' +
     '<div id="au-show" hidden><div class="au-sl"><div class="au-pz"><img alt=""></div></div><nav class="au-dots"></nav>' +
-    '<button class="au-prev" aria-label="Before" title="Before">‹</button><button class="au-next2" aria-label="After" title="After">›</button><button class="au-x" aria-label="Close" title="Close">×</button></div>';
+    '<button class="au-prev" aria-label="Before">‹</button><button class="au-next2" aria-label="After">›</button><button class="au-x" aria-label="Close">×</button></div>';
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
   var showEl = $('#au-show');
@@ -452,23 +486,37 @@
   }
   function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
-  function step(i) { if (i === S.stage && !S.deep) return; S.stage = i; S.deep = false; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); bell(i); panel.scrollTop = 0; focusFirst(); }
+  function step(i) { if (i === S.stage && !S.deep) return; S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
   $('#au-seed').addEventListener('click', bang);
   root.addEventListener('pointerdown', function (e) { if (S.mode === 'seed' && e.target === cv) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); toIruk(+o.dataset.s); }); });
   $('#au-up').addEventListener('click', toGlobe);
-  $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (S.stage !== 0 || S.deep) step(0); intake(f); bell(0, 0.24); });
+  /* the eye takes in a photograph from any step, and the step stays where it is */
+  $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; intake(f); bell(0, 0.24); });
   tabs.forEach(function (b) { b.addEventListener('click', function () { step(+b.dataset.s); }); });
   catchK.addEventListener('click', function () { if (S.deep) closeDeep(); else openDeep(); bell(4, 0.2); });
+  var bellK = $('#au-bell');
+  bellK.addEventListener('pointerenter', function (e) { S.hEye = true; if (e.pointerType === 'mouse') deepTone(55); });
+  bellK.addEventListener('pointerleave', function () { S.hEye = false; });
+  catchK.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') deepTone(73.4); });
   $('#au-snd').addEventListener('click', function () { mute = !mute; store.set('da.aura.mute', mute); this.classList.toggle('off', mute); if (!mute) { window.__auraSound = 1; humStart(); } humSet(true); });
 
-  /* ───────── the piece: one at a time, from a photograph, a line or a wish alone. The engine reads it underneath; nothing it knows
-     is said unless it is caught ───────── */
+  /* ───────── the piece: one at a time, kept as it is made, until it is printed and a new one begun. The engine reads it underneath;
+     nothing it knows is said unless it is caught ───────── */
   var P = null;
   var ready = function () { return !!(P && (P.photo || P.say || (P.lines || []).some(Boolean) || P.catch.life)); };
-  function newPiece() { return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {} }; }
-  var piece = function () { if (!P || P.sent) { P = newPiece(); where(P); } return P; };
+  function newPiece() { return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [] }; }
+  var piece = function () { if (!P) { P = newPiece(); where(P); } return P; };
+  var KEEP = ['id', 'at', 'photo', 'thumb', 'say', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'sent', 'folioId', 'revealed', 'wx'];
+  function pack(p) { var o = {}; KEEP.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); o.noteId = p.note ? p.note.id : ''; return JSON.parse(JSON.stringify(o)); }
+  function unpack(o) {
+    var p = newPiece(); KEEP.forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; }); p.mine = true; p.catch = p.catch || { map: false, life: '', data: [], nino: false }; p.adds = p.adds || []; p.pos = p.pos || {};
+    p.note = o.noteId ? NG.notes().filter(function (n) { return n.id === o.noteId; })[0] || null : null; p.dirty = true; if (p.photo) eyeOf(p); return p;
+  }
+  var draftT = 0;
+  function changed() { if (!P) return; P._base = null; if (P.sent) P.sent = 0; clearTimeout(draftT); draftT = setTimeout(function () { if (P) draftSave(pack(P)); }, 500); keys(); }
+  function eyeOf(p) { NG.loadImg(p.photo).then(function (i2) { p.img = i2; p._base = null; var e = document.createElement('canvas'), w = i2.naturalWidth || i2.width, h = i2.naturalHeight || i2.height, m = Math.min(w, h); e.width = e.height = 96; e.getContext('2d').drawImage(i2, (w - m) / 2, (h - m) / 2, m, m, 0, 0, 96, 96); p.eye = e; if (S.stage >= 2) redraw(); }).catch(function () {}); }
   function where(p) {
     if (!navigator.geolocation) return; navigator.geolocation.getCurrentPosition(function (g) { if (!p || (p.src === 'PHOTO' || p.src === 'TAP')) return; p.lat = g.coords.latitude; p.lng = g.coords.longitude; p.src = 'HERE'; think(); },
       function () { /* the map's centre stands */ }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
@@ -486,8 +534,8 @@
       var ex = got[0] || {}, im = got[1]; panel.classList.remove('busy');
       if (im) { try { p.photo = NG.shrink(im, 1400, 0.86); if (p.photo.length > 900e3) p.photo = NG.shrink(im, 1000, 0.8); p.thumb = NG.shrink(im, 220, 0.7); } catch (e) { p.photo = ''; } }
       if (ex.t) p.at = ex.t; if (ex.lat != null) { p.lat = ex.lat; p.lng = ex.lng; p.src = 'PHOTO'; } else where(p);
-      p.img = null; p._base = null; p.eye = null; if (p.photo) NG.loadImg(p.photo).then(function (i2) { p.img = i2; p._base = null; var e = document.createElement('canvas'), w = i2.naturalWidth || i2.width, h = i2.naturalHeight || i2.height, m = Math.min(w, h); e.width = e.height = 96; e.getContext('2d').drawImage(i2, (w - m) / 2, (h - m) / 2, m, m, 0, 0, 96, 96); p.eye = e; });
-      setTimeout(function () { URL.revokeObjectURL(url); }, 4000); NG.db().then(think); think(); paint(); harp([0, 2]); S.blink = performance.now() / 1000;
+      p.img = null; p.eye = null; if (p.photo) { eyeOf(p); if (p.art !== 'photo' && p.art !== 'pixel') p.art = 'photo'; }
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000); NG.db().then(think); think(); changed(); paint(); harp([0, 2]); S.blink = performance.now() / 1000;
     });
   }
   /* placed: kept with the base's noticings and a few sightings revealed near it. On the record, only what was caught */
@@ -496,7 +544,7 @@
     if (P.photo) NG.PHOTOS[n.id] = P.photo.length < 400e3 ? P.photo : NG.PHOTOS[n.id] || P.photo;
     var f = lifeOf(P); n.sp = f ? f.id : ''; n.cn = f ? f.cn : ''; n.sci = f ? f.n : ''; n.g = f ? f.g : '';
     n.data = P.catch.data.slice(); n.wishText = P.lines.slice(); n.wish = P.lines.some(Boolean); NG.saveNotes();
-    if (!P.revealed && P.r && P.r.sp) { P.revealed = 1; NG.reveal(n, P.r).then(function (seen) { n.seen = seen; NG.saveNotes(); if (S.stage === 2) drawArt(); }); }
+    if (!P.revealed && P.r && P.r.sp) { P.revealed = 1; NG.reveal(n, P.r).then(function (seen) { n.seen = seen; NG.saveNotes(); if (S.stage >= 2) redraw(); }); }
     return n;
   }
 
@@ -505,82 +553,110 @@
   var grow = function (ta) { if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight + 2, 40) + 'px'; };
   var regrow = function () { [].forEach.call(panel.querySelectorAll('textarea'), grow); };
   var ART = function () { return (P && P.photo ? ['photo', 'pixel'] : []).concat(['net', 'sign']); };
+  /* W.I.S.H., each letter's sentence, shown only when one looks for it (a pointer on the letter, or the line in hand) */
+  var WISH_SAYS = ['Witness: what you saw, where, and when.', 'Intention: what you want for it.', 'Strategy: what will be done, and by whom.', 'Hope: how it ends well, and who helps.'];
   function paint() {
     var s = S.stage, h = '';
     if (s === 0) {
-      h = (P && P.photo ? '<figure class="au-ph" data-zoom="1"><img alt="" src="' + P.photo + '"></figure>' : '') +
-        '<label class="au-line"><textarea id="au-say" rows="1" maxlength="200" placeholder="what have you noticed?" enterkeyhint="next"></textarea></label>';
+      h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"></figure>' : '') +
+        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>';
     } else if (s === 1) {
       /* the four lines are one's own: empty, the letters only */
       var L4 = P ? P.lines : ['', '', '', ''];
-      h = '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li><b aria-hidden="true">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + ['W', 'I', 'S', 'H'][i] + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea></li>'; }).join('') + '</ol>';
+      h = '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea></li>'; }).join('') + '</ol>';
     } else if (s === 2) {
-      if (!ready()) h = blank(0);
-      else { settle(); var arts = ART(); if (arts.indexOf(P.art) < 0) P.art = arts[0];
-        h = '<div class="au-arts" role="radiogroup">' + arts.map(function (a) { return '<button class="au-art' + (a === P.art ? ' on' : '') + '" data-art="' + a + '" role="radio" aria-checked="' + (a === P.art) + '" aria-label="' + a + '" title="' + a + '"><canvas></canvas></button>'; }).join('') + '</div>' +
-          '<figure class="au-poster au-drag"><canvas></canvas></figure>'; }
+      if (ready()) { settle(); var arts = ART(); if (arts.indexOf(P.art) < 0) P.art = arts[0];
+        var mine = (NG.icons() || []).slice(-6);
+        h = '<div class="au-arts" role="radiogroup">' + arts.map(function (a) { return '<button class="au-art' + (a === P.art ? ' on' : '') + '" data-art="' + a + '" role="radio" aria-checked="' + (a === P.art) + '" aria-label="' + a + '"><canvas></canvas></button>'; }).join('') + '</div>' +
+          '<div class="au-tray">' + Object.keys(MARKS).map(function (g) { return '<button data-mark="' + g + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
+          '<button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
+          '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><button class="au-rm" aria-label="Take it off">×</button></div></figure>' +
+          '<label class="au-tline" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words"></textarea></label>'; }
     } else {
-      h = ready() ? '<figure class="au-poster au-hero" data-zoom="1"><canvas></canvas></figure>' +
-        '<div class="au-press">' + hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save" title="Save"') +
-        hand('au-big', svgI(P.sent ? 'seed' : 'print'), 'id="au-print" aria-label="' + (P.sent ? 'Start another' : 'Print') + '" title="' + (P.sent ? 'Start another' : 'Print') + '"') +
-        '<span class="au-pips" id="au-pips">' + (P.sent && P.note && P.note.sent ? NG.pips(P.note.sent.s) : '') + '</span></div><div class="au-strip" id="au-folio"></div>' :
-        '<div class="au-strip au-only" id="au-folio"></div>' + blank(0);
+      h = ready() ? '<figure class="au-poster au-hero"><canvas></canvas></figure>' +
+        '<div class="au-press">' + hand('au-sm au-reset', svgI('again'), 'id="au-reset" aria-label="Start again: this piece is let go"') + hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save"') +
+        hand('au-big', svgI(P.sent ? 'seed' : 'print'), 'id="au-print" aria-label="' + (P.sent ? 'Begin a new piece' : 'Print') + '"') +
+        '<span class="au-pips" id="au-pips">' + (P.sent && P.note && P.note.sent ? NG.pips(P.note.sent.s) : '') + '</span></div>' : wallHTML();
     }
     panel.innerHTML = '<div class="au-in">' + h + '</div>'; wire(s); cls();
   }
-  /* nothing yet: the way back to the start of a piece, as the eye */
-  var blank = function () { return ''; };
   function wire(s) {
     regrow(); [].forEach.call(panel.querySelectorAll('textarea'), function (ta) { ta.addEventListener('input', function () { grow(ta); }); });
-    [].forEach.call(panel.querySelectorAll('[data-to]'), function (b) { b.addEventListener('click', function () { step(+b.dataset.to); }); });
     if (s === 0) {
       var ph2 = panel.querySelector('.au-ph'); if (ph2) ph2.addEventListener('click', function () { show([{ src: P.photo }], 0, true); });
-      var say = $('#au-say'), tm = 0; if (P) say.value = P.say || '';
-      var keep = function () { var v = say.value.trim(); if (!v && !P) return; piece().say = v; P._base = null; think(); keys(); };
-      say.addEventListener('input', function () { clearTimeout(tm); tm = setTimeout(keep, 260); });
+      var say = $('#au-say'), tm = 0, lab = say.parentNode; if (P) say.value = P.say || '';
+      var keep = function () { var v = say.value.trim(); if (!v && !P) return; piece().say = v; think(); changed(); };
+      say.addEventListener('input', function () { lab.classList.toggle('has', !!say.value); clearTimeout(tm); tm = setTimeout(keep, 260); });
       say.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); keep(); if (ready()) step(1); } });
     }
     if (s === 1) {
       [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var tm2 = 0, i = +ta.dataset.i;
-        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; p._base = null; if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } keys(); };
+        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); };
         ta.addEventListener('input', function () { clearTimeout(tm2); tm2 = setTimeout(keep, 250); });
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready()) step(2); }); });
     }
     if (s === 2 && ready()) {
-      [].forEach.call(panel.querySelectorAll('[data-art]'), function (b) { b.addEventListener('click', function () { P.art = b.dataset.art; [].forEach.call(panel.querySelectorAll('[data-art]'), function (o) { o.classList.toggle('on', o === b); o.setAttribute('aria-checked', String(o === b)); }); drawArt(); bell(5, 0.18); }); });
-      thumbs(); drawArt(); dragWire();
+      [].forEach.call(panel.querySelectorAll('[data-art]'), function (b) { b.addEventListener('click', function () { P.art = b.dataset.art; [].forEach.call(panel.querySelectorAll('[data-art]'), function (o) { o.classList.toggle('on', o === b); o.setAttribute('aria-checked', String(o === b)); }); changed(); redraw(); bell(5, 0.18); }); });
+      var add = function (a) { a.x = 0.3 + Math.random() * 0.2; a.y = 0.12 + Math.random() * 0.2; P.adds.push(a); S.sel = 'a' + (P.adds.length - 1); changed(); redraw(); bell(6, 0.18); if (a.k === 't') setTimeout(function () { var t2 = $('#au-tx'); if (t2) t2.focus(); }, 60); };
+      [].forEach.call(panel.querySelectorAll('[data-mark]'), function (b) { b.addEventListener('click', function () { add({ k: 's', g: b.dataset.mark }); }); });
+      [].forEach.call(panel.querySelectorAll('[data-ic]'), function (b) { b.addEventListener('click', function () { var ic = (NG.icons() || []).slice(-6)[+b.dataset.ic]; if (ic) add({ k: 'i', src: ic.src }); }); });
+      panel.querySelector('[data-add="t"]').addEventListener('click', function () { add({ k: 't', t: '' }); });
+      var tx = $('#au-tx'); tx.addEventListener('input', function () { var a = selAdd(); if (a && a.k === 't') { a.t = tx.value; changed(); redraw(); } });
+      panel.querySelector('.au-rm').addEventListener('click', function (e) { e.stopPropagation(); takeOff(S.sel); });
+      thumbs(); redraw(); dragWire();
     }
     if (s === 3) {
-      folioRow();
-      if (!ready()) return;
-      drawHero();
-      $('#au-print').addEventListener('click', function () { if (P.sent) { P = null; step(0); return; } printNow(); });
+      if (!ready()) { wallWire(); return; }
+      redraw();
+      $('#au-print').addEventListener('click', function () { if (P.sent) { letGo(); return; } printNow(); });
       $('#au-save').addEventListener('click', function () { poster(P, P.art).then(function (c) { NG.download(c, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); bell(3, 0.18); }); });
+      NG.sureTap($('#au-reset'), function () { letGo(); });
       panel.querySelector('.au-hero').addEventListener('click', function () { var c = panel.querySelector('.au-hero canvas'); show([{ src: c.toDataURL('image/jpeg', 0.9) }], 0, true); });
     }
   }
-  /* the art: each way of drawing it shown as itself, small; the poster below, the caught things moved by hand */
+  /* the piece let go: a new one begins at the eye. What was printed stays on the wall */
+  function letGo() { P = null; S.sel = null; draftSave(null); step(0); if (S.stage === 0) paint(); bell(0, 0.24); }
+  /* the art: each way of drawing it shown as itself, small; the poster below; what is caught or added, placed, taken off, rewritten by hand */
   function thumbs() { [].forEach.call(panel.querySelectorAll('[data-art]'), function (b) { var c = artOf(P, b.dataset.art, 120, 120), t = b.querySelector('canvas'); t.width = c.width; t.height = c.height; t.getContext('2d').drawImage(c, 0, 0); }); }
   var lastBoxes = {}, artRaf = 0;
-  function drawInto(sel) {
-    var f = panel.querySelector(sel); if (!f) return null; var go2 = function () { fontReady().then(function () { var g = panel.querySelector(sel); if (!g) return; var o = posterNow(P, P.art); lastBoxes = o.boxes; g.width = o.c.width; g.height = o.c.height; g.getContext('2d').drawImage(o.c, 0, 0); }); };
+  var selAdd = function () { return S.sel && S.sel.charAt(0) === 'a' && S.sel.length > 1 && P.adds ? P.adds[+S.sel.slice(1)] : null; };
+  function redraw() {
+    if (!P) return; var sel = S.stage === 2 ? '.au-drag canvas' : '.au-hero canvas', f = panel.querySelector(sel); if (!f) return;
+    var go2 = function () { fontReady().then(function () { var g = panel.querySelector(sel); if (!g || !P) return; var o = posterNow(P, P.art); lastBoxes = o.boxes; g.width = o.c.width; g.height = o.c.height; g.getContext('2d').drawImage(o.c, 0, 0); selBox(); }); };
     if (P.photo && !P.img) NG.loadImg(P.photo).then(function (im) { P.img = im; P._base = null; go2(); }).catch(go2); else go2();
   }
-  var drawArt = function () { drawInto('.au-drag canvas'); };
-  var drawHero = function () { drawInto('.au-hero canvas'); };
+  api.redraw = function () { redraw(); };
+  /* the chosen thing, outlined where it lies, with its × on its corner; words open their line to be rewritten */
+  function selBox() {
+    var box = panel.querySelector('.au-sel'), c = panel.querySelector('.au-drag canvas'), tl = panel.querySelector('.au-tline'); if (!box || !c) return;
+    var b = S.sel && lastBoxes[S.sel]; if (!b) { box.hidden = true; if (tl) tl.hidden = true; return; }
+    var r = c.getBoundingClientRect(), fr = c.parentNode.getBoundingClientRect(), k = r.width / c.width;
+    box.hidden = false; box.style.left = (r.left - fr.left + b[0] * k - 4) + 'px'; box.style.top = (r.top - fr.top + b[1] * k - 4) + 'px'; box.style.width = (b[2] * k + 8) + 'px'; box.style.height = (b[3] * k + 8) + 'px';
+    var a = selAdd(); if (tl) { tl.hidden = !(a && a.k === 't'); var tx = $('#au-tx'); if (a && a.k === 't' && tx && document.activeElement !== tx) tx.value = a.t || ''; }
+  }
+  function takeOff(k) {
+    if (!k || !P) return; if (k.charAt(0) === 'a' && k.length > 1) P.adds.splice(+k.slice(1), 1);
+    else if (k === 'map') P.catch.map = false; else if (k === 'life') { P.catch.life = ''; think(); } else if (k === 'data') P.catch.data = []; else if (k === 'nino') P.catch.nino = false;
+    delete P.pos[k]; S.sel = null; changed(); redraw(); bell(1, 0.16); fillDots();
+  }
   function dragWire() {
     var c = panel.querySelector('.au-drag canvas'), hold = null;
     var at = function (e) { var r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
-    c.addEventListener('pointerdown', function (e) { var p = at(e), k = null; Object.keys(lastBoxes).forEach(function (q) { var b = lastBoxes[q]; if (p[0] >= b[0] && p[0] <= b[0] + b[2] && p[1] >= b[1] && p[1] <= b[1] + b[3]) k = q; });
-      if (!k) return; e.preventDefault(); hold = { k: k, dx: p[0] - lastBoxes[k][0], dy: p[1] - lastBoxes[k][1] }; try { c.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } c.classList.add('holding'); });
+    var hit = function (p) { var k = null; Object.keys(lastBoxes).forEach(function (q) { var b = lastBoxes[q]; if (p[0] >= b[0] && p[0] <= b[0] + b[2] && p[1] >= b[1] && p[1] <= b[1] + b[3]) k = q; }); return k; };
+    c.addEventListener('pointerdown', function (e) { var p = at(e), k = hit(p);
+      if (!k) { if (S.sel) { S.sel = null; selBox(); } return; }
+      e.preventDefault(); hold = { k: k, dx: p[0] - lastBoxes[k][0], dy: p[1] - lastBoxes[k][1], moved: 0, x0: e.clientX, y0: e.clientY }; S.sel = k; selBox(); try { c.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } c.classList.add('holding'); });
     c.addEventListener('pointermove', function (e) {
-      var p = at(e); if (!hold) { var over = Object.keys(lastBoxes).some(function (q) { var b = lastBoxes[q]; return p[0] >= b[0] && p[0] <= b[0] + b[2] && p[1] >= b[1] && p[1] <= b[1] + b[3]; }); c.style.cursor = over ? 'grab' : ''; return; }
-      var b = lastBoxes[hold.k], W = c.width, H = c.height; P.pos[hold.k] = [Math.max(0, Math.min(W - b[2], p[0] - hold.dx)) / W, Math.max(0, Math.min(H - b[3], p[1] - hold.dy)) / H];
-      if (!artRaf) artRaf = requestAnimationFrame(function () { artRaf = 0; drawArt(); }); });
-    var up = function () { if (!hold) return; hold = null; c.classList.remove('holding'); bell(2, 0.14); };
+      var p = at(e); if (!hold) { c.style.cursor = hit(p) ? 'grab' : ''; return; }
+      hold.moved = Math.max(hold.moved, Math.abs(e.clientX - hold.x0) + Math.abs(e.clientY - hold.y0));
+      var b = lastBoxes[hold.k], W = c.width, H = c.height, nx = Math.max(0, Math.min(W - b[2], p[0] - hold.dx)) / W, ny = Math.max(0, Math.min(H - b[3], p[1] - hold.dy)) / H;
+      if (hold.k.charAt(0) === 'a' && hold.k.length > 1) { var a = P.adds[+hold.k.slice(1)]; a.x = nx; a.y = ny; } else P.pos[hold.k] = [nx, ny];
+      if (!artRaf) artRaf = requestAnimationFrame(function () { artRaf = 0; redraw(); }); });
+    var up = function () { if (!hold) return; var mv = hold.moved; hold = null; c.classList.remove('holding'); if (mv > 4) { changed(); bell(2, 0.14); } else { var a = selAdd(); if (a && a.k === 't') { var tx = $('#au-tx'); if (tx) tx.focus(); } } };
     c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
   }
-  /* print: the receipt for the thermal head (the base's own, its photograph through the print pipeline), the poster kept in colour */
+  /* print: the receipt for the thermal head (the base's own, its photograph through the print pipeline), the poster kept in colour on the wall.
+     Printed again after a change, it takes the same place on the wall */
   function printNow() {
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
     var art = P.art === 'pixel' && !P.photo ? 'net' : P.art, photo = NG.PHOTOS[n.id] || P.photo || '', show2 = { line: 1, life: !!P.catch.life, facts: 0, links: 0, code: 1 };
@@ -591,16 +667,31 @@
     }).then(function (s) {
       st.innerHTML = NG.pips(s); btn.classList.remove('going'); S.sting = performance.now() / 1000; if (n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P, P.art).then(function (c) {
-        var it = keepCanvas(c, titleOf(P), n.code); P.sent = 1; btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Start another'); btn.title = 'Start another'; folioRow();
+        var item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code };
+        P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P));
+        btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Begin a new piece');
         var hero = panel.querySelector('.au-hero'); if (hero) hero.classList.add('kept');
-        setTimeout(function () { if (S.stage === 3) show(slides(), slides().map(function (q) { return q.id; }).indexOf(it.id)); }, 1100);
+        setTimeout(function () { if (S.stage === 3) show(slides(), slides().map(function (q) { return q.id; }).indexOf(item.id)); }, 1100);
       });
     }).catch(function () { st.innerHTML = NG.pips('failed'); btn.disabled = false; btn.classList.remove('going'); });
   }
-  function folioRow() {
-    var el = $('#au-folio'); if (!el) return; var all = slides();
-    el.innerHTML = all.map(function (f, i) { return '<button data-f="' + i + '" aria-label="' + esc(f.cap || 'piece') + '"><img alt="" src="' + f.src + '"></button>'; }).join('');
-    [].forEach.call(el.querySelectorAll('[data-f]'), function (b) { b.addEventListener('click', function () { show(slides(), +b.dataset.f); }); });
+  /* the wall, when nothing is being made: one finished piece at a time, whole; brought back to be worked on, or taken down */
+  var WALL = 0;
+  function wallHTML() {
+    var all = slides(); if (!all.length) return ''; WALL = Math.min(WALL, all.length - 1); var f = all[WALL];
+    return '<figure class="au-poster au-wall"><img alt="" src="' + f.src + '"></figure><div class="au-press">' +
+      (all.length > 1 ? hand('au-sm au-nav', '‹', 'data-w="-1" aria-label="Before"') : '') +
+      (f.piece ? hand('au-big', svgI('back'), 'id="au-bring" aria-label="Bring it back to work on"') : '') +
+      (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" aria-label="Take it down"') : '') +
+      (all.length > 1 ? hand('au-sm au-nav', '›', 'data-w="1" aria-label="After"') : '') + '</div>' +
+      (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '');
+  }
+  function wallWire() {
+    var all = slides(), f = all[WALL]; if (!f) return;
+    [].forEach.call(panel.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); bell(2, 0.14); }); });
+    panel.querySelector('.au-wall').addEventListener('click', function () { show(slides(), WALL); });
+    var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 1; think(); draftSave(pack(P)); bell(5, 0.22); step(2); });
+    var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { folioDrop(f.id).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
   }
 
   /* ───────── the slideshow: each picture whole, never cropped; pinched, wheeled or double-tapped to look closer. The close sits on it ───────── */
@@ -644,15 +735,17 @@
   var MAPV = { z: 16, lat: 0, lng: 0, draw: null };
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
-    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back" title="Back"><i></i></button>' +
+    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' +
       '<div class="au-c"><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div></div>' +
-      '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label><ul class="au-names" id="au-names"></ul><ul class="au-vals" id="au-vals"></ul><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button></div>';
+      '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label><ul class="au-names" id="au-names"></ul>' +
+      '<ul class="au-vals" id="au-vals"></ul><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button></div>';
     $('#au-dx').addEventListener('click', closeDeep);
     lens(); NG.db().then(function () { think(); fill(); }); fill();
     $('#au-q').addEventListener('input', fill);
   }
   function closeDeep() { S.deep = false; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); }
-  var ping = function (on) { bell(on ? 6 : 1, 0.18); keys(); if (P) P._base = null; };
+  var ping = function (on) { bell(on ? 6 : 1, 0.18); changed(); fillDots(); };
+  var fillDots = function () { catchK.querySelector('b').textContent = P ? '••••'.slice(0, caught(P).length) : ''; };
   function fill() {
     if (!S.deep || !P) return;
     /* the lives: never offered. Only one already caught, one named in one's own words, or one found by name. Names alone */
@@ -668,13 +761,13 @@
     [].forEach.call(uv.querySelectorAll('[data-v]'), function (b) { b.addEventListener('click', function () { var v = b.dataset.v, i = P.catch.data.indexOf(v), on = i < 0; if (on) P.catch.data.push(v); else P.catch.data.splice(i, 1); P.dirty = true; fill(); ping(on); }); });
     /* El Niño: the reading now and its year as a line */
     var nb = $('#au-nino'), v2 = ninoVals(), spark = '';
-    if (v2) { var mx = Math.max(1, Math.max.apply(null, v2)), D = NG.DB(), O = D.outlook, i0 = (new Date().getFullYear() - O.start[0]) * 12 + new Date().getMonth() - O.start[1], w = 300, h = 70;
-      var pts = v2.map(function (q, i) { return [10 + i * (w - 20) / Math.max(1, v2.length - 1), h - 10 - (q / mx) * (h - 24)]; });
+    if (v2) { var mx = Math.max(1, Math.max.apply(null, v2)), O = D.outlook, i0 = (new Date().getFullYear() - O.start[0]) * 12 + new Date().getMonth() - O.start[1], w = 300, h = 70;
+      var pts = v2.map(function (q2, i) { return [10 + i * (w - 20) / Math.max(1, v2.length - 1), h - 10 - (q2 / mx) * (h - 24)]; });
       spark = '<svg class="au-spark" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><path d="M' + pts.map(function (p) { return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join('L') + '"/>' + pts.map(function (p, i) { return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (i === i0 ? 4.5 : 2) + '" class="' + (i === i0 ? 'f now' : 'f') + '"/>'; }).join('') + '</svg>'; }
     nb.innerHTML = (ninoNow() ? '<b>Niño 3.4 ' + esc(ninoNow()) + '</b>' : '') + spark; nb.hidden = !ninoNow(); nb.classList.toggle('on', !!P.catch.nino); nb.setAttribute('aria-pressed', String(!!P.catch.nino));
     if (!nb.__w) { nb.__w = 1; nb.addEventListener('click', function () { P.catch.nino = !P.catch.nino; fill(); ping(P.catch.nino); }); }
     var cm = $('#au-cmap'); if (cm) cm.classList.toggle('on', !!P.catch.map);
-    var count = caught(P).length; catchK.querySelector('b').textContent = '••••'.slice(0, count);
+    fillDots();
   }
   /* the map, as a lens: the ground in blueprint (its own photograph taken down to the paper's blue). A touch puts the piece there and catches the map */
   function lens() {
@@ -715,12 +808,14 @@
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
-  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, piece: P ? { say: P.say, photo: !!P.photo, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, cn: P.note ? P.note.cn : '' } : null, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
+  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '' } : null, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
   api.go = function (m, s) { if (m === 'globe') { if (S.mode === 'seed') bang(); setMode('globe'); } if (m === 'iruk') { setMode('globe'); toIruk(s || 0); } };
-  addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); if (!showEl.hidden) pinX(); });
+  addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); if (!showEl.hidden) pinX(); selBox(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) go(); });
   addEventListener('hashchange', function () { if (location.hash) api.sleep(); });
   layout(); setMode('seed'); paint();
+  /* the piece one was making comes back with one */
+  draftLoad().then(function (o) { if (o && !P) { P = unpack(o); think(); fillDots(); paint(); } });
   if (location.hash) api.sleep(); else go();
   fontReady();
 })();
