@@ -199,3 +199,12 @@ The base works, but it works like an app: pages, a bar, a map. A portfolio piece
 - **Four tentacles, four steps.** Notice, W.I.S.H., art, print are the tentacles' tips, in order, so the way through is the animal's body. The deeper views (map, species, data, El Niño) are what it has caught on the way down: there when wanted, never in the way. That is the 80% cut: the flow is four touches, and depth is one touch to the side.
 - **Colour for the wall, one bit for the paper.** The thermal printer prints in black dots; the portfolio keeps the same piece in colour, whole and zoomable. The receipt is the act; the poster is the record.
 - **The base stays whole underneath** (`/?base`), for class and for anyone who needs the full tools.
+
+## The myth: the eye that weeps four tentacles
+
+The irukandji is almost invisible and does its harm out of all proportion to its size. That is what noticing is: small attention with large consequences. So the creature is not a mascot but the interface itself.
+
+- **The bell is the eye.** It is where noticing happens, so it is where the photograph is taken. What it has seen stays in its pupil. Before anything is seen, it breathes.
+- **Its four tears are the tentacles.** They are the four steps: noticing, wishing, making, printing. The eye looks down the one that is open, and a light runs down the next when there is something to take on.
+- **What it holds, it caught.** The map, the life, the readings and El Niño are prey, not menus. Nothing is shown until it is caught, and no life is offered. The engine reads underneath, but a name only appears if you said it, found it or chose it. Attention is the user's, never the system's.
+- **The print is the sting:** one press, a light down all four, and the poster goes to the wall.

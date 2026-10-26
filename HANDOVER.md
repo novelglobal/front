@@ -150,6 +150,43 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the aura refined, 26 October** (the owner: "remove all copy … remove all WISH templates … make the top toggles and buttons (map species data el nino) join into one thing … only clickable icons are the bottom of the current jellyfish tentacles … the close button is also not near on the poster … make sure no examples of species pops up without someone selecting, finding, or making it"; "the main eye can also be the jellyfish body eye at the top").
+  - **The myth, as the interface.**
+    - **The bell is the eye that notices** (`#au-bell`, a file input). It is drawn in dots, as the bark painting draws it.
+    - **Its four tears are the four tentacles.**
+    - It looks toward the step that is open. It blinks now and then, and when it takes something in.
+    - What it has seen sits in its pupil: a round of the photograph (`P.eye`).
+    - With nothing seen yet, its pupil breathes: the invitation.
+    - **A print is its sting:** a light runs down all four tentacles at once (`S.sting`).
+  - **The steps are icons alone at the tentacles' tips.** Their numbers are set as references: small, raised, to the right. The globe's numbers are set the same way.
+    - When a step has something in it, the next tip breathes and a light runs down its tentacle (`nextStep`).
+    - Enter carries one on: from the line to W.I.S.H., then line by line to the art.
+  - **Back up to the globe** is a dotted line rising at the top left (`#au-up`). The base is a wordless dot at the foot of the globe.
+  - **One thing held, the catch** (`#au-catch`). The four tentacles hold it together under the bell, in steps 1 to 3; it is put down for print.
+    - It opens in the page's place, with no headings: the map lens, a glass to find a life by name, the readings (when, the place, the water near, the canopy, today's heat) and Niño 3.4 with its year.
+    - **Only what is touched is caught,** and dots on the catch count what it holds:
+      - a touch on the map puts the piece there and catches the map;
+      - a life is caught by name;
+      - readings are caught one by one;
+      - El Niño as a whole.
+    - **No life is ever offered.** The catch shows only a life already caught, one named in one's own words, or one found by name. Nothing is in season, related or guessed on screen.
+    - The engine still reads underneath, for the sightings it reveals and for the record.
+  - **On the record** (`settle`), the life and the data are only what was caught. The receipt (`slip`, `show`) prints the life only if caught, the facts and links never, and one's own four lines.
+  - **W.I.S.H. is four empty lines with the letters W I S H,** nothing drafted, no ↻. Writing in it alone makes a piece. The template ("which life?") is gone.
+  - **Art.**
+    - The four ways of drawing it are chosen by small pictures of themselves, no words.
+    - The sign is one's own line, read from a step away.
+    - The net names nothing unless the life is caught.
+    - The poster has a band for what was caught. Each caught thing is a scrap on the poster, dragged where one wants it (`P.pos`, `drawCatch`):
+      - the map as a round chart with its north and the sightings;
+      - the life;
+      - the readings;
+      - El Niño with its line.
+  - **Print.**
+    - The poster is the hero, with one press under it: the printer. Save is small beside it, and the status beside that. No row of steps, no words.
+    - After the print, the same press becomes a seed to start the next piece. The poster lifts and opens in the portfolio.
+    - With nothing made, print shows the portfolio alone.
+  - **The slideshow's close** sits on the picture's own corner, 44 px, and follows it as it zooms (`pinX`). A touch on the paper round the picture closes it too. The double tap is read from the pointer, so a phone's own double tap zooms.
 - **v0.1 alpha, the aura, 26 October** (the owner: "it begins with the current novel.global globe rings … a big bang that starts on tap … when one of the icons is clicked rather than going to a new page and map everything remains on the blueprint background … the globe lines reshape into the Irukandji … All tab elements should be either part of one of the 4 tentacles of the jellyfish, or elements or objects it has grabbed or deep sea line dot elements").
   - **`/` is now the aura** (`src/base/aura.js`, `aura.css`). The base is untouched underneath:
     - Its pages still open by link (`#radio`, `#wish`, `#print` and the rest), and the aura sleeps under them (`AURA.sleep` from `open`, `AURA.wake` from `close`).
@@ -863,7 +900,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v84` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v85` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
