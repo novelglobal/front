@@ -1,6 +1,6 @@
 # Sources: open projects that could be brought in, stage by stage
 
-24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Eight projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb and Tuna. The others are candidates.
+24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Twelve projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb, Tuna, perfect-freehand, simplex-noise, Panzoom and Architects Daughter. The others are candidates.
 
 Each project is listed with what it would replace and what it costs. Bring one in only when the base's own version fails someone in the field. A pack, loaded only when it is used, is the way to add one.
 
@@ -23,7 +23,10 @@ Each project is listed with what it would replace and what it costs. Bring one i
 | Project | What it would do | Cost, and when |
 |---|---|---|
 | [rough.js](https://github.com/rough-stuff/rough) | **Brought in.** Hand-drawn lines and fills. | 9 KB. The sticks are already hand-bent (`chart`). rough.js would give the receipt's frames and SIGN's band the same hand. |
-| [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | Pressure-shaped strokes from a finger. | 3 KB. It would let someone draw their own stick onto the net or the receipt: a tie made by hand, not a key. |
+| [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | **Brought in.** Pressure-shaped strokes. | 5 KB, `vendor/freehand.js`. Every line of the aura (the rings, the bell, the tentacles tapering to their tips) is drawn with it. It could also let someone draw their own stick onto the net. |
+| [simplex-noise](https://github.com/jwagner/simplex-noise.js) | **Brought in.** Smooth noise. | 2 KB, `vendor/simplex.js`. The tentacles' drift, so no two moments hang the same. |
+| [Architects Daughter](https://github.com/google/fonts/tree/main/ofl/architectsdaughter) | **Brought in.** Hand lettering after an architect's drawings. | 13 KB, `vendor/architects-daughter.woff2`, OFL. The aura's words and the colour posters: blueprint lettering. |
+| [Panzoom](https://github.com/timmywil/panzoom) | **Brought in.** Pinch, wheel and double-tap zoom with CSS transforms. | 10 KB, `vendor/panzoom.js`. The portfolio slideshow: each poster whole, then as close as one likes, in place. |
 | [pixelit](https://github.com/giventofly/pixelit) | Pixel art from a photograph, with palettes. | Small. The base's wonky pixels are its own on purpose. Take only its palette mapping, for colour boards. |
 | [CanvasDither](https://github.com/NielsLeenheer/CanvasDither) | **Brought in.** One-bit dithering made for receipt printers. The booth uses its Atkinson method. | 2 KB, `vendor/canvas-dither.js`, loaded only by the booth. It is ported to plain script, with the error carried in a float buffer. |
 | [gifenc](https://github.com/mattdesl/gifenc) | **Brought in.** Fast GIF encoding in the browser. | 9 KB. The pixel board's three-picture sprite saved as one moving file, to share. |
@@ -47,7 +50,7 @@ Each project is listed with what it would replace and what it costs. Bring one i
 
 | Project | What it would do | Cost, and when |
 |---|---|---|
-| [Freeverb](https://github.com/mmckegg/freeverb) | **Brought in.** The Schroeder–Moorer hall reverb, after Tone.js, as plain Web Audio nodes. | About 2 KB, `vendor/freeverb.js`. The room every voice plays in (`room`); it made the bells and the choir sound far off instead of thin. |
+| [Freeverb](https://github.com/livejs/freeverb) | **Brought in.** The Schroeder–Moorer hall reverb, after Tone.js, as plain Web Audio nodes. | About 2 KB, `vendor/freeverb.js`. The room every voice plays in (`room`); it made the bells and the choir sound far off instead of thin. |
 | [Tuna](https://github.com/Theodeus/tuna) | **Brought in.** Web Audio effects. Only its ping-pong delay is used; its chorus runs on the old ScriptProcessor, so the chorus is the base's own. | About 36 KB, `vendor/tuna.js`. The echo that crosses left and right behind the bells. |
 | [Tone.js](https://github.com/Tonejs/Tone.js) | Synths, a transport, effects and sample players on Web Audio. | About 150 KB. The base's own voices (gamelan, jegog, chant, kecak, taiko) and scheduler do the job in a few KB. Bring Tone in only for recorded samples of real instruments. |
 | [Strudel](https://strudel.cc) | TidalCycles patterns in the browser. | Large. A song could be saved as a line of pattern text, readable and shared as a code on the receipt. |

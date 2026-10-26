@@ -1,0 +1,171 @@
+/* novel.global, the aura: one sheet of blueprint paper, everything on it drawn by hand in white, in dots and lines */
+@font-face { font-family: 'Architects Daughter'; src: url('vendor/architects-daughter.woff2') format('woff2'); font-display: swap; }
+html.aura-on #home { display: none !important; }
+html.aura-on body { background: var(--blue, #17457F); }
+#aura { --ink: #F4F1E8; --line: rgba(244, 241, 232, .85); --faint: rgba(244, 241, 232, .5);
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 40; overflow: hidden; color: var(--ink); font-family: 'Architects Daughter', 'Comic Sans MS', 'Bradley Hand', cursive;
+  background-color: #17457F; background-image: var(--paper);
+  --paper:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(6, 24, 52, .38) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch' seed='9'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .11 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+  background-size: 100% 100%, 100% 100%, 240px 240px; background-repeat: no-repeat, no-repeat, repeat;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#aura[hidden] { display: none; }
+#au-cv { position: absolute; left: 0; top: 0; display: block; }
+#au-ui { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+#au-ui > * { pointer-events: auto; }
+#aura button, #aura .au-k { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#aura svg { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+#aura svg .f { fill: var(--ink); stroke: none; }
+#aura svg .d { stroke-dasharray: .1 3.2; stroke-width: 1.8; }
+#aura svg .t { stroke-dasharray: .1 2.6; stroke-width: 1.7; }
+#aura :focus-visible { outline: 1px dashed var(--ink); outline-offset: 4px; }
+
+/* what shows in each moment */
+#au-seed, .au-orb, #au-base, #au-bell, .au-tab, .au-grab, #au-snd, #au-panel, #au-deep { display: none; }
+#aura.m-seed #au-seed { display: block; position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin: -70px; border-radius: 50%; }
+#aura.m-bang .au-orb, #aura.m-globe .au-orb { display: grid; }
+#aura.m-globe #au-base { display: block; }
+#aura.m-iruk #au-bell, #aura.m-iruk .au-tab, #aura.m-iruk .au-grab, #aura.m-iruk #au-snd, #aura.m-iruk #au-panel { display: block; }
+#aura.m-iruk.deep #au-panel { visibility: hidden; }
+#aura.m-iruk.deep #au-deep:not([hidden]) { display: block; }
+
+/* the pages on the globe */
+.au-orb { position: absolute; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; place-items: center; will-change: transform, opacity; }
+.au-orb .pt { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: var(--ink); }
+.au-orb .au-i { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -40px 0 0 -17px; transition: transform .25s; }
+.au-orb .au-n { position: absolute; left: 50%; top: 50%; width: 10px; height: 16px; margin: -36px 0 0 20px; stroke-width: 1.5; }
+.au-orb:hover .au-i, .au-orb:focus-visible .au-i { transform: scale(1.18); }
+#au-base { position: absolute; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); font-size: 13px; color: var(--faint); text-decoration: none; padding: 8px 0 8px 22px; }
+#au-base i { position: absolute; left: 0; top: 50%; width: 16px; border-top: 1.5px dotted var(--faint); }
+#au-base:hover { color: var(--ink); }
+
+/* the irukandji's keys: the bell, the steps at the tips, what it holds */
+#au-bell { position: absolute; left: 0; top: 0; border-radius: 50% 50% 18% 18%; }
+.au-tab { position: absolute; left: 0; top: 0; width: 84px; height: 54px; margin: -16px 0 0 -42px; text-align: center; will-change: transform; }
+.au-tab .au-i { display: block; width: 26px; height: 26px; margin: 0 auto; opacity: .55; transition: opacity .2s, transform .2s; }
+.au-tab span { display: block; font-size: 14px; line-height: 1; margin-top: 4px; opacity: .6; white-space: nowrap; }
+.au-tab .au-n { width: 7px; height: 11px; margin-right: 4px; vertical-align: -1px; stroke-width: 1.6; }
+.au-tab.on .au-i, .au-tab.on span, .au-tab:hover .au-i, .au-tab:hover span { opacity: 1; }
+.au-tab.on .au-i { transform: scale(1.12); filter: drop-shadow(0 0 5px rgba(244, 241, 232, .55)); }
+.au-grab { position: absolute; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; will-change: transform; }
+.au-grab::before { content: ''; position: absolute; inset: 0; border: 1.4px solid var(--line); border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; background: rgba(23, 69, 127, .9); }
+.au-grab .au-i { position: absolute; left: 9px; top: 9px; width: 22px; height: 22px; }
+.au-grab span { position: absolute; top: 42px; left: 50%; transform: translateX(-50%); font-size: 12px; white-space: nowrap; opacity: .7; }
+.au-grab.on::before { background: rgba(244, 241, 232, .16); box-shadow: 0 0 10px rgba(244, 241, 232, .35); }
+.au-grab:hover span, .au-grab.on span { opacity: 1; }
+#au-snd { position: absolute; right: 14px; top: 0; width: 34px; height: 66px; }
+#au-snd i { position: absolute; left: 16px; top: 0; height: 40px; border-left: 1.5px dotted var(--faint); }
+#au-snd i::after { content: ''; position: absolute; left: -5px; top: 38px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+#au-snd svg { position: absolute; left: 5px; top: 52px; width: 24px; height: 12px; }
+#au-snd.off i::after { background: none; border: 1.4px solid var(--ink); }
+#au-snd.off svg { opacity: .3; }
+@media (max-width: 759px) { #au-snd { right: 2px; } }
+
+/* the panel: the step's own page, the tentacles faint behind it */
+#au-panel, #au-deep { position: absolute; overflow-y: auto; overflow-x: hidden; padding: 6px 4px 18px; box-sizing: border-box; background: none; -webkit-user-select: text; user-select: text; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(244, 241, 232, .4) transparent; }
+#au-panel.busy { opacity: .6 !important; }
+#aura .au-k { border: 1.5px solid var(--line); border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; padding: 7px 14px; font-size: 16px; line-height: 1.2; min-height: 40px; display: inline-flex; align-items: center; gap: 6px; transition: background .15s; }
+#aura .au-k:hover, #aura .au-k.on { background: rgba(244, 241, 232, .14); }
+#aura .au-k:disabled { opacity: .5; }
+#aura .au-k .au-i { width: 20px; height: 20px; }
+#aura .au-go { float: right; border: 0; padding: 10px 4px; margin: 10px 0 0; min-height: 44px; }
+#aura .au-go svg { width: 46px; height: 18px; stroke-width: 1.8; }
+#aura .au-mini { min-height: 32px; padding: 3px 10px; font-size: 15px; }
+#aura textarea, #aura input { width: 100%; box-sizing: border-box; background: transparent; color: var(--ink); border: 0; border-bottom: 1.5px dashed var(--faint); border-radius: 0; font: inherit; font-size: 19px; line-height: 1.35; padding: 6px 2px; resize: none; outline: none; }
+#aura textarea:focus, #aura input:focus { border-bottom-color: var(--ink); }
+#aura ::placeholder { color: rgba(244, 241, 232, .55); }
+@media (max-width: 759px) { #aura textarea, #aura input { font-size: 17px; } }
+.au-hint { opacity: .7; font-size: 15px; margin: 4px 0 10px; }
+.au-lbl { font-size: 13px; opacity: .6; letter-spacing: .06em; margin: 16px 0 6px; }
+.au-lbl::before { content: '· · · '; }
+
+.au-eye { display: block; width: min(190px, 60%); margin: 6px auto 12px; cursor: pointer; }
+.au-eye svg { width: 100%; height: auto; stroke-width: 1.3; transition: transform .3s; }
+.au-eye:hover svg { transform: scale(1.04); }
+.au-ph, .au-poster { margin: 0 0 10px; cursor: zoom-in; display: flex; justify-content: center; }
+.au-ph img, .au-poster canvas { display: block; max-width: 100%; max-height: min(52vh, 520px); width: auto; height: auto; object-fit: contain; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4), 0 10px 26px rgba(6, 24, 52, .35); }
+.au-poster canvas { max-height: min(60vh, 640px); }
+.au-where, .au-who { font-size: 15px; margin: 8px 0; opacity: .9; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.au-re { margin-top: 8px; }
+.au-wish { list-style: none; margin: 0; padding: 0; }
+.au-wish li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: end; margin: 0 0 10px; }
+.au-wish b { font-size: 22px; font-weight: 400; opacity: .55; align-self: center; }
+.au-wish .au-alt { min-height: 36px; padding: 2px 10px; }
+.au-arts { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.au-arts .au-k { flex: 1 1 0; justify-content: center; min-width: 64px; }
+.au-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.au-acts .au-pr { flex: 1 1 auto; justify-content: center; font-size: 18px; }
+.au-pips { min-height: 20px; letter-spacing: .3em; margin: 4px 0; }
+.au-tpl .au-line { display: block; margin: 0 0 10px; }
+.au-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.au-chips .au-k { font-size: 14px; min-height: 34px; padding: 4px 10px; }
+.au-strip { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 10px; scrollbar-width: thin; }
+.au-strip button { flex: 0 0 auto; height: 96px; display: flex; align-items: center; }
+.au-strip img { height: 96px; width: auto; max-width: 160px; object-fit: contain; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4); }
+
+/* what it holds, opened */
+.au-dh { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; font-size: 18px; }
+#aura .au-back { border: 0; width: 44px; height: 32px; position: relative; }
+#aura .au-back i { position: absolute; right: 4px; top: 50%; width: 30px; border-top: 1.6px dotted var(--ink); }
+#aura .au-back i::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.au-map { position: relative; height: calc(100% - 78px); min-height: 220px; overflow: hidden; background: #17457F; isolation: isolate; border-radius: 14px 5px 12px 6px / 6px 12px 5px 14px; box-shadow: 0 0 0 1.2px rgba(244, 241, 232, .6); touch-action: none; cursor: crosshair; }
+.au-tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; filter: grayscale(1) contrast(1.35) brightness(1.1); mix-blend-mode: luminosity; opacity: .78; pointer-events: none; }
+.au-map canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+.au-list { list-style: none; margin: 0; padding: 0; }
+.au-list li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed rgba(244, 241, 232, .22); font-size: 16px; }
+.au-list li b { font-weight: 400; opacity: .6; min-width: 52px; }
+.au-list li button { display: grid; grid-template-columns: 14px 1fr; column-gap: 8px; text-align: left; width: 100%; padding: 2px 0; }
+.au-list li button b { opacity: 1; font-size: 17px; }
+.au-list li button em, .au-list li button small { grid-column: 2; opacity: .65; font-size: 13px; }
+.au-list li button em { font-family: Georgia, serif; }
+.au-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); opacity: .7; margin-top: 7px; }
+.au-dot.on { box-shadow: 0 0 0 3px rgba(244, 241, 232, .3); opacity: 1; }
+.au-big { font-size: 26px; margin: 4px 0 8px; }
+.au-spark { width: 100%; height: auto; max-height: 120px; margin: 4px 0 10px; }
+.au-spark .now { filter: drop-shadow(0 0 4px rgba(244, 241, 232, .8)); }
+
+/* the slideshow: every picture whole on the paper, zoomed in place */
+#au-show { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 5; background-color: #17457F; background-image: var(--paper); background-size: 100% 100%, 100% 100%, 240px 240px; background-repeat: no-repeat, no-repeat, repeat; }
+#au-show[hidden] { display: none; }
+.au-sl { position: absolute; top: 58px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom)); left: 16px; overflow: hidden; }
+.au-pz { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.au-pz img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; box-shadow: 0 0 0 1px rgba(244, 241, 232, .45), 0 14px 40px rgba(6, 24, 52, .45); -webkit-user-drag: none; user-select: none; }
+.au-cap { position: absolute; left: 16px; right: 16px; bottom: calc(52px + env(safe-area-inset-bottom)); text-align: center; font-size: 16px; margin: 0; }
+.au-dots { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; padding: 0 50px; }
+.au-dots button { width: 26px; height: 26px; position: relative; }
+.au-dots button::after { content: ''; position: absolute; left: 9px; top: 9px; width: 8px; height: 8px; border-radius: 50%; border: 1.3px solid var(--ink); box-sizing: border-box; }
+.au-dots button.on::after { background: var(--ink); }
+.au-prev, .au-next2 { position: absolute; top: 50%; width: 44px; height: 64px; margin-top: -32px; font-size: 34px !important; opacity: .75; }
+.au-prev { left: 4px; } .au-next2 { right: 4px; }
+#au-show.one .au-prev, #au-show.one .au-next2, #au-show.one .au-dots { display: none; }
+.au-up { position: absolute; left: 16px; top: 0; width: 44px; height: 54px; }
+.au-up i { position: absolute; left: 21px; top: 0; height: 36px; border-left: 1.6px dotted var(--ink); }
+.au-up i::after { content: '×'; position: absolute; left: -8px; top: 32px; font-size: 18px; line-height: 1; }
+@media (prefers-reduced-motion: reduce) { #aura * { transition: none !important; } }
+
+/* the choices as the deep's own marks: beads on a dotted line, the one chosen lit */
+.au-arts, .au-acts { position: relative; display: flex; justify-content: space-around; gap: 4px; margin: 2px 0 12px; padding-top: 2px; }
+.au-arts::before, .au-acts::before { content: ''; position: absolute; left: 6%; right: 6%; top: 12px; border-top: 1.5px dotted var(--faint); }
+#aura .au-arts .au-k, #aura .au-acts .au-k { flex: 0 1 auto; flex-direction: column; border: 0; border-radius: 0; background: none; padding: 4px 8px; min-width: 56px; gap: 4px; font-size: 15px; position: relative; }
+#aura .au-arts .au-k::before, #aura .au-acts .au-k::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--ink); background: #17457F; box-sizing: border-box; transition: background .2s, box-shadow .2s; }
+#aura .au-arts .au-k.on::before { background: var(--ink); box-shadow: 0 0 10px rgba(244, 241, 232, .7); }
+#aura .au-arts .au-k:hover::before, #aura .au-acts .au-k:hover::before { box-shadow: 0 0 8px rgba(244, 241, 232, .5); }
+#aura .au-arts .au-k:not(.on) span { opacity: .7; }
+#aura .au-acts .au-pr { font-size: 17px; }
+#aura .au-acts .au-pr::before { display: none; }
+#aura .au-acts .au-pr .au-i { width: 30px; height: 30px; padding: 6px; border: 1.5px solid var(--ink); border-radius: 50%; background: #17457F; margin-top: -9px; }
+#aura .au-acts .au-pr:hover .au-i { box-shadow: 0 0 12px rgba(244, 241, 232, .6); }
+#aura .au-wish .au-alt { border-radius: 50%; width: 34px; height: 34px; min-height: 0; padding: 0; justify-content: center; border-style: dotted; }
+.au-a { display: none; }
+
+/* labels sit on a scrap of the paper, so a tentacle passes behind them */
+.au-grab span, .au-tab span { background: rgba(23, 69, 127, .92); padding: 1px 5px; border-radius: 6px; }
+#aura textarea { min-height: 40px; }
+#aura.big .au-grab { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
+#aura.big .au-grab .au-i { left: 12px; top: 12px; width: 26px; height: 26px; }
+#aura.big .au-grab span { top: 54px; font-size: 14px; }
+#aura.big .au-tab .au-i { width: 32px; height: 32px; }
+#aura.big .au-tab span { font-size: 16px; }
+#aura.big #au-panel, #aura.big #au-deep { font-size: 18px; }

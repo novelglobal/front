@@ -123,6 +123,8 @@ const BASE = { imagery: win.DA_CONFIG.IMAGERY.url, maxzoom: win.DA_CONFIG.IMAGER
   portal: win.DA_CONFIG.PORTAL_URL, inat: win.DA_CONFIG.INAT_API, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], build: sha };
 fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'base.css')), 'css'));
 fs.writeFileSync(path.join(out, 'base.js'), min(read(path.join(src, 'base', 'base.js')), 'js'));
+fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'aura.css')), 'css'));
+fs.writeFileSync(path.join(out, 'aura.js'), min(read(path.join(src, 'base', 'aura.js')), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));
 const listing = (dir, base = dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => (d.isDirectory() ? listing(path.join(dir, d.name), base) : [path.relative(base, path.join(dir, d.name))])).sort();
 const all = listing(out);

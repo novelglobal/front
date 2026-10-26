@@ -15,10 +15,13 @@
 <script>
 /* a link made by the studio (a mix, a story code, a page by name) goes on to the studio, so every printed code still opens */
 (function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|print|showcase|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
+/* the aura (aura.js) is the start, unless the base is asked for by name (?base) */
+if (!/[?&]base\b/.test(location.search)) document.documentElement.classList.add('aura-on');
 try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { /* no storage */ }
 /*BASE*/
 </script>
 <link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="aura.css">
 </head>
 <body>
 <!-- the glyphs: drawn once, used everywhere. Sticks, beads, dotted threads; no words -->
@@ -81,5 +84,6 @@ try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentEle
 <p id="credit"></p>
 <noscript><p class="nojs">novel.global — Emergencies 000. Injured wildlife: Wildlife Victoria (03) 8400 7300.</p></noscript>
 <script src="base.js"></script>
+<script src="aura.js"></script>
 </body>
 </html>

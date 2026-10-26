@@ -14,7 +14,8 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 
 | Area | State |
 |---|---|
-| The base, `/` (v0.1 alpha) | `src/base/`: the photograph, a line, a real alert, the receipt with W.I.S.H. as one key, the reel; GUIDE; MAP with batch adding; RADIO as net, reel and help; the pixel board. About 60 KB to first paint, no map library or webfonts. Checks: `ONLY=base node test/run.mjs` |
+| The aura, `/` | `src/base/aura.js`: the showcase. A seed, a big bang, the globe, the irukandji as the interface (notice, W.I.S.H., art, print; the map, species, data and El Niño held), a colour portfolio. Checks: `ONLY=aura node test/run.mjs` |
+| The base, `/?base` (v0.1 alpha) | `src/base/`: the photograph, a line, a real alert, the receipt with W.I.S.H. as one key, the reel; GUIDE; MAP with batch adding; RADIO as net, reel and help; the pixel board. About 60 KB to first paint, no map library or webfonts. Checks: `ONLY=base node test/run.mjs` |
 | The studio, `/studio` (map, cells, strings, ledger, constellations, slip in two styles, outputs, sharing, partners, the local mesh, cell packs) | Built and working, with browser and server checks (`npm test`) |
 | Hosting | The Cloudflare Worker `front` builds this repo on every push. `main` is live at `novel.global`; any other branch, such as `staging`, gets its own preview address. See `docs/workflow.md` |
 | Source and build | This tree is the GitHub repo `front`. `npm run build` writes `dist/`, which is the deployable site |
@@ -149,6 +150,57 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the aura, 26 October** (the owner: "it begins with the current novel.global globe rings … a big bang that starts on tap … when one of the icons is clicked rather than going to a new page and map everything remains on the blueprint background … the globe lines reshape into the Irukandji … All tab elements should be either part of one of the 4 tentacles of the jellyfish, or elements or objects it has grabbed or deep sea line dot elements").
+  - **`/` is now the aura** (`src/base/aura.js`, `aura.css`). The base is untouched underneath:
+    - Its pages still open by link (`#radio`, `#wish`, `#print` and the rest), and the aura sleeps under them (`AURA.sleep` from `open`, `AURA.wake` from `close`).
+    - The whole base, with its own start, is at **`/?base`**. A small "base" mark sits at the foot of the globe.
+    - The head script sets `html.aura-on` unless `?base` is in the address. The base's ORB and hum never run under the aura (`AURA_ON`).
+    - The base hands the aura what it needs as `window.NG`: the engine, the stores, `place`, `slip`, `sendNote` (a noticing's record and receipt, offline to the outbox), and the sound.
+  - **The seed.** A dot of light alone on the paper, three rings wound tight round it. A touch is the big bang:
+    - a flash and a shock ring;
+    - half the marine snow flung out from the centre;
+    - the rings spring out to the globe (`drawBang`);
+    - a low boom through the room.
+    - The drone (`humStart`) starts at 0.385, 70% of the base's 0.55.
+  - **The globe.** As before: three hand-drawn rings, RADIO, W.I.S.H. and PRINT riding them with their numerals, the drone following their depth.
+  - **The morph.** A page touched draws the rings in as the irukandji (`drawMorph`):
+    - each ring's points travel, staggered, to the bell (ring 1) and to two tentacles each (rings 2 and 3);
+    - the bell touched reverses it, back to the globe.
+    - RADIO opens on step 1, W.I.S.H. on step 2 and PRINT on step 4.
+  - **The irukandji is the interface** (`drawIruk`):
+    - **The bell** is a box jelly's, breathing every 3.6 s, with dotted lines inside it and four eyes at the corners, and a soft light round it (the aura).
+    - **Four tentacles** hang from its corners, drawn with perfect-freehand, drifting on simplex noise, beaded with stinging cells. A light runs down the tentacle whose step is open. Over the step's page they go faint.
+    - **Each tentacle's tip is a step:** 1 notice, 2 W.I.S.H., 3 art, 4 print.
+    - **Each tentacle has grabbed something on the way down:** map, species, data, El Niño.
+    - The keys never move; the tentacles move between them.
+    - **The deep's own marks:** sound on or off (a dotted line and a dot, top right), close (a dotted line, top left of the slideshow), and the choices as beads on a dotted line.
+  - **The lite flow, one piece at a time** (`P`):
+    - **1 notice:** the eye takes a photograph (its GPS and time read as the base reads them, else the phone is asked), or a line alone. It is shown in colour and in full, with when, where, and what it may be.
+    - **2 W.I.S.H.:** the four lines drafted by the base's engine, each editable, and ↻ turns through the others that fit. With no noticing, a life is chosen (typed, or from what is about now) and the wish is drafted from it.
+    - **3 art:** photo, pixel (wonky pixels in their own colours), net (the sightings revealed where they are, the lives tied round them) or sign. The poster (`poster`) is drawn in colour on blueprint paper: the picture whole, never cropped, the life, the four lines, where and when.
+    - **4 print:** the receipt goes to novel.global (the base's `slip`, through the print pipeline), and the poster is kept in colour in the portfolio. Save downloads the poster; new starts again, with a check.
+  - **What it holds**, opened in the page's place:
+    - **map:** a lens on the ground in blueprint (the imagery in luminosity blend over the paper's blue), one's noticings and the sightings in white. A touch sets where the piece was.
+    - **species:** what it may be, the others, the lives tied to it, what is about now. A touch changes the life, or starts a wish from it.
+    - **data:** when, where and from what, the place, the canopy, the heat, Niño 3.4, the need, who to call, and "where I am".
+    - **El Niño:** Niño 3.4 now, the year's line, the outlook, and what is happening this month. + puts a line into the W.I.S.H.
+  - **The portfolio** (`FOLIO`, IndexedDB `novelglobal/folio`, up to 24, with the composer's pieces after them):
+    - Everything printed is kept in colour, from the aura, from the base's design stage (`AURA.keepNote`) and from the composer (`AURA.keepCanvas`).
+    - The slideshow shows each picture whole on the paper, turning every 6.5 s.
+    - Pinch, wheel or double-tap zooms in place (Panzoom). Swipe, the arrow keys or the dots turn it.
+    - Nothing opens a new window or page.
+  - **Brought in:** perfect-freehand (the strokes), simplex-noise (the drift), Panzoom (the zoom) and Architects Daughter (the hand lettering), all in `vendor/`, loaded once the aura starts.
+  - **Checks:** `ONLY=aura` (phone and desktop), covering:
+    - the seed;
+    - the bang and the drone at 0.385;
+    - the globe's numbered pages;
+    - the morph on the same address;
+    - a photograph in full, the four lines edited, the colour poster;
+    - the print sent, with the portfolio opened whole and zoomed;
+    - the four things held;
+    - the bell back to the globe;
+    - the base's pages by link.
+    - The base's own checks run at `/?base`.
 - **v0.1 alpha, the composer, 25 October** (the owner: "the created web or net art and song needs to be able to go to print shop … an 80mm canvas that resets, undo, allows assets, songs, web and net art"; "WISH needs an overhaul … a simple tree"; "the music … is still jarring … an ambient Enya, Akira soundtrack overhaul").
   - **The start.**
     - The icon is the irukandji as a globe: a white hand-drawn bell with latitude and longitude lines and four tentacles, on blueprint blue (`repo-static/iruk.svg`, `iruk-192.png`, `iruk-512.png`, `iruk-mask.png`; the manifest's colours `#17457F`).
@@ -811,7 +863,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v83` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v84` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.
