@@ -1886,6 +1886,7 @@ for (const AD of [false, true]) if (run('aura')) try {
   const ctx = await newCtx(AD ? { timezoneId: 'Australia/Melbourne' } : { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, timezoneId: 'Australia/Melbourne' });
   await ctx.setExtraHTTPHeaders({ 'cf-connecting-ip': AD ? '10.9.0.2' : '10.9.0.1' }); await wire(ctx, { plain: true }); const page = await ctx.newPage(); watch(page, 'aura-' + tag);
   const st = () => page.evaluate(() => window.AURA.state());
+  const panelText = () => page.evaluate(() => document.querySelector('#au-panel').innerText.trim());
   await page.goto('https://oan.test/'); await page.waitForSelector('#aura'); await sleep(900); await shot(page, `${P}01-seed.png`);
   const s0 = await st(); const vis0 = await page.evaluate(() => ({ home: getComputedStyle(document.querySelector('#home')).display, orbs: [...document.querySelectorAll('.au-orb')].filter(o => getComputedStyle(o).display !== 'none').length, top: getComputedStyle(document.querySelector('#top')).display }));
   check(`aura (${tag}): the start is a seed of light alone on the paper, no rings, keys or words yet`, s0.mode === 'seed' && vis0.home === 'none' && vis0.orbs === 0 && vis0.top === 'none', JSON.stringify({ s0, vis0 }));
@@ -1896,39 +1897,64 @@ for (const AD of [false, true]) if (run('aura')) try {
   check(`aura (${tag}): RADIO, W.I.S.H. and PRINT ride the rings, numbered 1, 2, 3 by hand`, g.length === 3 && g.every(o => o.n && o.op > 0.2) && g.map(o => o.l).join() === 'RADIO,W.I.S.H.,PRINT', JSON.stringify(g));
   check(`aura (${tag}): the hand-drawn lines and the drift are the brought-in projects (perfect-freehand, simplex-noise)`, s2.pf && s2.noise, JSON.stringify(s2));
   await page.evaluate(() => document.querySelector('.au-orb[data-s="0"]').click()); await sleep(500); const sm = await st(); await shot(page, `${P}04-morph.png`); await sleep(1700); await shot(page, `${P}05-iruk.png`);
-  const s3 = await st(); const ik = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('.au-tab')].map(t => t.getAttribute('aria-label') + (t.classList.contains('on') ? '*' : '')), grabs: [...document.querySelectorAll('.au-grab')].map(t => t.getAttribute('aria-label')),
-    url: location.href, panel: (() => { const r = document.querySelector('#au-panel').getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round); })(), eye: !!document.querySelector('#au-panel .au-eye'), say: document.querySelector('#au-say').placeholder }));
-  check(`aura (${tag}): a page touched draws the rings in as the irukandji, on the same paper (no new page): four steps at the tentacles' tips, four things held`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,W.I.S.H.,art,print' && ik.grabs.join() === 'map,species,data,El Niño' && ik.eye && ik.say === 'what have you noticed?', JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
+  const s3 = await st(); const ik = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('.au-tab')].map(t => t.getAttribute('aria-label') + (t.classList.contains('on') ? '*' : '')), words: [...document.querySelectorAll('.au-tab')].map(t => t.textContent.trim()).join(''),
+    held: [...document.querySelectorAll('#au-catch, .au-grab')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id), url: location.href, eye: !!document.querySelector('#au-bell input[type=file]') && !document.querySelector('#au-panel .au-eye'), say: document.querySelector('#au-say').placeholder,
+    keys: [...document.querySelectorAll('#au-panel button')].length }));
+  check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,W.I.S.H.,art,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.say === 'what have you noticed?' && ik.keys === 0, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
   await page.setInputFiles('#au-file', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForSelector('#au-panel .au-ph img'); await sleep(500);
   await page.fill('#au-say', 'rainbow lorikeet fledgling on the path'); await sleep(900); await shot(page, `${P}06-noticed.png`);
-  const ph = await page.evaluate(() => { const i = document.querySelector('#au-panel .au-ph img'), r = i.getBoundingClientRect(); return { w: i.naturalWidth, h: i.naturalHeight, rw: r.width, rh: r.height, who: document.querySelector('#au-who').textContent, where: document.querySelector('#au-where').textContent }; });
-  check(`aura (${tag}): the photograph shows in colour and in full (its own shape, never cropped), with when, where and what it may be`, ph.w > 0 && Math.abs(ph.rw / ph.rh - ph.w / ph.h) < 0.02 && /lorikeet/i.test(ph.who) && /23 OCT/i.test(ph.where), JSON.stringify(ph));
-  await page.click('#au-panel .au-go'); await sleep(900); await shot(page, `${P}07-wish.png`);
-  const w = await page.evaluate(() => ({ n: document.querySelectorAll('.au-wish textarea').length, v: [...document.querySelectorAll('.au-wish textarea')].map(t => t.value), on: document.querySelector('.au-tab.on').getAttribute('aria-label') }));
-  await page.fill('.au-wish textarea[data-i="3"]', 'We walk the dogs on the far side until they fly'); await sleep(500);
-  check(`aura (${tag}): W.I.S.H. drafts four lines from the noticing, each editable in place`, w.n === 4 && w.v.filter(Boolean).length >= 3 && w.on === 'W.I.S.H.', JSON.stringify(w));
-  await page.click('#au-panel .au-go'); await sleep(1500); await shot(page, `${P}08-art.png`);
-  const a = await page.evaluate(() => { const c = document.querySelector('.au-poster canvas'), x = c.getContext('2d'); let sat = 0; for (let i = 0; i < 40; i++) { const d = x.getImageData(Math.floor(c.width * (0.2 + i / 70)), Math.floor(c.height * 0.25), 1, 1).data; sat = Math.max(sat, Math.max(d[0], d[1], d[2]) - Math.min(d[0], d[1], d[2])); }
-    return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '')), w: c.width, h: c.height, sat }; });
-  check(`aura (${tag}): the art is chosen from four (photo, pixel, net, sign), the poster drawn in colour on blueprint`, a.arts.join() === 'photo*,pixel,net,sign' && a.w === 900 && a.h > 900 && a.sat > 40, JSON.stringify(a));
-  await page.click('[data-art="pixel"]'); await sleep(1200); await shot(page, `${P}08b-pixel.png`); await page.click('[data-art="photo"]'); await sleep(800);
-  await page.click('#au-panel .au-go'); await sleep(1500); await shot(page, `${P}09-print.png`);
-  await page.click('#au-print'); await page.waitForFunction(() => { const p = document.querySelector('#au-pips .pips'); return p && p.title !== 'sending'; }, null, { timeout: 15000 }).catch(() => {}); await sleep(1600);
-  const pr = await page.evaluate(() => ({ pips: (document.querySelector('#au-pips .pips') || {}).title, show: !document.querySelector('#au-show').hidden, folio: window.AURA.state().folio, img: (() => { const i = document.querySelector('#au-show img'), r = i.getBoundingClientRect(); return { nw: i.naturalWidth, nh: i.naturalHeight, rw: r.width, rh: r.height, top: r.top, bottom: r.bottom, vh: innerHeight }; })() }));
-  await shot(page, `${P}10-folio.png`);
-  check(`aura (${tag}): print sends the receipt to novel.global, keeps the poster in colour, and opens the portfolio with it whole on the screen`, /waiting|shown|queued|printing|printed|held/.test(pr.pips) && pr.show && pr.folio >= 1 && pr.img.nw === 900 && Math.abs(pr.img.rw / pr.img.rh - pr.img.nw / pr.img.nh) < 0.02 && pr.img.top >= 0 && pr.img.bottom <= pr.img.vh, JSON.stringify(pr));
-  const zb = await page.evaluate(() => getComputedStyle(document.querySelector('.au-pz')).transform);
-  await page.dblclick('#au-show .au-pz'); await sleep(500); const za = await page.evaluate(() => getComputedStyle(document.querySelector('.au-pz')).transform); await shot(page, `${P}11-zoom.png`);
-  check(`aura (${tag}): the portfolio zooms in place (Panzoom), no new window`, za !== zb && /matrix\((2\.[0-9]|[3-9])/.test(za) && page.url() === 'https://oan.test/', zb + ' → ' + za);
-  await page.click('#au-show .au-up'); await sleep(300);
-  for (const [k, file] of [['map', '12-map'], ['life', '13-species'], ['data', '14-data'], ['nino', '15-nino']]) { await page.click(`.au-grab[data-g="${k}"]`); await sleep(1200); await shot(page, `${P}${file}.png`); }
-  const dp = await page.evaluate(() => ({ deep: window.AURA.state().deep, nino: document.querySelector('#au-nino').textContent.slice(0, 80), sp: !!document.querySelector('#au-nino .au-spark') }));
-  await page.click('#au-dx'); await sleep(300); await page.click('.au-grab[data-g="map"]'); await sleep(900);
-  const tiles = await page.evaluate(() => ({ n: document.querySelectorAll('.au-tiles img').length, blend: getComputedStyle(document.querySelector('.au-tiles img') || document.body).mixBlendMode }));
-  check(`aura (${tag}): what it holds opens deeper in the panel's place: the map in blueprint, the lives, the data, El Niño`, dp.deep === 'nino' && dp.sp && tiles.n > 0 && tiles.blend === 'luminosity', JSON.stringify({ dp, tiles }));
-  await page.click('#au-dx'); await sleep(300);
-  await tap(page, '#au-bell'); await sleep(1800); const s4 = await st(); await shot(page, `${P}16-back.png`);
-  check(`aura (${tag}): the bell takes it back to the globe`, s4.mode === 'globe', s4.mode);
+  const ph = await page.evaluate(() => { const i = document.querySelector('#au-panel .au-ph img'), r = i.getBoundingClientRect(); return { w: i.naturalWidth, h: i.naturalHeight, rw: r.width, rh: r.height, next: (document.querySelector('.au-tab.next') || {}).dataset }; });
+  const t1 = await panelText();
+  check(`aura (${tag}): the photograph whole and in colour, the line, and nothing said about it (no life, no place, no time) until it is caught; the next step breathes`, ph.w > 0 && Math.abs(ph.rw / ph.rh - ph.w / ph.h) < 0.02 && !/lorikeet|carlton|oct/i.test(t1) && ph.next && ph.next.s === '1', JSON.stringify({ ph, t1 }));
+  await page.focus('#au-say'); await page.keyboard.press('Enter'); await sleep(900); await shot(page, `${P}07-wish.png`);
+  const w0 = await page.evaluate(() => ({ v: [...document.querySelectorAll('.au-wish textarea')].map(t => t.value), ph: [...document.querySelectorAll('.au-wish textarea')].map(t => t.placeholder).join(''), alts: document.querySelectorAll('.au-alt').length, on: document.querySelector('.au-tab.on').getAttribute('aria-label') }));
+  check(`aura (${tag}): W.I.S.H. is four empty lines, the letters only: nothing drafted, no template, no suggestions`, w0.on === 'W.I.S.H.' && w0.v.length === 4 && w0.v.every(v => v === '') && w0.ph === '' && w0.alts === 0, JSON.stringify(w0));
+  const L4 = ['A fledgling learning on the path', 'Left to its parents', 'We walk round, dogs on leads', 'Until it flies'];
+  await page.click('.au-wish textarea[data-i="0"]'); for (const l of L4) { await page.keyboard.type(l); await page.keyboard.press('Enter'); await sleep(150); } await sleep(600);
+  const w1 = await st();
+  check(`aura (${tag}): the four lines are one's own, written straight through (Enter goes on to the next, the last on to the art)`, JSON.stringify(w1.piece.lines) === JSON.stringify(L4) && w1.stage === 2, JSON.stringify({ lines: w1.piece.lines, stage: w1.stage }));
+  await page.click('#au-catch'); await sleep(1300); await shot(page, `${P}08-catch.png`);
+  const c0 = await page.evaluate(() => ({ deep: window.AURA.state().deep, heads: document.querySelectorAll('#au-deep h1,#au-deep h2,#au-deep h3,#au-deep .au-dh,#au-deep em,#au-deep small').length, names: [...document.querySelectorAll('#au-names button')].map(b => b.textContent), map: !!document.querySelector('#au-map'), vals: document.querySelectorAll('#au-vals button').length, nino: !!document.querySelector('#au-nino:not([hidden]) .au-spark'), tiles: document.querySelectorAll('.au-tiles img').length, blend: getComputedStyle(document.querySelector('.au-tiles img') || document.body).mixBlendMode }));
+  check(`aura (${tag}): the map, the lives, the readings and El Niño are one thing held, opened in the page's place, with no headings or notes over them`, c0.deep && c0.heads === 0 && c0.map && c0.vals > 1 && c0.nino && c0.tiles > 0 && c0.blend === 'luminosity', JSON.stringify(c0));
+  check(`aura (${tag}): no life is offered: only the one named in one's own words shows until one is looked for`, c0.names.join() === 'Rainbow Lorikeet', JSON.stringify(c0.names));
+  const mb = await page.locator('#au-map').boundingBox(); await page.mouse.click(mb.x + mb.width * 0.6, mb.y + mb.height * 0.4); await sleep(400);
+  await page.click('#au-names button'); await sleep(250); await page.fill('#au-q', 'frog'); await sleep(300);
+  const found = await page.evaluate(() => [...document.querySelectorAll('#au-names button')].map(b => b.textContent));
+  check(`aura (${tag}): a life is found by its name, and what was caught stays`, found[0] === 'Rainbow Lorikeet' && found.length > 1 && found.slice(1).every(n => /frog/i.test(n)), JSON.stringify(found));
+  await page.fill('#au-q', ''); await page.click('#au-vals li:nth-child(1) button'); await sleep(250); await page.click('#au-nino'); await sleep(250);
+  const c1 = await st(); const dots = await page.evaluate(() => document.querySelector('#au-catch b').textContent); await shot(page, `${P}09-caught.png`);
+  check(`aura (${tag}): what is touched is caught (the life, a reading, El Niño, the map where it was), counted on the thing held`, ['map', 'life', 'data', 'nino'].every(k => c1.piece.caught.includes(k)) && dots.length === 4, JSON.stringify({ caught: c1.piece.caught, dots }));
+  await page.click('#au-dx'); await sleep(1600); await shot(page, `${P}10-art.png`);
+  const a = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'), x = c.getContext('2d'); let sat = 0; for (let i = 0; i < 40; i++) { const d = x.getImageData(Math.floor(c.width * (0.2 + i / 70)), Math.floor(c.height * 0.2), 1, 1).data; sat = Math.max(sat, Math.max(d[0], d[1], d[2]) - Math.min(d[0], d[1], d[2])); }
+    return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '') + (b.textContent.trim() ? '+words' : '')), thumbs: [...document.querySelectorAll('[data-art] canvas')].filter(c => c.width > 0).length, w: c.width, h: c.height, sat }; });
+  check(`aura (${tag}): the art is chosen by its own look (four small pictures, no words), the poster drawn in colour on blueprint`, a.arts.join() === 'photo*,pixel,net,sign' && a.thumbs === 4 && a.w === 900 && a.sat > 40, JSON.stringify(a));
+  const before = (await st()).piece.pos.life; const cb = await page.locator('.au-drag canvas').boundingBox(); const dim = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'); return [c.width, c.height]; });
+  const k = cb.width / dim[0];
+  /* the life's scrap sits at its default place: the right column of the band under the lines */
+  const px = cb.x + (56 + 270 + 40) * k, py = cb.y + (dim[1] - 56 - 340 + 40) * k;
+  await page.mouse.move(px, py); await page.mouse.down(); await page.mouse.move(px - 120 * k, py - 400 * k, { steps: 6 }); await page.mouse.up(); await sleep(500); await shot(page, `${P}11-placed.png`);
+  const after = (await st()).piece.pos.life;
+  check(`aura (${tag}): the caught things are scraps on the poster, placed by hand`, !before && after && after[1] < 0.8, JSON.stringify({ before, after }));
+  await page.click('.au-tab[data-s="3"]'); await sleep(1500); await shot(page, `${P}12-print.png`);
+  const pv = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#au-panel button')].map(b => b.id || b.className).filter(k => !/au-strip|^$/.test(k)), words: [...document.querySelectorAll('#au-panel .au-press button')].map(b => b.textContent.trim()).join(''), catchShown: getComputedStyle(document.querySelector('#au-catch')).display, hero: !!document.querySelector('.au-hero canvas') }));
+  check(`aura (${tag}): print is the poster and one press (save small beside it): no row of steps, no words; the thing held is put down`, pv.hero && pv.keys.join() === 'au-save,au-print' && pv.words === '' && pv.catchShown === 'none', JSON.stringify(pv));
+  await page.click('#au-print'); await page.waitForFunction(() => { const p = document.querySelector('#au-pips .pips'); return p && p.title !== 'sending'; }, null, { timeout: 15000 }).catch(() => {}); await sleep(1800);
+  const pr = await page.evaluate(() => ({ pips: (document.querySelector('#au-pips .pips') || {}).title, show: !document.querySelector('#au-show').hidden, folio: window.AURA.state().folio, img: (() => { const i = document.querySelector('#au-show img'), r = i.getBoundingClientRect(); return { nw: i.naturalWidth, nh: i.naturalHeight, rw: r.width, rh: r.height, top: r.top, bottom: r.bottom, right: r.right, vh: innerHeight }; })(),
+    x: (() => { const r = document.querySelector('#au-show .au-x').getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width }; })() }));
+  await shot(page, `${P}13-folio.png`);
+  const near = Math.hypot(pr.x.cx - pr.img.right, pr.x.cy - pr.img.top);
+  check(`aura (${tag}): print sends the receipt to novel.global, keeps the poster in colour, and opens it whole in the portfolio`, /waiting|shown|queued|printing|printed|held/.test(pr.pips) && pr.show && pr.folio >= 1 && pr.img.nw === 900 && Math.abs(pr.img.rw / pr.img.rh - pr.img.nw / pr.img.nh) < 0.02 && pr.img.top >= 0 && pr.img.bottom <= pr.img.vh, JSON.stringify(pr));
+  check(`aura (${tag}): the close sits on the poster's own corner, large enough to touch`, near < 40 && pr.x.w >= 44, JSON.stringify({ near, x: pr.x }));
+  const zb = (await st()).zoom;
+  await page.dblclick('#au-show img'); await page.waitForFunction(() => window.AURA.state().zoom > 2, null, { timeout: 3000 }).catch(() => {}); const za = (await st()).zoom; await shot(page, `${P}14-zoom.png`);
+  check(`aura (${tag}): the portfolio zooms in place (Panzoom), no new window`, zb === 1 && za > 2 && page.url() === 'https://oan.test/', zb + ' → ' + za);
+  await page.dblclick('#au-show img'); await sleep(300); await page.click('#au-show .au-x'); await sleep(400);
+  const rec = (((await admin('stories?status=waiting')).stories) || []).filter(x => x.kind === 'record').map(x => JSON.parse(x.body)).find(b => b.text === 'rainbow lorikeet fledgling on the path');
+  check(`aura (${tag}): the record carries one's own lines and only what was caught`, (rec && JSON.stringify(rec.wish) === JSON.stringify(L4) && rec.tx && /Lorikeet/.test(rec.tx.cn)), JSON.stringify(rec || {}).slice(0, 300));
+  const hidden = await page.evaluate(() => document.querySelector('#au-show').hidden); const s4a = await st();
+  check(`aura (${tag}): after the print, one press starts the next piece`, hidden && s4a.piece.sent, JSON.stringify({ hidden, sent: s4a.piece.sent }));
+  await tap(page, '#au-up'); await page.waitForFunction(() => window.AURA.state().mode === 'globe', null, { timeout: 5000 }).catch(() => {}); const s4 = await st(); await shot(page, `${P}15-back.png`);
+  check(`aura (${tag}): the line rising at the top takes it back up to the globe`, s4.mode === 'globe', s4.mode);
   await page.goto('https://oan.test/#radio'); await sleep(1200); const bs = await page.evaluate(() => ({ aura: document.querySelector('#aura').hidden, sheet: !document.querySelector('#sheet').hidden }));
   check(`aura (${tag}): the base's pages still open by link, the aura asleep under them`, bs.aura && bs.sheet, JSON.stringify(bs));
   await ctx.close();
