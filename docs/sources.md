@@ -1,6 +1,6 @@
 # Sources: open projects that could be brought in, stage by stage
 
-24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Twelve projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb, Tuna, perfect-freehand, simplex-noise, Panzoom and Architects Daughter. The others are candidates.
+24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Fourteen projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb, Tuna, perfect-freehand, simplex-noise, Panzoom, Architects Daughter, Fraunces and Archivo Narrow. The others are candidates.
 
 Each project is listed with what it would replace and what it costs. Bring one in only when the base's own version fails someone in the field. A pack, loaded only when it is used, is the way to add one.
 
@@ -26,6 +26,8 @@ Each project is listed with what it would replace and what it costs. Bring one i
 | [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | **Brought in.** Pressure-shaped strokes. | 5 KB, `vendor/freehand.js`. Every line of the aura (the rings, the bell, the tentacles tapering to their tips) is drawn with it. It could also let someone draw their own stick onto the net. |
 | [simplex-noise](https://github.com/jwagner/simplex-noise.js) | **Brought in.** Smooth noise. | 2 KB, `vendor/simplex.js`. The tentacles' drift, so no two moments hang the same. |
 | [Architects Daughter](https://github.com/google/fonts/tree/main/ofl/architectsdaughter) | **Brought in.** Hand lettering after an architect's drawings. | 13 KB, `vendor/architects-daughter.woff2`, OFL. The aura's words and the colour posters: blueprint lettering. |
+| [Fraunces](https://github.com/undercasetype/Fraunces) | **Brought in.** A heavy wedge serif, after Windsor and Cooper. | 16 KB, `vendor/fraunces-black.woff2` (Black, Latin), OFL. The mark beside the globe, W.I.S.H.'s letters on the poster, the stamps' big words. |
+| [Archivo Narrow](https://github.com/Omnibus-Type/ArchivoNarrow) | **Brought in.** A narrow grotesque for catalogue lines. | 12 KB, `vendor/archivo-narrow.woff2` (SemiBold, Latin), OFL. The four lines on the poster, the stamps' rims. |
 | [Panzoom](https://github.com/timmywil/panzoom) | **Brought in.** Pinch, wheel and double-tap zoom with CSS transforms. | 10 KB, `vendor/panzoom.js`. The portfolio slideshow: each poster whole, then as close as one likes, in place. |
 | [pixelit](https://github.com/giventofly/pixelit) | Pixel art from a photograph, with palettes. | Small. The base's wonky pixels are its own on purpose. Take only its palette mapping, for colour boards. |
 | [CanvasDither](https://github.com/NielsLeenheer/CanvasDither) | **Brought in.** One-bit dithering made for receipt printers. The booth uses its Atkinson method. | 2 KB, `vendor/canvas-dither.js`, loaded only by the booth. It is ported to plain script, with the error carried in a float buffer. |

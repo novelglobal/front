@@ -216,3 +216,11 @@ Each visit makes one thing. The piece is kept while it is made and comes back wh
 W.I.S.H.'s letters stay letters until you look for them: Witness, Intention, Strategy, Hope.
 
 Four is the creature's number. It has four tentacles, W.I.S.H. has four lines, and a picture has four sides. So the tentacles do the work: they become the lines you write on, then the frame round what you made. While they are busy they let go of the steps, which drift until they are held again.
+
+## The round, and the stamps
+
+A print ends a round, as in a roguelite. The poster goes up the print tentacle into the bell, the bell takes a bead, and the next step starts a new piece. Each finished piece also earns a mark for the ones after it. The creature keeps count of the wall on its own body.
+
+The stamps bring in a second voice. The hand draws what you add, and a postmark certifies it. The postmark style comes from institutional rubber stamps (a school's term stamps, Bulgarian philatelic cancellations): a ring, words round the rim between stars, and one picture in a bold line. Here the words are the project's own: novel.global, 888, odd kin, stay with the trouble, life emerges in ruins, dancing with doom. The type follows the same split. A heavy wedge serif sets the mark and the letters, and a narrow grotesque sets the lines, as in an old trade catalogue. The mark is a world with a band redacted across it. It is what a noticing does: some of the world is always left unread.
+
+Local knowledge stays small and folded. What is near, the readings and this month each open under their own sign, set small so a lot fits at once. This month is the engine's own calendar (fledglings, swooping, heat, the Bogong moth and the possum that eats it), with what was seen within a kilometre first.
