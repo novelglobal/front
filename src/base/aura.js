@@ -111,17 +111,17 @@
   }
   /* the poster without what was caught: the art whole, one's own line, one's own four lines. Kept while only the caught things move */
   function posterBase(P, art) {
-    var W = 900, pad = 56, aw = W - pad * 2, a = artOf(P, art, aw, aw * 1.3), n = P.note || {}, lines = P.lines || [];
+    var W = 900, pad = 56, aw = W - pad * 2, a = P.img ? artOf(P, 'photo', aw, aw * 1.3) : null, n = P.note || {}, lines = P.lines || [];
     var c = document.createElement('canvas'), x = c.getContext('2d'); c.width = W; c.height = 10; x.font = '26px ' + FONT;
     var body = []; lines.forEach(function (l, i) { if (l) wrap(x, l, aw - 60).forEach(function (w, k) { body.push([k ? '' : 'WISH'[i], w]); }); });
-    x.font = '42px ' + FONT; var title = art === 'sign' ? [] : wrap(x, P.say || '', aw).slice(0, 3);
+    x.font = '42px ' + FONT; var title = !P.say || lines.indexOf(P.say) >= 0 ? [] : wrap(x, P.say, aw).slice(0, 3);
     var band = P.catch && (P.catch.map || P.catch.life || (P.catch.data || []).length || P.catch.nino) ? 340 : 0;
-    var H = pad + 54 + a.height + 36 + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + 40 + band + pad;
+    var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + 40 + band + pad;
     c.height = H; paper(x, W, H);
     x.fillStyle = INK; x.textBaseline = 'top'; x.font = '22px ' + FONT; irukMark(x, pad + 14, pad + 16, 30, 0.9); x.fillText('novel.global', pad + 40, pad + 4);
     if (n.code) { var cw2 = x.measureText(n.code).width; x.fillText(n.code, W - pad - cw2, pad + 4); }
-    var ay = pad + 54, ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7);
-    var y = ay + a.height + 36; x.font = '42px ' + FONT; title.forEach(function (l) { x.fillText(l, pad, y); y += 52; }); if (title.length) y += 16;
+    var ay = pad + 54, y = ay + 10; if (a) { var ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7); y = ay + a.height + 36; }
+    x.font = '42px ' + FONT; title.forEach(function (l) { x.fillText(l, pad, y); y += 52; }); if (title.length) y += 16;
     x.font = '26px ' + FONT; body.forEach(function (b) { if (b[0]) { x.globalAlpha = 0.5; x.fillText(b[0], pad, y); x.globalAlpha = 1; } x.fillText(b[1], pad + 44, y); y += 38; });
     y += 14; var dots = []; for (var i = 0; i <= 40; i++) dots.push([pad + aw * i / 40, y]); x.setLineDash([2, 9]); handLine(x, dots, 2, 0.55, 2); x.setLineDash([]);
     return { c: c, band: y + 22, W: W, H: H, pad: pad };
@@ -170,7 +170,7 @@
   function drawAdds(x, P, W, H, boxes, again) {
     (P.adds || []).forEach(function (a, i) {
       var X = a.x * W, Y = a.y * H, w = 0, h = 0; x.save();
-      if (a.k === 's' && MARKS[a.g]) { w = h = 132; x.translate(X + 6, Y + 6); x.scale(3.75, 3.75); x.strokeStyle = INK; x.lineWidth = 0.75; x.lineCap = x.lineJoin = 'round'; x.stroke(new Path2D(MARKS[a.g])); }
+      if (a.k === 's' && MARKS[a.g]) { w = h = 132; x.translate(X + 6, Y + 6); x.scale(3.75, 3.75); var mk = new Path2D(MARKS[a.g]); x.lineCap = x.lineJoin = 'round'; x.strokeStyle = 'rgba(23,69,127,.9)'; x.lineWidth = 2.1; x.stroke(mk); x.strokeStyle = INK; x.lineWidth = 0.8; x.stroke(mk); }
       else if (a.k === 't') { x.font = '34px ' + FONT; var ls = wrap(x, a.t || ' ', 420); w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return x.measureText(l).width; })) + 40); h = ls.length * 44 + 22;
         scrap(x, X, Y, w, h, 11 + i); x.fillStyle = INK; x.textBaseline = 'top'; ls.forEach(function (l, k) { x.fillText(l, X + 20, Y + 12 + k * 44); }); }
       else if (a.k === 'i') { var im = iconImg(a.src, again); w = h = 128; if (im) { x.imageSmoothingEnabled = false; var iw = im.naturalWidth, ih = im.naturalHeight, k2 = 128 / Math.max(iw, ih); x.drawImage(im, X + (128 - iw * k2) / 2, Y + (128 - ih * k2) / 2, iw * k2, ih * k2); } }
@@ -527,14 +527,14 @@
   }
   function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.from = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
-  function step(i) { if (i === S.stage && !S.deep) return; S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); }
+  function step(i) { if (i === 0 && P && P.sent) { P = null; draftSave(null); if (S.stage === 0 && !S.deep) { paint(); keys(); return; } } if (i === S.stage && !S.deep) return; S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
   $('#au-seed').addEventListener('click', bang);
   root.addEventListener('pointerdown', function (e) { if (S.mode === 'seed' && e.target === cv) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); toIruk(+o.dataset.s); }); });
   $('#au-up').addEventListener('click', toGlobe);
   /* the eye takes in a photograph from any step, and the step stays where it is */
-  $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; intake(f); bell(0, 0.24); });
+  $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (P && P.sent) { P = null; if (S.stage !== 0) step(0); } intake(f); bell(0, 0.24); });
   tabs.forEach(function (b) { b.addEventListener('click', function () { step(+b.dataset.s); }); });
   catchK.addEventListener('click', function () { if (S.deep) closeDeep(); else openDeep(); bell(4, 0.2); });
   var bellK = $('#au-bell');
@@ -549,7 +549,7 @@
   var ready = function () { return !!(P && (P.photo || P.say || (P.lines || []).some(Boolean) || P.catch.life)); };
   function newPiece() { return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [] }; }
   var piece = function () { if (!P) { P = newPiece(); where(P); } return P; };
-  var KEEP = ['id', 'at', 'photo', 'thumb', 'say', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'sent', 'folioId', 'revealed', 'wx'];
+  var KEEP = ['id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'sent', 'folioId', 'revealed', 'wx'];
   function pack(p) { var o = {}; KEEP.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); o.noteId = p.note ? p.note.id : ''; return JSON.parse(JSON.stringify(o)); }
   function unpack(o) {
     var p = newPiece(); KEEP.forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; }); p.mine = true; p.catch = p.catch || { map: false, life: '', data: [], nino: false }; p.adds = p.adds || []; p.pos = p.pos || {};
@@ -593,23 +593,22 @@
   var hand = function (cls2, inner, attrs) { return '<button class="au-k ' + (cls2 || '') + '" ' + (attrs || '') + '>' + inner + '</button>'; };
   var grow = function (ta) { if (!ta.offsetParent) return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight + 2, 40) + 'px'; };
   var regrow = function () { [].forEach.call(panel.querySelectorAll('textarea'), grow); };
-  var ART = function () { return (P && P.photo ? ['photo', 'pixel'] : []).concat(['net', 'sign']); };
   /* W.I.S.H., each letter's sentence, shown only when one looks for it (a pointer on the letter, or the line in hand) */
-  var WISH_SAYS = ['Witness: what you saw, where, and when.', 'Intention: what you want for it.', 'Strategy: what will be done, and by whom.', 'Hope: how it ends well, and who helps.'];
+  var WISH_SAYS = ['What we know', 'It would be great', 'So let’s create', 'Here’s how it works'];
   function paint() {
     var s = S.stage, h = '';
     if (s === 0) {
-      h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"></figure>' : '') +
+      h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"><button class="au-rm" id="au-unph" aria-label="Let the photograph go">×</button></figure>' : '') +
         '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>';
     } else if (s === 1) {
       /* the four lines are one's own: empty, the letters only */
+      if (P && P.say && !P.lines[0] && P.wSay === undefined) { P.lines[0] = P.say; P.wSay = P.say; changed(); }
       var L4 = P ? P.lines : ['', '', '', ''];
-      h = '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea></li>'; }).join('') + '</ol>';
+      h = (P && P.photo ? '<figure class="au-wph"><img alt="" src="' + P.photo + '"></figure>' : '') + '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea></li>'; }).join('') + '</ol>';
     } else if (s === 2) {
-      if (ready()) { settle(); var arts = ART(); if (arts.indexOf(P.art) < 0) P.art = arts[0];
+      if (ready()) { settle(); P.art = 'photo';
         var mine = (NG.icons() || []).slice(-6);
-        h = '<div class="au-arts" role="radiogroup">' + arts.map(function (a) { return '<button class="au-art' + (a === P.art ? ' on' : '') + '" data-art="' + a + '" role="radio" aria-checked="' + (a === P.art) + '" aria-label="' + a + '"><canvas></canvas></button>'; }).join('') + '</div>' +
-          '<div class="au-tray">' + Object.keys(MARKS).map(function (g) { return '<button data-mark="' + g + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
+        h = '<div class="au-tray">' + Object.keys(MARKS).map(function (g) { return '<button data-mark="' + g + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
           '<button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><button class="au-rm" aria-label="Take it off">×</button></div></figure>' +
           '<label class="au-tline" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words"></textarea></label>'; }
@@ -624,15 +623,16 @@
   function wire(s) {
     regrow(); [].forEach.call(panel.querySelectorAll('textarea'), function (ta) { ta.addEventListener('input', function () { grow(ta); }); });
     if (s === 0) {
-      var ph2 = panel.querySelector('.au-ph'); if (ph2) ph2.addEventListener('click', function () { show([{ src: P.photo }], 0, true); });
+      var ph2 = panel.querySelector('.au-ph img'); if (ph2) ph2.addEventListener('click', function () { show([{ src: P.photo }], 0, true); });
+      var un = $('#au-unph'); if (un) un.addEventListener('click', function (e) { e.stopPropagation(); P.photo = P.thumb = ''; P.img = P.eye = null; if (P.note) delete NG.PHOTOS[P.note.id]; changed(); paint(); bell(1, 0.16); });
       var say = $('#au-say'), tm = 0, lab = say.parentNode; if (P) say.value = P.say || '';
-      var keep = function () { var v = say.value.trim(); if (!v && !P) return; piece().say = v; think(); changed(); };
+      var keep = function () { var v = say.value.trim(); if (!v && !P) return; var p = piece(); if (p.lines[0] === (p.wSay || '')) { p.lines[0] = v; p.wSay = v; } p.say = v; think(); changed(); };
       say.addEventListener('input', function () { lab.classList.toggle('has', !!say.value); clearTimeout(tm); tm = setTimeout(keep, 260); });
       say.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); keep(); if (ready()) step(1); } });
     }
     if (s === 1) {
       [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var tm2 = 0, i = +ta.dataset.i;
-        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); };
+        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; if (i === 0) p.wSay = v === p.say ? v : null; if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); };
         ta.addEventListener('input', function () { clearTimeout(tm2); tm2 = setTimeout(keep, 250); });
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready()) step(2); }); });
     }
@@ -644,7 +644,7 @@
       panel.querySelector('[data-add="t"]').addEventListener('click', function () { add({ k: 't', t: '' }); });
       var tx = $('#au-tx'); tx.addEventListener('input', function () { var a = selAdd(); if (a && a.k === 't') { a.t = tx.value; changed(); redraw(); } });
       panel.querySelector('.au-rm').addEventListener('click', function (e) { e.stopPropagation(); takeOff(S.sel); });
-      thumbs(); redraw(); dragWire();
+      redraw(); dragWire();
     }
     if (s === 3) {
       if (!ready()) { wallWire(); return; }
@@ -658,7 +658,6 @@
   /* the piece let go: a new one begins at the eye. What was printed stays on the wall */
   function letGo() { P = null; S.sel = null; draftSave(null); step(0); if (S.stage === 0) paint(); bell(0, 0.24); }
   /* the art: each way of drawing it shown as itself, small; the poster below; what is caught or added, placed, taken off, rewritten by hand */
-  function thumbs() { [].forEach.call(panel.querySelectorAll('[data-art]'), function (b) { var c = artOf(P, b.dataset.art, 120, 120), t = b.querySelector('canvas'); t.width = c.width; t.height = c.height; t.getContext('2d').drawImage(c, 0, 0); }); }
   var lastBoxes = {}, artRaf = 0;
   var selAdd = function () { return S.sel && S.sel.charAt(0) === 'a' && S.sel.length > 1 && P.adds ? P.adds[+S.sel.slice(1)] : null; };
   function redraw() {
@@ -700,11 +699,11 @@
      Printed again after a change, it takes the same place on the wall */
   function printNow() {
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
-    var art = P.art === 'pixel' && !P.photo ? 'net' : P.art, photo = NG.PHOTOS[n.id] || P.photo || '', show2 = { line: 1, life: !!P.catch.life, facts: 0, links: 0, code: 1 };
+    var art = P.photo ? 'photo' : 'net', photo = NG.PHOTOS[n.id] || P.photo || '', show2 = { line: 1, life: !!P.catch.life, facts: 0, links: 0, code: 1 };
     NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return NG.slip(n, photo, P.r, { art: art, wish: n.wish, show: show2 }, W).then(function (c) { return NG.sendNote(n, c, dest, n.wish); });
+      return NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: art, wish: n.wish, show: show2 }, W).then(function (c) { return NG.sendNote(n, c, dest, n.wish); });
     }).then(function (s) {
       st.innerHTML = NG.pips(s); btn.classList.remove('going'); S.sting = performance.now() / 1000; if (n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P, P.art).then(function (c) {
@@ -731,7 +730,7 @@
     var all = slides(), f = all[WALL]; if (!f) return;
     [].forEach.call(panel.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); bell(2, 0.14); }); });
     panel.querySelector('.au-wall').addEventListener('click', function () { show(slides(), WALL); });
-    var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 1; think(); draftSave(pack(P)); bell(5, 0.22); step(2); });
+    var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); bell(5, 0.22); step(2); });
     var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { folioDrop(f.id).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
   }
 
@@ -777,12 +776,45 @@
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
     deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' +
-      '<div class="au-c"><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div></div>' +
+      '<div class="au-c"><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button></div>' +
+      '<details class="au-near" id="au-near"><summary aria-label="What is near here"><i></i></summary><ul id="au-nearl"></ul></details>' +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label><ul class="au-names" id="au-names"></ul>' +
       '<ul class="au-vals" id="au-vals"></ul><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button></div>';
     $('#au-dx').addEventListener('click', closeDeep);
     lens(); NG.db().then(function () { think(); fill(); }); fill();
     $('#au-q').addEventListener('input', fill);
+    $('#au-me').addEventListener('click', function () { findMe(true); });
+    $('#au-near').addEventListener('toggle', function () { if (this.open) nearFill(); bell(3, 0.14); });
+    /* the map shows where one is: asked for, unless the photograph already said */
+    findMe(p.src === 'MAP');
+  }
+  /* where one is: the phone asked, the piece moved there (unless the photograph or a touch already placed it), the lens and what is near following */
+  function findMe(move) {
+    var b2 = $('#au-me'); if (!navigator.geolocation) { if (b2) b2.classList.add('no'); return; } if (b2) b2.classList.add('wait');
+    navigator.geolocation.getCurrentPosition(function (g) {
+      S.me = [g.coords.latitude, g.coords.longitude, g.coords.accuracy || 0]; var b3 = $('#au-me'); if (b3) { b3.classList.remove('wait'); b3.classList.add('on'); }
+      if (P && (move || P.src === 'MAP')) { P.lat = S.me[0]; P.lng = S.me[1]; P.src = 'HERE'; NEAR = null; think(); if (P.note) { P.note.lat = +P.lat.toFixed(5); P.note.lng = +P.lng.toFixed(5); NG.saveNotes(); } changed(); }
+      MAPV.lat = P ? P.lat : S.me[0]; MAPV.lng = P ? P.lng : S.me[1]; if (MAPV.draw && S.deep) MAPV.draw(); if (S.deep) { fill(); var nr = $('#au-near'); if (nr && nr.open) nearFill(); }
+    }, function () { var b3 = $('#au-me'); if (b3) { b3.classList.remove('wait'); b3.classList.add('no'); } }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+  }
+  /* what is near, for this place only: the named places and waters the engine knows, and the lives seen here lately. Folded away until opened; a touch catches one */
+  var NEAR = null;
+  function nearFill() {
+    var ul = $('#au-nearl'); if (!ul || !P) return; var D = NG.DB(), here = { lat: P.lat, lng: P.lng }, key = P.lat.toFixed(4) + ',' + P.lng.toFixed(4);
+    var rows = []; if (D) [['places', 900, 4], ['waters', 1500, 2]].forEach(function (k) { (D[k[0]] || []).map(function (q) { return [q[0], NG.dist(here, { lat: q[1], lng: q[2] })]; }).filter(function (q) { return q[1] < k[1]; }).sort(function (a, b) { return a[1] - b[1]; }).slice(0, k[2]).forEach(function (q) { rows.push({ k: 'd', t: q[0], d: q[1] }); }); });
+    var draw = function () {
+      var all = rows.concat(NEAR && NEAR.key === key ? NEAR.lives : []);
+      ul.innerHTML = all.length ? all.map(function (o, i) { var v = o.t + ' · ' + NG.far(Math.round(o.d)), on = o.k === 'l' ? P.catch.life === o.id : P.catch.data.indexOf(v) >= 0; return '<li><button data-n="' + i + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + esc(o.t) + '<small>' + esc(NG.far(Math.round(o.d))) + '</small></button></li>'; }).join('') : '<li class="au-wait"><i></i><i></i><i></i></li>';
+      [].forEach.call(ul.querySelectorAll('[data-n]'), function (b) { b.addEventListener('click', function () { var o = all[+b.dataset.n], v = o.t + ' · ' + NG.far(Math.round(o.d)), on;
+        if (o.k === 'l') { on = P.catch.life !== o.id; P.catch.life = on ? o.id : ''; P.revealed = 0; think(); }
+        else { var i = P.catch.data.indexOf(v); on = i < 0; if (on) P.catch.data.push(v); else P.catch.data.splice(i, 1); P.dirty = true; }
+        draw(); fill(); ping(on); }); });
+    };
+    draw();
+    if (!NEAR || NEAR.key !== key) { NEAR = { key: key, lives: [] }; if (B.inat) fetch(B.inat + '/observations?lat=' + P.lat.toFixed(4) + '&lng=' + P.lng.toFixed(4) + '&radius=1&per_page=20&order=desc&order_by=observed_on&geoprivacy=open&verifiable=true&locale=en').then(function (r) { return r.json(); }).then(function (j) {
+      var seen = {}, D2 = NG.DB(); (j && j.results || []).forEach(function (o) { var tx = o.taxon || {}, cn = tx.preferred_common_name || tx.name, c = o.geojson && o.geojson.coordinates; if (!cn || !c || seen[cn.toLowerCase()]) return; seen[cn.toLowerCase()] = 1;
+        var f = D2 && D2.field.filter(function (q) { return q.cn.toLowerCase() === cn.toLowerCase() || q.n === tx.name; })[0]; if (!f) return; NEAR.lives.push({ k: 'l', id: f.id, t: f.cn, d: NG.dist(here, { lat: +c[1], lng: +c[0] }) }); });
+      NEAR.lives = NEAR.lives.slice(0, 5); if (NEAR.key === key) draw(); }).catch(function () {}); }
   }
   function closeDeep() { S.deep = false; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); }
   var ping = function (on) { bell(on ? 6 : 1, 0.18); changed(); fillDots(); };
@@ -813,7 +845,7 @@
   /* the map, as a lens: the ground in blueprint (its own photograph taken down to the paper's blue). A touch puts the piece there and catches the map */
   function lens() {
     var el = $('#au-map'), tl = el.querySelector('.au-tiles'), c = el.querySelector('canvas'), g = c.getContext('2d'), p = P;
-    MAPV.lat = p.lat; MAPV.lng = p.lng; MAPV.z = 16;
+    MAPV.lat = p.lat; MAPV.lng = p.lng; MAPV.z = 16; NEAR = NEAR && NEAR.key === p.lat.toFixed(4) + ',' + p.lng.toFixed(4) ? NEAR : null;
     var TS = 256, wx = function (lng, z) { return (lng + 180) / 360 * TS * Math.pow(2, z); }, wy = function (lat, z) { var s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TS * Math.pow(2, z); };
     var ux = function (X, z) { return X / (TS * Math.pow(2, z)) * 360 - 180; }, uy = function (Y, z) { var n = Math.PI - 2 * Math.PI * Y / (TS * Math.pow(2, z)); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
     var tiles = {};
@@ -831,6 +863,7 @@
       g.fillStyle = INK; g.strokeStyle = INK;
       NG.notes().forEach(function (q) { if (!isFinite(q.lat)) return; var s = at(q.lat, q.lng); g.globalAlpha = 0.6; g.beginPath(); g.arc(s[0], s[1], 3, 0, 7); g.fill(); });
       var s0 = at(p.lat, p.lng); ((p.note && p.note.seen) || []).forEach(function (q) { var s = at(q.lat, q.lng); g.globalAlpha = 0.5; g.setLineDash([2, 5]); g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s[0], s[1]); g.stroke(); g.setLineDash([]); g.beginPath(); g.arc(s[0], s[1], 2.6, 0, 7); g.fill(); });
+      if (S.me) { var sm = at(S.me[0], S.me[1]); g.globalAlpha = 0.25; g.beginPath(); g.arc(sm[0], sm[1], Math.max(10, Math.min(60, S.me[2] / (156543 * Math.cos(S.me[0] * Math.PI / 180) / Math.pow(2, z)))), 0, 7); g.fill(); g.globalAlpha = 1; g.beginPath(); g.arc(sm[0], sm[1], 4.5, 0, 7); g.fill(); g.beginPath(); g.arc(sm[0], sm[1], 8, 0, 7); g.stroke(); }
       g.globalAlpha = 1; g.lineWidth = 1.4; g.beginPath(); g.arc(s0[0], s0[1], 9, Math.PI, 0); g.closePath(); g.stroke();
       for (var i = 0; i < 4; i++) for (var j = 1; j < 5; j++) { g.beginPath(); g.arc(s0[0] - 6 + i * 4, s0[1] + j * 4, 1, 0, 7); g.fill(); }
     }
@@ -840,7 +873,7 @@
     el.addEventListener('pointermove', function (e) { if (!drag) return; var dx = e.clientX - drag[0], dy = e.clientY - drag[1]; moved = Math.max(moved, Math.abs(dx) + Math.abs(dy)); MAPV.lng = ux(drag[2] - dx, MAPV.z); MAPV.lat = uy(drag[3] - dy, MAPV.z); draw(); });
     el.addEventListener('pointerup', function (e) {
       if (drag && moved < 6) { var r = el.getBoundingClientRect(), X = wx(MAPV.lng, MAPV.z) + (e.clientX - r.left - el.clientWidth / 2), Y = wy(MAPV.lat, MAPV.z) + (e.clientY - r.top - el.clientHeight / 2);
-        p.lat = uy(Y, MAPV.z); p.lng = ux(X, MAPV.z); p.src = 'TAP'; p.catch.map = true; think(); if (p.note) { p.note.lat = +p.lat.toFixed(5); p.note.lng = +p.lng.toFixed(5); NG.saveNotes(); } draw(); fill(); ping(true); }
+        p.lat = uy(Y, MAPV.z); p.lng = ux(X, MAPV.z); p.src = 'TAP'; p.catch.map = true; NEAR = null; think(); var nr2 = $('#au-near'); if (nr2 && nr2.open) setTimeout(nearFill, 10); if (p.note) { p.note.lat = +p.lat.toFixed(5); p.note.lng = +p.lng.toFixed(5); NG.saveNotes(); } draw(); fill(); ping(true); }
       drag = null; });
     el.addEventListener('wheel', function (e) { e.preventDefault(); MAPV.z = Math.max(12, Math.min(B.maxzoom || 19, MAPV.z + (e.deltaY < 0 ? 1 : -1))); draw(); }, { passive: false });
     el.addEventListener('dblclick', function (e) { e.preventDefault(); p.catch.map = !p.catch.map; fill(); ping(p.catch.map); });
@@ -849,7 +882,7 @@
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
-  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '' } : null, form: FORM.key, frames: S.frames || 0, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
+  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '' } : null, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pz ? SH.pz.getScale() : 1, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
   api.go = function (m, s) { if (m === 'globe') { if (S.mode === 'seed') bang(); setMode('globe'); } if (m === 'iruk') { setMode('globe'); toIruk(s || 0); } };
   addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); if (!showEl.hidden) pinX(); selBox(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) go(); });

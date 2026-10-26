@@ -232,3 +232,36 @@ html.aura-on body { background: var(--blue, #17457F); }
 @keyframes au-drift { 0% { transform: var(--at) translate(0, 0) rotate(0); } 50% { transform: var(--at) translate(3px, -6px) rotate(2.5deg); } 100% { transform: var(--at) translate(-3px, -3px) rotate(-2deg); } }
 /* in W.I.S.H. the tentacles are the lines: the dashed ones step aside */
 #aura.m-iruk.st1:not(.deep) .au-wish textarea { border-bottom-color: transparent; }
+
+/* the one link to the base: only after a while on the globe, and faint */
+#aura.m-globe #au-base { opacity: 0; pointer-events: none; animation: au-late 1.4s 15s forwards; }
+@keyframes au-late { to { opacity: .45; pointer-events: auto; } }
+/* the photograph noticed: let go with its own × */
+.au-ph { position: relative; }
+#aura .au-ph .au-rm { position: absolute; right: -10px; top: -10px; }
+/* over W.I.S.H., what was noticed, small and whole */
+.au-wph { display: flex; justify-content: center; margin: 0 0 10px; }
+.au-wph img { max-height: 84px; max-width: 70%; width: auto; height: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4); }
+/* the lens: where one is, a ring that can be asked */
+.au-cmap { position: relative; }
+#aura .au-me { position: absolute; left: 8px; top: 8px; width: 34px; height: 34px; border-radius: 50%; background: rgba(23, 69, 127, .85); box-shadow: 0 0 0 1.3px var(--ink); }
+#aura .au-me i { position: absolute; left: 12px; top: 12px; width: 10px; height: 10px; border-radius: 50%; border: 1.4px solid var(--ink); box-sizing: border-box; }
+#aura .au-me.on i { background: var(--ink); }
+#aura .au-me.wait i { animation: au-next 1s ease-in-out infinite; }
+#aura .au-me.no { opacity: .4; }
+/* what is near: folded to a dotted line and a turn, opened to a short list */
+.au-near { margin: 0 0 12px; }
+.au-near summary { list-style: none; cursor: pointer; height: 26px; position: relative; }
+.au-near summary::-webkit-details-marker { display: none; }
+.au-near summary i { position: absolute; left: 2px; right: 26px; top: 12px; border-top: 1.5px dotted var(--faint); }
+.au-near summary::after { content: ''; position: absolute; right: 6px; top: 6px; width: 8px; height: 8px; border-right: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); transform: rotate(45deg); transition: transform .25s; }
+.au-near[open] summary::after { transform: rotate(-135deg); top: 10px; }
+.au-near ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#aura .au-near li button { position: relative; padding: 4px 4px 4px 16px; font-size: 16px; opacity: .75; text-align: left; width: 100%; display: flex; justify-content: space-between; gap: 10px; }
+#aura .au-near li button small { opacity: .6; font-size: 13px; }
+#aura .au-near li button::before { content: ''; position: absolute; left: 2px; top: 50%; width: 7px; height: 7px; margin-top: -4px; border-radius: 50%; border: 1.3px solid var(--ink); box-sizing: border-box; }
+#aura .au-near li button.on { opacity: 1; }
+#aura .au-near li button.on::before { background: var(--ink); }
+.au-wait { display: flex; gap: 6px; padding: 6px 16px; }
+.au-wait i { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); opacity: .4; animation: au-next 1.2s ease-in-out infinite; }
+.au-wait i:nth-child(2) { animation-delay: .2s; } .au-wait i:nth-child(3) { animation-delay: .4s; }
