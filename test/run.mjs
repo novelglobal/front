@@ -1906,7 +1906,9 @@ for (const AD of [false, true]) if (run('aura')) try {
     keys: [...document.querySelectorAll('#au-panel button')].length, titles: document.querySelectorAll('#aura [title]').length, ask: document.querySelector('.au-ask').textContent, ask0: getComputedStyle(document.querySelector('.au-ask')).animationName + ' ' + getComputedStyle(document.querySelector('.au-ask')).animationDelay,
     gap: (() => { const b = document.querySelector('#au-bell').getBoundingClientRect(), c = document.querySelector('#au-catch').getBoundingClientRect(); return Math.round(c.top - b.bottom); })() }));
   await sleep(1500); const ask1 = await page.evaluate(() => +getComputedStyle(document.querySelector('.au-ask')).opacity); await shot(page, `${P}05-iruk.png`);
-  check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held below it, no words on hover`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,W.I.S.H.,art,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.keys === 0 && ik.titles === 0 && ik.gap >= 20, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
+  check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held below it, no words on hover`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,W.I.S.H.,art,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.keys === 0 && ik.titles === 0, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
+  { const h0 = (await st()).halo; await page.mouse.move(300, 300); await sleep(700); await page.mouse.move(320, 310); await sleep(700); const h1 = (await st()).halo;
+    check(`aura (${tag}): the thing held turns slowly round the tentacles, on a halo no one sees`, h1 > h0, JSON.stringify({ h0, h1 })); }
   check(`aura (${tag}): "what have you noticed?" is not there at first, then comes after a breath, faint`, ik.ask === 'what have you noticed?' && ik.ask0 === 'au-ask 1s' && ask1 > 0.05 && ask1 < 0.7, JSON.stringify({ ask0: ik.ask0, ask1 }));
   if (AD) { await page.hover('#au-bell'); await sleep(200); const tone = await page.evaluate(() => window.__auraTone); await page.mouse.move(5, 500);
     check(`aura (${tag}): the eye and the thing held breathe, and sound a deep tone when the pointer finds them`, tone === 55 && await page.evaluate(() => getComputedStyle(document.querySelector('#au-catch')).animationName === 'au-breathe'), String(tone)); }
@@ -1916,13 +1918,14 @@ for (const AD of [false, true]) if (run('aura')) try {
   await page.focus('#au-say'); await page.keyboard.press('Enter'); await sleep(900);
   const w0 = await page.evaluate(() => ({ v: [...document.querySelectorAll('.au-wish textarea')].map(t => t.value), says: [...document.querySelectorAll('.au-wish b')].map(b => b.dataset.say), alts: document.querySelectorAll('.au-alt').length, on: document.querySelector('.au-tab.on').getAttribute('aria-label') }));
   check(`aura (${tag}): what was noticed is what we know: the line carries into W, the other three are empty, each letter's words there when looked for`, w0.on === 'W.I.S.H.' && w0.v[0] === 'rainbow lorikeet fledgling on the path' && w0.v.slice(1).every(v => v === '') && w0.alts === 0 && w0.says.join('|') === 'What we know|It would be great|So let’s create|Here’s how it works', JSON.stringify(w0));
-  await sleep(1100); await page.mouse.move(100, 300); await sleep(300); const f0 = (await st()).frames; await sleep(500); const wf = await page.evaluate(f0 => ({ form: window.AURA.state().form, mode: window.AURA.state().mode, hidden: document.hidden, loose: document.querySelector('#aura').classList.contains('loose'), line: getComputedStyle(document.querySelector('.au-wish textarea')).borderBottomColor, drift: getComputedStyle(document.querySelector('.au-tab')).animationName }), f0); await shot(page, `${P}06-lines.png`);
-  check(`aura (${tag}): in W.I.S.H. the four tentacles are the four lines, and the steps they let go of drift`, wf.form === 'wish' && wf.loose && /0\)$|transparent/.test(wf.line) && wf.drift === 'au-drift', JSON.stringify(wf));
+  await sleep(1100); await page.mouse.move(100, 300); await sleep(300); const f0 = (await st()).frames; await sleep(500); const wf = await page.evaluate(f0 => ({ form: window.AURA.state().form, mode: window.AURA.state().mode, hidden: document.hidden, loose: document.querySelector('#aura').classList.contains('loose'), beads: getComputedStyle(document.querySelector('.au-wish li'), '::after').backgroundImage, drift: document.querySelector('.au-tab').style.transform }), f0);
+  await page.mouse.move(140, 320); await sleep(600); const drift2 = await page.evaluate(() => document.querySelector('.au-tab').style.transform); await shot(page, `${P}06-lines.png`);
+  check(`aura (${tag}): in W.I.S.H. the four tentacles are the four lines, and the steps they let go of drift`, wf.form === 'wish' && wf.loose && /radial-gradient/.test(wf.beads) && wf.drift !== drift2, JSON.stringify({ ...wf, drift2 }));
   if (AD) { await page.hover('.au-wish b'); await sleep(400); const tip = await page.evaluate(() => +getComputedStyle(document.querySelector('.au-wish b'), '::after').opacity); await shot(page, `${P}06-tip.png`);
     check(`aura (${tag}): the letter's sentence shows on hover`, tip > 0.4, String(tip)); }
   await page.setInputFiles('#au-file', { name: 'lori.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }); await page.waitForFunction(() => window.AURA.state().piece.eye, null, { timeout: 8000 }).catch(() => {}); await sleep(300);
   const cam = await st(); await shot(page, `${P}07-eye.png`);
-  const wph = await page.evaluate(() => { const i = document.querySelector('.au-wph img'); return i ? Math.abs(i.getBoundingClientRect().width / i.getBoundingClientRect().height - i.naturalWidth / i.naturalHeight) < 0.03 : false; });
+  const wph = await page.evaluate(() => { const i = document.querySelector('.au-whead img'); return i ? Math.abs(i.getBoundingClientRect().width / i.getBoundingClientRect().height - i.naturalWidth / i.naturalHeight) < 0.03 : false; });
   check(`aura (${tag}): the eye takes a photograph from W.I.S.H. and the step stays: what it saw sits in its pupil, and over the four lines, small and whole`, cam.stage === 1 && cam.piece.photo && cam.piece.eye && wph, JSON.stringify({ stage: cam.stage, photo: cam.piece.photo, eye: cam.piece.eye, wph }));
   const L4 = ['rainbow lorikeet fledgling on the path', 'Left to its parents', 'We walk round, dogs on leads', 'Until it flies'];
   await tap(page, '.au-wish textarea[data-i="1"]'); for (const l of L4.slice(1)) { await page.keyboard.type(l); await page.keyboard.press('Enter'); await sleep(150); } await sleep(600);
@@ -1943,26 +1946,55 @@ for (const AD of [false, true]) if (run('aura')) try {
   await tap(page, '#au-names button'); await sleep(250); await page.fill('#au-q', 'frog'); await sleep(300);
   const found = await page.evaluate(() => [...document.querySelectorAll('#au-names button')].map(b => b.textContent));
   check(`aura (${tag}): a life is found by its name, and what was caught stays`, found[0] === 'Rainbow Lorikeet' && found.length > 1 && found.slice(1).every(n => /frog/i.test(n)), JSON.stringify(found));
+  await page.waitForFunction(() => window.AURA.state().piece.spPhoto, null, { timeout: 8000 }).catch(() => {});
+  check(`aura (${tag}): the life caught brings its own photograph, credited, for when there is none of one's own`, (await st()).piece.spPhoto, '');
+  await tap(page, '#au-seab'); await page.waitForFunction(() => document.querySelectorAll('#au-sea button').length > 2, null, { timeout: 8000 }).catch(() => {}); await sleep(600); await shot(page, `${P}08c-season.png`);
+  const sea = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#au-sea button .t')].map(b => b.textContent), near: [...document.querySelectorAll('#au-sea button.near small')].map(b => b.textContent), ninoH: Math.round(document.querySelector('#au-nino').getBoundingClientRect().height) }));
+  check(`aura (${tag}): El Niño is small, and this month opens to what to watch for, those seen within a kilometre first`, sea.rows.length > 2 && sea.ninoH < 90, JSON.stringify(sea));
+  await tap(page, '#au-seab'); await sleep(200);
   await page.fill('#au-q', ''); await tap(page, '#au-vals li:nth-child(1) button'); await sleep(250); await tap(page, '#au-nino'); await sleep(250);
   const c1 = await st(); const dots = await page.evaluate(() => document.querySelector('#au-catch b').textContent);
   check(`aura (${tag}): what is touched is caught (the life, a reading, El Niño, the map where it was), counted on the thing held`, ['map', 'life', 'data', 'nino'].every(k => c1.piece.caught.includes(k)) && dots.length === 4, JSON.stringify({ caught: c1.piece.caught, dots }));
   await tap(page, '#au-dx'); await sleep(1600); await shot(page, `${P}09-art.png`);
   const af = (await st()).form; check(`aura (${tag}): in art the four tentacles are the four sides round the piece`, af === 'frame2', af);
   const a = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'), x = c.getContext('2d'); let sat = 0; for (let i = 0; i < 40; i++) { const d = x.getImageData(Math.floor(c.width * (0.2 + i / 70)), Math.floor(c.height * 0.2), 1, 1).data; sat = Math.max(sat, Math.max(d[0], d[1], d[2]) - Math.min(d[0], d[1], d[2])); }
-    return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '') + (b.textContent.trim() ? '+words' : '')), thumbs: [...document.querySelectorAll('[data-art] canvas')].filter(c => c.width > 0).length, marks: document.querySelectorAll('.au-tray [data-mark]').length, words: !!document.querySelector('.au-tray [data-add="t"]'), w: c.width, sat }; });
-  check(`aura (${tag}): one way of drawing it, the photograph whole in colour on blueprint; marks and words to add`, a.arts.length === 0 && a.marks >= 6 && a.words && a.w === 900 && a.sat > 40, JSON.stringify(a));
+    return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '') + (b.textContent.trim() ? '+words' : '')), thumbs: [...document.querySelectorAll('[data-art] canvas')].filter(c => c.width > 0).length, marks: document.querySelectorAll('.au-tray [data-mark]').length, stamps: document.querySelectorAll('.au-tray [data-stamp]').length, words: !!document.querySelector('.au-tray [data-add="t"]'), w: c.width, sat }; });
+  check(`aura (${tag}): one way of drawing it, the photograph whole in colour on blueprint; marks and words to add`, a.arts.length === 0 && a.marks >= 4 && a.stamps === 6 && a.words && a.w === 900 && a.sat > 40, JSON.stringify(a));
   await tap(page, '.au-tray [data-mark="star"]'); await sleep(500); await tap(page, '.au-tray [data-add="t"]'); await sleep(300); await page.keyboard.type('hello, small one'); await sleep(600); await shot(page, `${P}10-added.png`);
   const ad1 = await st(); await tap(page, '.au-tray [data-mark="heart"]'); await sleep(400); const sel = (await st()).sel; await tap(page, '.au-sel .au-rm'); await sleep(400); const ad2 = await st();
   check(`aura (${tag}): marks and words go on the poster, the one chosen can be taken off`, ad1.piece.adds.length === 2 && ad1.piece.adds[1].t === 'hello, small one' && sel === 'a2' && ad2.piece.adds.length === 2 && ad2.piece.adds.every(x => x.g !== 'heart'), JSON.stringify({ adds: ad1.piece.adds.map(x => x.g || x.t), sel, after: ad2.piece.adds.map(x => x.g || x.t) }));
   const before = (await st()).piece.pos.life; const cb = await page.locator('.au-drag canvas').boundingBox(); const dim = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'); return [c.width, c.height]; });
-  const k = cb.width / dim[0], px = cb.x + (56 + 270 + 40) * k, py = cb.y + (dim[1] - 56 - 340 + 40) * k;
+  const lb = (await st()).boxes.life, k = cb.width / dim[0], px = cb.x + (lb[0] + 30) * k, py = cb.y + (lb[1] + 30) * k;
   await page.mouse.move(px, py); await page.mouse.down(); await page.mouse.move(px - 120 * k, py - 400 * k, { steps: 6 }); await page.mouse.up(); await sleep(500); await shot(page, `${P}11-placed.png`);
   const after = (await st()).piece.pos.life;
   check(`aura (${tag}): the caught things are scraps on the poster, placed by hand`, !before && after && after[1] < 0.8, JSON.stringify({ before, after }));
+  /* the one in hand turned, sized, toned, framed or not; the words typed on the poster only */
+  await page.evaluate(() => window.AURA.state()); for (const t of ['r', 's+', 'tone', 'b']) { await page.evaluate(t => document.querySelector(`.au-sel [data-t="${t}"]`).click(), t); await sleep(150); }
+  const tfl = (await st()).piece.tf.life || {};
+  check(`aura (${tag}): what is in hand turns, grows, changes tone and loses its frame`, tfl.r === 15 && Math.abs(tfl.s - 1.15) < 1e-6 && tfl.tone === 'turn' && tfl.b === false, JSON.stringify(tfl));
+  await tap(page, '.au-tray [data-stamp="3"]'); await sleep(400); await tap(page, '.au-tray [data-stamp="0"]'); await sleep(500); await shot(page, `${P}11b-stamps.png`);
+  const sp = await st(); const stamps = sp.piece.adds.filter(x => x.k === 'st').map(x => x.g);
+  check(`aura (${tag}): the stamps go on the poster (stay with the trouble, novel.global), and come off`, stamps.join() === '3,0' && sp.sel === 'a' + (sp.piece.adds.length - 1), JSON.stringify({ stamps, sel: sp.sel }));
+  await page.evaluate(() => document.querySelector('.au-sel [data-t="x"]').click()); await sleep(300);
+  await tap(page, '.au-tray [data-add="p"]'); await sleep(600); const pixOn = await page.evaluate(() => !!document.querySelector('.au-pix canvas')); await shot(page, `${P}11c-pix.png`);
+  await page.evaluate(() => document.querySelector('[data-px="cells"]').click()); await page.evaluate(() => document.querySelector('[data-px="put"]').click()); await sleep(400);
+  const px2 = (await st()).piece.adds.filter(x => x.k === 'p');
+  check(`aura (${tag}): the pixel irukandji moves while it is made, and one moment of it goes on the poster`, pixOn && px2.length === 1 && px2[0].cells === 32, JSON.stringify({ pixOn, px2 }));
+  await tap(page, '.au-tray [data-add="p"]'); await sleep(300);
+  const txw = await page.evaluate(() => { const t = document.querySelector('#au-tx'), b = t && t.closest('.au-sel'); return t ? { col: getComputedStyle(t).color, inSel: !!b, pos: getComputedStyle(t).position } : null; });
+  check(`aura (${tag}): words are typed on the poster only, nowhere beside it`, txw && txw.inSel && txw.pos === 'absolute' && /rgba\(0, 0, 0, 0\)|transparent/.test(txw.col), JSON.stringify(txw));
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(1500); await shot(page, `${P}12-print.png`);
-  const pv = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#au-panel button')].map(b => b.id), words: [...document.querySelectorAll('#au-panel .au-press button')].map(b => b.textContent.trim()).join(''), catchShown: getComputedStyle(document.querySelector('#au-catch')).display, hero: !!document.querySelector('.au-hero canvas'), strip: !!document.querySelector('.au-strip') }));
-  check(`aura (${tag}): print is this one piece and one press (start again and save small beside it): no row of others, no words; the thing held is put down`, pv.hero && pv.keys.join() === 'au-reset,au-save,au-print' && pv.words === '' && pv.catchShown === 'none' && !pv.strip, JSON.stringify(pv));
-  await tap(page, '#au-print'); await page.waitForFunction(() => { const p = document.querySelector('#au-pips .pips'); return p && p.title !== 'sending'; }, null, { timeout: 15000 }).catch(() => {}); await sleep(1800);
+  const pv = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#au-panel button')].map(b => b.id), words: [...document.querySelectorAll('#au-panel .au-press button')].map(b => b.textContent.trim()).join(''), catchShown: getComputedStyle(document.querySelector('#au-catch')).display, hero: !!document.querySelector('.au-hero canvas'), strip: !!document.querySelector('.au-strip'), photo: !!document.querySelector('.au-press #au-file2') }));
+  const qr = await page.evaluate(() => { const c = document.querySelector('.au-hero canvas'), x = c.getContext('2d'), q = 260, d = x.getImageData(c.width - 56 - q, c.height - 56 - q, q, q).data; let light = 0, dark = 0; for (let i = 0; i < d.length; i += 4) { if (d[i] > 225 && d[i + 1] > 225) light++; else if (d[i] < 60 && d[i + 2] > 100) dark++; } return { light, dark }; });
+  check(`aura (${tag}): every poster carries a small code back to the site, dark on light so a phone reads it`, qr.light > 3000 && qr.dark > 1500, JSON.stringify(qr));
+  await tap(page, '#au-paper'); await sleep(500);
+  const wp = await page.evaluate(() => { const c = document.querySelector('.au-hero canvas'), d = c.getContext('2d').getImageData(20, 20, 1, 1).data; return { paper: window.AURA.state().piece.paper, px: [...d].slice(0, 3) }; }); await shot(page, `${P}12b-white.png`);
+  check(`aura (${tag}): the poster prints on blue or on white, its words and marks turned to stay seen`, wp.paper === 'white' && wp.px.every(v => v > 200), JSON.stringify(wp));
+  await tap(page, '#au-paper'); await sleep(400);
+  check(`aura (${tag}): print is this one piece and one press (start again and save small beside it): no row of others, no words; the thing held is put down`, pv.hero && pv.keys.join() === 'au-reset,au-paper,au-save,au-print' && pv.photo && pv.words === '' && pv.catchShown === 'none' && !pv.strip, JSON.stringify(pv));
+  await tap(page, '#au-print'); await page.waitForFunction(() => { const p = document.querySelector('#au-pips .pips'); return p && p.title !== 'sending'; }, null, { timeout: 15000 }).catch(() => {}); await sleep(600); const rnd = await st(); await shot(page, `${P}12c-round.png`);
+  check(`aura (${tag}): printed, the round is over: the receipt rises up the print tentacle and the irukandji takes a bead`, rnd.round && rnd.piece.sent, JSON.stringify({ round: rnd.round, sent: rnd.piece.sent }));
+  await page.waitForFunction(() => !document.querySelector('#au-show').hidden, null, { timeout: 6000 }).catch(() => {}); await sleep(400);
   const pr = await page.evaluate(() => ({ pips: (document.querySelector('#au-pips .pips') || {}).title, show: !document.querySelector('#au-show').hidden, folio: window.AURA.state().folio, img: (() => { const i = document.querySelector('#au-show img'), r = i.getBoundingClientRect(); return { nw: i.naturalWidth, nh: i.naturalHeight, rw: r.width, rh: r.height, top: r.top, bottom: r.bottom, right: r.right, vh: innerHeight }; })(),
     x: (() => { const r = document.querySelector('#au-show .au-x').getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width }; })() }));
   await shot(page, `${P}13-folio.png`);
@@ -1976,26 +2008,26 @@ for (const AD of [false, true]) if (run('aura')) try {
   const rec = (((await admin('stories?status=waiting')).stories) || []).filter(x => x.kind === 'record').map(x => JSON.parse(x.body)).find(b => b.text === 'rainbow lorikeet fledgling on the path');
   check(`aura (${tag}): the record carries one's own lines and only what was caught`, rec && JSON.stringify(rec.wish) === JSON.stringify(L4) && rec.tx && /Lorikeet/.test(rec.tx.cn), JSON.stringify(rec || {}).slice(0, 300));
   const sent = await page.evaluate(() => document.querySelector('#au-print').getAttribute('aria-label'));
-  /* changed after printing: it prints again into the same place on the wall */
-  await tap(page, '.au-tab[data-s=\"1\"]', { force: true }); await sleep(500); await page.fill('.au-wish textarea[data-i="3"]', 'Until it flies, and after'); await sleep(700); await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(1200);
-  const again = await page.evaluate(() => document.querySelector('#au-print').getAttribute('aria-label'));
-  await tap(page, '#au-print'); await page.waitForFunction(() => !document.querySelector('#au-show').hidden, null, { timeout: 15000 }).catch(() => {}); await sleep(500); await tap(page, '#au-show .au-x'); await sleep(300);
-  const once = await st();
-  check(`aura (${tag}): once printed, the press begins a new piece; changed, it prints again into the same place on the wall`, sent === 'Begin a new piece' && again === 'Print' && once.folio === 1 && once.piece.sent, JSON.stringify({ sent, again, folio: once.folio }));
-  /* the piece comes back with one */
+  /* printed, the round is over: going on begins the next piece, clear, and what is written there is what goes to print */
+  await tap(page, '.au-tab[data-s=\"1\"]', { force: true }); await sleep(600);
+  const nx1 = await page.evaluate(() => ({ piece: window.AURA.state().piece, v: [...document.querySelectorAll('.au-wish textarea')].map(t => t.value) }));
+  await page.fill('.au-wish textarea[data-i="3"]', 'Until it flies, and after'); await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(1200);
+  const nx2 = await page.evaluate(() => ({ lines: window.AURA.state().piece.lines, sent: window.AURA.state().piece.sent, hero: !!document.querySelector('.au-hero canvas'), label: (document.querySelector('#au-print') || {}).getAttribute && document.querySelector('#au-print').getAttribute('aria-label') }));
+  check(`aura (${tag}): printed, the round is over: the next W.I.S.H. begins clear, and goes to print as itself`, sent === 'Begin a new piece' && nx1.piece === null && nx1.v.every(v => v === '') && nx2.lines[3] === 'Until it flies, and after' && !nx2.lines[0] && !nx2.sent && nx2.hero && nx2.label === 'Print', JSON.stringify({ sent, nx1, nx2 }));
+  /* the piece comes back with one, kept as it was typed even straight after a step */
+  await tap(page, '.au-tab[data-s=\"1\"]', { force: true }); await sleep(400); await page.fill('.au-wish textarea[data-i="1"]', 'kept on the way'); await tap(page, '.au-tab[data-s=\"0\"]', { force: true }); await sleep(450);
   await page.reload(); await page.waitForSelector('#aura'); await sleep(800); await toIruk(1); await sleep(500);
   const back = await st();
-  check(`aura (${tag}): the piece one was making is kept: it is there after leaving and coming back`, back.piece && back.piece.lines[3] === 'Until it flies, and after' && back.piece.photo && back.piece.adds.length === 2, JSON.stringify(back.piece && back.piece.lines));
-  /* printed, it is finished: notice begins the next piece, clear */
-  await tap(page, '.au-tab[data-s=\"0\"]', { force: true }); await sleep(800);
-  const fresh = await page.evaluate(() => ({ piece: window.AURA.state().piece, ph: !!document.querySelector('#au-panel .au-ph'), say: document.querySelector('#au-say').value }));
-  check(`aura (${tag}): once printed, notice begins the next piece, clear (the finished one is on the wall)`, fresh.piece === null && !fresh.ph && fresh.say === '', JSON.stringify(fresh));
+  check(`aura (${tag}): the piece one was making is kept, every word, even typed just before changing step`, back.piece && back.piece.lines[3] === 'Until it flies, and after' && back.piece.lines[1] === 'kept on the way', JSON.stringify(back.piece && back.piece.lines));
+  /* let go with its check: notice is clear */
+  await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600);
+  const fresh = await page.evaluate(() => ({ piece: window.AURA.state().piece, stage: window.AURA.state().stage, ph: !!document.querySelector('#au-panel .au-ph'), say: (document.querySelector('#au-say') || {}).value }));
+  check(`aura (${tag}): start again lets the piece go (with a check), and notice is clear`, fresh.piece === null && fresh.stage === 0 && !fresh.ph && fresh.say === '', JSON.stringify(fresh));
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(900); const wall = await page.evaluate(() => ({ img: !!document.querySelector('.au-wall img'), bring: !!document.querySelector('#au-bring'), drop: !!document.querySelector('#au-drop') })); await shot(page, `${P}15-wall.png`);
   check(`aura (${tag}): print with nothing being made is the wall, one finished piece at a time`, wall.img && wall.bring && wall.drop, JSON.stringify(wall));
   await tap(page, '#au-bring'); await sleep(1200); const br = await st();
   check(`aura (${tag}): a finished piece is brought back to be worked on, everything as it was`, br.stage === 2 && br.piece && br.piece.lines[0] === L4[0] && br.piece.caught.length === 4 && br.piece.folioId && !br.piece.sent, JSON.stringify({ stage: br.stage, lines: br.piece && br.piece.lines }));
-  await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600); const gone = await st();
-  check(`aura (${tag}): start again lets the piece go (with a check)`, gone.piece === null && gone.stage === 0, JSON.stringify({ piece: gone.piece, stage: gone.stage }));
+  await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600);
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800);
   await tap(page, '#au-drop'); await sleep(200); await tap(page, '#au-drop'); await sleep(800); const dropped = await st();
   check(`aura (${tag}): a finished piece is taken down from the wall (with a check)`, dropped.folio === 0, String(dropped.folio));
