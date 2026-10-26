@@ -461,7 +461,7 @@ function read(n) {
 var sheet = $('#sheet');
 function open(html, half, cls) {
   sheet.innerHTML = html; sheet.hidden = false; document.body.classList.remove('sheetmin'); sheet.dataset.k = ''; sheet.className = (half ? 'half ' : '') + (cls || ''); sheet.scrollTop = 0;
-  net.wish = false; document.body.classList.remove('wishmap'); if (ORB) ORB.quiet(); document.body.classList.add('away'); document.body.classList.toggle('half', !!half); document.body.classList.toggle('wide', /\bwide\b/.test(cls || '')); sheet.style.height = ''; sheet.style.maxHeight = ''; rail(); render(); backKey();
+  net.wish = false; document.body.classList.remove('wishmap'); if (ORB) ORB.quiet(); document.body.classList.add('away'); document.body.classList.toggle('half', !!half); document.body.classList.toggle('wide', /\bwide\b/.test(cls || '')); sheet.style.height = ''; sheet.style.maxHeight = ''; rail(); render(); backKey(); if (window.AURA) AURA.sleep();
   var x = $('.x', sheet); if (x) x.addEventListener('click', back);
 }
 /* back: a view opened from a page returns to that page when closed (a poster from PRINT goes back to PRINT, a print from a thread
@@ -483,7 +483,7 @@ function back() { var b = BACKTO; BACKTO = null; if (b) b(); else close(); }
 function close() {
   dockOn(''); BACKTO = null; PAGE = null; PAGEHASH = ''; net.wish = false; net.onWish = null; sheet.hidden = true; sheet.innerHTML = ''; radioPaint = null; ['away', 'half', 'wide', 'sheetmin', 'wishmap'].forEach(function (c) { document.body.classList.remove(c); }); net.live = document.body.classList.contains('mapmode'); if (radar.on) radarOn(false);
   net.all = document.body.classList.contains('mapmode'); net.focus = null; net.links = []; net.only = null;
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on(); if (AC) droneSync();
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search); render(); if (ORB) ORB.on(); if (AC) droneSync(); if (window.AURA) AURA.wake();
 }
 /* the bar is the tabs: the page one is on is marked, so where one is and where else one can go are always in reach */
 function dockOn(k) { $$('#top a.pg').forEach(function (a) { var on = a.getAttribute('href') === '#' + k; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
@@ -897,6 +897,7 @@ function stepS(n, boardArt, art) {
     if (PHOTOS[n.id]) payload.photo = PHOTOS[n.id];
     st.innerHTML = pips('sending');
     var after = function () { btn.disabled = false; btn.dataset.next = '1'; btn.innerHTML = '→'; btn.setAttribute('aria-label', 'Next'); btn.title = 'Next'; };
+    if (window.AURA) AURA.keepNote(n, o.art);
     send(payload).then(function (j) {
       var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: sel.value, s: s }; saveNotes(); st.innerHTML = pips(s); follow(n, st); after();
     }).catch(function (e) {
@@ -905,6 +906,19 @@ function stepS(n, boardArt, art) {
     });
   });
   draw();
+}
+/* a noticing printed from anywhere: its record and its receipt, sent; offline it waits in the outbox. Resolves to its status */
+function sendNote(n, cv, dest, wishOn) {
+  var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
+  var body = { type: 'noticed', lat: +n.lat.toFixed(4), lng: +n.lng.toFixed(4), text: n.say || '' };
+  if (n.cn) { body.tx = { n: n.sci, cn: n.cn }; body.g = n.g; }
+  if (n.tags && n.tags.length) body.tags = n.tags; if (n.issue) body.issue = n.issue; if (n.data && n.data.length) body.data = n.data;
+  if (wishOn) body.wish = wishLines(n, r).map(function (l) { return l[1]; });
+  var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest, escpos: raster(cv) };
+  if (PHOTOS[n.id]) payload.photo = PHOTOS[n.id];
+  return send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
+    if (e.status) return 'failed'; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
+  });
 }
 function download(cv, name) { var a = document.createElement('a'); a.download = name; a.href = cv.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
 function send(payload) { return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
@@ -1794,6 +1808,7 @@ function composer(el) {
   sureTap($('#c-reset', el), function () { compEdit(function () { COMP.blocks = []; COMP_SEL = -1; }); again(); });
   $('#c-dl', el).addEventListener('click', function () { if (!B.length) return; compose(512).then(function (o) { download(o.c, 'novel-global-piece.png'); }); });
   $('#c-pr', el).addEventListener('click', function () { if (!B.length) return; var st = $('#c-st', el); st.innerHTML = pips('sending'); compose(512).then(function (o) {
+    if (window.AURA) AURA.keepCanvas(o.c, 'A piece, ' + when(Date.now()).slice(0, 6));
     var id = 'k' + Date.now().toString(36), body = { type: 'piece', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4), blocks: B.map(function (b) { return b.k; }) };
     return send({ kind: 'record', code: code(id), body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: 'novelglobal', escpos: raster(o.c) }).then(function (j) { var n = { sent: { id: j.id, s: j.job ? j.job.status : j.status } }; st.innerHTML = pips(n.sent.s); follow(n, st); });
   }).catch(function (e) { st.innerHTML = pips(e && e.status ? 'failed' : 'outbox'); }); });
@@ -2066,6 +2081,7 @@ function boothSticker(dest) {
 /* ───────── the start: three rings drawn by hand, turning slowly as one planet. Each is a great circle at its own tilt; the whole
    turns about its axis, seen a little from above. The half of a ring behind is fainter, the half in front full. A dot rides each
    ring carrying its page, larger and brighter as it comes round to the front. Still when motion is reduced; idle when hidden ───────── */
+var AURA_ON = document.documentElement.classList.contains('aura-on');
 var ORB = (function () {
   var g = $('#rg'), R = 150, tiltX = -0.38, rings = [
     { ax: 0.0, inc: 1.2, r: 1.0, w: [0.010, 0.006, 0.004], ph: [0.3, 2.1, 4.0], orb: $('#o-radio'), sp: 0.21, a0: 0.4 },
@@ -2096,7 +2112,7 @@ var ORB = (function () {
     out.gain.setTargetAtTime(0.55, c.currentTime, 1.8); window.__hum = 1;
   }
   function humSet(on) { if (!hum || !AC) return; hum.out.gain.setTargetAtTime(on ? 0.55 : 0, AC.currentTime, on ? 1.2 : 0.35); window.__hum = on ? 1 : 0; }
-  document.addEventListener('pointerdown', function (e) { var b = document.body.classList; if (b.contains('away') || b.contains('mapmode') || b.contains('booth') || (e.target.closest && e.target.closest('.orb'))) return; humStart(); });
+  document.addEventListener('pointerdown', function (e) { var b = document.body.classList; if (AURA_ON || b.contains('away') || b.contains('mapmode') || b.contains('booth') || (e.target.closest && e.target.closest('.orb'))) return; humStart(); });
   function frame(now) {
     raf = 0; if (!t0) t0 = now; var t = (now - t0) / 1000, spin = 0.6 + (still ? 0 : t * 2 * Math.PI / 110);
     var k2 = $('#rings').getBoundingClientRect().width / 400;
@@ -2118,7 +2134,7 @@ var ORB = (function () {
     });
     last = now; if (!still) go();
   }
-  function go() { if (document.hidden || document.body.classList.contains('away') || document.body.classList.contains('mapmode') || document.body.classList.contains('booth')) { humSet(false); return; } humSet(true); if (raf) return; raf = requestAnimationFrame(frame); }
+  function go() { if (document.hidden || AURA_ON || document.body.classList.contains('away') || document.body.classList.contains('mapmode') || document.body.classList.contains('booth')) { humSet(false); return; } humSet(true); if (raf) return; raf = requestAnimationFrame(frame); }
   document.addEventListener('visibilitychange', go); addEventListener('resize', function () { if (!raf) raf = requestAnimationFrame(frame); });
   return { on: function () { if (still) { if (!raf) raf = requestAnimationFrame(frame); } else go(); }, quiet: function () { humSet(false); } };
 })();
@@ -2155,5 +2171,12 @@ credit(); render(); if (ORB) ORB.on();
 /* the field pack after the first paint, then what is happening now */
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();
+/* what the aura (aura.js) is given of the base: its engine, its stores, its print and its sound */
+window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: toast, sureTap: sureTap, exif: exif, lib: lib, loadImg: loadImg, shrink: shrink,
+  read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
+  reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
+  place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
+  slip: slip, sendNote: sendNote, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); },
+  ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

@@ -189,3 +189,13 @@ Every round so far made things: a path through the cells, a web, a song, posters
 - **W.I.S.H. no longer needs a photograph.** A wish can be made from the life alone, and a thread shows what it touches as a tree: the lives near, its song, its place in the web, the research and the replies. Its data shows only when asked for. The stock lines that read like a template were cut. Every line now comes from the life and its issue.
 - **The sound was the weakest part, so it was rebuilt rather than tuned.** The voices were close and dry, so a click sounded like a click. They now play in one room, built from Freeverb's hall, a slow chorus and Tuna's delay. The bells beat in pairs, as gamelan is tuned, and the choir swells. The tempo slows to 80.
 - **Paper is the measure of an image.** Every photograph printed is levelled, sharpened and dithered for thermal dots by the same steps.
+
+## The aura: the showcase begins as a seed
+
+The base works, but it works like an app: pages, a bar, a map. A portfolio piece has to be a single gesture. So `/` is now one sheet of blueprint paper, and nothing leaves it.
+
+- **A seed, then a bang.** A browser will not play sound before a touch, so the first touch is made the event. The light bursts, the globe springs out, and the drone begins, softer than before (70%). The sound starts because you started it.
+- **The globe becomes the creature.** The three rings are not swapped for a menu. They are redrawn as an irukandji, the smallest and most easily missed of lives. The thing you navigate with is the thing the site is about.
+- **Four tentacles, four steps.** Notice, W.I.S.H., art, print are the tentacles' tips, in order, so the way through is the animal's body. The deeper views (map, species, data, El Niño) are what it has caught on the way down: there when wanted, never in the way. That is the 80% cut: the flow is four touches, and depth is one touch to the side.
+- **Colour for the wall, one bit for the paper.** The thermal printer prints in black dots; the portfolio keeps the same piece in colour, whole and zoomable. The receipt is the act; the poster is the record.
+- **The base stays whole underneath** (`/?base`), for class and for anyone who needs the full tools.
