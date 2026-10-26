@@ -150,6 +150,16 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, the tentacles at work, 26 October** (the owner: "WISH has 4 lines, surely you can make the 4 tentacles make the lines and they can let go of the buttons … also 4 sides to a square … when the buttons aren't being held they might slowly float").
+  - **The tentacles take a shape for each step** (`FORM`, `readForm`, `tentPts`). The shapes are read from the page every frame, so they follow scrolling and growing lines.
+    - **Notice:** they hang to their steps and hold them.
+    - **W.I.S.H.:** they are the four lines. Each sweeps down from the catch to the margin and lies along its own line, W and I from the left, S and H from the right. The dashed underlines step aside.
+    - **Art, print and the wall:** they are the four sides round the piece, closing one loop (left, bottom, right, top). They cross at the catch and go down outside the piece, never over the tray.
+    - With the catch open, they hang again.
+  - **Between shapes they move over 0.9 s** (`FORM.from`); they never jump. At work they are steady where they lie and drift only on the way there.
+  - **Let go of, the steps drift** (`#aura.loose .au-tab`): a few pixels and a few degrees, each at its own pace, 9 to 13 s. Held again in notice, they settle.
+  - **The frame loop asks for its next frame first** and logs a bad frame once, so one error can never stop the creature.
+  - **For the checks:** headless Chromium in phone emulation pauses animation frames until there is input, so the check moves the pointer before it reads the shape.
 - **v0.1 alpha, one piece at a time, 26 October** (the owner: "too much grouped up in one spot at the start … remove this hover copy … make the eye and catch pulse … a deep tone when hovered … only show the copy What have you noticed after a second … the WISH full sentence for each letter on hover … no stickers or text, or icon additions … things should be able to be brought back or edited or removed … reset when completed … each entry or process is for one final art").
   - **Room at the top.** The catch hangs lower under the bell, clear of it.
   - **No words on hover:** no `title` anywhere in the aura. The names stay for screen readers (`aria-label`).
@@ -929,7 +939,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v86` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v87` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

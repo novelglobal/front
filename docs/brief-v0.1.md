@@ -214,3 +214,5 @@ The irukandji is almost invisible and does its harm out of all proportion to its
 Each visit makes one thing. The piece is kept while it is made and comes back when you do. Printing puts it on the wall, and changing it puts the new version in the same place on the wall. Only then does the press offer a new beginning. The wall is the only place many pieces appear: one at a time, each one whole, and each can be brought back to work on or taken down. Nothing is a draft among drafts.
 
 W.I.S.H.'s letters stay letters until you look for them: Witness, Intention, Strategy, Hope.
+
+Four is the creature's number. It has four tentacles, W.I.S.H. has four lines, and a picture has four sides. So the tentacles do the work: they become the lines you write on, then the frame round what you made. While they are busy they let go of the steps, which drift until they are held again.

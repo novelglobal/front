@@ -223,3 +223,12 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-wdots i { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid var(--ink); }
 .au-wdots i.on { background: var(--ink); }
 #au-catch { transform: var(--at); }
+
+/* let go of, the steps drift a little, each at its own pace; held again, they settle */
+.au-tab { transform: var(--at); transition: none; }
+#aura.loose .au-tab { animation: au-drift 9s ease-in-out infinite alternate; }
+#aura.loose .au-tab:nth-of-type(2n) { animation-duration: 11s; animation-delay: -3s; }
+#aura.loose .au-tab:nth-of-type(3n) { animation-duration: 13s; animation-delay: -6s; }
+@keyframes au-drift { 0% { transform: var(--at) translate(0, 0) rotate(0); } 50% { transform: var(--at) translate(3px, -6px) rotate(2.5deg); } 100% { transform: var(--at) translate(-3px, -3px) rotate(-2deg); } }
+/* in W.I.S.H. the tentacles are the lines: the dashed ones step aside */
+#aura.m-iruk.st1:not(.deep) .au-wish textarea { border-bottom-color: transparent; }
