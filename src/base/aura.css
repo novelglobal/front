@@ -40,7 +40,6 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-orb .pt { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: var(--ink); }
 .au-orb .au-i { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -40px 0 0 -17px; transition: transform .25s; }
 /* the numbers as references are set: small, raised, to the right */
-.au-orb .au-n { position: absolute; left: 50%; top: 50%; width: 7px; height: 11px; margin: -45px 0 0 17px; stroke-width: 1.6; }
 .au-orb:hover .au-i, .au-orb:focus-visible .au-i { transform: scale(1.18); }
 #au-base { position: absolute; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); width: 34px; height: 30px; opacity: .45; }
 #au-base i { position: absolute; left: 4px; top: 50%; width: 18px; border-top: 1.5px dotted var(--ink); }
@@ -58,9 +57,8 @@ html.aura-on body { background: var(--blue, #17457F); }
 @media (max-width: 759px) { #au-up { left: 2px; } }
 .au-tab { position: absolute; left: 0; top: 0; width: 56px; height: 52px; margin: -22px 0 0 -28px; will-change: transform; }
 .au-tab .au-i { position: absolute; left: 13px; top: 8px; width: 30px; height: 30px; opacity: .5; transition: opacity .25s, transform .25s, filter .25s; }
-.au-tab .au-n { position: absolute; left: 44px; top: 2px; width: 6px; height: 10px; stroke-width: 1.6; opacity: .45; }
-.au-tab:hover .au-i, .au-tab:hover .au-n { opacity: .85; }
-.au-tab.on .au-i, .au-tab.on .au-n { opacity: 1; }
+.au-tab:hover .au-i { opacity: .85; }
+.au-tab.on .au-i { opacity: 1; }
 .au-tab.on .au-i { transform: scale(1.14); filter: drop-shadow(0 0 6px rgba(244, 241, 232, .6)); }
 /* the next step, once there is something to take on: it breathes */
 .au-tab.next .au-i { opacity: .95; animation: au-next 2.2s ease-in-out infinite; }
@@ -171,7 +169,6 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-find .au-i { width: 22px; height: 22px; flex: 0 0 auto; opacity: .75; }
 #aura .au-find input { -webkit-appearance: none; appearance: none; min-height: 36px; padding: 4px 2px; }
 #aura .au-find + .au-names { border-top: 0; padding-top: 6px; }
-#aura.big .au-tab .au-n { left: 46px; }
 #aura textarea:focus-visible, #aura input:focus-visible { outline: none; }
 
 /* the question: not there at first; after a breath it comes quickly, then all but goes */
@@ -183,9 +180,7 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura ::placeholder { color: transparent; }
 /* W.I.S.H.: each letter's sentence, only when looked for */
 .au-wish li { position: relative; }
-.au-wish b { cursor: help; }
-.au-wish b::after { content: attr(data-say); position: absolute; left: 36px; top: -14px; z-index: 3; font-size: 13px; letter-spacing: .02em; white-space: nowrap; padding: 2px 9px; border-radius: 10px; background: #17457F; box-shadow: 0 0 0 1px rgba(244, 241, 232, .35), 0 0 12px 6px rgba(23, 69, 127, .9); opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; pointer-events: none; }
-.au-wish b:hover::after, .au-wish li:focus-within b::after { opacity: .92; transform: none; }
+.au-wish b { cursor: pointer; }
 /* the eye and the catch breathe a little: they can be touched */
 #au-catch { animation: au-breathe 3.6s ease-in-out infinite; }
 @keyframes au-breathe { 0%, 100% { transform: var(--at) scale(1); } 50% { transform: var(--at) scale(1.06); } }
@@ -324,8 +319,6 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-near li button small { margin-left: 6px; white-space: nowrap; }
 
 /* the globe's ways in: each a small constellation of its own on a postmark ring; the first, where to begin, breathes and calls */
-.au-orb .au-rune { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -48px 0 0 17px; stroke-width: .8; opacity: .8; }
-.au-orb .au-rune path { stroke-dasharray: none; opacity: .6; }
 .au-orb .au-ring { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -46px 0 0 -23px; border-radius: 50%; border: 1px dashed rgba(244, 241, 232, .35); box-shadow: inset 0 0 0 3px rgba(23, 69, 127, 0), inset 0 0 0 4px rgba(244, 241, 232, .14); pointer-events: none; }
 .au-orb[data-s="0"] .au-i { animation: au-call 2.4s ease-in-out infinite; }
 .au-orb[data-s="0"] .au-ring { border-style: solid; border-color: rgba(244, 241, 232, .6); animation: au-ringout 2.4s ease-out infinite; }
@@ -337,14 +330,14 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-hint.on { opacity: .82; }
 #aura .au-ask.au-hint { margin: 0; animation: none; opacity: .14; font-size: inherit; line-height: inherit; }
 #aura .au-ask.au-hint.on { opacity: .7; }
-.au-c .au-hint { margin: -8px 2px 10px; font-size: 12px; }
+.au-c .au-hint { margin: 6px 2px 10px; font-size: 12px; line-height: 1.45; }
+#aura .au-find + .au-hint + .au-names { border-top: 0; padding-top: 2px; }
 /* why El Niño matters now: small, kept */
 .au-why { margin: 6px 2px 10px 16px; font-size: 12px; line-height: 1.45; opacity: .66; }
 /* the next step, at the foot of every page: a dotted line to its icon, and where it leads */
 #aura .au-go { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px auto; padding: 6px 4px; opacity: .85; transition: opacity .2s, transform .25s; }
 #aura .au-go i { width: 46px; border-top: 1.6px dotted var(--ink); }
 #aura .au-go .au-i { width: 26px; height: 26px; animation: au-next 2.6s ease-in-out infinite; }
-#aura .au-go span { font-size: 15px; }
 #aura .au-go:hover { opacity: 1; transform: translateX(3px); }
 .au-empty { margin: 8vh 4px 0; font-size: 16px; line-height: 1.45; opacity: .8; }
 /* the photograph, let go with its own ×, kept inside the page */
@@ -378,3 +371,16 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-pswp .au-dots button::after { content: ''; position: absolute; left: 9px; top: 9px; width: 8px; height: 8px; border-radius: 50%; border: 1.3px solid #F4F1E8; box-sizing: border-box; }
 .au-pswp .au-dots button.on::after { background: #F4F1E8; }
 .au-pswp .pswp__button--arrow { opacity: .7; }
+
+/* W.I.S.H.: what goes on a line is said on the line itself (its words, then what they ask for), when its letter is pointed at or
+   tapped, or while an empty line is in hand. Gone as soon as there are words */
+#aura .au-wtip { position: absolute; left: 38px; right: 4px; bottom: 9px; font: 400 16px/1.3 'Architects Daughter', cursive; letter-spacing: .01em; word-spacing: 0; text-align: left; text-transform: none; color: var(--ink); opacity: 0; transform: translateY(3px); transition: opacity .3s, transform .3s; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#aura .au-wtip em { font-style: normal; letter-spacing: inherit; color: inherit; }
+#aura .au-wtip em::after { content: ' —'; }
+#aura .au-wish li b:hover ~ .au-wtip, #aura .au-wish li.tip .au-wtip, #aura .au-wish li.empty:focus-within .au-wtip { opacity: .72; transform: none; }
+#aura .au-wish li:not(.empty) .au-wtip { opacity: 0 !important; }
+@media (max-width: 759px) { #aura .au-wtip { font-size: 14px; white-space: normal; bottom: 6px; } }
+/* the next step: a dotted line, its icon, and an arrowhead, no words */
+#aura .au-arrow { width: 8px; height: 8px; border-top: 1.6px solid var(--ink); border-right: 1.6px solid var(--ink); transform: rotate(45deg); margin-left: -4px; }
+#aura .au-go[data-go="0"] { margin-right: auto; margin-left: 0; flex-direction: row-reverse; }
+#aura .au-go[data-go="0"] .au-arrow { transform: rotate(-135deg); margin: 0 -4px 0 0; }

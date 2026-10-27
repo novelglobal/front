@@ -177,7 +177,7 @@
     var band = caught(P).length ? 340 : 0, foot = 176;
     var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + 40 + band + foot + pad;
     c.height = H; paper(x, W, H);
-    x.fillStyle = ink(); x.textBaseline = 'top'; globeMark(x, pad + 16, pad + 17, 15, ink()); x.font = '900 27px ' + SERIF; x.fillText('novel.global', pad + 44, pad + 2); x.font = '22px ' + FONT;
+    x.fillStyle = ink(); x.textBaseline = 'top'; globeMark(x, pad + 16, pad + 17, 15, ink()); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + 42, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
     if (n.code) { var cw2 = x.measureText(n.code).width; x.fillText(n.code, W - pad - cw2, pad + 4); }
     var ay = pad + 54, y = ay + 10, ax = 0; if (a) { ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7);
       if (!P.img && P.spCredit) { x.font = '13px ' + FONT; x.fillStyle = 'rgba(255,255,255,.85)'; var cr = P.spCredit.slice(0, 80), cwid = x.measureText(cr).width; x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(ax + a.width - cwid - 14, ay + a.height - 22, cwid + 10, 18); x.fillStyle = 'rgba(255,255,255,.9)'; x.fillText(cr, ax + a.width - cwid - 9, ay + a.height - 20); }
@@ -616,7 +616,14 @@
     if (hum || mute || !(window.AudioContext || window.webkitAudioContext)) return; var c = NG.ac(), out = c.createGain(); out.gain.value = 0; out.connect(NG.bus(c));
     hum = { out: out, v: HZ.map(function (f0) { var o = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), p = c.createStereoPanner ? c.createStereoPanner() : null;
       o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = f0; o2.frequency.value = f0 * 2.004; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0.012;
-      o.connect(f); o2.connect(f); f.connect(g); if (p) { g.connect(p); p.connect(out); } else g.connect(out); o.start(); o2.start(); return { f: f, g: g, p: p, o: o }; }) };
+      o.connect(f); o2.connect(f); f.connect(g); if (p) { g.connect(p); p.connect(out); } else g.connect(out); o.start(); o2.start(); return { f: f, g: g, p: p, o: o, o2: o2 }; }) };
+    /* the drone grows with the piece, a little at each step and never loud: W.I.S.H. brings a fifth above, art a high shimmer that
+       wanders, print a low breath under it all. One slow swell moves them, and the voices drift apart a few cents and back */
+    var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 5; lfo.connect(lg); hum.v.forEach(function (v) { lg.connect(v.o2.detune); }); lfo.start();
+    hum.ext = [[329.63, 1, 'sine', 0.007], [659.26, 2, 'triangle', 0.0035], [55, 3, 'sine', 0.016]].map(function (L2) {
+      var o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(), p = c.createStereoPanner ? c.createStereoPanner() : null, w = c.createOscillator(), wg = c.createGain();
+      o.type = L2[2]; o.frequency.value = L2[0]; f.type = 'lowpass'; f.frequency.value = L2[0] * 3; g.gain.value = 0; w.frequency.value = 0.05 + L2[1] * 0.023; wg.gain.value = 0.6;
+      o.connect(f); f.connect(g); if (p) { w.connect(wg); wg.connect(p.pan); g.connect(p); p.connect(out); } else g.connect(out); o.start(); w.start(); return { g: g, at: L2[1], top: L2[3] }; });
     out.gain.setTargetAtTime(0.385, c.currentTime, 1.8); window.__auraHum = 0.385;
   }
   function humSet(on) { if (!hum) return; var c = NG.ac(); hum.out.gain.setTargetAtTime(on && !mute ? 0.385 : 0, c.currentTime, on ? 1 : 0.3); window.__auraHum = on && !mute ? 0.385 : 0; }
@@ -624,9 +631,13 @@
     if (!hum) return; var c = NG.ac(), tt = c.currentTime;
     hum.v.forEach(function (v, i) {
       if (rs) { var q = rs[i]; v.g.gain.setTargetAtTime(0.006 + 0.03 * q[2] * q[2], tt, 0.3); v.f.frequency.setTargetAtTime(260 + 1400 * q[2], tt, 0.3); if (v.p) v.p.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, (q[0] - L.cx) / L.R)), tt, 0.3); }
-      else if (b) { v.g.gain.setTargetAtTime(0.014 + 0.012 * b.p, tt, 0.4); v.f.frequency.setTargetAtTime(300 + 500 * b.p + (i === S.stage % 3 ? 300 : 0), tt, 0.5); if (v.p) v.p.pan.setTargetAtTime((i - 1) * 0.5, tt, 0.6); }
+      else if (b) { v.g.gain.setTargetAtTime(0.014 + 0.012 * b.p, tt, 0.4); v.f.frequency.setTargetAtTime(300 + 500 * b.p + (i === S.stage % 3 ? 300 : 0) + 260 * humGrow(), tt, 0.5); if (v.p) v.p.pan.setTargetAtTime((i - 1) * 0.5, tt, 0.6); }
     });
+    /* the layers come in slowly as the steps are reached (and stay while one goes back), and go out on the globe */
+    if (hum.ext) { S.reach = Math.max(S.reach || 0, S.mode === 'iruk' ? S.stage : 0); hum.ext.forEach(function (e) { e.g.gain.setTargetAtTime(b && S.mode === 'iruk' && S.reach >= e.at ? e.top * (0.6 + 0.4 * humGrow()) : 0, tt, 4); }); window.__auraLayers = hum.ext.filter(function (e) { return S.mode === 'iruk' && S.reach >= e.at; }).length; }
   }
+  /* how far the piece has come: lines written, things caught, things added */
+  var humGrow = function () { if (!P) return 0; var l = (P.lines || []).filter(Boolean).length / 4, k = caught(P).length / 4, a = Math.min(1, (P.adds || []).length / 3); return Math.min(1, l * 0.45 + k * 0.3 + a * 0.25); };
   var DEG = [0, 3, 5, 7, 10, 12, 15];
   var AC0 = function () { return !!hum || !!window.__auraSound; };
   function bell(i, vol) { if (mute || !AC0()) return; var c = NG.ac(), I = NG.INS.gamelan; I.fn(c, NG.bus(c), c.currentTime + 0.02, 220 * Math.pow(2, DEG[i % DEG.length] / 12), 1.7, vol || 0.28); }
@@ -650,8 +661,6 @@
   /* ───────── the keys: the three pages on the globe; the bell, which is the eye; the four steps, icons alone at the tentacles' tips;
      the one thing held. No words on hover: the names are for those who listen for them (aria) ───────── */
   var STEPS = [['notice', 'radio'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
-  var NUMS = ['M2.6 4.4c1.4-.6 2.6-1.7 3.4-2.8.3 3.9 0 8.1.4 11.8', 'M1.8 4.6c.8-2.3 5.1-2.7 5.5.2.3 2.3-2.7 4.7-5.3 8.4 1.9-.5 3.9-.3 5.7.1',
-    'M2 3.4c1.7-1.7 5.5-1.5 5.3 1.1-.1 1.6-1.9 2.4-3.5 2.6 2.5-.2 4.1.8 3.9 3.1-.3 2.9-4.5 3.3-5.9 1.6', 'M6.4 13.6c-.2-3.8 0-7.6.4-11.6-1.8 2.6-3.6 5.2-5.3 7.6 2.1-.2 4.6-.3 6.9 0'];
   var ICON = {
     radio: '<circle cx="16" cy="19" r="2.2" class="f"/><path d="M16 21.5v8.5M12.4 15.2a5.2 5.2 0 0 1 7.2 0M9.3 12.1a9.6 9.6 0 0 1 13.4 0M6.2 9a14 14 0 0 1 19.6 0" class="d"/>',
     wish: '<path d="M9 13.5C9 8 12 5 16 5s7 3 7 8.5v1.2H9z"/><path d="M10.5 15v13M14 15v14M18 15v14M21.5 15v13" class="t"/>',
@@ -687,7 +696,7 @@
   var SAY = {
     globe: 'Start here. Tell us one small thing you noticed today.',
     notice: 'A small thing counts: a bird on the path, a smell after rain, a frog calling at night. Tap the eye up top to add a photo, or the round bundle under it to pin where it was.',
-    wish: 'Four lines, one for each letter. Stuck? Hover or tap the letter and it will tell you what goes there.',
+    wish: 'Four lines, one for each letter. Stuck? Tap the letter and it will tell you what goes on its line.',
     art: 'Drag things where you want them. Tap one to turn it, resize it or frame it. The row above adds stamps, words, a photo or a little pixel creature.',
     artEmpty: 'Nothing to make a poster from yet. Start with what you noticed, or write your W.I.S.H.',
     print: 'Print sends this to the novel.global printer on 80 mm paper, and it goes up on your wall. Pick blue or white paper first.',
@@ -700,10 +709,10 @@
   };
   /* why El Niño matters now, from the season's own reports (sources in docs/sources.md) */
   var NINO_WHY = 'The Pacific is running hot. The Bureau declared El Niño in June, and NOAA gives it better than four in five odds of staying strong or very strong through to March. On top of a warmer world, that means hotter days, drier ground and more fire weather here, and reef scientists expect the Great Barrier Reef to bleach again. Strong El Niños have brought some of the worst droughts on record. The small lives feel it first, so what you notice now matters.';
-  var hint = function (t, cls2) { var long = t.length > 70; return '<p class="au-hint ' + (cls2 || '') + '" data-on="' + (long ? Math.min(8, 2 + Math.round(t.length / 40)) : 2) + '" data-off="' + (long ? 14 : 10) + '">' + esc(t) + '</p>'; };
+  var hint = function (t, cls2) { var long = t.length > 70; return '<p class="au-hint ' + (cls2 || '') + '" data-on="' + ((long ? Math.min(8, 2 + Math.round(t.length / 40)) : 2) + 5) + '" data-off="' + (long ? 14 : 10) + '">' + esc(t) + '</p>'; };
   /* the next step, always at the foot of the page: a dotted line to the next step's own icon, and where it leads */
   var NEXT = [[1, 'wish', 'next: your W.I.S.H.'], [2, 'art', 'next: make the poster'], [3, 'print', 'next: print it']];
-  var goKey = function (s) { var n2 = NEXT[s]; return n2 ? '<button class="au-go" data-go="' + n2[0] + '"><i></i>' + svgI(n2[1]) + '<span>' + n2[2] + '</span></button>' : ''; };
+  var goKey = function (s) { var n2 = NEXT[s]; return n2 ? '<button class="au-go" data-go="' + n2[0] + '" aria-label="' + n2[2] + '"><i></i>' + svgI(n2[1]) + '<b class="au-arrow"></b></button>' : ''; };
   setInterval(function () {
     var t = performance.now() / 1000; [].forEach.call(root.querySelectorAll('.au-hint'), function (el, i) {
       if (!el.__t0) el.__t0 = t + 1 + (el.closest('.au-c') ? (i % 5) * 0.9 : 0); var on = +el.dataset.on || 2, off = +el.dataset.off || 10, k = t - el.__t0;
@@ -711,18 +720,13 @@
   }, 200);
   var svgI = function (k, cls2) { return '<svg class="' + (cls2 || 'au-i') + '" viewBox="0 0 32 32" aria-hidden="true">' + ICON[k] + '</svg>'; };
   var markI = function (g) { return '<svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><path d="' + MARKS[g] + '"/></svg>'; };
-  /* the globe's three ways in, marked not by numbers but by small constellations of their own: a seeing (three stars over one),
-     a four (a kite left open), a path (stars stepping down to the paper) */
-  var RUNES = [[[3, 10], [8, 4], [13, 10], [8, 13]], [[3, 5], [11, 2.5], [13.5, 11], [5, 13.5]], [[2.5, 3], [6, 7], [10.5, 8.5], [13.5, 13.5]]], RUNEJ = [[[0, 1], [1, 2], [1, 3]], [[0, 1], [1, 2], [2, 3], [0, 2]], [[0, 1], [1, 2], [2, 3]]];
-  var runeI = function (i) { var st = RUNES[i]; return '<svg class="au-rune" viewBox="0 0 16 16" aria-hidden="true">' + RUNEJ[i].map(function (j) { return '<path d="M' + st[j[0]].join(' ') + 'L' + st[j[1]].join(' ') + '"/>'; }).join('') + st.map(function (q, k) { return '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="' + (k === st.length - 1 ? 1.6 : 1.1) + '" class="f"/>'; }).join('') + '</svg>'; };
-  var numI = function (i) { return '<svg class="au-n" viewBox="0 0 10 16" aria-hidden="true"><path d="' + NUMS[i] + '"/></svg>'; };
   ui.innerHTML =
     '<button id="au-seed" aria-label="Begin"></button>' +
-    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i><i class="au-ring"></i>' + runeI(i) + svgI(['radio', 'wish', 'print'][i]) + (i === 0 ? '<span class="au-hint au-ohint" data-on="3" data-off="10">' + esc(SAY.globe) + '</span>' : '') + '</button>'; }).join('') +
+    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['radio', 'wish', 'print'][i]) + (i === 0 ? '<span class="au-hint au-ohint" data-on="8" data-off="10">' + esc(SAY.globe) + '</span>' : '') + '</button>'; }).join('') +
     '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
-    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" aria-label="' + s[0] + '">' + numI(i) + svgI(s[1]) + '</button>'; }).join('') +
+    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
     '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
     '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
     '<section id="au-panel" aria-live="polite"></section><section id="au-deep" hidden></section>' +
@@ -789,7 +793,7 @@
   /* a printed piece is finished: the round is over. Going on (to any step but print, to the eye or to the catch) begins the next piece, clear;
      the finished one stays on the wall, to be brought back */
   var done = function () { return !!(P && P.sent); };
-  function fresh() { P = null; S.sel = null; S.pix = false; MINI.c = null; draftSave(null); fillDots(); }
+  function fresh() { S.reach = 0; P = null; S.sel = null; S.pix = false; MINI.c = null; draftSave(null); fillDots(); }
   function step(i) {
     if (i !== 3 && done()) fresh();
     var from = S.stage; if (i === S.stage && !S.deep) { paint(); keys(); return; }
@@ -876,6 +880,7 @@
   var regrow = function () { [].forEach.call(panel.querySelectorAll('textarea'), grow); };
   /* W.I.S.H., each letter's words, shown only when one looks for it (a pointer on the letter, or the line in hand) */
   var WISH_SAYS = ['What we know', 'It would be great', 'So let’s create', 'Here’s how it works'];
+  var WISH_HOW = ['what you saw, where and when', 'what you’d love to see happen for it', 'one thing we could make or do about it', 'who helps, and how it keeps going'];
   /* the marks one has: four to begin with, one more for every piece that reaches the wall */
   var ROUNDS = +store.get('da.aura.rounds', 0) || 0;
   var marksHave = function () { return MARK_ORDER.slice(0, Math.min(MARK_ORDER.length, 4 + ROUNDS)); };
@@ -884,13 +889,13 @@
     var s = S.stage, h = '', pic = P && (P.photo || P.spPhoto);
     if (s === 0) {
       h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"><button class="au-rm" id="au-unph" aria-label="Let the photograph go">×</button></figure>' : '') +
-        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask au-hint" data-on="2" data-off="10" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
+        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask au-hint" data-on="7" data-off="10" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
     } else if (s === 1) {
       /* what was noticed comes with it: the picture, the life if caught, the day; the line becomes W */
       if (P && P.say && !P.lines[0] && P.wSay === undefined) { P.lines[0] = P.say; P.wSay = P.say; changed(); }
       var L4 = P ? P.lines : ['', '', '', ''], f = P && lifeOf(P), said = P ? [f ? f.cn : '', NG.when(P.at).slice(0, 6)].filter(Boolean).join(' · ') : '';
       h = (P && (pic || f) ? '<div class="au-whead">' + (pic ? '<img alt="" src="' + (P.photo || P.spPhoto) + '">' : '') + '<span>' + esc(said) + '</span></div>' : '') +
-        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
+        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i] + ': ' + WISH_HOW[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS[i]) + '</em> ' + esc(WISH_HOW[i]) + '</span></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
     } else if (s === 2) {
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
         h = '<div class="au-tray">' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
@@ -903,7 +908,7 @@
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words" hidden></textarea><nav class="au-tools">' +
           hand('', svgI('turn'), 'data-t="r" aria-label="Turn"') + hand('', '−', 'data-t="s-" aria-label="Smaller"') + hand('', '+', 'data-t="s+" aria-label="Larger"') + hand('', svgI('tone'), 'data-t="tone" aria-label="Tone"') + hand('', svgI('frame'), 'data-t="b" aria-label="Framed or not"') +
           hand('au-rm', '×', 'data-t="x" aria-label="Take it off"') + '</nav></div></figure>' + hint(SAY.art) + goKey(2); }
-      else h = '<p class="au-empty">' + esc(SAY.artEmpty) + '</p><button class="au-go" data-go="0"><i></i>' + svgI('radio') + '<span>back to what you noticed</span></button>';
+      else h = '<p class="au-empty">' + esc(SAY.artEmpty) + '</p><button class="au-go" data-go="0" aria-label="Back to what you noticed"><i></i>' + svgI('radio') + '<b class="au-arrow"></b></button>';
     } else {
       /* print: this piece, whole, and one press. With none being made, the wall */
       h = P ? '<figure class="au-poster au-hero"><canvas></canvas></figure>' +
@@ -928,7 +933,9 @@
       say.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); keep(); think(); if (ready()) step(1); } });
     }
     if (s === 1) {
-      [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var i = +ta.dataset.i;
+      /* a letter tapped says what goes on its line, there on the line, for a few seconds, and hands one the line */
+      [].forEach.call(panel.querySelectorAll('.au-wish b'), function (bb) { bb.addEventListener('click', function () { var li = bb.parentNode; li.classList.add('tip'); clearTimeout(li.__t); li.__t = setTimeout(function () { li.classList.remove('tip'); }, 6000); var ta = li.querySelector('textarea'); if (ta) ta.focus(); }); });
+      [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var i = +ta.dataset.i; ta.addEventListener('input', function () { ta.parentNode.classList.toggle('empty', !ta.value); });
         var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; if (i === 0) p.wSay = v === p.say ? v : null; if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); };
         ta.addEventListener('input', keep);
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready()) step(2); }); });
@@ -1249,7 +1256,7 @@
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
-  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, pf: !!PF, noise: !!N3 }; };
+  api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
   api.go = function (m, s) { if (m === 'globe') { if (S.mode === 'seed') bang(); setMode('globe'); } if (m === 'iruk') { setMode('globe'); toIruk(s || 0); } };
   addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); selBox(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) go(); });
