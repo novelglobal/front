@@ -84,3 +84,7 @@ Read 27 October 2026, through search (the pages themselves could not be fetched 
 - WMO, October 2026 (reported by The Weather Channel, 22 October 2026): likely a record event, peaking at or above 2.5 °C above average.
 - Morgan Pratchett (James Cook University) at the International Coral Reef Symposium, July 2026 (AFP, carried by The Star and Malay Mail): "a very high likelihood that we'll see very high severity and large-scale mass bleaching on the Great Barrier Reef".
 - Aeon, "The life and possible death of the great Asian monsoon": many of the worst droughts in Asian history came with intense El Niño events.
+
+## El Niño, what to do now (the aura's catch, `ACTS`)
+
+Plain, standing advice, not a forecast: Wildlife Victoria's emergency line (03 8400 7300) for injured, orphaned or heat-stressed wildlife and flying-foxes; VicEmergency (app and website) for the daily fire danger rating and warnings in Victoria; water left out for wildlife in shallow dishes with a way out; checking on older neighbours and people living alone in heat; pets kept in during heat and cats at night; outside lights off at night for moths and bats (see the Bogong moth note above); 000 in an emergency.
