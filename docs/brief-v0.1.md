@@ -224,3 +224,17 @@ A print ends a round, as in a roguelite. The poster goes up the print tentacle i
 The stamps bring in a second voice. The hand draws what you add, and a postmark certifies it. The postmark style comes from institutional rubber stamps (a school's term stamps, Bulgarian philatelic cancellations): a ring, words round the rim between stars, and one picture in a bold line. Here the words are the project's own: novel.global, 888, odd kin, stay with the trouble, life emerges in ruins, dancing with doom. The type follows the same split. A heavy wedge serif sets the mark and the letters, and a narrow grotesque sets the lines, as in an old trade catalogue. The mark is a world with a band redacted across it. It is what a noticing does: some of the world is always left unread.
 
 Local knowledge stays small and folded. What is near, the readings and this month each open under their own sign, set small so a lot fits at once. This month is the engine's own calendar (fledglings, swooping, heat, the Bogong moth and the possum that eats it), with what was seen within a kilometre first.
+
+## Said plainly, now and then
+
+The aura has no headings and no menus, and that stays. But a first visitor needs to know what each thing is for. So each step says one plain thing, in a few words, with its reason: it comes for two seconds in every twelve and then goes. A longer line stays a little longer and goes for longer. Nothing sits on the page to be read again and again, and nothing talks over the paper.
+
+The way on is always at the foot of the page: a dotted line to the next step's own icon, and where it leads.
+
+## The table of found things
+
+The pixel maker now holds what turns up on a walk or a beach as well as the creature: coral, the litter the tide brings, and paperclips. It follows the photographs of found collections (paperclips kept on their notes, beach litter on black, a nature table). Each is drawn a cell at a time, a little off true, and moves with the same current as the irukandji.
+
+## The poster is the receipt
+
+What the 80 mm printer prints is the poster itself, everything on it: the photograph, the four lines, the stamps, the pixel things and the code back to the site. It is drawn on white so the ink is dark, dithered like every printed photograph, and its code is redrawn crisp so a phone can read it from paper.

@@ -406,3 +406,19 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+## Fraunces — `fraunces-black.woff2` (Black, opsz 144, latin subset)
+
+https://github.com/undercasetype/Fraunces — Copyright 2020 The Fraunces Project Authors. SIL Open Font License 1.1: https://openfontlicense.org
+
+## Archivo Narrow — `archivo-narrow.woff2` (SemiBold, latin subset)
+
+https://github.com/Omnibus-Type/ArchivoNarrow — Copyright 2017 The Archivo Narrow Project Authors. SIL Open Font License 1.1: https://openfontlicense.org
+
+## PhotoSwipe 5.4.4 — `photoswipe.js` (the UMD build, sets window.PhotoSwipe), `photoswipe.css`
+
+https://github.com/dimsemenov/PhotoSwipe — Copyright (c) 2014-2024 Dmytro Semenov and contributors. MIT licence, as above.
+
+## Embla Carousel 8.6.0 — `embla.js` (the UMD build, sets window.EmblaCarousel)
+
+https://github.com/davidjerleke/embla-carousel — Copyright (c) 2019 David Jerleke. MIT licence, as above.

@@ -1878,7 +1878,7 @@ if (run('base')) try {
 } catch (e) { results.push(`FAIL  section base: ${e.message.split('\n')[0]} — after: ${(results[results.length - 1] || '').slice(6, 90)} @${((e.stack || '').match(/run\.mjs:(\d+)/) || [])[1]}`); }
 
 // ───────── aura: the showcase at /. The seed, the bang, the globe, the irukandji, one piece through its four steps (ONLY=aura) ─────────
-for (const AD of [false, true]) if (run('aura')) try {
+for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura')) try {
   const tag = AD ? 'desk' : 'phone', P = AD ? 'ad' : 'ap';
   if (!AD) { const src = fs.readFileSync(path.join(ROOT, 'src/base/aura.js'), 'utf8');
     check('the aura is plain script for old phones too: no optional chaining, no ??', !/\?\.[a-zA-Z_$[(]|\?\?/.test(src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/'(?:\\.|[^'\\])*'/g, "''")));
@@ -1895,21 +1895,21 @@ for (const AD of [false, true]) if (run('aura')) try {
   await page.mouse.click(AD ? 720 : 195, AD ? 450 : 422); await sleep(700); const s1 = await st(); await shot(page, `${P}02-bang.png`);
   await sleep(2600); const s2 = await st(); await shot(page, `${P}03-globe.png`);
   check(`aura (${tag}): a touch bursts it into the globe, and the drone begins at 70% of the base's (0.385)`, s1.mode === 'bang' && s2.mode === 'globe' && Math.abs(s2.hum - 0.385) < 1e-6, JSON.stringify({ s1: s1.mode, s2: s2.mode, hum: s2.hum }));
-  const g = await page.evaluate(() => [...document.querySelectorAll('.au-orb')].map(o => ({ l: o.getAttribute('aria-label'), n: !!o.querySelector('.au-n'), op: +o.style.opacity })));
+  const g = await page.evaluate(() => [...document.querySelectorAll('.au-orb')].map(o => ({ l: o.getAttribute('aria-label'), n: !!o.querySelector('.au-rune') && !o.querySelector('.au-n'), op: +o.style.opacity, call: getComputedStyle(o.querySelector('.au-i')).animationName })));
   const bl = await page.evaluate(() => { const e = getComputedStyle(document.querySelector('#au-base')); return e.animationName + ' ' + e.animationDelay; });
   check(`aura (${tag}): the way to the base waits fifteen seconds on the globe before it shows, faint`, bl === 'au-late 15s', bl);
-  check(`aura (${tag}): RADIO, W.I.S.H. and PRINT ride the rings, numbered 1, 2, 3 by hand`, g.length === 3 && g.every(o => o.n && o.op > 0.2) && g.map(o => o.l).join() === 'RADIO,W.I.S.H.,PRINT', JSON.stringify(g));
+  check(`aura (${tag}): RADIO, W.I.S.H. and PRINT ride the rings, each marked by a small constellation of its own, not a number; the first calls`, g.length === 3 && g.every(o => o.n && o.op > 0.2) && g.map(o => o.l).join() === 'RADIO,W.I.S.H.,PRINT' && g[0].call === 'au-call' && g[1].call !== 'au-call', JSON.stringify(g));
   check(`aura (${tag}): the hand-drawn lines and the drift are the brought-in projects (perfect-freehand, simplex-noise)`, s2.pf && s2.noise, JSON.stringify(s2));
   await page.evaluate(() => document.querySelector('.au-orb[data-s="0"]').click()); await sleep(500); const sm = await st(); await shot(page, `${P}04-morph.png`); await page.waitForFunction(() => window.AURA.state().mode === 'iruk', null, { timeout: 5000 }); await sleep(150);
   const s3 = await st(); const ik = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('.au-tab')].map(t => t.getAttribute('aria-label') + (t.classList.contains('on') ? '*' : '')), words: [...document.querySelectorAll('.au-tab')].map(t => t.textContent.trim()).join(''),
     held: [...document.querySelectorAll('#au-catch, .au-grab')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id), url: location.href, eye: !!document.querySelector('#au-bell input[type=file]') && !document.querySelector('#au-panel .au-eye'),
-    keys: [...document.querySelectorAll('#au-panel button')].length, titles: document.querySelectorAll('#aura [title]').length, ask: document.querySelector('.au-ask').textContent, ask0: getComputedStyle(document.querySelector('.au-ask')).animationName + ' ' + getComputedStyle(document.querySelector('.au-ask')).animationDelay,
+    keys: [...document.querySelectorAll('#au-panel button:not(.au-go)')].length, go: !!document.querySelector('#au-panel .au-go[data-go="1"]'), titles: document.querySelectorAll('#aura [title]').length, ask: document.querySelector('.au-ask').textContent, ask0: document.querySelector('.au-ask').dataset.on + '/' + document.querySelector('.au-ask').dataset.off,
     gap: (() => { const b = document.querySelector('#au-bell').getBoundingClientRect(), c = document.querySelector('#au-catch').getBoundingClientRect(); return Math.round(c.top - b.bottom); })() }));
-  await sleep(1500); const ask1 = await page.evaluate(() => +getComputedStyle(document.querySelector('.au-ask')).opacity); await shot(page, `${P}05-iruk.png`);
+  await page.mouse.move(150, 300); await page.waitForFunction(() => document.querySelector('.au-ask').classList.contains('on'), null, { timeout: 14000 }).catch(() => {}); const ask1 = await page.evaluate(() => ({ on: document.querySelector('.au-ask').classList.contains('on'), hint: document.querySelector('#au-panel p.au-hint').textContent })); await shot(page, `${P}05-iruk.png`);
   check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held below it, no words on hover`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,W.I.S.H.,art,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.keys === 0 && ik.titles === 0, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
   { const h0 = (await st()).halo; await page.mouse.move(300, 300); await sleep(700); await page.mouse.move(320, 310); await sleep(700); const h1 = (await st()).halo;
     check(`aura (${tag}): the thing held turns slowly round the tentacles, on a halo no one sees`, h1 > h0, JSON.stringify({ h0, h1 })); }
-  check(`aura (${tag}): "what have you noticed?" is not there at first, then comes after a breath, faint`, ik.ask === 'what have you noticed?' && ik.ask0 === 'au-ask 1s' && ask1 > 0.05 && ask1 < 0.7, JSON.stringify({ ask0: ik.ask0, ask1 }));
+  check(`aura (${tag}): "what have you noticed?" and what to do come for two seconds in every twelve, said plainly; the next step waits at the foot`, ik.ask === 'what have you noticed?' && ik.ask0 === '2/10' && ask1.on && /Tap the eye/.test(ask1.hint) && ik.go, JSON.stringify({ ask0: ik.ask0, ask1, go: ik.go }));
   if (AD) { await page.hover('#au-bell'); await sleep(200); const tone = await page.evaluate(() => window.__auraTone); await page.mouse.move(5, 500);
     check(`aura (${tag}): the eye and the thing held breathe, and sound a deep tone when the pointer finds them`, tone === 55 && await page.evaluate(() => getComputedStyle(document.querySelector('#au-catch')).animationName === 'au-breathe'), String(tone)); }
   await page.fill('#au-say', 'rainbow lorikeet fledgling on the path'); await sleep(500); const t1 = await panelText();
@@ -1950,6 +1950,8 @@ for (const AD of [false, true]) if (run('aura')) try {
   check(`aura (${tag}): the life caught brings its own photograph, credited, for when there is none of one's own`, (await st()).piece.spPhoto, '');
   await tap(page, '#au-seab'); await page.waitForFunction(() => document.querySelectorAll('#au-sea button').length > 2, null, { timeout: 8000 }).catch(() => {}); await sleep(600); await shot(page, `${P}08c-season.png`);
   const sea = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#au-sea button .t')].map(b => b.textContent), near: [...document.querySelectorAll('#au-sea button.near small')].map(b => b.textContent), ninoH: Math.round(document.querySelector('#au-nino').getBoundingClientRect().height) }));
+  const why = await page.evaluate(() => (document.querySelector('.au-why') || {}).textContent || '');
+  check(`aura (${tag}): El Niño says why it matters now, in plain words`, /NOAA/.test(why) && /Great Barrier Reef/.test(why) && /what you notice now matters/.test(why), why.slice(0, 120));
   check(`aura (${tag}): El Niño is small, and this month opens to what to watch for, those seen within a kilometre first`, sea.rows.length > 2 && sea.ninoH < 90, JSON.stringify(sea));
   await tap(page, '#au-seab'); await sleep(200);
   await page.fill('#au-q', ''); await tap(page, '#au-vals li:nth-child(1) button'); await sleep(250); await tap(page, '#au-nino'); await sleep(250);
@@ -1980,7 +1982,12 @@ for (const AD of [false, true]) if (run('aura')) try {
   await page.evaluate(() => document.querySelector('[data-px="cells"]').click()); await page.evaluate(() => document.querySelector('[data-px="put"]').click()); await sleep(400);
   const px2 = (await st()).piece.adds.filter(x => x.k === 'p');
   check(`aura (${tag}): the pixel irukandji moves while it is made, and one moment of it goes on the poster`, pixOn && px2.length === 1 && px2[0].cells === 32, JSON.stringify({ pixOn, px2 }));
+  for (const sub of ['coral', 'trash', 'clip']) { await page.evaluate(q => document.querySelector(`[data-pxs="${q}"]`).click(), sub); await sleep(250); for (let k = 0; k < 5 && (await st()).pix.tone !== 'colour'; k++) await page.evaluate(() => document.querySelector('[data-px="tone"]').click()); await page.evaluate(() => document.querySelector('[data-px="put"]').click()); await sleep(250); }
+  await shot(page, `${P}11d-found.png`); const found2 = (await st()).piece.adds.filter(x => x.k === 'p').map(x => x.sub + ':' + x.tone2);
+  check(`aura (${tag}): beside it, coral, what the tide brings and paperclips, each its own and in colour if wanted`, found2.join() === 'jelly:ink,coral:colour,trash:colour,clip:colour', JSON.stringify(found2));
   await tap(page, '.au-tray [data-add="p"]'); await sleep(300);
+  const trayPh = await page.evaluate(() => !!document.querySelector('.au-tray #au-file2'));
+  check(`aura (${tag}): a photograph is added in art, with the rest, where it changes the placing`, trayPh, String(trayPh));
   const txw = await page.evaluate(() => { const t = document.querySelector('#au-tx'), b = t && t.closest('.au-sel'); return t ? { col: getComputedStyle(t).color, inSel: !!b, pos: getComputedStyle(t).position } : null; });
   check(`aura (${tag}): words are typed on the poster only, nowhere beside it`, txw && txw.inSel && txw.pos === 'absolute' && /rgba\(0, 0, 0, 0\)|transparent/.test(txw.col), JSON.stringify(txw));
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(1500); await shot(page, `${P}12-print.png`);
@@ -1991,23 +1998,28 @@ for (const AD of [false, true]) if (run('aura')) try {
   const wp = await page.evaluate(() => { const c = document.querySelector('.au-hero canvas'), d = c.getContext('2d').getImageData(20, 20, 1, 1).data; return { paper: window.AURA.state().piece.paper, px: [...d].slice(0, 3) }; }); await shot(page, `${P}12b-white.png`);
   check(`aura (${tag}): the poster prints on blue or on white, its words and marks turned to stay seen`, wp.paper === 'white' && wp.px.every(v => v > 200), JSON.stringify(wp));
   await tap(page, '#au-paper'); await sleep(400);
-  check(`aura (${tag}): print is this one piece and one press (start again and save small beside it): no row of others, no words; the thing held is put down`, pv.hero && pv.keys.join() === 'au-reset,au-paper,au-save,au-print' && pv.photo && pv.words === '' && pv.catchShown === 'none' && !pv.strip, JSON.stringify(pv));
+  check(`aura (${tag}): print is this one piece and one press (start again and save small beside it): no row of others, no words; the thing held is put down`, pv.hero && pv.keys.join() === 'au-reset,au-paper,au-save,au-print' && !pv.photo && pv.words === '' && pv.catchShown === 'none' && !pv.strip, JSON.stringify(pv));
   await tap(page, '#au-print'); await page.waitForFunction(() => { const p = document.querySelector('#au-pips .pips'); return p && p.title !== 'sending'; }, null, { timeout: 15000 }).catch(() => {}); await sleep(600); const rnd = await st(); await shot(page, `${P}12c-round.png`);
+  check(`aura (${tag}): what goes to the 80 mm printer is the poster itself, all its art, at the printer's width`, rnd.print && rnd.print[0] >= 512 && rnd.print[0] <= 576 && rnd.print[1] > rnd.print[0], JSON.stringify(rnd.print));
   check(`aura (${tag}): printed, the round is over: the receipt rises up the print tentacle and the irukandji takes a bead`, rnd.round && rnd.piece.sent, JSON.stringify({ round: rnd.round, sent: rnd.piece.sent }));
-  await page.waitForFunction(() => !document.querySelector('#au-show').hidden, null, { timeout: 6000 }).catch(() => {}); await sleep(400);
-  const pr = await page.evaluate(() => ({ pips: (document.querySelector('#au-pips .pips') || {}).title, show: !document.querySelector('#au-show').hidden, folio: window.AURA.state().folio, img: (() => { const i = document.querySelector('#au-show img'), r = i.getBoundingClientRect(); return { nw: i.naturalWidth, nh: i.naturalHeight, rw: r.width, rh: r.height, top: r.top, bottom: r.bottom, right: r.right, vh: innerHeight }; })(),
-    x: (() => { const r = document.querySelector('#au-show .au-x').getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width }; })() }));
+  await page.waitForFunction(() => window.AURA.state().showing && document.querySelector('.pswp .au-x'), null, { timeout: 8000 }).catch(() => {}); await sleep(900);
+  const pr = await page.evaluate(() => ({ pips: (document.querySelector('#au-pips .pips') || {}).title, show: window.AURA.state().showing, folio: window.AURA.state().folio, img: (() => { const i = [...document.querySelectorAll('.pswp__img')].find(q => { const r = q.getBoundingClientRect(); return r.width && r.left >= -1 && r.right <= innerWidth + 1; }); if (!i) return {}; const r = i.getBoundingClientRect(); return { nw: i.naturalWidth, nh: i.naturalHeight, rw: r.width, rh: r.height, top: r.top, bottom: r.bottom, right: r.right, vh: innerHeight }; })(),
+    x: (() => { const e = document.querySelector('.pswp .au-x'); if (!e) return {}; const r = e.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width }; })() }));
   await shot(page, `${P}13-folio.png`);
   const near = Math.hypot(pr.x.cx - pr.img.right, pr.x.cy - pr.img.top);
-  check(`aura (${tag}): print sends the receipt to novel.global, keeps the poster in colour on the wall, and opens it whole`, /waiting|shown|queued|printing|printed|held/.test(pr.pips) && pr.show && pr.folio === 1 && pr.img.nw === 900 && Math.abs(pr.img.rw / pr.img.rh - pr.img.nw / pr.img.nh) < 0.02 && pr.img.top >= 0 && pr.img.bottom <= pr.img.vh, JSON.stringify(pr));
+  check(`aura (${tag}): print sends the poster to novel.global, keeps it in colour on the wall, and opens it whole and full screen (PhotoSwipe)`, /waiting|shown|queued|printing|printed|held/.test(pr.pips) && pr.show && pr.folio === 1 && pr.img.nw === 900 && Math.abs(pr.img.rw / pr.img.rh - pr.img.nw / pr.img.nh) < 0.02 && pr.img.top >= 0 && pr.img.bottom <= pr.img.vh, JSON.stringify(pr));
   check(`aura (${tag}): the close sits on the poster's own corner, large enough to touch`, near < 40 && pr.x.w >= 44, JSON.stringify({ near, x: pr.x }));
   const zb = (await st()).zoom;
-  await page.dblclick('#au-show img'); await page.waitForFunction(() => window.AURA.state().zoom > 2, null, { timeout: 3000 }).catch(() => {}); const za = (await st()).zoom; await shot(page, `${P}14-zoom.png`);
-  check(`aura (${tag}): the portfolio zooms in place (Panzoom), no new window`, zb === 1 && za > 2 && page.url() === 'https://oan.test/', zb + ' → ' + za);
-  await page.dblclick('#au-show img'); await sleep(300); await tap(page, '#au-show .au-x'); await sleep(400);
+  await page.mouse.click(pr.img.right - pr.img.rw / 2, pr.img.top + pr.img.rh / 2); await page.waitForFunction(() => window.AURA.state().zoom > 1.5, null, { timeout: 3000 }).catch(() => {}); await sleep(400); const za = (await st()).zoom; await shot(page, `${P}14-zoom.png`);
+  check(`aura (${tag}): the portfolio zooms in place, no new window`, Math.abs(zb - 1) < 0.01 && za > 1.5 && page.url() === 'https://oan.test/', zb + ' → ' + za);
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.AURA.state().showing, null, { timeout: 4000 }).catch(() => {}); await sleep(300);
   const rec = (((await admin('stories?status=waiting')).stories) || []).filter(x => x.kind === 'record').map(x => JSON.parse(x.body)).find(b => b.text === 'rainbow lorikeet fledgling on the path');
   check(`aura (${tag}): the record carries one's own lines and only what was caught`, rec && JSON.stringify(rec.wish) === JSON.stringify(L4) && rec.tx && /Lorikeet/.test(rec.tx.cn), JSON.stringify(rec || {}).slice(0, 300));
   const sent = await page.evaluate(() => document.querySelector('#au-print').getAttribute('aria-label'));
+  /* a printed piece does not come back as the next visit's start: notice is clear */
+  await page.reload(); await page.waitForSelector('#aura'); await sleep(800); await toIruk(0); await sleep(500);
+  const stale = await page.evaluate(() => ({ piece: window.AURA.state().piece, ph: !!document.querySelector('#au-panel .au-ph'), say: document.querySelector('#au-say').value }));
+  check(`aura (${tag}): coming back after a print, notice is clear (the printed piece is on the wall, not left on the page)`, stale.piece === null && !stale.ph && stale.say === '', JSON.stringify(stale));
   /* printed, the round is over: going on begins the next piece, clear, and what is written there is what goes to print */
   await tap(page, '.au-tab[data-s=\"1\"]', { force: true }); await sleep(600);
   const nx1 = await page.evaluate(() => ({ piece: window.AURA.state().piece, v: [...document.querySelectorAll('.au-wish textarea')].map(t => t.value) }));
@@ -2023,8 +2035,10 @@ for (const AD of [false, true]) if (run('aura')) try {
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600);
   const fresh = await page.evaluate(() => ({ piece: window.AURA.state().piece, stage: window.AURA.state().stage, ph: !!document.querySelector('#au-panel .au-ph'), say: (document.querySelector('#au-say') || {}).value }));
   check(`aura (${tag}): start again lets the piece go (with a check), and notice is clear`, fresh.piece === null && fresh.stage === 0 && !fresh.ph && fresh.say === '', JSON.stringify(fresh));
-  await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(900); const wall = await page.evaluate(() => ({ img: !!document.querySelector('.au-wall img'), bring: !!document.querySelector('#au-bring'), drop: !!document.querySelector('#au-drop') })); await shot(page, `${P}15-wall.png`);
-  check(`aura (${tag}): print with nothing being made is the wall, one finished piece at a time`, wall.img && wall.bring && wall.drop, JSON.stringify(wall));
+  await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(900); await sleep(600); const wall = await page.evaluate(() => ({ img: !!document.querySelector('.au-wall .au-eslide.on img'), emb: !!window.EmblaCarousel, n: document.querySelectorAll('.au-eslide').length, bring: !!document.querySelector('#au-bring'), drop: !!document.querySelector('#au-drop') })); await shot(page, `${P}15-wall.png`);
+  check(`aura (${tag}): print with nothing being made is the wall, a light carousel (Embla) of what was printed`, wall.img && wall.emb && wall.n >= 1 && wall.bring && wall.drop, JSON.stringify(wall));
+  await tap(page, '.au-eslide.on'); await page.waitForFunction(() => window.AURA.state().showing, null, { timeout: 6000 }).catch(() => {}); const wsh = (await st()).showing; await sleep(500); await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.AURA.state().showing && !document.querySelector('.pswp'), null, { timeout: 5000 }).catch(() => {}); await sleep(300);
+  check(`aura (${tag}): a touch on the one in front opens it full screen`, wsh, String(wsh));
   await tap(page, '#au-bring'); await sleep(1200); const br = await st();
   check(`aura (${tag}): a finished piece is brought back to be worked on, everything as it was`, br.stage === 2 && br.piece && br.piece.lines[0] === L4[0] && br.piece.caught.length === 4 && br.piece.folioId && !br.piece.sent, JSON.stringify({ stage: br.stage, lines: br.piece && br.piece.lines }));
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600);
