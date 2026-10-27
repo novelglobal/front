@@ -172,10 +172,10 @@
   function posterBase(P) {
     var W = 900, pad = 56, aw = W - pad * 2, a = artOf(P, aw, aw * 1.3), n = P.note || {}, lines = P.lines || [];
     var c = document.createElement('canvas'), x = c.getContext('2d'); c.width = W; c.height = 10; x.font = '600 29px ' + SANS;
-    var body = []; lines.forEach(function (l, i) { if (l) wrap(x, l, aw - 60).forEach(function (w, k) { body.push([k ? '' : 'WISH'[i], w]); }); });
+    var body = []; lines.forEach(function (l) { if (l) wrap(x, l, aw).forEach(function (w, k) { body.push([k ? '' : '·', w]); }); });
     x.font = '42px ' + FONT; var title = !P.say || lines.indexOf(P.say) >= 0 ? [] : wrap(x, P.say, aw).slice(0, 3);
     var band = caught(P).length ? 340 : 0, foot = 176;
-    var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + 40 + band + foot + pad;
+    var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + lines.filter(Boolean).length * 8 + 40 + band + foot + pad;
     c.height = H; paper(x, W, H);
     x.fillStyle = ink(); x.textBaseline = 'top'; globeMark(x, pad + 16, pad + 17, 15, ink()); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + 42, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
     if (n.code) { var cw2 = x.measureText(n.code).width; x.fillText(n.code, W - pad - cw2, pad + 4); }
@@ -183,8 +183,8 @@
       if (!P.img && P.spCredit) { x.font = '13px ' + FONT; x.fillStyle = 'rgba(255,255,255,.85)'; var cr = P.spCredit.slice(0, 80), cwid = x.measureText(cr).width; x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(ax + a.width - cwid - 14, ay + a.height - 22, cwid + 10, 18); x.fillStyle = 'rgba(255,255,255,.9)'; x.fillText(cr, ax + a.width - cwid - 9, ay + a.height - 20); }
       y = ay + a.height + 36; }
     x.fillStyle = ink(); x.font = '42px ' + FONT; title.forEach(function (l) { x.fillText(l, pad, y); y += 52; }); if (title.length) y += 16;
-    /* the four lines set in print: the letters in the heavy serif, the words in the narrow grotesque */
-    body.forEach(function (b) { if (b[0]) { x.font = '900 30px ' + SERIF; x.fillText(b[0], pad, y - 1); } x.font = '600 29px ' + SANS; x.fillText(b[1], pad + 44, y + 1); y += 38; });
+    /* the four lines as sentences alone (W.I.S.H. is how they were made, not what the poster says), a small space between them */
+    body.forEach(function (b, i) { if (b[0] && i) y += 8; x.font = '600 29px ' + SANS; x.fillText(b[1], pad, y + 1); y += 38; });
     y += 14; var dots = []; for (var i = 0; i <= 40; i++) dots.push([pad + aw * i / 40, y]); x.setLineDash([2, 9]); handLine(x, dots, 2, 0.55, 2); x.setLineDash([]);
     /* the code back to the site, small, dark on light so a phone reads it from the paper */
     var Q = window.qrcode, qrR = null; if (Q && n.code) { try { var q = Q(0, 'M'); q.addData(NG.noteURL(n)); q.make(); var mc = q.getModuleCount(), cell = Math.max(4, Math.floor(176 / mc)), qs = cell * mc, qx = W - pad - qs - 10, qy = H - pad - qs - 10;
@@ -330,6 +330,10 @@
       else if (a.k === 't') { m.font = '34px ' + FONT; var ls = wrap(m, a.t || ' ', 420); it.w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 44 + 22;
         it.draw = function (x) { scrap(x, it.w, it.h, 11 + i, a); x.fillStyle = tcol(a); x.font = '34px ' + FONT; x.textBaseline = 'top'; ls.forEach(function (l, k) { x.fillText(l, 20, 12 + k * 44); }); }; }
       else if (a.k === 'i') { it.w = it.h = 128; it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); if (!im) return; x.imageSmoothingEnabled = false; var iw = im.naturalWidth, ih = im.naturalHeight, k2 = 128 / Math.max(iw, ih); x.drawImage(im, (128 - iw * k2) / 2, (128 - ih * k2) / 2, iw * k2, ih * k2); }; }
+      else if (a.k === 'im') { it.w = 300; it.h = Math.round(300 * Math.min(1.6, Math.max(0.4, a.ar || 0.75))); it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); var tn = a.tone || 'ink';
+        if (a.b !== false) { x.fillStyle = tn === 'turn' ? ink(0.95) : back(0.95); x.fillRect(-8, -8, it.w + 16, it.h + 16); }
+        if (im) { x.imageSmoothingEnabled = true; x.globalAlpha = tn === 'clear' ? 0.55 : 1; var iw = im.naturalWidth, ih = im.naturalHeight, sc = Math.max(it.w / iw, it.h / ih); x.save(); x.beginPath(); x.rect(0, 0, it.w, it.h); x.clip(); x.drawImage(im, (it.w - iw * sc) / 2, (it.h - ih * sc) / 2, iw * sc, ih * sc); x.restore(); x.globalAlpha = 1; }
+        if (a.b !== false) handRect(x, -8, -8, it.w + 16, it.h + 16, 1.3, 0.8, 17); }; }
       else if (a.k === 'st' && STAMPS[a.g]) { it.w = it.h = 220; it.draw = function (x) { x.drawImage(stampOf(a.g, a.tone || 'ink', a.b === true), 0, 0, 220, 220); }; }
       else if (a.k === 'p') { it.w = it.h = 160; it.draw = function (x) { var pj = pixArt(a.sub || 'jelly', a.cells || 24, a.ph || 0, a.tone2 || 'ink', picOf(P), a.seed || 1); x.imageSmoothingEnabled = false; if (a.b) handRect(x, 0, 0, 160, 160, 1.2, 0.6, 13); x.drawImage(pj, 0, 0, 160, 160); }; }
       else return;
@@ -444,7 +448,7 @@
     FORM.lines = null; FORM.rect = null; var key = 'hang';
     if (S.mode === 'iruk' && !S.deep && panel) {
       if (S.stage === 1) { var tas = panel.querySelectorAll('.au-wish textarea'); if (tas.length === 4) { var ls = [].map.call(tas, function (ta) { var r = ta.getBoundingClientRect(); return [r.left, r.right, r.bottom - 1]; }); if (ls[0][1] > ls[0][0]) { FORM.lines = ls; key = 'wish'; } } }
-      else if (S.stage >= 2) { var el = panel.querySelector('.au-drag canvas, .au-hero canvas, .au-wall img'); if (el) { var r = el.getBoundingClientRect(), P0 = L.panel; if (r.width > 20) { FORM.rect = [r.left - 9, Math.max(P0.t - 6, r.top - 9), r.right + 9, Math.min(P0.t + P0.h + 6, r.bottom + 9)]; key = 'frame' + S.stage; } } }
+      else if (S.stage >= 2) { var el = panel.querySelector('.au-drag canvas, .au-hero canvas'); if (el) { var r = el.getBoundingClientRect(), P0 = L.panel; if (r.width > 20) { FORM.rect = [r.left - 9, Math.max(P0.t - 6, r.top - 9), r.right + 9, Math.min(P0.t + P0.h + 6, r.bottom + 9)]; key = 'frame' + S.stage; } } }
     }
     if (key !== FORM.key) { FORM.from = LAST; FORM.at = performance.now() / 1000; FORM.key = key; }
     root.classList.toggle('loose', key !== 'hang');
@@ -689,6 +693,7 @@
     pxtrash: '<ellipse cx="16" cy="12" rx="8" ry="5.5"/><ellipse cx="16" cy="11.5" rx="3.5" ry="1.8"/><path d="M11 16l1.5 9h7L21 16"/><circle cx="16" cy="21" r=".9" class="f"/>',
     pxclip: '<path d="M12 26V9a4 4 0 0 1 8 0v14a2.5 2.5 0 0 1-5 0V11"/>',
     dice: '<path d="M7 7h18v18H7z"/><circle cx="12" cy="12" r="1.3" class="f"/><circle cx="20" cy="20" r="1.3" class="f"/><circle cx="16" cy="16" r="1.3" class="f"/>',
+    pic: '<path d="M5 8h22v17H5z"/><path d="M5 22l7-7 5 5 3-3 7 7" /><circle cx="21" cy="13" r="2"/>',
     moon2: '<path d="M20 5a11 11 0 1 0 7 15A9 9 0 0 1 20 5z"/><circle cx="24" cy="9" r="1" class="f"/><circle cx="27" cy="14" r=".8" class="f"/>'
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
@@ -709,7 +714,7 @@
   };
   /* why El Niño matters now, from the season's own reports (sources in docs/sources.md) */
   var NINO_WHY = 'The Pacific is running hot. The Bureau declared El Niño in June, and NOAA gives it better than four in five odds of staying strong or very strong through to March. On top of a warmer world, that means hotter days, drier ground and more fire weather here, and reef scientists expect the Great Barrier Reef to bleach again. Strong El Niños have brought some of the worst droughts on record. The small lives feel it first, so what you notice now matters.';
-  var hint = function (t, cls2) { var long = t.length > 70; return '<p class="au-hint ' + (cls2 || '') + '" data-on="' + ((long ? Math.min(8, 2 + Math.round(t.length / 40)) : 2) + 5) + '" data-off="' + (long ? 14 : 10) + '">' + esc(t) + '</p>'; };
+  var hint = function (t, cls2) { var long = t.length > 70; return '<p class="au-hint ' + (cls2 || '') + '" data-on="' + ((long ? Math.min(8, 2 + Math.round(t.length / 40)) : 2) + 5) + '" data-off="' + (long ? 28 : 20) + '">' + esc(t) + '</p>'; };
   /* the next step, always at the foot of the page: a dotted line to the next step's own icon, and where it leads */
   var NEXT = [[1, 'wish', 'next: your W.I.S.H.'], [2, 'art', 'next: make the poster'], [3, 'print', 'next: print it']];
   var goKey = function (s) { var n2 = NEXT[s]; return n2 ? '<button class="au-go" data-go="' + n2[0] + '" aria-label="' + n2[2] + '"><i></i>' + svgI(n2[1]) + '<b class="au-arrow"></b></button>' : ''; };
@@ -722,7 +727,7 @@
   var markI = function (g) { return '<svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><path d="' + MARKS[g] + '"/></svg>'; };
   ui.innerHTML =
     '<button id="au-seed" aria-label="Begin"></button>' +
-    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['radio', 'wish', 'print'][i]) + (i === 0 ? '<span class="au-hint au-ohint" data-on="8" data-off="10">' + esc(SAY.globe) + '</span>' : '') + '</button>'; }).join('') +
+    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['radio', 'wish', 'print'][i]) + '</button>'; }).join('') +
     '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -889,7 +894,7 @@
     var s = S.stage, h = '', pic = P && (P.photo || P.spPhoto);
     if (s === 0) {
       h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"><button class="au-rm" id="au-unph" aria-label="Let the photograph go">×</button></figure>' : '') +
-        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask au-hint" data-on="7" data-off="10" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
+        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask au-hint" data-on="7" data-off="20" aria-hidden="true">what have you noticed?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What have you noticed?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
     } else if (s === 1) {
       /* what was noticed comes with it: the picture, the life if caught, the day; the line becomes W */
       if (P && P.say && !P.lines[0] && P.wSay === undefined) { P.lines[0] = P.say; P.wSay = P.say; changed(); }
@@ -900,7 +905,7 @@
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
         h = '<div class="au-tray">' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
           STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '" class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
-          '<label class="au-trayph" aria-label="A photograph for this piece">' + svgI('eye') + '<input type="file" accept="image/*" id="au-file2" hidden></label><button data-add="t" aria-label="Add words">' + svgI('text') + '</button><button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
+          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="t" aria-label="Add words">' + svgI('text') + '</button><button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
@@ -908,15 +913,15 @@
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words" hidden></textarea><nav class="au-tools">' +
           hand('', svgI('turn'), 'data-t="r" aria-label="Turn"') + hand('', '−', 'data-t="s-" aria-label="Smaller"') + hand('', '+', 'data-t="s+" aria-label="Larger"') + hand('', svgI('tone'), 'data-t="tone" aria-label="Tone"') + hand('', svgI('frame'), 'data-t="b" aria-label="Framed or not"') +
           hand('au-rm', '×', 'data-t="x" aria-label="Take it off"') + '</nav></div></figure>' + hint(SAY.art) + goKey(2); }
-      else h = '<p class="au-empty">' + esc(SAY.artEmpty) + '</p><button class="au-go" data-go="0" aria-label="Back to what you noticed"><i></i>' + svgI('radio') + '<b class="au-arrow"></b></button>';
+      else h = hint(SAY.artEmpty, 'au-empty') + '<button class="au-go" data-go="0" aria-label="Back to what you noticed"><i></i>' + svgI('radio') + '<b class="au-arrow"></b></button>';
     } else {
       /* print: this piece, whole, and one press. With none being made, the wall */
-      h = P ? '<figure class="au-poster au-hero"><canvas></canvas></figure>' +
+      h = P && !P.sent ? '<figure class="au-poster au-hero"><canvas></canvas></figure>' +
         '<div class="au-press">' + hand('au-sm au-reset', svgI('again'), 'id="au-reset" aria-label="Start again: this piece is let go"') +
         hand('au-sm', svgI('paper'), 'id="au-paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save"') +
         hand('au-big', svgI(P.sent ? 'seed' : 'print'), 'id="au-print" aria-label="' + (P.sent ? 'Begin a new piece' : 'Print') + '"') +
         (slides().length ? hand('au-sm', svgI('grid'), 'id="au-wallk" aria-label="The wall: everything printed"') : '') +
-        '<span class="au-pips" id="au-pips">' + (P.sent && P.note && P.note.sent ? NG.pips(P.note.sent.s) : '') + '</span></div>' + hint(SAY.print) : wallHTML();
+        '<span class="au-pips" id="au-pips"></span></div>' : wallHTML();
     }
     if (!SH.pswp) strays(); panel.innerHTML = '<div class="au-in">' + h + '</div>'; wire(s); cls(); if (s !== 2 || !S.pix) pixStop();
   }
@@ -954,11 +959,13 @@
       [].forEach.call(panel.querySelectorAll('[data-pxs]'), function (b) { b.addEventListener('click', function () { PIX.sub = b.dataset.pxs; PIX.seed = 1 + Math.floor(Math.random() * 9999); if (PIX.sub === 'jelly' && PIX.tone === 'colour') PIX.tone = 'ink'; paint(); bell(4, 0.12); }); });
       var tx = $('#au-tx'); tx.addEventListener('input', function () { var a = selAdd(); if (a && a.k === 't') { a.t = tx.value; changed(); redraw(); } });
       [].forEach.call(panel.querySelectorAll('[data-t]'), function (b) { b.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); b.addEventListener('click', function (e) { e.stopPropagation(); tool(b.dataset.t); }); });
-      $('#au-file2').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; intake(f); setTimeout(redraw, 900); setTimeout(redraw, 1800); });
+      /* pictures added to the poster: each its own piece, laid over what is there, never in its place */
+      $('#au-file2').addEventListener('change', function () { var fs = [].slice.call(this.files || []); this.value = ''; fs.slice(0, 6).forEach(function (f, j) {
+        var u = URL.createObjectURL(f); NG.loadImg(u).then(function (im) { var src = NG.shrink(im, 700, 0.85); URL.revokeObjectURL(u); add({ k: 'im', src: src, ar: (im.naturalHeight || im.height) / Math.max(1, im.naturalWidth || im.width), r: Math.round(Math.random() * 10 - 5) + j * 3 }); }).catch(function () { URL.revokeObjectURL(u); }); }); });
       redraw(); dragWire(); if (S.pix) pixRun();
     }
     if (s === 3) {
-      if (!P) { wallWire(); return; }
+      if (!P || P.sent) { wallWire(); return; }
       redraw();
       $('#au-print').addEventListener('click', function () { if (P.sent) { letGo(); return; } printNow(); });
       $('#au-save').addEventListener('click', function () { poster(P).then(function (c) { NG.download(c, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); bell(3, 0.18); }); });
@@ -1026,18 +1033,55 @@
   }
   /* print: the receipt for the thermal head (the base's own, its photograph through the print pipeline, its code back to the site), the poster
      kept in colour on the wall. The round is over: the receipt goes up the print tentacle into the bell, a bead is added to its crown, a mark is earned */
-  /* the poster itself on the receipt: drawn on white paper so the ink is the dark, taken to the printer's width and dots (the same
-     pipeline as every printed photograph), and its code set again crisp, a whole number of dots to each module so a phone can read it */
+  /* ───────── the receipt: the poster set again for the thermal head, at its own width, to its limits ─────────
+     Words are drawn at the printer's own size and made pure black (no grey, no dither: a hot dot or none), so they come out
+     as dark as the paper allows. Only the picture is dithered, and it runs edge to edge. What was caught or added below is kept
+     as line work, crisp. The code is set large, a whole number of dots to each module, with clear paper round it.
+     Light paper prints black on white; dark paper prints the head and the four lines reversed, white out of black */
+  function printSheet(W, D) {
+    var keep = P.paper, dark = keep !== 'white'; P.paper = 'white'; P._base = null; var pc = posterNow(P), B0 = P._base; P.paper = keep; P._base = null;
+    var src = pc.c, k = W / B0.W, m = 14, parts = [], PS = '"Archivo Narrow", "Arial Narrow", Arial, sans-serif';
+    var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
+    /* every dot black or white: words and lines only, never the photograph */
+    var hard = function (c, inv) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data; for (var i = 0; i < d.length; i += 4) { var v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) < 150 ? 0 : 255; if (inv) v = 255 - v; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } g.putImageData(im, 0, 0); return c; };
+    var crop = function (y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0 || 0)); x1 = Math.min(B0.W, Math.round(x1 || B0.W)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1)); if (y1 - y0 < 4 || x1 - x0 < 4) return null; var kk = W / (x1 - x0), h = Math.round((y1 - y0) * kk), c = mk(h), g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, x1 - x0, y1 - y0, 0, 0, W, h); return c; };
+    var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
+    /* the head: the mark, the name, the code */
+    var hd = mk(78), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
+    globeMark(hx, m + 22, 39, 21, '#000'); hx.font = '700 34px "Helvetica Neue", Helvetica, Arial, sans-serif'; hx.fillText('novel.global', m + 54, 40);
+    var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 26px ' + PS; hx.fillText(code, W - m - hx.measureText(code).width, 40); }
+    if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
+    /* the picture, edge to edge, with everything laid over it */
+    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) parts.push(NG.forPrint(ac, W, D)); }
+    /* the words, at the printer's size */
+    var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
+    tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];
+    tx.font = '600 32px ' + PS; lines.forEach(function (l) { if (l) wrap(tx, l, W - m * 2).forEach(function (w, j) { rows.push([j ? '' : '·', w]); }); });
+    if (tl.length || rows.length) {
+      tw = mk(20 + tl.length * 48 + (tl.length && rows.length ? 12 : 0) + rows.length * 42 + lines.filter(Boolean).length * 10 + 16); tx = tw.getContext('2d'); tx.fillStyle = '#000'; tx.textBaseline = 'top'; var y = 16;
+      tx.font = '600 40px ' + PS; tl.forEach(function (l) { tx.fillText(l, m, y); y += 48; }); if (tl.length && rows.length) y += 12;
+      rows.forEach(function (r, i) { if (r[0] && i) y += 10; tx.font = '600 32px ' + PS; tx.fillText(r[1], m, y + 1); y += 42; });
+      parts.push(hard(tw, dark));
+    }
+    /* what was caught or added below the words, as line work */
+    var qTop = B0.qr ? B0.qr.y - 24 : B0.H - B0.pad; var bd = crop(B0.band - 16, qTop, B0.pad - 8, B0.W - B0.pad + 8); if (bd && !blank(hard(bd))) parts.push(bd);
+    /* the code: large, crisp, its quiet paper round it; beside it the day */
+    var Q = window.qrcode, ft = null; if (Q && P.note && P.note.code) { try {
+      var q = Q(0, 'M'); q.addData(NG.noteURL(P.note)); q.make(); var mc = q.getModuleCount(), cell = Math.max(5, Math.floor(230 / mc)), side = cell * mc, quiet = cell * 4;
+      ft = mk(side + quiet * 2); var fx = ft.getContext('2d'), x0 = W - m - quiet - side, y0 = quiet; fx.fillStyle = '#000';
+      for (var a = 0; a < mc; a++) for (var b = 0; b < mc; b++) if (q.isDark(a, b)) fx.fillRect(x0 + b * cell, y0 + a * cell, cell, cell);
+      fx.textBaseline = 'top'; fx.font = '700 30px ' + PS; fx.fillText(NG.when(P.at || Date.now()).slice(0, 6), m, y0 + 4); fx.font = '600 24px ' + PS; fx.fillText(code, m, y0 + 44);
+      var f2 = lifeOf(P); if (f2) { fx.font = '600 24px ' + PS; wrap(fx, f2.cn, x0 - quiet - m * 2).slice(0, 2).forEach(function (l, i) { fx.fillText(l, m, y0 + 84 + i * 28); }); }
+    } catch (e) { ft = null; } }
+    if (ft) parts.push(hard(ft));
+    /* one strip of paper; a little run-out at the end for the tear */
+    var H = parts.reduce(function (s2, c) { return s2 + c.height; }, 0) + 40, out = mk(H), o = out.getContext('2d'), yy = 0;
+    parts.forEach(function (c) { o.drawImage(c, 0, yy); yy += c.height; });
+    return out;
+  }
   function posterPrint(W) {
     if (!NG.forPrint || !NG.ditherLib) return Promise.resolve(null);
-    return Promise.all([fontReady(), NG.ditherLib()]).then(function (r) {
-      var keep = P.paper; P.paper = 'white'; P._base = null; var pc = posterNow(P), B0 = P._base; P.paper = keep; P._base = null;
-      var out = NG.forPrint(pc.c, W, r[1]), q = B0 && B0.qr; if (!q) { S.lastPrint = [out.width, out.height]; return out; }
-      var k = W / B0.W, o = out.getContext('2d'), mc = q.q.getModuleCount(), cell = Math.max(3, Math.floor(q.s * k / mc)), side = cell * mc, x0 = Math.round((q.x + q.s) * k - side), y0 = Math.round((q.y + q.s) * k - side);
-      o.fillStyle = '#fff'; o.fillRect(x0 - cell * 2, y0 - cell * 2, side + cell * 4, side + cell * 4); o.fillStyle = '#000';
-      for (var a = 0; a < mc; a++) for (var b = 0; b < mc; b++) if (q.q.isDark(a, b)) o.fillRect(x0 + b * cell, y0 + a * cell, cell, cell);
-      S.lastPrint = [out.width, out.height]; return out;
-    }).catch(function () { return null; });
+    return Promise.all([fontReady(), NG.ditherLib(), NG.qrLib ? NG.qrLib() : null]).then(function (r) { var out = printSheet(W, r[1]); S.lastPrint = [out.width, out.height]; S.lastSheet = out; return out; }).catch(function (e) { console.error('print sheet: ' + (e && e.stack || e)); return null; });
   }
   function printNow() {
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
@@ -1055,7 +1099,7 @@
         S.round = performance.now() / 1000; S.sting = S.round;
         btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Begin a new piece');
         var hero = panel.querySelector('.au-hero'); if (hero) hero.classList.add('kept');
-        setTimeout(function () { if (S.stage === 3) show(slides(), slides().map(function (q) { return q.id; }).indexOf(item.id)); }, 2400);
+        setTimeout(function () { WALL = Math.max(0, slides().map(function (q) { return q.id; }).indexOf(item.id)); if (S.stage === 3) paint(); }, 2200);
       });
     }).catch(function () { st.innerHTML = NG.pips('failed'); btn.disabled = false; btn.classList.remove('going'); });
   }
@@ -1064,17 +1108,18 @@
   var WALL = 0, EMB = null;
   function wallHTML() {
     var all = slides(); if (!all.length) return ''; WALL = Math.min(WALL, all.length - 1);
-    return '<div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide" data-n="' + i + '"><img alt="" src="' + f.src + '"></figure>'; }).join('') + '</div></div>' +
+    return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i><img alt="" src="' + f.src + '"></span></figure>'; }).join('') + '</div></div>' +
       (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '') +
-      '<div class="au-press" id="au-wpress"></div>' + hint(SAY.wall);
+      '<div class="au-press" id="au-wpress"></div>';
   }
   function wallPress() {
     var all = slides(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
-    pr.innerHTML = (all.length > 1 ? hand('au-sm au-nav', '‹', 'data-w="-1" aria-label="Before"') : '') +
+    pr.innerHTML = (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" aria-label="Begin a new piece"') : '') + (all.length > 1 ? hand('au-sm au-nav', '‹', 'data-w="-1" aria-label="Before"') : '') +
       (f.piece ? hand('au-big', svgI('back'), 'id="au-bring" aria-label="Bring it back to work on"') : '') +
       (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" aria-label="Take it down"') : '') +
       (all.length > 1 ? hand('au-sm au-nav', '›', 'data-w="1" aria-label="After"') : '');
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
+    var sd = $('#au-print'); if (sd) sd.addEventListener('click', function () { letGo(); });
     var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
     var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { folioDrop(f.id).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
     [].forEach.call(panel.querySelectorAll('.au-wdots i'), function (d, i) { d.classList.toggle('on', i === WALL); });
@@ -1134,7 +1179,7 @@
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul>' +
       '<details class="au-near au-rd" id="au-rd" open><summary aria-label="The readings here">' + svgI('cur') + '<i></i></summary><ul class="au-vals" id="au-vals"></ul></details>' + hint(SAY.vals) + '<div class="au-now"><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button>' +
-      '<button class="au-seab" id="au-seab" aria-expanded="false" aria-label="This month: what to watch for, near here">' + svgI('moon2') + '<b>' + esc(NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3)) + '</b></button></div><p class="au-why">' + esc(NINO_WHY) + '</p>' + hint(SAY.month) + '<ul class="au-sea" id="au-sea" hidden></ul></div>';
+      '<button class="au-seab" id="au-seab" aria-expanded="false" aria-label="This month: what to watch for, near here">' + svgI('moon2') + '<b>' + esc(NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3)) + '</b></button></div>' + hint(NINO_WHY, 'au-why') + hint(SAY.month) + '<ul class="au-sea" id="au-sea" hidden></ul></div>';
     $('#au-dx').addEventListener('click', closeDeep);
     lens(); NG.db().then(function () { think(); fill(); }); fill();
     $('#au-q').addEventListener('input', fill);
@@ -1257,6 +1302,8 @@
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
   api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
+  /* the last receipt as it went to the printer, for a look at it */
+  api.sheet = function () { return S.lastSheet ? S.lastSheet.toDataURL('image/png') : null; };
   api.go = function (m, s) { if (m === 'globe') { if (S.mode === 'seed') bang(); setMode('globe'); } if (m === 'iruk') { setMode('globe'); toIruk(s || 0); } };
   addEventListener('resize', function () { layout(); if (MAPV.draw && S.deep) MAPV.draw(); selBox(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) go(); });
