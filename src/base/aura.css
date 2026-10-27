@@ -161,20 +161,6 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-spark .now { filter: drop-shadow(0 0 4px rgba(244, 241, 232, .8)); }
 
 /* the slideshow: every picture whole on the paper, zoomed in place; its close on its own corner */
-#au-show { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 5; background-color: #17457F; background-image: var(--paper); background-size: 100% 100%, 100% 100%, 240px 240px; background-repeat: no-repeat, no-repeat, repeat; }
-#au-show[hidden] { display: none; }
-.au-sl { position: absolute; top: 40px; right: 16px; bottom: calc(64px + env(safe-area-inset-bottom)); left: 16px; overflow: hidden; cursor: zoom-out; }
-.au-pz { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; touch-action: none; }
-.au-pz img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; cursor: zoom-in; box-shadow: 0 0 0 1px rgba(244, 241, 232, .45), 0 14px 40px rgba(6, 24, 52, .45); -webkit-user-drag: none; user-select: none; animation: au-in .5s ease; }
-#aura .au-x { position: absolute; left: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; background: #17457F; box-shadow: 0 0 0 1.6px var(--ink), 0 4px 14px rgba(6, 24, 52, .5); font-size: 26px; line-height: 40px; text-align: center; z-index: 3; }
-#aura .au-x:hover { background: #22558f; }
-.au-dots { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; padding: 0 50px; }
-.au-dots button { width: 26px; height: 26px; position: relative; }
-.au-dots button::after { content: ''; position: absolute; left: 9px; top: 9px; width: 8px; height: 8px; border-radius: 50%; border: 1.3px solid var(--ink); box-sizing: border-box; }
-.au-dots button.on::after { background: var(--ink); }
-.au-prev, .au-next2 { position: absolute; top: 50%; width: 44px; height: 64px; margin-top: -32px; font-size: 34px !important; opacity: .75; z-index: 2; }
-.au-prev { left: 4px; } .au-next2 { right: 4px; }
-#au-show.one .au-prev, #au-show.one .au-next2, #au-show.one .au-dots { display: none; }
 
 #aura.big .au-tab .au-i { width: 34px; height: 34px; left: 11px; }
 #aura.big #au-panel, #aura.big #au-deep { font-size: 18px; }
@@ -219,8 +205,6 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-reset { border-style: dotted; opacity: .7; }
 #aura .au-reset.sure { opacity: 1; font-size: 18px; }
 /* the wall: one finished piece at a time */
-.au-wall { cursor: zoom-in; }
-.au-wall img { display: block; max-width: 100%; max-height: calc(var(--ph, 500px) - 120px); width: auto; height: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4), 0 12px 30px rgba(6, 24, 52, .4); }
 #aura .au-nav { border: 0; font-size: 28px; }
 .au-wdots { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
 .au-wdots i { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid var(--ink); }
@@ -338,3 +322,59 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-sea button::before { top: 10px; width: 6px; height: 6px; }
 #aura .au-near li button { display: block; line-height: 1.3; }
 #aura .au-near li button small { margin-left: 6px; white-space: nowrap; }
+
+/* the globe's ways in: each a small constellation of its own on a postmark ring; the first, where to begin, breathes and calls */
+.au-orb .au-rune { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -48px 0 0 17px; stroke-width: .8; opacity: .8; }
+.au-orb .au-rune path { stroke-dasharray: none; opacity: .6; }
+.au-orb .au-ring { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -46px 0 0 -23px; border-radius: 50%; border: 1px dashed rgba(244, 241, 232, .35); box-shadow: inset 0 0 0 3px rgba(23, 69, 127, 0), inset 0 0 0 4px rgba(244, 241, 232, .14); pointer-events: none; }
+.au-orb[data-s="0"] .au-i { animation: au-call 2.4s ease-in-out infinite; }
+.au-orb[data-s="0"] .au-ring { border-style: solid; border-color: rgba(244, 241, 232, .6); animation: au-ringout 2.4s ease-out infinite; }
+@keyframes au-call { 0%, 100% { transform: scale(1); filter: none; } 45% { transform: scale(1.2); filter: drop-shadow(0 0 8px rgba(244, 241, 232, .9)); } }
+@keyframes au-ringout { 0% { transform: scale(.9); opacity: .9; } 80%, 100% { transform: scale(1.7); opacity: 0; } }
+.au-ohint { position: absolute; left: 50%; top: 24px; width: 180px; margin-left: -90px; font-size: 13px; line-height: 1.3; text-align: center; pointer-events: none; }
+/* what to do, said now and then */
+.au-hint { margin: 10px 2px 0; font-size: 13.5px; line-height: 1.4; opacity: 0; transition: opacity .7s ease; pointer-events: none; }
+.au-hint.on { opacity: .82; }
+#aura .au-ask.au-hint { margin: 0; animation: none; opacity: .14; font-size: inherit; line-height: inherit; }
+#aura .au-ask.au-hint.on { opacity: .7; }
+.au-c .au-hint { margin: -8px 2px 10px; font-size: 12px; }
+/* why El Niño matters now: small, kept */
+.au-why { margin: 6px 2px 10px 16px; font-size: 12px; line-height: 1.45; opacity: .66; }
+/* the next step, at the foot of every page: a dotted line to its icon, and where it leads */
+#aura .au-go { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px auto; padding: 6px 4px; opacity: .85; transition: opacity .2s, transform .25s; }
+#aura .au-go i { width: 46px; border-top: 1.6px dotted var(--ink); }
+#aura .au-go .au-i { width: 26px; height: 26px; animation: au-next 2.6s ease-in-out infinite; }
+#aura .au-go span { font-size: 15px; }
+#aura .au-go:hover { opacity: 1; transform: translateX(3px); }
+.au-empty { margin: 8vh 4px 0; font-size: 16px; line-height: 1.45; opacity: .8; }
+/* the photograph, let go with its own ×, kept inside the page */
+#aura .au-ph .au-rm { right: 6px; top: 6px; }
+/* the tray: a photograph for the piece sits with the rest */
+.au-trayph { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; opacity: .7; cursor: pointer; }
+.au-trayph:hover { opacity: 1; background: rgba(244, 241, 232, .1); }
+.au-trayph .au-i { width: 24px; height: 24px; }
+/* the pixel maker: what to make, as small signs over it */
+.au-pix { flex-wrap: wrap; }
+.au-subs { display: flex; gap: 4px; flex: 1 0 100%; justify-content: center; }
+#aura .au-subs button { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; opacity: .55; }
+#aura .au-subs button.on { opacity: 1; background: rgba(244, 241, 232, .14); }
+.au-subs .au-i { width: 22px; height: 22px; }
+/* the wall: a light carousel, the one in front whole, its neighbours showing */
+.au-wall { overflow: hidden; touch-action: pan-y pinch-zoom; cursor: grab; }
+.au-wall:active { cursor: grabbing; }
+.au-etrack { display: flex; align-items: center; }
+.au-eslide { flex: 0 0 72%; min-width: 0; margin: 0 2%; display: flex; justify-content: center; opacity: .45; transform: scale(.9); transition: opacity .35s, transform .35s; }
+.au-eslide.on { opacity: 1; transform: none; cursor: zoom-in; }
+.au-eslide img { display: block; max-width: 100%; max-height: calc(var(--ph, 500px) - 150px); width: auto; height: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4), 0 12px 30px rgba(6, 24, 52, .4); -webkit-user-drag: none; user-select: none; pointer-events: none; }
+@media (min-width: 760px) { .au-eslide { flex-basis: 56%; } }
+/* the viewer: full screen on the blueprint, nothing round the picture but its close and where it is */
+.au-pswp { animation: au-in .35s ease; --pswp-bg: #17457F; --pswp-icon-color: #F4F1E8; --pswp-icon-color-secondary: #17457F; --pswp-icon-stroke-color: #F4F1E8; font-family: 'Architects Daughter', cursive; }
+.au-pswp .pswp__bg { background-image: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(6, 24, 52, .38) 100%); }
+.au-pswp .pswp__img { box-shadow: 0 0 0 1px rgba(244, 241, 232, .45), 0 14px 40px rgba(6, 24, 52, .45); }
+.au-pswp .au-x { position: absolute; left: 0; top: 0; z-index: 3; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #17457F; color: #F4F1E8; box-shadow: 0 0 0 1.6px #F4F1E8, 0 4px 14px rgba(6, 24, 52, .5); font: 26px/40px 'Architects Daughter', cursive; text-align: center; cursor: pointer; transition: background .2s; }
+.au-pswp .au-x:hover { background: #22558f; }
+.au-pswp .au-dots { position: absolute; left: 0; right: 0; bottom: calc(10px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; padding: 0 50px; z-index: 3; }
+.au-pswp .au-dots button { width: 26px; height: 26px; position: relative; background: none; border: 0; padding: 0; cursor: pointer; }
+.au-pswp .au-dots button::after { content: ''; position: absolute; left: 9px; top: 9px; width: 8px; height: 8px; border-radius: 50%; border: 1.3px solid #F4F1E8; box-sizing: border-box; }
+.au-pswp .au-dots button.on::after { background: #F4F1E8; }
+.au-pswp .pswp__button--arrow { opacity: .7; }

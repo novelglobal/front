@@ -1,6 +1,6 @@
 # Sources: open projects that could be brought in, stage by stage
 
-24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Fourteen projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb, Tuna, perfect-freehand, simplex-noise, Panzoom, Architects Daughter, Fraunces and Archivo Narrow. The others are candidates.
+24 October 2026. The base has no dependencies, and that is part of why it works on old phones. Sixteen projects below have been brought in, each kept in `vendor/` and loaded only when used: CanvasDither (every printed photograph), exifr, d3-force, Rough.js, gifenc, Departure Mono, Freeverb, Tuna, perfect-freehand, simplex-noise, Panzoom, Architects Daughter, Fraunces, Archivo Narrow, PhotoSwipe and Embla Carousel. The others are candidates.
 
 Each project is listed with what it would replace and what it costs. Bring one in only when the base's own version fails someone in the field. A pack, loaded only when it is used, is the way to add one.
 
@@ -28,6 +28,8 @@ Each project is listed with what it would replace and what it costs. Bring one i
 | [Architects Daughter](https://github.com/google/fonts/tree/main/ofl/architectsdaughter) | **Brought in.** Hand lettering after an architect's drawings. | 13 KB, `vendor/architects-daughter.woff2`, OFL. The aura's words and the colour posters: blueprint lettering. |
 | [Fraunces](https://github.com/undercasetype/Fraunces) | **Brought in.** A heavy wedge serif, after Windsor and Cooper. | 16 KB, `vendor/fraunces-black.woff2` (Black, Latin), OFL. The mark beside the globe, W.I.S.H.'s letters on the poster, the stamps' big words. |
 | [Archivo Narrow](https://github.com/Omnibus-Type/ArchivoNarrow) | **Brought in.** A narrow grotesque for catalogue lines. | 12 KB, `vendor/archivo-narrow.woff2` (SemiBold, Latin), OFL. The four lines on the poster, the stamps' rims. |
+| [PhotoSwipe](https://github.com/dimsemenov/PhotoSwipe) | **Brought in.** Full-screen pictures: swipe, pinch, double-tap, flick to close, with spring. | 54 KB + 7 KB css, `vendor/photoswipe.js`, MIT. The aura's viewer for every poster and photograph. |
+| [Embla Carousel](https://github.com/davidjerleke/embla-carousel) | **Brought in.** A light, dependency-free carousel with real drag physics. | 18 KB, `vendor/embla.js`, MIT. The aura's wall. |
 | [Panzoom](https://github.com/timmywil/panzoom) | **Brought in.** Pinch, wheel and double-tap zoom with CSS transforms. | 10 KB, `vendor/panzoom.js`. The portfolio slideshow: each poster whole, then as close as one likes, in place. |
 | [pixelit](https://github.com/giventofly/pixelit) | Pixel art from a photograph, with palettes. | Small. The base's wonky pixels are its own on purpose. Take only its palette mapping, for colour boards. |
 | [CanvasDither](https://github.com/NielsLeenheer/CanvasDither) | **Brought in.** One-bit dithering made for receipt printers. The booth uses its Atkinson method. | 2 KB, `vendor/canvas-dither.js`, loaded only by the booth. It is ported to plain script, with the error carried in a float buffer. |
@@ -72,3 +74,13 @@ Each project is listed with what it would replace and what it costs. Bring one i
 | [iNaturalist API](https://github.com/inaturalist/iNaturalistAPI) | The sightings behind LIVE, the reveal and the map. | Already used. |
 | [Open-Meteo](https://github.com/open-meteo/open-meteo) | Today's heat for each noticing. | Already used. |
 | [Meshtastic](https://github.com/meshtastic/firmware) | LoRa mesh radios that pass short messages with no phone network. | The emergency line where there is no signal: a noticing's alert and number sent from park to printer by mesh. For the receiver, later. |
+
+## El Niño, why it matters now (the aura's catch, `NINO_WHY`)
+
+Read 27 October 2026, through search (the pages themselves could not be fetched from the build environment, so every figure is as the search reported it; check the originals before quoting further).
+
+- NOAA Climate Prediction Center, October 2026 ENSO update (via the ENSO blog, "Highlights from NOAA's October 2026 El Niño forecast"): El Niño Advisory; better than 83% chance of a strong to very strong event through January–March 2027.
+- Bureau of Meteorology: El Niño declared underway on 16 June 2026 (reported by Al Jazeera, 16 June 2026, "Australia warns El Nino weather pattern set to be strongest in decades", and ABC News, 15 April and 22 August 2026).
+- WMO, October 2026 (reported by The Weather Channel, 22 October 2026): likely a record event, peaking at or above 2.5 °C above average.
+- Morgan Pratchett (James Cook University) at the International Coral Reef Symposium, July 2026 (AFP, carried by The Star and Malay Mail): "a very high likelihood that we'll see very high severity and large-scale mass bleaching on the Great Barrier Reef".
+- Aeon, "The life and possible death of the great Asian monsoon": many of the worst droughts in Asian history came with intense El Niño events.
