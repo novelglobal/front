@@ -477,3 +477,10 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-nav::before { display: none; }
 #aura .au-big { width: 64px; height: 64px; min-width: 64px; max-width: 64px; min-height: 64px; max-height: 64px; }
 @media (max-width: 759px) { #aura .au-press .au-nav { max-width: 34px; max-height: 34px; } }
+/* the phone's way in: a box to paste, type or speak into, held near the top while the keyboard is up */
+.au-inbox { position: sticky; top: 6px; z-index: 6; display: flex; gap: 8px; align-items: center; margin: 10px 0; padding: 10px; background: rgba(23, 69, 127, .97); border-radius: 10px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .35), 0 10px 30px rgba(6, 24, 52, .45); animation: au-in .3s ease; }
+#aura .au-inarea { flex: 1; min-width: 0; min-height: 40px; max-height: 120px; overflow: auto; padding: 8px 6px; font: 16px/1.4 'Architects Daughter', 'Comic Sans MS', cursive; color: var(--ink); border-bottom: 1.5px dotted rgba(244, 241, 232, .5); outline: none; -webkit-user-select: text; user-select: text; white-space: pre-wrap; word-break: break-word; caret-color: var(--ink); }
+#aura .au-inarea:empty::before { content: attr(aria-label); opacity: .45; pointer-events: none; }
+.au-inbox nav { display: flex; gap: 8px; flex: none; }
+#aura .au-inbox .au-k.on { background: rgba(244, 241, 232, .9); animation: au-next 1s ease-in-out infinite; }
+#aura .au-inbox .au-k.on svg { stroke: #17457F; }
