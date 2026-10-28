@@ -42,6 +42,9 @@
   /* ───────── the colour poster: the picture in full on blueprint paper (or white paper, the ink turned to the blue), the life, the
      four lines, what was caught and what was added, each placed, turned, sized and toned by hand; a small code back to the site ───────── */
   var FONT = '"Architects Daughter", "Comic Sans MS", "Bradley Hand", cursive';
+  /* words on the poster: the hand on screen; for the printer, a clean bold type a little larger, which the head prints whole */
+  var PRINTMODE = false, CLEAN = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+  var tFont = function (px) { return PRINTMODE ? '700 ' + Math.round(px * 1.1) + 'px ' + CLEAN : px + 'px ' + FONT; };
   var fontP = null;
   function fontReady() { if (!fontP) fontP = (document.fonts && document.fonts.load ? Promise.all(['26px "Architects Daughter"', '900 26px Fraunces', '600 26px "Archivo Narrow"'].map(function (f) { return document.fonts.load(f).catch(function () {}); })) : Promise.resolve()).then(function () { STAMPC = {}; STAMPT = {}; return true; }); return fontP; }
   /* the pen and the paper: blue paper and white ink, or white paper and blue ink */
@@ -310,16 +313,16 @@
       var at = P.pos && P.pos[k] ? [P.pos[k][0] * W, P.pos[k][1] * H] : defaults[k], tf = tfs[k] || {}, it = { key: k, X: at[0], Y: at[1], tf: tf };
       if (k === 'map') { it.w = it.h = 240; it.draw = function (x) { var cx = 120, cy = 120, seen = (n.seen || []).slice(0, 8); if ((tf.tone || 'ink') !== 'clear') { x.fillStyle = tf.tone === 'turn' ? ink(0.92) : back(0.92); x.beginPath(); x.arc(cx, cy, 118, 0, 7); x.fill(); }
         var keep = PEN; if (tf.tone === 'turn') PEN = BACK; if (tf.b !== false) handCircle(x, cx, cy, 116, 1.6, 0.85, 3); handCircle(x, cx, cy, 58, 0.8, 0.3, 5);
-        handLine(x, [[cx, cy - 128], [cx, cy - 104]], 1.4, 0.8, 1); x.fillStyle = ink(); x.font = '16px ' + FONT; x.fillText('N', cx - 5, cy - 150 + 2);
+        handLine(x, [[cx, cy - 128], [cx, cy - 104]], 1.4, 0.8, 1); x.fillStyle = ink(); x.font = tFont(16); x.fillText('N', cx - 5, cy - 150 + 2);
         var far = seen.reduce(function (mm, s2) { return Math.max(mm, s2.d || 0); }, 400); seen.forEach(function (s2) { var dy = (n.lat - s2.lat) * 111000, dx = (s2.lng - n.lng) * 111000 * Math.cos(n.lat * Math.PI / 180), kk = 100 / far; x.beginPath(); x.arc(cx + dx * kk, cy + dy * kk, 3.2, 0, 7); x.fill(); });
-        irukMark(x, cx, cy - 4, 34, 1); var place = (NG.context(P)[0] || '').toLowerCase(); if (place) { x.font = '18px ' + FONT; var tw = x.measureText(place).width; x.fillText(place, cx - tw / 2, cy + 74); } PEN = keep; }; }
-      else if (k === 'life') { var f = lifeOf(P); m.font = '36px ' + FONT; it.w = Math.min(560, m.measureText(f.cn).width + 48); m.font = 'italic 19px Georgia, serif'; it.w = Math.max(it.w, m.measureText(f.n || '').width + 48); it.h = 100;
-        it.draw = function (x) { scrap(x, it.w, it.h, 4, tf); x.fillStyle = tcol(tf); x.font = '36px ' + FONT; x.fillText(f.cn, 24, 16); x.globalAlpha = 0.7; x.font = 'italic 19px Georgia, serif'; x.fillText(f.n || '', 24, 64); x.globalAlpha = 1; }; }
-      else if (k === 'data') { m.font = '20px ' + FONT; var ls = wrap(m, P.catch.data.join(' · '), 360); it.w = Math.min(420, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 28 + 26;
-        it.draw = function (x) { scrap(x, it.w, it.h, 6, tf); x.fillStyle = tcol(tf); x.font = '20px ' + FONT; ls.forEach(function (l, i) { x.fillText(l, 20, 14 + i * 28); }); }; }
+        irukMark(x, cx, cy - 4, 34, 1); var place = (NG.context(P)[0] || '').toLowerCase(); if (place) { x.font = tFont(18); var tw = x.measureText(place).width; x.fillText(place, cx - tw / 2, cy + 74); } PEN = keep; }; }
+      else if (k === 'life') { var f = lifeOf(P); m.font = tFont(36); it.w = Math.min(560, m.measureText(f.cn).width + 48); m.font = 'italic 19px Georgia, serif'; it.w = Math.max(it.w, m.measureText(f.n || '').width + 48); it.h = 100;
+        it.draw = function (x) { scrap(x, it.w, it.h, 4, tf); x.fillStyle = tcol(tf); x.font = tFont(36); x.fillText(f.cn, 24, 16); x.globalAlpha = 0.7; x.font = 'italic 19px Georgia, serif'; x.fillText(f.n || '', 24, 64); x.globalAlpha = 1; }; }
+      else if (k === 'data') { m.font = tFont(20); var ls = wrap(m, P.catch.data.join(' · '), 360); it.w = Math.min(420, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 28 + 26;
+        it.draw = function (x) { scrap(x, it.w, it.h, 6, tf); x.fillStyle = tcol(tf); x.font = tFont(20); ls.forEach(function (l, i) { x.fillText(l, 20, 14 + i * 28); }); }; }
       else { it.w = 250; it.h = 110; it.draw = function (x) { scrap(x, it.w, it.h, 8, tf); var cl = tcol(tf); x.fillStyle = cl; x.strokeStyle = cl; x.lineWidth = 1.6;
         x.beginPath(); x.arc(34, 34, 12, 0, 7); x.stroke(); for (var r2 = 0; r2 < 8; r2++) { var an = r2 * Math.PI / 4; x.beginPath(); x.moveTo(34 + Math.cos(an) * 17, 34 + Math.sin(an) * 17); x.lineTo(34 + Math.cos(an) * 21, 34 + Math.sin(an) * 21); x.stroke(); }
-        x.font = '26px ' + FONT; x.fillText('Niño 3.4 ' + ninoNow(), 64, 20);
+        x.font = tFont(26); x.fillText('Niño 3.4 ' + ninoNow(), 64, 20);
         var v = ninoVals(); if (v) { var mx = Math.max(1, Math.max.apply(null, v)), keep = PEN; if (tf.tone === 'turn') PEN = BACK; handLine(x, v.map(function (q, i) { return [22 + i * (it.w - 44) / Math.max(1, v.length - 1), it.h - 16 - (q / mx) * 30]; }), 1.4, 0.85, 9); PEN = keep; } }; }
       out.push(it);
     });
@@ -327,8 +330,10 @@
       var it = { key: 'a' + i, X: a.x * W, Y: a.y * H, tf: a };
       if (a.k === 's' && MARKS[a.g]) { it.w = it.h = 132; it.draw = function (x) { x.translate(6, 6); x.scale(3.75, 3.75); var mk = new Path2D(MARKS[a.g]), tn = a.tone || 'ink'; x.lineCap = x.lineJoin = 'round';
         if (tn !== 'clear') { x.strokeStyle = tn === 'turn' ? ink(0.9) : back(0.9); x.lineWidth = 2.1; x.stroke(mk); } x.strokeStyle = tn === 'turn' ? back() : ink(); x.lineWidth = 0.8; x.stroke(mk); }; }
-      else if (a.k === 't') { m.font = '34px ' + FONT; var ls = wrap(m, a.t || ' ', 420); it.w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 44 + 22;
-        it.draw = function (x) { scrap(x, it.w, it.h, 11 + i, a); x.fillStyle = tcol(a); x.font = '34px ' + FONT; x.textBaseline = 'top'; ls.forEach(function (l, k) { x.fillText(l, 20, 12 + k * 44); }); }; }
+      else if (a.k === 't') { m.font = tFont(34); var ls = wrap(m, a.t || ' ', 420); it.w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 44 + 22;
+        it.draw = function (x) { scrap(x, it.w, it.h, 11 + i, a); x.fillStyle = tcol(a); x.font = tFont(34); x.textBaseline = 'top'; ls.forEach(function (l, k) { x.fillText(l, 20, 12 + k * 44); }); };
+        it.glyph = function (x) { var turn = (a.tone || 'ink') === 'turn'; x.font = tFont(34); x.textBaseline = 'top'; x.lineJoin = 'round'; x.lineWidth = 9; x.strokeStyle = turn ? '#000' : '#fff'; x.fillStyle = turn ? '#fff' : '#000';
+          ls.forEach(function (l, k) { x.strokeText(l, 20, 12 + k * 44); }); ls.forEach(function (l, k) { x.fillText(l, 20, 12 + k * 44); }); }; }
       else if (a.k === 'i') { it.w = it.h = 128; it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); if (!im) return; x.imageSmoothingEnabled = false; var iw = im.naturalWidth, ih = im.naturalHeight, k2 = 128 / Math.max(iw, ih); x.drawImage(im, (128 - iw * k2) / 2, (128 - ih * k2) / 2, iw * k2, ih * k2); }; }
       else if (a.k === 'im') { it.w = 300; it.h = Math.round(300 * Math.min(1.6, Math.max(0.4, a.ar || 0.75))); it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); var tn = a.tone || 'ink';
         if (a.b !== false) { x.fillStyle = tn === 'turn' ? ink(0.95) : back(0.95); x.fillRect(-8, -8, it.w + 16, it.h + 16); }
@@ -341,11 +346,11 @@
     });
     return out;
   }
-  function drawItems(x, P, B0) {
+  function drawItems(x, P, B0, glyphs) {
     var boxes = {};
-    items(P, B0).forEach(function (it) {
+    items(P, B0).forEach(function (it) { if (glyphs && !it.glyph) return;
       var s = it.tf.s || 1, r = (it.tf.r || 0) * Math.PI / 180, w = it.w * s, h = it.h * s;
-      x.save(); x.textBaseline = 'top'; x.translate(it.X + w / 2, it.Y + h / 2); x.rotate(r); x.scale(s, s); x.translate(-it.w / 2, -it.h / 2); it.draw(x); x.restore();
+      x.save(); x.textBaseline = 'top'; x.translate(it.X + w / 2, it.Y + h / 2); x.rotate(r); x.scale(s, s); x.translate(-it.w / 2, -it.h / 2); if (glyphs) it.glyph(x); else it.draw(x); x.restore();
       boxes[it.key] = [it.X, it.Y, w, h];
     });
     return boxes;
@@ -702,6 +707,8 @@
     longer: '<path d="M10 5h12v22H10z" class="d"/><path d="M16 12v12M12 20l4 4 4-4"/>',
     shorter: '<path d="M10 5h12v14H10z" class="d"/><path d="M16 26V14M12 18l4-4 4 4"/>',
     paste: '<path d="M10 7h12v20H10z"/><path d="M13 5h6v4h-6z" class="f"/><path d="M13 15h6M13 19h6" class="d"/>',
+    mic: '<path d="M12.5 6.5a3.5 3.5 0 0 1 7 0v8a3.5 3.5 0 0 1-7 0z"/><path d="M8.5 14a7.5 7.5 0 0 0 15 0M16 21.5V27M12 27h8" class="d"/>',
+    ok: '<path d="M7 17l6 6 12-13"/>',
     moon2: '<path d="M20 5a11 11 0 1 0 7 15A9 9 0 0 1 20 5z"/><circle cx="24" cy="9" r="1" class="f"/><circle cx="27" cy="14" r=".8" class="f"/>'
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
@@ -930,7 +937,7 @@
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
         h = '<div class="au-tray">' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
           STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '" class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
-          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button><button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
+          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + (SR ? '<button data-add="mic" aria-label="Speak words onto the poster">' + svgI('mic') + '</button>' : '') + '<button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
@@ -971,7 +978,8 @@
       [].forEach.call(panel.querySelectorAll('[data-mark]'), function (b) { b.addEventListener('click', function () { if (b.dataset.mark === S.newMark) S.newMark = null; add({ k: 's', g: b.dataset.mark }); }); });
       [].forEach.call(panel.querySelectorAll('[data-stamp]'), function (b) { b.addEventListener('click', function () { add({ k: 'st', g: +b.dataset.stamp, r: Math.round(Math.random() * 24 - 12) }); }); });
       [].forEach.call(panel.querySelectorAll('[data-ic]'), function (b) { b.addEventListener('click', function () { var ic = (NG.icons() || []).slice(-6)[+b.dataset.ic]; if (ic) add({ k: 'i', src: ic.src }); }); });
-      panel.querySelector('[data-add="t"]').addEventListener('click', function () { add({ k: 't', t: '' }); });
+      panel.querySelector('[data-add="t"]').addEventListener('click', function () { if (touchy()) inBox('words'); else add({ k: 't', t: '' }); });
+      var mk2 = panel.querySelector('[data-add="mic"]'); if (mk2) mk2.addEventListener('click', function () { inBox('mic'); });
       panel.querySelector('[data-add="p"]').addEventListener('click', function () { S.pix = !S.pix; paint(); bell(7, 0.16); });
       [].forEach.call(panel.querySelectorAll('[data-px]'), function (b) { b.addEventListener('click', function () { var k = b.dataset.px;
         if (k === 'cells') PIX.cells = PIX.cells === 16 ? 24 : PIX.cells === 24 ? 32 : 16; else if (k === 'cur') PIX.cur = PIX.cur % 3 + 1; else if (k === 'tone') { var tn = ['ink', 'blue'].concat(PIX.sub !== 'jelly' ? ['colour'] : [], picOf(P) ? ['photo'] : []); PIX.tone = tn[(tn.indexOf(PIX.tone) + 1) % tn.length]; }
@@ -982,7 +990,7 @@
       [].forEach.call(panel.querySelectorAll('[data-t]'), function (b) { b.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); b.addEventListener('click', function (e) { e.stopPropagation(); tool(b.dataset.t); }); });
       /* pictures added to the poster: each its own piece, laid over what is there, never in its place */
       $('#au-file2').addEventListener('change', function () { var fs = [].slice.call(this.files || []); this.value = ''; addPics(fs); });
-      [].forEach.call(panel.querySelectorAll('[data-add="len+"], [data-add="len-"], [data-add="v"]'), function (b) { b.addEventListener('click', function () { var k = b.dataset.add; if (k === 'v') pasteKey(); else lengthen(k === 'len+' ? 300 : -300); }); });
+      [].forEach.call(panel.querySelectorAll('[data-add="len+"], [data-add="len-"], [data-add="v"]'), function (b) { b.addEventListener('click', function () { var k = b.dataset.add; if (k === 'v') { if (touchy() || !navigator.clipboard || !navigator.clipboard.read) inBox('paste'); else pasteKey(); } else lengthen(k === 'len+' ? 300 : -300); }); });
       redraw(); dragWire(); if (S.pix) pixRun();
     }
     if (s === 3) wallWire();
@@ -1004,7 +1012,7 @@
   }
   document.addEventListener('paste', function (e) { if (asleep) return; var cd = e.clipboardData || {}, t = cd.getData ? cd.getData('text') : '', fs = [].slice.call(cd.files || []).filter(function (f) { return /^image\//.test(f.type); }), act = document.activeElement;
     if (act && act.id === 'au-sigi') return; var typing = act && /^(TEXTAREA|INPUT)$/.test(act.tagName) && act.id !== 'au-tx'; if (typing && !fs.length && !/ng:[-0-9a-z]+,/i.test(t)) return;
-    if (pasted(fs, fs.length ? '' : t)) e.preventDefault(); });
+    if (pasted(fs, fs.length ? '' : t)) { e.preventDefault(); closeBox(); } });
   /* the paste key: for a phone, where there is no keyboard to paste with */
   function pasteKey() {
     var cb = navigator.clipboard; if (!cb) return;
@@ -1012,6 +1020,36 @@
     (cb.read ? cb.read().then(function (items) { var imgs = [], texts = [];
       return Promise.all(items.map(function (it) { var ty = it.types.filter(function (q) { return /^image\//.test(q); })[0]; if (ty) return it.getType(ty).then(function (b) { imgs.push(new File([b], 'pasted', { type: ty })); });
         if (it.types.indexOf('text/plain') >= 0) return it.getType('text/plain').then(function (b) { return b.text(); }).then(function (t) { texts.push(t); }); })).then(function () { pasted(imgs, imgs.length ? '' : texts.join(' ')); }); }) : plain()).catch(function () { plain().catch(function () {}); });
+  }
+  /* on a phone: a box to paste into, type into or speak into, opened in the tap itself so the keyboard (and its own microphone) comes up.
+     A picture or words pasted go straight on the poster; typed or spoken words go on with the tick, or when the speaking stops */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, REC = null;
+  var touchy = function () { return !!(window.matchMedia && matchMedia('(pointer: coarse)').matches); };
+  function closeBox() { if (REC) { try { REC.abort(); } catch (e) { /* gone */ } REC = null; } var el = $('#au-inbox'); if (el) el.remove(); }
+  function inBox(mode) {
+    closeBox(); if (!panel) return;
+    var bx = document.createElement('div'); bx.className = 'au-inbox'; bx.id = 'au-inbox';
+    bx.innerHTML = '<div class="au-inarea" id="au-inarea" contenteditable="true" role="textbox" spellcheck="true" autocapitalize="sentences" enterkeyhint="done" aria-label="' + (mode === 'paste' ? 'Paste here' : mode === 'mic' ? 'Speak' : 'Words') + '"></div>' +
+      '<nav>' + (SR ? hand('au-sm', svgI('mic'), 'id="au-inmic" aria-label="Speak"') : '') + hand('au-sm', svgI('ok'), 'id="au-inok" aria-label="Put it on the poster"') + hand('au-sm au-nav', '×', 'id="au-inx" aria-label="Close"') + '</nav>';
+    var fig = panel.querySelector('.au-poster'); if (fig) fig.parentNode.insertBefore(bx, fig); else panel.appendChild(bx);
+    var ar = $('#au-inarea'); ar.focus();
+    var put = function () { if (!ar.isConnected) return closeBox(); var t = (ar.innerText || ar.textContent || '').replace(/\s+/g, ' ').trim(); closeBox(); if (t && !pasted([], t)) addPiece({ k: 't', t: t.slice(0, 90) }); };
+    ar.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); put(); } });
+    $('#au-inok').addEventListener('click', put); $('#au-inx').addEventListener('click', function () { closeBox(); bell(1, 0.12); });
+    var mic = $('#au-inmic'); if (mic) mic.addEventListener('click', function () { listen(ar, put); });
+    if (mode === 'mic') listen(ar, put);
+    setTimeout(function () { if (bx.isConnected && bx.scrollIntoView) bx.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 60);
+    bubbles(2);
+  }
+  /* speaking: the phone's own recogniser, its words appearing as they are heard; when it stops listening, they go on the poster */
+  function listen(ar, done) {
+    if (!SR) return; if (REC) { try { REC.stop(); } catch (e) { /* gone */ } return; }
+    var r = REC = new SR(), base = (ar.innerText || '').trim(), mic = $('#au-inmic'); r.lang = navigator.language || 'en-AU'; r.interimResults = true; r.continuous = false;
+    if (mic) mic.classList.add('on');
+    r.onresult = function (e) { var t = ''; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; ar.textContent = (base ? base + ' ' : '') + t; };
+    r.onend = function () { var on = REC === r; if (on) REC = null; var m2 = $('#au-inmic'); if (m2) m2.classList.remove('on'); if (on && (ar.innerText || '').trim()) done(); };
+    r.onerror = function () { if (REC === r) REC = null; var m2 = $('#au-inmic'); if (m2) m2.classList.remove('on'); };
+    try { r.start(); subSwell(); } catch (e) { REC = null; if (mic) mic.classList.remove('on'); }
   }
   /* the strip made longer or shorter, in steps; what is on it stays where it is */
   function lengthen(d) {
@@ -1095,12 +1133,19 @@
      as line work, crisp. The code is set large, a whole number of dots to each module, with clear paper round it.
      Light paper prints black on white; dark paper prints the head and the four lines reversed, white out of black */
   function printSheet(W, D) {
-    var keep = P.paper, dark = keep !== 'white'; P.paper = 'white'; P._base = null; var pc = posterNow(P), B0 = P._base; P.paper = keep; P._base = null;
+    var keep = P.paper, dark = keep !== 'white'; P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
+    var gl = document.createElement('canvas'); gl.width = B0.W; gl.height = B0.H; drawItems(gl.getContext('2d'), P, B0, true); PRINTMODE = false; P.paper = keep; P._base = null;
     var src = pc.c, k = W / B0.W, m = 14, parts = [], PS = '"Archivo Narrow", "Arial Narrow", Arial, sans-serif';
     var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
     /* every dot black or white: words and lines only, never the photograph */
     var hard = function (c, inv) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data; for (var i = 0; i < d.length; i += 4) { var v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) < 150 ? 0 : 255; if (inv) v = 255 - v; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } g.putImageData(im, 0, 0); return c; };
     var crop = function (y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0 || 0)); x1 = Math.min(B0.W, Math.round(x1 || B0.W)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1)); if (y1 - y0 < 4 || x1 - x0 < 4) return null; var kk = W / (x1 - x0), h = Math.round((y1 - y0) * kk), c = mk(h), g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, x1 - x0, y1 - y0, 0, 0, W, h); return c; };
+    /* words placed over the picture: not dithered with it but laid over it whole, black on a white halo (white on black, turned) */
+    var lay = function (dc, y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0)); x1 = Math.min(B0.W, Math.round(x1)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1));
+      var gc = document.createElement('canvas'); gc.width = dc.width; gc.height = dc.height; var gg = gc.getContext('2d'); gg.imageSmoothingQuality = 'high'; gg.drawImage(gl, x0, y0, x1 - x0, y1 - y0, 0, 0, dc.width, Math.round((y1 - y0) * W / (x1 - x0)));
+      var a = gg.getImageData(0, 0, gc.width, gc.height).data, dx = dc.getContext('2d'), im = dx.getImageData(0, 0, dc.width, dc.height), d = im.data;
+      for (var i = 0; i < d.length; i += 4) if (a[i + 3] > 110) { var v = (a[i] * 0.299 + a[i + 1] * 0.587 + a[i + 2] * 0.114) < 128 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+      dx.putImageData(im, 0, 0); };
     var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
     /* the head: the mark, the name, the code */
     var hd = mk(78), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
@@ -1108,7 +1153,7 @@
     var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 26px ' + PS; hx.fillText(code, W - m - hx.measureText(code).width, 40); }
     if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
     /* the picture, edge to edge, with everything laid over it */
-    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) parts.push(NG.forPrint(ac, W, D)); }
+    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); parts.push(dc); } }
     /* the words, at the printer's size */
     var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
     tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];
