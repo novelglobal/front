@@ -13,6 +13,7 @@
    code to scan and a page to set them. Where it can't find a Wi-Fi it knows, it keeps looking and says so; it never opens setup itself.
    Its type: Archivo Narrow (SemiBold) and Departure Mono, both under the SIL Open Font License 1.1, drawn into the tables at the end. */
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
@@ -28,7 +29,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 4"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "29 Oct · 5"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -114,14 +115,18 @@ void join() {
   for (int i = 0; i < nNets; i++) for (int j = i + 1; j < nNets; j++) { int a = order[i], b = order[j];
     if ((vis[b] && !vis[a]) || (vis[a] == vis[b] && rs[b] > rs[a])) { order[i] = b; order[j] = a; } }
   int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0;
-  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);   // where a router and extender share a name, the stronger
-  WiFi.setAutoReconnect(true); lastReason = 0;
-  WiFi.begin(nets[k].c_str(), passes[k].c_str());
-  for (int w = 0; w < 60 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
+  /* first as the first sketch joined (the first transmitter of that name it finds); then, if that fails, the strongest of that name */
+  for (int pass = 0; pass < 2 && WiFi.status() != WL_CONNECTED && !setupOn; pass++) {
+    if (pass) { WiFi.setAutoReconnect(false); WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(600)); }
+    WiFi.setScanMethod(pass ? WIFI_ALL_CHANNEL_SCAN : WIFI_FAST_SCAN); WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+    WiFi.setAutoReconnect(true); lastReason = 0;
+    WiFi.begin(nets[k].c_str(), passes[k].c_str());
+    for (int w = 0; w < 36 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
+  }
   if (WiFi.status() != WL_CONNECTED && !setupOn) {
     int r = lastReason;
     String why = nets[k] + ": " + ((r == 15 || r == 202 || r == 204) ? String("wrong password?") : (r == 201) ? String("not found (") + n + " seen)"
-      : (r == 210 || r == 211) ? String("its security type isn't supported") : String("no join (code ") + r + (vis[k] ? String(", ") + tryRssi + " dBm)" : String(", not in scan)")));
+      : (r == 210 || r == 211) ? String("its security type isn't supported") : String("no join (code ") + r + (vis[k] ? String(", ") + tryRssi + " dBm)" : String(", not in its scan of ") + n + ")"));
     xSemaphoreTake(lock, portMAX_DELAY); whyNot = why; xSemaphoreGive(lock);
     WiFi.setAutoReconnect(false); WiFi.disconnect(); tryNext++;
   }
@@ -430,6 +435,9 @@ void setup() {
   /* the ESP32 keeps the last Wi-Fi it joined and quietly rejoins it at start, fighting the choice below: that memory is wiped,
      and reconnecting is left to join() alone */
   WiFi.persistent(false); WiFi.setHostname("novel-touch"); WiFi.mode(WIFI_STA); WiFi.disconnect(false, true); WiFi.setAutoReconnect(false); WiFi.setSleep(false);
+  /* Australia's channels, 1 to 13 (the chip's default can leave 12 and 13 unseen), and any security a router offers */
+  { wifi_country_t cc; memset(&cc, 0, sizeof cc); memcpy(cc.cc, "AU", 3); cc.schan = 1; cc.nchan = 13; cc.max_tx_power = 20; cc.policy = WIFI_COUNTRY_POLICY_MANUAL; esp_wifi_set_country(&cc); }
+  WiFi.setMinSecurity(WIFI_AUTH_WEP);
   WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) { if (e == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) lastReason = info.wifi_sta_disconnected.reason; });
   bool keyHeld = digitalRead(KEY_A) == LOW;   // the side button held while it is switched on: setup, and only then
   xTaskCreatePinnedToCore(netTask, "net", 16384, NULL, 1, NULL, 0);
