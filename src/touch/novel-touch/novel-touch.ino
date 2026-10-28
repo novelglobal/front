@@ -13,7 +13,6 @@
    code to scan and a page to set them. Where it can't find a Wi-Fi it knows, it keeps looking and says so; it never opens setup itself.
    Its type: Archivo Narrow (SemiBold) and Departure Mono, both under the SIL Open Font License 1.1, drawn into the tables at the end. */
 #include <WiFi.h>
-#include <WiFiMulti.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
@@ -53,7 +52,7 @@ Arduino_GFX *tft = new Arduino_ST7789(bus, 5, NG_TURN, true, 170, 320, 35, 0, 35
 Arduino_Canvas *g = new Arduino_Canvas(W, H, tft);
 
 /* ───────── what it knows: the Wi-Fis (up to five, kept), the site, the printer, the token ───────── */
-Preferences prefs; WiFiMulti multi;
+Preferences prefs;
 String host, printerId, token, nets[5], passes[5]; int nNets = 0;
 bool real(const char *s) { return s && *s && strcmp(s, "your wi-fi") && strcmp(s, "printer id") && strcmp(s, "touch token"); }
 void loadCfg() {
@@ -62,7 +61,6 @@ void loadCfg() {
   nNets = prefs.getInt("n", 0); if (nNets > 5) nNets = 5;
   for (int i = 0; i < nNets; i++) { nets[i] = prefs.getString(("s" + String(i)).c_str(), ""); passes[i] = prefs.getString(("p" + String(i)).c_str(), ""); }
   if (real(WIFI_SSID) && nNets < 5) { bool have = false; for (int i = 0; i < nNets; i++) if (nets[i] == WIFI_SSID) have = true; if (!have) { nets[nNets] = WIFI_SSID; passes[nNets++] = WIFI_PASS; } }
-  for (int i = 0; i < nNets; i++) if (nets[i].length()) multi.addAP(nets[i].c_str(), passes[i].c_str());
 }
 void saveNets() { prefs.putInt("n", nNets); for (int i = 0; i < nNets; i++) { prefs.putString(("s" + String(i)).c_str(), nets[i]); prefs.putString(("p" + String(i)).c_str(), passes[i]); } }
 
@@ -99,11 +97,23 @@ void act(const String &job, const String &what) {
   h.addHeader("authorization", String("Bearer ") + token); h.addHeader("content-type", "application/json");
   h.POST(String("{\"action\":\"") + what + "\"}"); h.end();
 }
+/* joining: the strongest Wi-Fi it knows that it can see (or each in turn, if none shows in the scan), given 25 s, as weak signal needs.
+   One attempt at a time, never interrupted by another scan */
+String trying; int tryNext = 0;
+void join() {
+  int best = -1, bestR = -1000, n = WiFi.scanNetworks();
+  for (int i = 0; i < n; i++) for (int k = 0; k < nNets; k++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > bestR) { bestR = WiFi.RSSI(i); best = k; }
+  if (n > 0) WiFi.scanDelete();
+  int k = best >= 0 ? best : (tryNext++ % nNets); trying = nets[k];
+  WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  for (int w = 0; w < 50 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
+  if (WiFi.status() != WL_CONNECTED && !setupOn) { WiFi.disconnect(); tryNext++; }
+}
 void netTask(void *) {
   unsigned long last = 0;
   for (;;) {
     if (setupOn) { vTaskDelay(pdMS_TO_TICKS(400)); continue; }
-    if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) multi.run(8000); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
+    if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) join(); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     String job, what; xSemaphoreTake(lock, portMAX_DELAY); job = askJob; what = askWhat; askJob = ""; xSemaphoreGive(lock);
     if (job.length()) { act(job, what); last = 0; }
     if (printerId.length() && millis() - last > 4000) { last = millis(); poll(); }
@@ -399,7 +409,7 @@ void setup() {
   randomSeed(esp_random());
   for (int i = 0; i < 30; i++) snow[i] = {(float)random(W), (float)random(H), i % 4 ? 0.45f + random(40) / 100.0f : 0.9f + random(50) / 100.0f, 0.12f + random(100) / 400.0f, random(628) / 100.0f};
   loadCfg(); lock = xSemaphoreCreateMutex();
-  WiFi.mode(WIFI_STA); WiFi.setHostname("novel-touch");
+  WiFi.mode(WIFI_STA); WiFi.setHostname("novel-touch"); WiFi.setAutoReconnect(true); WiFi.setSleep(false);
   bool keyHeld = digitalRead(KEY_A) == LOW;   // the side button held while it is switched on: setup, and only then
   xTaskCreatePinnedToCore(netTask, "net", 16384, NULL, 1, NULL, 0);
   if (keyHeld || !nNets) startSetup(0);   // only with no Wi-Fi at all; a missing printer is said on the screen instead
@@ -536,7 +546,7 @@ void loop() {
     text(MONO, "setup", W / 2 - textW(MONO, "setup", 1) / 2, H / 2 + 4, INK, 0.8f, 1);
   }
   if (mode == CONNECTING && k > 6) {   // still looking: what for, and how to change it
-    String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("looking for ") + (nNets ? nets[0] : String("a Wi-Fi")) + (nNets > 1 ? " +" + String(nNets - 1) : String("")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
+    String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("joining ") + (trying.length() ? trying : nNets ? nets[0] : String("a Wi-Fi")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
     text(MONO, l1.c_str(), W / 2 - textW(MONO, l1.c_str(), 0) / 2, 128, INK, 0.6f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
