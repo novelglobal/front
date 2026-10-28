@@ -1,7 +1,7 @@
 {
   "name": "novel.global",
   "short_name": "novel.global",
-  "description": "Research and development for direct action. Listen to the lives around you, make a W.I.S.H., print it.",
+  "description": "What have you noticed?",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

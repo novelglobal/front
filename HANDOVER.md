@@ -150,6 +150,14 @@ The rail holds four destinations. The first three are one journey, joined by a f
   - On a phone: PRINT's SELECT is a tray of one row sitting on the dongle, the receipt above it and print in reach below; W.I.S.H. has one key for the suggestions (the device's own, 40 px with a larger touch area), and the keyboard's key reads Go; the hidden field Fabric types into is 16 px, so an iPhone does not zoom in on the receipt or a board note; PRINT's strip fits above the dongle and below a notch; the first W.I.S.H. comes up raised; no hint points under the receipt; the four tab names are 10 px.
   - Once open, a life sent to W.I.S.H. from its card on RADIO is what W.I.S.H.'s receipt holds, with its strings (`sendSpecies`).
   - One kit: PRINT's screens use the same LCD as W.I.S.H. and RADIO, and every 'on' light the same green; SELECT's words are 12 px, the plates' and the tabs' small words 9 px at least; upgraded, the first visit's jumper and tie stay beside the upgrade's module and cable (the owner likes the mods: kept, never sterile); the layer keys' bounce has its own name (`keypop`), so the place photo no longer tilts like a toy key.
+- **v0.1 alpha, signals and the touch screen, 28 October** (the owner: "it can get stuck not allowing it to move up and down … allow easy movement for long art"; "add length or shorten the 80mm canvas"; "allow pasting online easily for both mobile and desktop"; "the final portfolio print buttons on iPhone aren't round but warped"; "no long form descriptions … mysterious like an experimental art experience"; "a T-Beam Supreme on Meshtastic 915 … send or receive these finished cards or receipt art via mesh … an input code system … with maximum code size that can be converted into long form output … using existing data"; then: "a printer setting on the admin page for a connected LilyGO touchscreen … one press of the jellyfish … prints, long press to squash and delete it … haptic tactile feel … a click by click for this and the T-Beam Supreme").
+  - **Moving through long art:** a finger on the poster's empty paper scrolls the page (`touch-action: pan-y`); only a finger on a piece holds it (the canvas's own touchstart stops the scroll then, `.holding`). Carrying a piece near the top or foot of the screen scrolls with it (`dragWire`).
+  - **Longer and shorter** (`lengthen`, `P.len`, tray keys `len+` and `len-`): 300 px at a time, from as short as the catch allows to 3,000 px longer; every piece keeps its place on the paper as it grows or shrinks. The receipt follows the poster's length.
+  - **Pasting** (`pasted`, `pasteKey`, tray key `v`): Ctrl/Cmd+V or the paste key in art. A picture becomes a picture on the poster, words become words, and a signal line (`ng:`) opens its piece.
+  - **Round keys on an iPhone:** the press's keys are fixed squares (`aspect-ratio`, `flex: none`, no native button look), wrapping onto a second row rather than squeezing.
+  - **Signals** (`sigOf`, `pieceOf`, `takeSig`, `openSig`; the format is under "The mesh signal" below): every piece folds into one line of 200 bytes at most, the size a Meshtastic message carries. The signal key on the wall opens it as a QR code and its line, to copy, share or send to the radios (`NG.sendMesh`, a mesh-only job: nothing printed). Pasted or typed into the same sheet, a line is rebuilt from what the site already knows: the life from the field list, its place, the day, the marks laid out, the four lines; online its photograph is fetched again. A printed slip sends its own line on the mesh when the printer's MESH is on.
+  - **The touch screen** (`/api/touch/:printer`, `src/touch/novel-touch/novel-touch.ino`): a LilyGO T-Display-S3 beside a printer, with its own token (TOUCH SCREEN ON on the approval page, shown once; it turns AUTO off so every slip waits). It shows the first held slip with the irukandji: a press prints it (the jellyfish rises away), a long press flattens it and, held flat, squashes it (the slip is deleted). It shows how many wait for a touch and how many are printing (`waiting`, `printing` from `/api/touch`). With nothing coming in, the jellyfish swims up in pulses, wanders, dozes, or leaves for a minute (`doing`). The touch chip is kept awake and from resetting itself mid-hold (registers `0xFE`, `0xFB`, `0xFC`, as CST816_TouchLib does). An optional vibration motor (`NG_BUZZ`) gives the knocks. Click by click in `docs/devices.md`, with the T-Beam Supreme.
+  - **Fewer words:** the seasonal lines lost their small print; the app's description is the question alone.
 - **v0.1 alpha, phone and the wall of lives, 27 October** (the owner: "on mobile (iOS) when downloading a finished poster … it doesn't do either"; "the edit canvas size is too small, and zooming in has the action icon menu over the objects"; "don't show any copy anywhere for 10 seconds after clicking that stage tab … only one copy is visible every 10 seconds"; "the map also doesn't locate on the location or ask permission"; "a scrolling colour photo wall of all the species that is infinite … selected by species group (small line icon glyphs) … tactile … a useful small photo card (name and details on flip)"; "more urgent and timely El Niño preparedness advice or real actions"; "reduce all copy by 50% … plain, everyday language"; "a sub depth deep bass sound effect or bubbles"; then: "the first input … should be the intention … above the WISH poem … the final output allows for the intention and the wish … don't allow the next step button to reveal until at least a few words are in").
   - **Saving on an iPhone:** the poster is made into a file ahead of time (`saveSoon`, `SAVE`), and a tap hands it straight to the share sheet (`saveImg`, `navigator.share`), where Save Image puts it in Photos. Elsewhere it downloads as a file. The wall has its own save for the poster in front. (iOS opened the old data link and then did nothing with it.)
   - **Making the poster on a phone:** it is as wide as the screen and scrolls, not shrunk to fit; the tools for the thing in hand sit at the foot of the screen, never over the poster, zoomed in or not.
@@ -875,10 +883,12 @@ Raspberry Pi 3 A+  ──  pull bridge (systemd)  ──  printd on 127.0.0.1:80
 ├── docs/brief.md          the product brief: problem, decisions, sources
 ├── docs/roadmap.md        the stages from here to live, shared data
 ├── docs/workflow.md       how a change goes from this folder to a preview, then to novel.global
+├── docs/devices.md        click by click: the T-Display-S3 touch screen and the T-Beam Supreme radio
 ├── src/base/              the base at / (v0.1): index.html, base.css, base.js; build.mjs adds base-db.json
 ├── src/body.html          the studio at /studio (studio.html)
 ├── build.mjs              npm run build → dist/, stamped with its commit (and its branch on a preview); app, style, marks and QR minified
 ├── wrangler.jsonc         the Worker `front`: dist/ as static assets, src/worker for everything else, two D1 databases
+├── src/touch/             the touch screen's Arduino sketch (not part of the site's build)
 ├── receiver/              the partner place's Raspberry Pi: pull.py, da-pull.service, da-pull.env.example, README.md
 ├── package.json           dependencies: maplibre-gl, qrcode-generator, @fontsource/*; dev: playwright, sharp, jsqr, wrangler
 ├── repo-static/           copied into dist/ as is: sw.js, manifest.webmanifest, icons, LICENSE, _headers, admin.html and admin.js (the approval page), vendor/LICENSES.md
@@ -969,6 +979,16 @@ A signal travels as `#x=` followed by base64url-encoded JSON. The fields are as 
 
 Keep this format backwards compatible, because printed QR codes will outlive releases.
 
+### The mesh signal
+
+A piece also travels as one line of 200 bytes at most, for Meshtastic and for typing by hand: `ng:` then ten fields joined by `~`:
+
+`<lat36>,<lng36>~<day36>~<life>~<marks>~<intention>~<line 1>~<line 2>~<line 3>~<line 4>~<code>`
+
+- The place is in base 36, to four decimals; the day counts from 1 January 2026, in base 36; the life is its id in the field list.
+- The marks are one letter each: `a`–`f` the six stamps, `g`–`r` the drawn marks (`MARK_ORDER`), `w` white paper, `n` El Niño.
+- When it is too long, the longest of the five texts loses its last word, again and again, until it fits. Keep this format backwards compatible too.
+
 ## How to run
 
 ```sh
@@ -1040,7 +1060,7 @@ The following are out of scope for the prototype:
 6. **Overpass is fragile.** Public instances rate-limit and time out, and every browser queries them directly. The build environment's network policy blocked Overpass, so the live path has not been verified.
 7. **iNaturalist load grows with every visitor.** Each browser fetches up to 1,000 sightings plus history, then polls every 5 minutes. iNaturalist throttles at 100 requests a minute and asks API users to stay at or below 60. It may block media downloads above 5 GB an hour or 24 GB a day. A shared cache in the Worker fixes this (task 5).
 8. **`PORTAL_URL` is `https://novel.global/`.** Printed QR codes always point at the live site, even when printed from a preview.
-9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v93` now. The service worker never keeps `/api/` or `/admin`.
+9. **Releases must bump the service worker cache.** The shell is network-first, but offline users keep the old shell until the cache name changes. It is `da-v94` now. The service worker never keeps `/api/` or `/admin`.
 16. **The approval page is a single password.** Anyone with `ADMIN_KEY` can show, refuse and pair printers. Keep it long and in a password manager; failed tries are slowed after ten in ten minutes.
 17. **Mesh text is sent by the receiver's radio only.** A slip sent to the board alone, or to a place with no radio, does not go out by mesh.
 10. **Leftovers are gone.** The repo now holds the source, and Cloudflare builds `dist/` from it, so `demo.js`, unused fonts and the GitHub Pages `CNAME` are no longer deployed. The icons in `repo-static/` carry no embedded metadata.

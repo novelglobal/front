@@ -447,3 +447,23 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-go.wait { opacity: 0; pointer-events: none; }
 /* the piece being made hangs on the line with the rest, drawn live */
 .au-eslide canvas { display: block; max-width: 100%; max-height: calc(var(--ph, 500px) - 150px); width: auto; height: auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .4), 0 12px 30px rgba(6, 24, 52, .4); }
+
+/* the poster in art scrolls with the page; only a piece in hand is held */
+#aura .au-drag canvas { touch-action: pan-y pinch-zoom; }
+#aura .au-drag canvas.holding { touch-action: none; }
+/* round keys stay round: never squeezed by a full row, on any phone */
+#aura .au-k { flex: none; box-sizing: border-box; aspect-ratio: 1 / 1; -webkit-appearance: none; appearance: none; padding: 0; }
+#aura .au-sm { min-width: 40px; min-height: 40px; }
+#aura .au-big { min-width: 64px; min-height: 64px; }
+.au-press { flex-wrap: wrap; row-gap: 12px; }
+@media (max-width: 759px) { .au-press { gap: 12px; } #aura .au-press .au-nav { width: 34px; height: 34px; min-width: 34px; min-height: 34px; } }
+/* the signal: a line, its square, where it can go; and a field to take one in */
+.au-sig { position: sticky; bottom: 0; z-index: 5; margin: 12px -2px 0; padding: 14px 12px 14px; background: rgba(23, 69, 127, .97); box-shadow: 0 0 0 1px rgba(244, 241, 232, .35), 0 -10px 30px rgba(6, 24, 52, .45); border-radius: 10px; display: grid; grid-template-columns: 112px 1fr; gap: 10px 12px; align-items: start; animation: au-in .35s ease; }
+.au-sig .au-back { grid-column: 1 / -1; justify-self: end; float: none; position: static; }
+.au-sigq { width: 112px; height: 112px; border-radius: 4px; image-rendering: pixelated; grid-row: span 2; }
+.au-sigt { display: block; font: 11px/1.45 'Departure Mono', ui-monospace, Menlo, monospace; word-break: break-all; opacity: .9; max-height: 84px; overflow: auto; -webkit-user-select: all; user-select: all; }
+.au-sign { font: 10px ui-monospace, Menlo, monospace; opacity: .55; }
+.au-sigk { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; justify-content: center; }
+.au-sigin { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; border-top: 1.5px dotted rgba(244, 241, 232, .3); padding-top: 10px; }
+.au-sigin .au-i { width: 22px; height: 22px; flex: none; opacity: .75; }
+#aura .au-sigin textarea { font: 12px/1.4 'Departure Mono', ui-monospace, Menlo, monospace; min-height: 36px; padding: 4px 2px; }
