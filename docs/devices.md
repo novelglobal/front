@@ -6,22 +6,39 @@ Two small things that sit beside a printer. The touch screen holds each slip unt
 
 ## The touch screen: LilyGO T-Display-S3 (touch)
 
-The screen is blueprint blue with the chalk-white irukandji drifting in it. When a slip is waiting, the jellyfish shows its intention and its four lines, the code at the foot and a dot for each slip in line.
+The screen lies on its side. The sea is lit from above, with marine snow drifting up. The irukandji is the same one as on the site: the box bell, the eye of dots, four tentacles of beads.
 
-- **One press** (a tap, under half a second): the jellyfish rises off the top of the screen and the slip prints.
-- **Press and hold:** the jellyfish flattens under your finger. Hold until it is flat (about a second) and let go: it splats and the slip is deleted. Let go early and it springs back.
-- **The numbers at the top:** the large one on the left is how many slips are waiting for a touch. The one on the right is how many are printing or queued at the printer. Nothing waiting, nothing shows.
-- **With nothing coming in,** the jellyfish keeps itself busy. Every 10–20 seconds it does one of four things:
-  - swims up in three pulses and sinks back;
-  - wanders in a slow figure of eight;
-  - dozes with its eye shut while bubbles rise (a touch wakes it);
-  - swims off the top and stays away for a minute, then sinks back in.
+**When a slip arrives**
+- The jellyfish swims up from below. The camera goes in close to its eye, then draws back.
+- It stays on the left. On the right are the slip's heading in large type, its first line, and its code.
+- At the top right: how many slips are waiting, and how many are printing.
+- A ring of dots breathes round the jellyfish, with a ripple going out now and then, and its pupil glows. That is the cue to touch it.
 
-  A new slip brings it straight back.
-- Left alone for a minute with nothing waiting, the screen dims.
-- A small ring in the bottom corner means it has no Wi-Fi.
+**One press prints it** (a tap, under half a second)
+- Rings go out, its eye opens wide, and light runs down the tentacles.
+- Over about four seconds, the paper feeds out of its bell, line by line, as the printer prints it.
+- The paper tears off and falls, and the jellyfish jets away.
 
-The board has no vibration motor of its own. The squash and the bounce are what you feel. For a felt tap, see "A vibration motor" below.
+**Holding squashes it** (about three seconds)
+- It is pressed slowly flatter and shakes harder. Its eye squeezes shut (> <) and beads are pressed out of its sides. With a vibration motor, you feel a knock at each third.
+- Let go early and it springs back.
+- Hold on and it pops. The bell breaks into pieces, its eye rolls out with an X, and the tentacles snap.
+- A current sweeps the pieces away, and a fish drawn in one line swims through eating them.
+- The slip is deleted.
+
+**After either one,** it stays away for 15 seconds.
+
+**With nothing waiting**
+- The screen sleeps, dark, for 30 seconds.
+- Then it wakes for 10 seconds: novel.global's code, large enough to scan, with the jellyfish swimming round behind it.
+- Each wake shows it differently: circling the code, passing close by the camera, or rising from below for a look.
+- A touch wakes it early. A slip arriving wakes it at once.
+
+**Signs at the bottom right**
+- A small ring: no Wi-Fi.
+- A ring with **?**: the site refused its token. Turn TOUCH SCREEN off and on again, and give the screen the new lines.
+
+The board has no vibration motor of its own, so the squash and the bounce are what you feel. For a felt tap, see "A vibration motor" below.
 
 ### 1. Turn it on for the printer
 
@@ -73,7 +90,17 @@ Arduino keeps every sketch in a folder with the same name as the file: `novel-to
 4. Back in Arduino, press **Ctrl+V** (**Cmd+V**).
 5. Click **File → Save As…**, name it `novel-touch` and click **Save**.
 
-**Then fill in your five lines** (all at the top, lines 14 to 18). Change only the words between the quotation marks, and keep the quotation marks:
+**Then give it the Wi-Fi and the three lines,** in either of two ways.
+
+**From a phone (easiest; no typing in Arduino).** Upload the sketch as it is. With no Wi-Fi or printer set, it opens its own Wi-Fi instead, and the screen shows a password:
+
+1. On your phone, open **Settings → Wi-Fi** and join **NOVEL TOUCH**, using the password on the screen.
+2. A page opens by itself. If it doesn't, open **192.168.4.1** in the browser.
+3. Choose your Wi-Fi, which must be 2.4 GHz, and type its password.
+4. Paste the three lines from the approval page into the box below. Paste all three as they are.
+5. Tap **Join**. The screen restarts, joins your Wi-Fi, and goes to work.
+
+**Or in the sketch.** At the top, change the words between the quotation marks, and keep the quotation marks:
 
 ```
 #define WIFI_SSID  "your wi-fi"     → your Wi-Fi's name, exactly, capitals and spaces included (2.4 GHz)
@@ -83,9 +110,13 @@ Arduino keeps every sketch in a folder with the same name as the file: `novel-to
 #define NG_TOKEN   "touch token"    → from the approval page
 ```
 
-The approval page gave you the last three ready-made. You can paste them over these three lines whole. `NG_HOST` is whichever site's approval page you used: a token made on the staging site works only with the staging host, and the touch screen works on novel.global only once staging is merged into main.
+The approval page gave you the last three ready-made, so you can paste them over these three lines whole.
+
+`NG_HOST` is whichever site's approval page you used. A token made on the staging site works only with the staging host. The touch screen works on novel.global only once staging is merged into main.
 
 Press **Ctrl+S** (**Cmd+S**) to save.
+
+**Upside down?** If the picture is upside down for the way the screen sits, change `#define NG_TURN 1` to `3` and upload again.
 
 ### 4. Choose the board
 
@@ -113,15 +144,26 @@ Under **Tools**, set:
    6. Click **Upload**.
    7. When it says **Done uploading**, press **RST** once. The sketch starts.
 
-The screen turns blue and the jellyfish appears. Within five seconds of Wi-Fi joining, it shows any waiting slip.
+The screen turns blue and a small jellyfish dozes while it joins the Wi-Fi. Within a few seconds of joining, it shows any waiting slip, or wakes once to show novel.global's code and then sleeps.
 
 ### 6. Try it
 
 1. On the site, make a piece and print it to this printer.
 2. The jellyfish appears with its words. Tap it: the slip prints.
-3. Print another. Hold the jellyfish until it is flat and let go: it is squashed, and nothing prints.
+3. It stays away for 15 seconds. Print another, and hold the jellyfish for about three seconds until it pops: it is squashed, and nothing prints.
 
 The side button (KEY, GPIO 14) works like a press on the screen.
+
+### Moving it to another Wi-Fi
+
+It remembers up to five Wi-Fis and joins whichever one it finds. To add one:
+
+- When it can't find any Wi-Fi it knows, it opens **NOVEL TOUCH** by itself after 40 seconds.
+- Or, with nothing waiting, hold the side button for **five seconds**.
+
+Then follow "From a phone" above. The same page can forget old Wi-Fis, and takes three new lines if the token changes. The setup Wi-Fi closes after ten minutes.
+
+The Pi learns a new Wi-Fi in the same way (see the receiver's README, "Wi-Fi from a phone"). Moving the printer means doing both. The two don't depend on each other, so either can go first.
 
 ### A vibration motor (optional)
 
@@ -136,7 +178,8 @@ A tap now gives a short knock, a print a firmer one, and a squash a long one.
 
 | What you see | What to do |
 |---|---|
-| A ring in the top corner | No Wi-Fi. Check the name and password. Use 2.4 GHz only. |
+| A ring in the bottom-right corner | No Wi-Fi. Hold the side button five seconds (with nothing waiting) and set it from a phone. Use 2.4 GHz only. |
+| A ring with ? | The site refused the token. Turn TOUCH SCREEN off and on again on the approval page, and paste the new lines on the setup page. |
 | Blue, but no slip ever appears | Check the three `NG_` lines. Is TOUCH SCREEN ON for this printer? Is the slip going to this printer? |
 | A blank or white screen | Press RST once after uploading. Check that PSRAM is set to OPI PSRAM and the board is ESP32S3 Dev Module. Still blank? Flash LilyGO's factory test (in the `firmware` folder of github.com/Xinyuan-LilyGO/T-Display-S3) to check the board itself. |
 | Errors that name `Arduino_ESP32PAR8Q` when compiling | Update GFX Library for Arduino to its newest version. If the error stays, set the board package to 2.0.17: Tools → Board → Boards Manager → esp32, choose 2.0.17, then Install. |
