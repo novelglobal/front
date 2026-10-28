@@ -84,6 +84,14 @@
     const tok = el('div', { class: 'token', hidden: true });
     card.append(el('h3', { text: p.name || p.id }),
       el('div', { class: 'note', text: `${p.id.toUpperCase()} · ${p.paper} MM · ${p.paired ? 'PAIRED' : 'NOT PAIRED'} · ${seen} · ${p.held} WAITING APPROVAL · ${p.queued} IN QUEUE · ${p.printed} PRINTED · ${p.failed} FAILED` }),
+      /* how it is, at a glance: each part ✓ or ✗, and the last slip sent here with what became of it */
+      (() => { let L = null; try { L = p.last ? JSON.parse(p.last) : null; } catch (e) { /* none */ } const ok = b => b ? '✓' : '✗';
+        const pi = `${ok(fresh(p.seen))} PI ${p.seen ? 'HEARD ' + when(p.seen) : 'NEVER HEARD'}`;
+        const scr = p.touch ? `${ok(fresh(p.touch_seen))} SCREEN ${p.touch_seen ? 'ASKED ' + when(p.touch_seen) : 'NEVER ASKED (its three lines, or its site?)'}` : '· NO SCREEN';
+        const mesh = `${p.mesh ? '✓ MESH ON' : '· MESH OFF'}`;
+        const last = L ? `LAST SLIP ${L.code || ''} ${String(L.status).toUpperCase()} ${when(L.at)}${L.paper ? '' : ' (RADIO ONLY)'}${L.mesh ? ' · WITH A MESH LINE' : ''}${L.error ? ' · ' + L.error : ''}` : '✗ NO SLIP HAS BEEN SENT TO THIS PRINTER';
+        const hint = !L ? 'Pieces go to the printer chosen on the site; make one on this site and print it here.' : L.status === 'held' ? (p.touch ? 'Waiting for a press on the touch screen.' : 'Waiting for approval below.') : L.status === 'queued' ? (fresh(p.seen) ? 'The Pi will take it in a moment.' : 'Waiting for the Pi to ask.') : L.status === 'failed' ? 'The Pi could not print it: see the error (printd answered 500 means the printer is off or unplugged).' : '';
+        return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${hint ? '  —  ' + hint : ''}` }); })(),
       el('div', { class: 'acts' },
         el('button', { type: 'button', text: p.paired ? 'NEW TOKEN' : 'PAIR A PRINTER', onclick: async () => { if (p.paired && !confirm('A new token stops the old one working. Go on?')) return; const j = await setP(p.id, { action: 'token' }); tok.hidden = false; tok.textContent = `This token shows once. Put it on the receiver, in /etc/da-pull.env:\n\nDA_SERVER=${location.origin}\nDA_PRINTER=${p.id}\nDA_TOKEN=${j.token}`; } }),
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,
