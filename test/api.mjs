@@ -113,6 +113,23 @@ try {
   check('the radio gets the mesh line alone, no bytes to print', mj.status === 200 && mj.json.code === 'DA-M5H1' && mj.json.escpos === null && mj.json.mesh === MESH, JSON.stringify(mj.json));
   await call(`/api/printers/pickles/jobs/${mj.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } });
 
+  /* a touch screen beside a printer: its own token, shown once; every slip waits for it; a press prints, a long press squashes */
+  const tc = await call('/api/admin/printers/kines', { method: 'POST', key: KEY, body: { action: 'touch', on: true } }); const TT = tc.json && tc.json.token;
+  const tcx = await call('/api/admin/printers/kines', { method: 'POST', body: { action: 'touch', on: true } });
+  const WISH = { type: 'noticed', lat: -37.77, lng: 144.96, text: 'to keep the creek cool', wish: ['One', 'Two', 'Three', 'Four'], tx: { n: 'Manorina melanocephala', cn: 'Noisy Miner' } };
+  const tA = await call('/api/stories', { method: 'POST', ip: '10.0.0.8', body: { kind: 'record', code: 'DA-T0CA', body: JSON.stringify(WISH), lat: -37.77, lng: 144.96, dest: 'kines', escpos: 'G0A=' } });
+  const tB = await call('/api/stories', { method: 'POST', ip: '10.0.0.8', body: { kind: 'record', code: 'DA-T0CB', body: JSON.stringify(WISH), lat: -37.77, lng: 144.96, dest: 'kines', escpos: 'G0A=' } });
+  const tl = await call('/api/touch/kines', { token: TT }); const tlx = await call('/api/touch/kines', { token: 'nope' }); const tly = await call('/api/touch/pickles', { token: TT });
+  const h0 = tl.json && tl.json.held.find(h => h.code === 'DA-T0CA');
+  check('a touch screen has its own token, shown once; with it on, slips wait and it sees them with their words; no other token or printer', tcx.status === 401 && typeof TT === 'string' && TT.length > 16 && tA.json.job.status === 'held' && tl.status === 200 && h0 && h0.say === 'to keep the creek cool' && h0.wish.length === 4 && h0.life === 'Noisy Miner' && tl.json.waiting === 2 && tl.json.printing >= 1 && tlx.status === 401 && tly.status === 401,
+    JSON.stringify({ tcx: tcx.status, tA: tA.json.job, tl: tl.status, waiting: tl.json && tl.json.waiting, printing: tl.json && tl.json.printing, h0, tlx: tlx.status, tly: tly.status }));
+  const pr = await call(`/api/touch/kines/${tA.json.job.id}`, { method: 'POST', token: TT, body: { action: 'print' } });
+  const sq = await call(`/api/touch/kines/${tB.json.job.id}`, { method: 'POST', token: TT, body: { action: 'squash' } });
+  const rA = await call(`/api/receipts/${tA.json.id}`); const rB = await call(`/api/receipts/${tB.json.id}`); const tl2 = await call('/api/touch/kines', { token: TT });
+  await call('/api/admin/printers/kines', { method: 'POST', key: KEY, body: { action: 'touch', on: false } }); const tl3 = await call('/api/touch/kines', { token: TT });
+  check('one press prints (queued), a long press squashes (gone); turned off, the token stops at once', pr.status === 200 && sq.status === 200 && rA.json.job.status === 'queued' && !rB.json.job && tl2.json.held.every(h => h.job !== tA.json.job.id && h.job !== tB.json.job.id) && tl3.status === 401,
+    JSON.stringify({ pr: pr.status, sq: sq.status, a: rA.json.job, b: rB.json.job, tl3: tl3.status }));
+
   /* a pack of cells: waits like any story, then everyone has it */
   const PACK = JSON.stringify({ title: 'Fruit and radios', by: 'neighbours', cells: [{ k: 'fruit', n: 'Lemon tree', lat: -37.7701, lng: 144.9602 }, { k: 'node', n: 'Rooftop repeater', lat: -37.7664, lng: 144.9731 }] });
   const c0 = await call('/api/stories', { method: 'POST', ip: '10.0.0.7', body: { kind: 'cells', code: 'DA-C3KS', body: PACK, lat: -37.768, lng: 144.967 } });

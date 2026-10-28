@@ -89,6 +89,11 @@
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,
         el('button', { type: 'button', class: p.auto ? 'on' : '', text: p.auto ? 'PRINTS WITHOUT APPROVAL' : 'PRINTS AFTER APPROVAL', onclick: async () => { await setP(p.id, { action: 'auto', on: !p.auto }); show('printers'); } }),
         el('button', { type: 'button', class: p.mesh ? 'on' : '', text: p.mesh ? 'MESH ON' : 'MESH OFF', onclick: async () => { await setP(p.id, { action: 'mesh', on: !p.mesh }); show('printers'); } }),
+        /* a small touch screen beside the printer: every slip waits on it; one press of the jellyfish prints, a long press squashes it */
+        el('button', { type: 'button', class: p.touch ? 'on' : '', text: p.touch ? 'TOUCH SCREEN ON' : 'TOUCH SCREEN OFF', onclick: async () => {
+          if (p.touch) { if (!confirm('Turn the touch screen off? Slips go back to approval here.')) return; await setP(p.id, { action: 'touch', on: false }); show('printers'); return; }
+          const j = await setP(p.id, { action: 'touch', on: true }); tok.hidden = false;
+          tok.textContent = `This touch token shows once. Put these three lines in the screen's sketch (novel-touch.ino), then upload it:\n\n#define NG_HOST    "${location.host}"\n#define NG_PRINTER "${p.id}"\n#define NG_TOKEN   "${j.token}"\n\nEvery slip for this printer now waits on the screen. One press of the jellyfish prints it; a long press squashes it.`; } }),
         /* the printer's icon on the map: online when switched on here, or while its Pi is listening */
         el('button', { type: 'button', class: p.live ? 'on' : '', text: p.live ? 'ONLINE ON THE MAP' : 'NOT YET ONLINE ON THE MAP', onclick: async () => { await setP(p.id, { action: 'live', on: !p.live }); show('printers'); } }),
         el('button', { type: 'button', text: `PAPER ${p.paper === '80' ? '58' : '80'} MM`, onclick: async () => { await setP(p.id, { action: 'paper', paper: p.paper === '80' ? '58' : '80' }); show('printers'); } }),

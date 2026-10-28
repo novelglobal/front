@@ -908,17 +908,24 @@ function stepS(n, boardArt, art) {
   draw();
 }
 /* a noticing printed from anywhere: its record and its receipt, sent; offline it waits in the outbox. Resolves to its status */
-function sendNote(n, cv, dest, wishOn) {
+function sendNote(n, cv, dest, wishOn, mesh) {
   var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
   var body = { type: 'noticed', lat: +n.lat.toFixed(4), lng: +n.lng.toFixed(4), text: n.say || '' };
   if (n.cn) { body.tx = { n: n.sci, cn: n.cn }; body.g = n.g; }
   if (n.tags && n.tags.length) body.tags = n.tags; if (n.issue) body.issue = n.issue; if (n.data && n.data.length) body.data = n.data;
   if (wishOn) body.wish = wishLines(n, r).map(function (l) { return l[1]; });
-  var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest, escpos: raster(cv) };
-  if (PHOTOS[n.id]) payload.photo = PHOTOS[n.id];
+  var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
+  if (cv) payload.escpos = raster(cv); if (mesh) payload.mesh = String(mesh).slice(0, 200);
+  if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
   return send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
     if (e.status) return 'failed'; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
   });
+}
+/* a line for the local mesh alone: no print, sent on to every printer whose radio is on, which says it over Meshtastic. Resolves to its status */
+function sendMesh(n, text) {
+  var lat = +(+n.lat || 0).toFixed(4), lng = +(+n.lng || 0).toFixed(4);
+  return send({ kind: 'record', code: n.code, body: JSON.stringify({ type: 'noticed', lat: lat, lng: lng, text: n.say || '' }), lat: lat, lng: lng, dest: 'mesh', mesh: String(text).slice(0, 200) })
+    .then(function (j) { return j.job ? j.job.status : j.status || 'sent'; }).catch(function (e) { return e && e.status ? 'failed' : 'offline'; });
 }
 function download(cv, name) { var a = document.createElement('a'); a.download = name; a.href = cv.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
 function send(payload) { return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
@@ -2176,7 +2183,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, sendNote: sendNote, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); },
+  slip: slip, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

@@ -174,7 +174,7 @@
     var c = document.createElement('canvas'), x = c.getContext('2d'); c.width = W; c.height = 10; x.font = '600 29px ' + SANS;
     var body = []; lines.forEach(function (l) { if (l) wrap(x, l, aw).forEach(function (w, k) { body.push([k ? '' : '·', w]); }); });
     x.font = '42px ' + FONT; var title = !P.say || lines.indexOf(P.say) >= 0 ? [] : wrap(x, P.say, aw).slice(0, 3);
-    var band = caught(P).length ? 340 : 0, foot = 176;
+    var band = caught(P).length ? 340 : 0, foot = 176 + Math.max(-(caught(P).length ? 300 : 0), Math.min(3000, P.len || 0));
     var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + lines.filter(Boolean).length * 8 + 40 + band + foot + pad;
     c.height = H; paper(x, W, H);
     x.fillStyle = ink(); x.textBaseline = 'top'; globeMark(x, pad + 16, pad + 17, 15, ink()); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + 42, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
@@ -350,7 +350,7 @@
     });
     return boxes;
   }
-  function posterKey(P) { return [P.paper, P.say, (P.lines || []).join('|'), (P.photo || '').length, !!P.img, !!P.spImg, P.ptone, P.note && P.note.code, caught(P).length > 0, P.note && (P.note.seen || []).length, !!window.qrcode].join('~'); }
+  function posterKey(P) { return [P.len || 0, P.paper, P.say, (P.lines || []).join('|'), (P.photo || '').length, !!P.img, !!P.spImg, P.ptone, P.note && P.note.code, caught(P).length > 0, P.note && (P.note.seen || []).length, !!window.qrcode].join('~'); }
   function posterNow(P) {
     /* → { c, boxes }: the base kept, the caught and the added drawn over it */
     usePaper(P.paper === 'white');
@@ -695,6 +695,13 @@
     dice: '<path d="M7 7h18v18H7z"/><circle cx="12" cy="12" r="1.3" class="f"/><circle cx="20" cy="20" r="1.3" class="f"/><circle cx="16" cy="16" r="1.3" class="f"/>',
     pic: '<path d="M5 8h22v17H5z"/><path d="M5 22l7-7 5 5 3-3 7 7" /><circle cx="21" cy="13" r="2"/>',
     act: '<path d="M16 4c3 5 7 8 7 13a7 7 0 0 1-14 0c0-5 4-8 7-13z"/><path d="M13 18l2 2 4-5"/>',
+    sig: '<circle cx="16" cy="20" r="2" class="f"/><path d="M11 15a7 7 0 0 1 10 0M7.5 11.5a12 12 0 0 1 17 0M4 8a17 17 0 0 1 24 0"/><path d="M16 22v6" class="d"/>',
+    copy: '<path d="M11 11h14v15H11z"/><path d="M7 21V6h14" class="d"/>',
+    share: '<path d="M16 4v16M10 10l6-6 6 6"/><path d="M8 16v11h16V16" class="d"/>',
+    in: '<path d="M16 4v16M10 14l6 6 6-6"/><path d="M6 26h20" class="d"/>',
+    longer: '<path d="M10 5h12v22H10z" class="d"/><path d="M16 12v12M12 20l4 4 4-4"/>',
+    shorter: '<path d="M10 5h12v14H10z" class="d"/><path d="M16 26V14M12 18l4-4 4 4"/>',
+    paste: '<path d="M10 7h12v20H10z"/><path d="M13 5h6v4h-6z" class="f"/><path d="M13 15h6M13 19h6" class="d"/>',
     moon2: '<path d="M20 5a11 11 0 1 0 7 15A9 9 0 0 1 20 5z"/><circle cx="24" cy="9" r="1" class="f"/><circle cx="27" cy="14" r=".8" class="f"/>'
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
@@ -841,7 +848,7 @@
   var ready = function () { return !!(P && (P.photo || P.spPhoto || P.say || (P.lines || []).some(Boolean) || caught(P).length || (P.adds || []).length)); };
   function newPiece() { return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [], tf: {}, paper: 'blue', ptone: 'as' }; }
   var piece = function () { if (done()) fresh(); if (!P) { P = newPiece(); where(P); } return P; };
-  var KEEP = ['id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx'];
+  var KEEP = ['len', 'id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx'];
   function pack(p) { var o = {}; KEEP.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); o.noteId = p.note ? p.note.id : ''; return JSON.parse(JSON.stringify(o)); }
   function unpack(o) {
     var p = newPiece(); KEEP.forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; }); p.mine = true; p.catch = p.catch || { map: false, life: '', data: [], nino: false }; p.adds = p.adds || []; p.pos = p.pos || {}; p.tf = p.tf || {};
@@ -923,7 +930,7 @@
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
         h = '<div class="au-tray">' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
           STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '" class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
-          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="t" aria-label="Add words">' + svgI('text') + '</button><button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
+          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button><button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
@@ -960,7 +967,7 @@
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready() && goReady(1)) step(2); }); });
     }
     if (s === 2 && ready()) {
-      var add = function (a) { a.x = 0.3 + Math.random() * 0.2; a.y = 0.12 + Math.random() * 0.2; P.adds.push(a); S.sel = 'a' + (P.adds.length - 1); changed(); redraw(); bell(6, 0.18); if (a.k === 't') setTimeout(function () { var t2 = $('#au-tx'); if (t2) t2.focus(); }, 80); };
+      var add = addPiece;
       [].forEach.call(panel.querySelectorAll('[data-mark]'), function (b) { b.addEventListener('click', function () { if (b.dataset.mark === S.newMark) S.newMark = null; add({ k: 's', g: b.dataset.mark }); }); });
       [].forEach.call(panel.querySelectorAll('[data-stamp]'), function (b) { b.addEventListener('click', function () { add({ k: 'st', g: +b.dataset.stamp, r: Math.round(Math.random() * 24 - 12) }); }); });
       [].forEach.call(panel.querySelectorAll('[data-ic]'), function (b) { b.addEventListener('click', function () { var ic = (NG.icons() || []).slice(-6)[+b.dataset.ic]; if (ic) add({ k: 'i', src: ic.src }); }); });
@@ -974,14 +981,45 @@
       var tx = $('#au-tx'); tx.addEventListener('input', function () { var a = selAdd(); if (a && a.k === 't') { a.t = tx.value; changed(); redraw(); } });
       [].forEach.call(panel.querySelectorAll('[data-t]'), function (b) { b.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); b.addEventListener('click', function (e) { e.stopPropagation(); tool(b.dataset.t); }); });
       /* pictures added to the poster: each its own piece, laid over what is there, never in its place */
-      $('#au-file2').addEventListener('change', function () { var fs = [].slice.call(this.files || []); this.value = ''; fs.slice(0, 6).forEach(function (f, j) {
-        var u = URL.createObjectURL(f); NG.loadImg(u).then(function (im) { var src = NG.shrink(im, 700, 0.85); URL.revokeObjectURL(u); add({ k: 'im', src: src, ar: (im.naturalHeight || im.height) / Math.max(1, im.naturalWidth || im.width), r: Math.round(Math.random() * 10 - 5) + j * 3 }); }).catch(function () { URL.revokeObjectURL(u); }); }); });
+      $('#au-file2').addEventListener('change', function () { var fs = [].slice.call(this.files || []); this.value = ''; addPics(fs); });
+      [].forEach.call(panel.querySelectorAll('[data-add="len+"], [data-add="len-"], [data-add="v"]'), function (b) { b.addEventListener('click', function () { var k = b.dataset.add; if (k === 'v') pasteKey(); else lengthen(k === 'len+' ? 300 : -300); }); });
       redraw(); dragWire(); if (S.pix) pixRun();
     }
     if (s === 3) wallWire();
   }
   /* the piece let go: a new one begins at the eye. What was printed stays on the wall */
   function letGo() { fresh(); if (S.stage === 0) paint(); else step(0); bell(0, 0.24); }
+  /* a piece put on the poster: near the top, a little to one side, in hand at once */
+  function addPiece(a) { if (!P) return; a.x = a.x != null ? a.x : 0.3 + Math.random() * 0.2; a.y = a.y != null ? a.y : 0.12 + Math.random() * 0.2; P.adds.push(a); S.sel = 'a' + (P.adds.length - 1); changed(); redraw(); bell(6, 0.18); if (a.k === 't' && !a.t) setTimeout(function () { var t2 = $('#au-tx'); if (t2) t2.focus(); }, 80); }
+  /* pictures, from the phone, the computer or the clipboard: each its own piece */
+  function addPics(files) { (files || []).slice(0, 6).forEach(function (f, j) { var u = URL.createObjectURL(f);
+    NG.loadImg(u).then(function (im) { var src = NG.shrink(im, 700, 0.85); URL.revokeObjectURL(u); addPiece({ k: 'im', src: src, ar: (im.naturalHeight || im.height) / Math.max(1, im.naturalWidth || im.width), r: Math.round(Math.random() * 10 - 5) + j * 3 }); bubbles(3); }).catch(function () { URL.revokeObjectURL(u); }); }); }
+  /* pasting: a line from the radios anywhere becomes the piece in hand; in art, pictures and words go on the poster */
+  function pasted(items, text) {
+    if (text && /ng:[-0-9a-z]+,/i.test(text)) return takeSig(text);
+    if (S.mode !== 'iruk' || S.stage !== 2 || !P || !ready()) return false;
+    if (items && items.length) { addPics(items); return true; }
+    if (text && text.trim()) { addPiece({ k: 't', t: text.trim().slice(0, 90) }); return true; }
+    return false;
+  }
+  document.addEventListener('paste', function (e) { if (asleep) return; var cd = e.clipboardData || {}, t = cd.getData ? cd.getData('text') : '', fs = [].slice.call(cd.files || []).filter(function (f) { return /^image\//.test(f.type); }), act = document.activeElement;
+    if (act && act.id === 'au-sigi') return; var typing = act && /^(TEXTAREA|INPUT)$/.test(act.tagName) && act.id !== 'au-tx'; if (typing && !fs.length && !/ng:[-0-9a-z]+,/i.test(t)) return;
+    if (pasted(fs, fs.length ? '' : t)) e.preventDefault(); });
+  /* the paste key: for a phone, where there is no keyboard to paste with */
+  function pasteKey() {
+    var cb = navigator.clipboard; if (!cb) return;
+    var plain = function () { return cb.readText ? cb.readText().then(function (t) { pasted([], t); }) : Promise.resolve(); };
+    (cb.read ? cb.read().then(function (items) { var imgs = [], texts = [];
+      return Promise.all(items.map(function (it) { var ty = it.types.filter(function (q) { return /^image\//.test(q); })[0]; if (ty) return it.getType(ty).then(function (b) { imgs.push(new File([b], 'pasted', { type: ty })); });
+        if (it.types.indexOf('text/plain') >= 0) return it.getType('text/plain').then(function (b) { return b.text(); }).then(function (t) { texts.push(t); }); })).then(function () { pasted(imgs, imgs.length ? '' : texts.join(' ')); }); }) : plain()).catch(function () { plain().catch(function () {}); });
+  }
+  /* the strip made longer or shorter, in steps; what is on it stays where it is */
+  function lengthen(d) {
+    if (!P) return; if (!P._base) posterNow(P); var H0 = P._base.H, band = caught(P).length ? 300 : 0;
+    P.len = Math.max(-band, Math.min(3000, (P.len || 0) + d)); P._base = null; posterNow(P); var H1 = P._base.H; if (H1 === H0) return;
+    (P.adds || []).forEach(function (a) { a.y = a.y * H0 / H1; }); Object.keys(P.pos || {}).forEach(function (k) { P.pos[k] = [P.pos[k][0], P.pos[k][1] * H0 / H1]; });
+    P._base = null; changed(); redraw(); subSwell();
+  }
   /* the pixel irukandji: animated while it is being made; put on the poster, one moment of it, in its cells */
   function pixRun() { pixStop(); var c = panel.querySelector('.au-pix canvas'); if (!c) return; var g = c.getContext('2d'); g.imageSmoothingEnabled = false;
     (function tick() { var cc = panel.querySelector('.au-pix canvas'); if (!cc) return; var pj = pixArt(PIX.sub, PIX.cells, (performance.now() / 1000) * PIX.cur, PIX.tone, picOf(P), PIX.seed); g.clearRect(0, 0, 96, 96); g.drawImage(pj, 0, 0, 96, 96); PIX.raf = requestAnimationFrame(tick); })(); }
@@ -1032,6 +1070,8 @@
     var at = function (e) { var r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
     var inb = function (p, b) { return b && p[0] >= b[0] && p[0] <= b[0] + b[2] && p[1] >= b[1] && p[1] <= b[1] + b[3]; };
     var hit = function (p) { var k = null; Object.keys(lastBoxes).forEach(function (q) { if (inb(p, lastBoxes[q])) k = q; }); if (!k && P._base && inb(p, P._base.art)) k = 'pic'; return k; };
+    /* a touch only takes hold of a piece; anywhere else on the poster the page scrolls, so a long strip never gets stuck */
+    c.addEventListener('touchstart', function (e) { var t = e.touches[0]; if (!t || e.touches.length > 1) return; var k = hit(at(t)); if (k && k !== 'pic') e.preventDefault(); }, { passive: false });
     c.addEventListener('pointerdown', function (e) { var p = at(e), k = hit(p);
       if (!k) { if (S.sel) { S.sel = null; selBox(); } return; }
       S.sel = k; selBox(); if (k === 'pic') return;
@@ -1041,6 +1081,8 @@
       hold.moved = Math.max(hold.moved, Math.abs(e.clientX - hold.x0) + Math.abs(e.clientY - hold.y0));
       var b = lastBoxes[hold.k], W = c.width, H = c.height, nx = Math.max(0, Math.min(W - b[2], p[0] - hold.dx)) / W, ny = Math.max(0, Math.min(H - b[3], p[1] - hold.dy)) / H;
       if (hold.k.charAt(0) === 'a' && hold.k.length > 1) { var a = P.adds[+hold.k.slice(1)]; a.x = nx; a.y = ny; } else P.pos[hold.k] = [nx, ny];
+      /* carried near the top or foot of the view, the page moves with it */
+      var vr = panel.getBoundingClientRect(), edge = 56; if (e.clientY > vr.bottom - edge) panel.scrollTop += 12; else if (e.clientY < vr.top + edge) panel.scrollTop -= 12;
       if (!artRaf) artRaf = requestAnimationFrame(function () { artRaf = 0; redraw(); }); });
     var up = function () { if (!hold) return; var mv = hold.moved; hold = null; c.classList.remove('holding'); if (mv > 4) { changed(); bell(2, 0.14); } else { var a = selAdd(); if (a && a.k === 't') { var tx = $('#au-tx'); if (tx) tx.focus(); } } };
     c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
@@ -1103,7 +1145,7 @@
     NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish); });
+      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, sigOf(P)); });
     }).then(function (s) {
       st.innerHTML = NG.pips(s); btn.classList.remove('going'); if (n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P).then(function (c) {
@@ -1119,11 +1161,63 @@
   }
   /* the wall, when nothing is being made: every finished piece in a light carousel (Embla), the one in front whole and its neighbours
      just showing either side. Dragged or swiped along; a touch opens it full screen; the one in front can be brought back or taken down */
+  /* ───────── the signal: a piece folded into one line short enough for a LoRa radio (200 characters at most) and anything else that
+     carries words (a message, paper, a voice). Unfolded anywhere, the engine grows it back into a whole poster from what it already knows:
+     the life by its name, the place by its point, the day, El Niño, the marks laid where they go. Online it fills in the life's photograph.
+       ng:<lat><lng>~<day>~<life>~<marks>~<intention>~<four lines>~<code>
+     lat and lng in ten-thousandths, base 36; the day counted from 2026, base 36; marks a letter each (a–f the stamps, g–r the marks,
+     w for white paper, n for El Niño) ───────── */
+  var SIG0 = Date.UTC(2026, 0, 1), SIGMAX = 200;
+  var b36 = function (n) { return (n < 0 ? '-' : '') + Math.abs(Math.round(n)).toString(36); };
+  var clean = function (t) { return String(t || '').replace(/[~\n\r]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+  function sigOf(p) {
+    var marks = (p.adds || []).map(function (a) { return a.k === 'st' ? 'abcdef'.charAt(a.g) : a.k === 's' ? 'ghijklmnopqr'.charAt(MARK_ORDER.indexOf(a.g)) : ''; }).join('').slice(0, 8) + (p.paper === 'white' ? 'w' : '') + (p.catch && p.catch.nino ? 'n' : '');
+    var head = 'ng:' + b36((p.lat || 0) * 1e4) + ',' + b36((p.lng || 0) * 1e4) + '~' + b36(Math.max(0, Math.floor(((p.at || Date.now()) - SIG0) / 864e5))) + '~' + ((p.catch && p.catch.life) || '') + '~' + marks;
+    var txt = [clean(p.say)].concat((p.lines || []).map(clean)), tail = '~' + ((p.note && p.note.code) || '');
+    var fit = function () { return head + '~' + txt.join('~') + tail; };
+    /* too long: the longest part loses its last word, again, until it fits */
+    while (new Blob([fit()]).size > SIGMAX) { var k = 0; txt.forEach(function (t, i) { if (t.length > txt[k].length) k = i; }); var w = txt[k].split(' '); if (w.length > 1) w.pop(); else w = [txt[k].slice(0, Math.max(0, txt[k].length - 4))]; txt[k] = w.join(' '); if (!txt.join('').length) break; }
+    return fit();
+  }
+  function pieceOf(code) {
+    var m = String(code || '').trim().match(/ng:([-0-9a-z]+),([-0-9a-z]+)~([0-9a-z]*)~([^~]*)~([a-z]*)~([^~]*)~([^~]*)~([^~]*)~([^~]*)~([^~]*)(?:~([^~\s]*))?/i); if (!m) return null;
+    var p = newPiece(), D = NG.DB(); p.lat = parseInt(m[1], 36) / 1e4; p.lng = parseInt(m[2], 36) / 1e4; p.src = 'TAP'; p.at = SIG0 + (parseInt(m[3] || '0', 36) || 0) * 864e5 + 12 * 36e5;
+    if (m[4] && (!D || D.field.some(function (f) { return f.id === m[4]; }))) p.catch.life = m[4];
+    p.say = m[6]; p.lines = [m[7], m[8], m[9], m[10]]; p.catch.map = true; p.catch.data = [NG.when(p.at).slice(0, 6).toLowerCase()];
+    var marks = m[5] || '', n2 = 0; p.paper = marks.indexOf('w') >= 0 ? 'white' : 'blue'; p.catch.nino = marks.indexOf('n') >= 0;
+    marks.replace(/[wn]/g, '').split('').forEach(function (ch, i) { var st = 'abcdef'.indexOf(ch), mk = 'ghijklmnopqr'.indexOf(ch), a = st >= 0 ? { k: 'st', g: st, r: (i % 2 ? 6 : -6) } : mk >= 0 ? { k: 's', g: MARK_ORDER[mk] } : null; if (!a) return;
+      a.x = 0.12 + (n2 % 3) * 0.28; a.y = 0.1 + Math.floor(n2 / 3) * 0.16; n2++; p.adds.push(a); });
+    p.from = (m[11] || '').toUpperCase(); return p;
+  }
+  /* a line pasted, typed or scanned back in: it becomes the piece in hand, at print, in front */
+  function takeSig(code) {
+    var p = pieceOf(code); if (!p) return false; if (done()) fresh(); P = p; think(); spFetch(P); draftSave(pack(P)); WALL = 0; subSwell(); bubbles(6);
+    if (S.mode === 'iruk') { if (S.stage === 3) { closeSig(); paint(); } else step(3); } return true;
+  }
+  /* the signal sheet: the line itself, its square code, and where it can go (copied, handed to another app, sent to the radios); a line
+     pasted into it is taken in. No words: signs alone */
+  function openSig(f) {
+    closeSig(); var piece0 = f && f.piece ? unpack(f.piece) : P, code = piece0 ? sigOf(piece0) : '', el = document.createElement('div'); el.className = 'au-sig'; el.id = 'au-sig';
+    el.innerHTML = '<button class="au-back" id="au-sigx" aria-label="Close"><i></i></button>' + (code ? '<canvas class="au-sigq" width="200" height="200"></canvas><output class="au-sigt" id="au-sigt">' + esc(code) + '</output><b class="au-sign">' + new Blob([code]).size + '/' + SIGMAX + '</b>' +
+      '<nav class="au-sigk">' + hand('au-sm', svgI('copy'), 'id="au-sigc" aria-label="Copy"') + hand('au-sm', svgI('share'), 'id="au-sigs" aria-label="Share"') + hand('au-sm', svgI('radio'), 'id="au-sigm" aria-label="Send to the radios"') + '<span class="au-pips" id="au-sigp"></span></nav>' : '') +
+      '<label class="au-sigin">' + svgI('in') + '<textarea id="au-sigi" rows="2" maxlength="400" aria-label="Paste a line" spellcheck="false" autocapitalize="off"></textarea></label>';
+    panel.appendChild(el); bubbles(4);
+    $('#au-sigx').addEventListener('click', closeSig);
+    if (code) {
+      NG.qrLib().then(function (Q) { var c = el.querySelector('.au-sigq'); if (!Q || !c) return; try { var q = Q(0, 'L'); q.addData(code); q.make(); var n3 = q.getModuleCount(), cs = Math.floor(200 / (n3 + 4)), g = c.getContext('2d'); g.fillStyle = '#F4F1E8'; g.fillRect(0, 0, 200, 200); g.fillStyle = '#17457F'; var o = Math.floor((200 - cs * n3) / 2); for (var a = 0; a < n3; a++) for (var b = 0; b < n3; b++) if (q.isDark(a, b)) g.fillRect(o + b * cs, o + a * cs, cs, cs); } catch (e) { /* too long for a square */ } });
+      $('#au-sigc').addEventListener('click', function () { var t = $('#au-sigt'); (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(code) : Promise.reject()).catch(function () { var r = document.createRange(); r.selectNodeContents(t); var sl = getSelection(); sl.removeAllRanges(); sl.addRange(r); try { document.execCommand('copy'); } catch (e) { /* none */ } }); bubbles(3); this.classList.add('on'); });
+      $('#au-sigs').addEventListener('click', function () { if (navigator.share) navigator.share({ text: code }).catch(function () {}); else $('#au-sigc').click(); bubbles(3); });
+      $('#au-sigm').addEventListener('click', function () { var b2 = this, st = $('#au-sigp'), n = piece0.note || (piece0 === P ? settle() : null); if (!n) { n = { code: piece0.from || '', lat: piece0.lat, lng: piece0.lng, say: piece0.say }; }
+        b2.disabled = true; st.innerHTML = NG.pips('sending'); NG.sendMesh(n, code).then(function (s2) { st.innerHTML = NG.pips(s2); b2.disabled = false; subSwell(); }); });
+    }
+    var inp = $('#au-sigi'); inp.addEventListener('input', function () { if (/ng:[-0-9a-z]+,/i.test(inp.value) && pieceOf(inp.value)) takeSig(inp.value); });
+  }
+  function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
   var making = function () { return !!P && !P.sent; };
   var showList = function () { return (making() ? [{ id: 'now', now: 1 }] : []).concat(slides()); };
   function wallHTML() {
-    var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button>';
+    var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button><div class="au-press">' + hand('au-sm', svgI('in'), 'id="au-sigk0" aria-label="Take in a line"') + '</div>';
     WALL = Math.max(0, Math.min(WALL, all.length - 1));
     return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i>' + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
       (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '') +
@@ -1134,10 +1228,10 @@
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
     if (f.now) pr.innerHTML = nav(-1) + hand('au-sm au-reset', svgI('again'), 'id="au-reset" aria-label="Start again: this piece is let go"') + hand('au-sm', svgI('paper'), 'id="au-paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') +
-      hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save"') + hand('au-big', svgI('print'), 'id="au-print" aria-label="Print"') + '<span class="au-pips" id="au-pips"></span>' + nav(1);
+      hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save"') + hand('au-big', svgI('print'), 'id="au-print" aria-label="Print"') + hand('au-sm', svgI('sig'), 'id="au-sigk" aria-label="Signal"') + '<span class="au-pips" id="au-pips"></span>' + nav(1);
     else pr.innerHTML = (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" aria-label="Begin a new piece"') : '') + nav(-1) +
       (f.piece ? hand('au-big', svgI('print'), 'id="au-again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" aria-label="Save"') +
-      (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" aria-label="Bring it back to work on"') : '') + (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" aria-label="Take it down"') : '') + nav(1);
+      (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" aria-label="Bring it back to work on"') : '') + (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" aria-label="Signal"') : '') + (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" aria-label="Take it down"') : '') + nav(1);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
@@ -1153,11 +1247,12 @@
       var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { folioDrop(f.id).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
     }
+    var sk = $('#au-sigk'); if (sk) sk.addEventListener('click', function () { openSig(f.now ? null : f); });
     [].forEach.call(panel.querySelectorAll('.au-wdots i'), function (d, i) { d.classList.toggle('on', i === WALL); });
     [].forEach.call(panel.querySelectorAll('.au-eslide'), function (e2, i) { e2.classList.toggle('on', i === WALL); });
   }
   function wallWire() {
-    var all = showList(), vp = panel.querySelector('.au-wall'); if (EMB) { try { EMB.destroy(); } catch (e) { /* gone */ } EMB = null; } if (!all.length || !vp) return;
+    var all = showList(), vp = panel.querySelector('.au-wall'); if (EMB) { try { EMB.destroy(); } catch (e) { /* gone */ } EMB = null; } var k0 = $('#au-sigk0'); if (k0) k0.addEventListener('click', function () { openSig(null); }); if (!all.length || !vp) return;
     wallPress(); if (making()) redraw();
     var srcs = function () { return all.map(function (f) { if (!f.now) return f; var c = panel.querySelector('.au-eslide.now canvas'); return { src: c && c.width > 10 ? c.toDataURL('image/jpeg', 0.9) : '' }; }).filter(function (q) { return q.src; }); };
     [].forEach.call(vp.querySelectorAll('.au-eslide'), function (fg) { fg.addEventListener('click', function () { var n2 = +fg.dataset.n; if (n2 !== WALL && EMB) { EMB.scrollTo(n2); return; } show(srcs(), making() ? n2 : n2); }); });
@@ -1265,7 +1360,7 @@
     (NG.nowItems() || []).forEach(function (i) { if (/NIÑO/.test(i.k)) return; rows.push({ t: i.k.charAt(0) + i.k.slice(1).toLowerCase(), d: i.t, v: i.k.toLowerCase() + ' · ' + NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3).toLowerCase(), near: '' }); });
     var sn = (NG.seasonNow() || []).map(function (f) { var dn = near[f.id]; return { f: f, d: dn, w: /frog|waterbird|fish|turtle|duck/.test(f.g || '') ? water() : '' }; });
     sn.sort(function (a, b) { return (a.d == null ? 1e9 : a.d) - (b.d == null ? 1e9 : b.d) || (b.f.st === 'T' || b.f.st === 'E') - (a.f.st === 'T' || a.f.st === 'E'); });
-    sn.slice(0, 9).forEach(function (q) { var f = q.f; rows.push({ id: f.id, t: f.cn, e: f.event || '', d: [f.aware, f.note].filter(Boolean).join('. ').replace(/\.\./g, '.'), near: q.d != null ? NG.far(Math.round(q.d)) : q.w }); });
+    sn.slice(0, 9).forEach(function (q) { var f = q.f; rows.push({ id: f.id, t: f.cn, e: f.event || '', d: '', near: q.d != null ? NG.far(Math.round(q.d)) : q.w }); });
     ul.innerHTML = rows.map(function (r, i) { var on = r.id ? P.catch.life === r.id : P.catch.data.indexOf(r.v) >= 0;
       return '<li><button data-se="' + i + '" class="' + (on ? 'on' : '') + (r.near ? ' near' : '') + '" aria-pressed="' + on + '"><span class="t">' + esc(r.t) + (r.e ? ' <i>' + esc(r.e) + '</i>' : '') + '</span>' + (r.near ? '<small>' + esc(r.near) + '</small>' : '') + (r.d ? '<em>' + esc(r.d) + '</em>' : '') + '</button></li>'; }).join('');
     [].forEach.call(ul.querySelectorAll('[data-se]'), function (b) { b.addEventListener('click', function () { var r = rows[+b.dataset.se], on;

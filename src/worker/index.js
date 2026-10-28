@@ -48,6 +48,8 @@ function ready(db) {
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN off INTEGER').run(); } catch (e) { /* already there */ }
+    /* touch: the hash of a small touch screen's token; while set, that screen is where a held slip is printed or squashed */
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN touch TEXT').run(); } catch (e) { /* already there */ }
     /* every partner place has a print queue from the start; a printer joins it when its token is made on the approval page */
     if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)').bind(p.id, p.n, p.paper, now())));
   })().catch(e => { readied.delete(db); throw e; }));
@@ -192,6 +194,25 @@ async function next(db, req, id) {
   await db.prepare("UPDATE jobs SET status = 'printing', lease = ?, tries = tries + 1 WHERE id = ?").bind(t + 60e3, j.id).run();
   return json({ job: j.id, code: j.code, escpos: j.escpos || null, mesh: j.mesh || null });
 }
+/* ───────── a printer's touch screen: the slips held for it, each shown with the jellyfish; one press prints it, a long press squashes it ───────── */
+async function touchAuth(db, req, id) {
+  const p = await db.prepare('SELECT * FROM printers WHERE id = ?').bind(id).first(); const tok = bearer(req);
+  if (!p || !p.touch || !tok || !(await same(await sha256(tok), p.touch))) return null; return p;
+}
+async function touchList(db, req, id) {
+  if (!(await touchAuth(db, req, id))) return fail(401, 'token');
+  const { results } = await db.prepare(`SELECT j.id, j.code, j.created, s.body FROM jobs j LEFT JOIN stories s ON s.id = j.story WHERE j.printer = ? AND j.status = 'held' ORDER BY j.created LIMIT 5`).bind(id).all();
+  const c = await db.prepare("SELECT sum(status = 'held') AS w, sum(status IN ('queued', 'printing')) AS q FROM jobs WHERE printer = ?").bind(id).first();
+  return json({ waiting: (c && c.w) || 0, printing: (c && c.q) || 0, held: results.map(r => { let b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) { /* none */ }
+    return { job: r.id, code: r.code || '', at: r.created, say: String(b.text || '').slice(0, 140), wish: (Array.isArray(b.wish) ? b.wish : []).map(w => String(w).slice(0, 90)).slice(0, 4), life: b.tx && b.tx.cn ? String(b.tx.cn).slice(0, 40) : '' }; }) });
+}
+async function touchAct(db, req, id, job) {
+  if (!(await touchAuth(db, req, id))) return fail(401, 'token');
+  const b = await body(req);
+  if (b.action === 'print') { await db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id).run(); return json({ ok: true }); }
+  if (b.action === 'squash') { await db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id).run(); return json({ ok: true }); }
+  return fail(400, 'action');
+}
 async function report(db, req, id, job) {
   if (!(await printerAuth(db, req, id))) return fail(401, 'token');
   const b = await body(req); const ok = b.status === 'printed'; if (!ok && b.status !== 'failed') return fail(400, 'status');
@@ -236,7 +257,7 @@ async function admin(db, env, req, parts) {
     return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'printers' && !id) {
-    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.seen, p.can, p.off,
+    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.seen, p.can, p.off,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'printed') AS printed,
@@ -247,6 +268,8 @@ async function admin(db, env, req, parts) {
     const b = await body(req); const p = await db.prepare('SELECT id FROM printers WHERE id = ?').bind(id).first(); if (!p) return fail(404, 'not found');
     /* a printer's token is shown once, here, and kept only as a hash */
     if (b.action === 'token') { const tok = rid(32); await db.prepare('UPDATE printers SET token = ? WHERE id = ?').bind(await sha256(tok), id).run(); return json({ token: tok }); }
+    /* the touch screen's own token, shown once; a printer with one holds every slip for its screen */
+    if (b.action === 'touch') { if (!b.on) { await db.prepare('UPDATE printers SET touch = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); } const tok = rid(24); await db.prepare('UPDATE printers SET touch = ?, auto = 0 WHERE id = ?').bind(await sha256(tok), id).run(); return json({ token: tok }); }
     if (b.action === 'unpair') { await db.prepare('UPDATE printers SET token = NULL, seen = NULL, can = NULL, off = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }
     /* TURN OFF: the receiver is handed it the next time it asks, if that is within two minutes */
     if (b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
@@ -319,6 +342,8 @@ async function api(req, env, url) {
   if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
+  if (p[0] === 'touch' && p[1] && !p[2] && m === 'GET') return touchList(db, req, p[1]);
+  if (p[0] === 'touch' && p[1] && p[2] && m === 'POST') return touchAct(db, req, p[1], p[2]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));
   return fail(404, 'not found');
 }
