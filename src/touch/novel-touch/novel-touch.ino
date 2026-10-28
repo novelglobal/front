@@ -28,6 +28,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
+#define NG_VERSION "29 Oct · 2"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -106,6 +107,7 @@ void join() {
      extender often share a name); then those it can't see, in case the scan missed them. Each attempt moves on to the next */
   WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(300));   // nothing half-joined left over
   int n = WiFi.scanNetworks(), rs[5], ch[5], order[5]; uint8_t bs[5][6]; bool vis[5];
+  for (int tries = 0; n < 0 && tries < 3; tries++) { vTaskDelay(pdMS_TO_TICKS(1500)); n = WiFi.scanNetworks(); }   // a scan that failed is tried again, never read as 'not in range'
   for (int k = 0; k < nNets; k++) { vis[k] = false; rs[k] = -1000; ch[k] = 0; order[k] = k;
     for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); ch[k] = WiFi.channel(i); memcpy(bs[k], WiFi.BSSID(i), 6); vis[k] = true; } }
   if (n > 0) WiFi.scanDelete();
@@ -116,7 +118,7 @@ void join() {
   for (int w = 0; w < 50 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
   if (WiFi.status() != WL_CONNECTED && !setupOn) {
     int r = lastReason;
-    String why = nets[k] + ": " + (!vis[k] ? String("not in range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
+    String why = nets[k] + ": " + (n < 0 ? String("couldn't scan") : !vis[k] ? String("not seen: 5 GHz, or out of range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
     xSemaphoreTake(lock, portMAX_DELAY); whyNot = why; xSemaphoreGive(lock);
     WiFi.disconnect(); tryNext++;
   }
@@ -554,7 +556,7 @@ void loop() {
     text(BODY, apPass.c_str(), 16, 100, INK, 0.95f, 1);
     text(MONO, "then a page opens", 16, 126, INK, 0.5f, 0);
     text(MONO, "or go to 192.168.4.1", 16, 142, INK, 0.5f, 0);
-    text(MONO, "BOOT again to leave", 16, 160, INK, 0.35f, 0);
+    text(MONO, "BOOT again to leave   sketch " NG_VERSION, 16, 160, INK, 0.35f, 0);
     drawQR(QR_JOIN, 29, 246, H / 2, 4);
   }
   if (bootAt >= 0) {   // BOOT held: a ring of dots filling round the word
@@ -566,6 +568,7 @@ void loop() {
     String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("joining ") + (trying.length() ? trying : nNets ? nets[0] : String("a Wi-Fi")) + (tryRssi ? String("  ") + tryRssi + " dBm" : String("")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
     text(MONO, l1.c_str(), W / 2 - textW(MONO, l1.c_str(), 0) / 2, 128, INK, 0.6f, 0);
     if (whyNot.length() && WiFi.status() != WL_CONNECTED) text(MONO, whyNot.c_str(), W / 2 - textW(MONO, whyNot.c_str(), 0) / 2, 112, INK, 0.75f, 0);
+    text(MONO, "sketch " NG_VERSION, 8, H - 6, INK, 0.3f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
