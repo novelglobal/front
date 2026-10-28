@@ -311,7 +311,7 @@ void drawQR(const uint32_t *q, int n, int cx, int cy, int m) {   // chalk plate,
 
 /* ───────── the setup Wi-Fi and its page ───────── */
 WebServer web(80); DNSServer dns; String apPass, scanOpts;
-String between(const String &s, const char *key) { int i = s.indexOf(key); if (i < 0) return ""; int a = s.indexOf('"', i), b = s.indexOf('"', a + 1); return a < 0 || b < 0 ? "" : s.substring(a + 1, b); }
+String between(const String &s0, const char *key) { String s = s0; s.replace("\xE2\x80\x9C", "\""); s.replace("\xE2\x80\x9D", "\""); int i = s.indexOf(key); if (i < 0) return ""; int a = s.indexOf('"', i), b = s.indexOf('"', a + 1); return a < 0 || b < 0 ? "" : s.substring(a + 1, b); }
 String esc(String s) { s.replace("&", "&amp;"); s.replace("<", "&lt;"); s.replace("\"", "&quot;"); return s; }
 const char *PAGE_HEAD = "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'><title>novel.global touch</title>"
   "<style>body{background:#17457F;color:#F4F1E8;font:16px/1.4 -apple-system,system-ui,sans-serif;margin:0;padding:22px;max-width:520px}"
@@ -402,7 +402,7 @@ void setup() {
   WiFi.mode(WIFI_STA); WiFi.setHostname("novel-touch");
   bool keyHeld = digitalRead(KEY_A) == LOW;   // the side button held while it is switched on: setup, and only then
   xTaskCreatePinnedToCore(netTask, "net", 16384, NULL, 1, NULL, 0);
-  if (keyHeld || !nNets || !printerId.length()) startSetup(0);
+  if (keyHeld || !nNets) startSetup(0);   // only with no Wi-Fi at all; a missing printer is said on the screen instead
   else go(CONNECTING, 0);
 }
 
@@ -538,7 +538,7 @@ void loop() {
   if (mode == CONNECTING && k > 6) {   // still looking: what for, and how to change it
     String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("looking for ") + (nNets ? nets[0] : String("a Wi-Fi")) + (nNets > 1 ? " +" + String(nNets - 1) : String("")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
     text(MONO, l1.c_str(), W / 2 - textW(MONO, l1.c_str(), 0) / 2, 128, INK, 0.6f, 0);
-    if (k > 20) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
+    if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
   if (mode != SETUP && netErr) { ring(W - 12, H - 12, 3.5f, 1, INK, 0.55f); if (netErr == 3) text(MONO, "?", W - 28, H - 8, INK, 0.7f, 0); }
