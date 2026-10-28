@@ -97,17 +97,22 @@ void act(const String &job, const String &what) {
   h.addHeader("authorization", String("Bearer ") + token); h.addHeader("content-type", "application/json");
   h.POST(String("{\"action\":\"") + what + "\"}"); h.end();
 }
-/* joining: the strongest Wi-Fi it knows that it can see (or each in turn, if none shows in the scan), given 25 s, as weak signal needs.
-   One attempt at a time, never interrupted by another scan */
-String trying; int tryNext = 0;
+/* joining: every Wi-Fi it knows that it can see, strongest first, each in turn, 25 s each (weak signal needs it), never
+   interrupted by another scan. Each failure is kept with its reason, for the screen to say */
+String trying, whyNot; int tryNext = 0, tryRssi = 0; volatile int lastReason = 0;
 void join() {
-  int best = -1, bestR = -1000, n = WiFi.scanNetworks();
-  for (int i = 0; i < n; i++) for (int k = 0; k < nNets; k++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > bestR) { bestR = WiFi.RSSI(i); best = k; }
+  int n = WiFi.scanNetworks(), cand[5], rs[5], c = 0;
+  for (int k = 0; k < nNets; k++) { int best = -1000; for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > best) best = WiFi.RSSI(i); if (best > -1000) { cand[c] = k; rs[c++] = best; } }
   if (n > 0) WiFi.scanDelete();
-  int k = best >= 0 ? best : (tryNext++ % nNets); trying = nets[k];
+  for (int i = 0; i < c; i++) for (int j = i + 1; j < c; j++) if (rs[j] > rs[i]) { int t = cand[i]; cand[i] = cand[j]; cand[j] = t; t = rs[i]; rs[i] = rs[j]; rs[j] = t; }
+  int k = c ? cand[tryNext % c] : tryNext % nNets; tryRssi = c ? rs[tryNext % c] : 0; trying = nets[k]; lastReason = 0;
   WiFi.begin(nets[k].c_str(), passes[k].c_str());
   for (int w = 0; w < 50 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
-  if (WiFi.status() != WL_CONNECTED && !setupOn) { WiFi.disconnect(); tryNext++; }
+  if (WiFi.status() != WL_CONNECTED && !setupOn) {
+    int r = lastReason;
+    whyNot = trying + ": " + (!c ? String("not in range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
+    WiFi.disconnect(); tryNext++;
+  }
 }
 void netTask(void *) {
   unsigned long last = 0;
@@ -341,7 +346,7 @@ void scanNets() {
     String s = WiFi.SSID(i); if (!s.length() || seenNames.indexOf("|" + s + "|") >= 0) continue;
     bool known = false; for (int k = 0; k < nNets; k++) if (nets[k] == s) known = true;
     if ((pass == 0) != known) continue;   // known ones first
-    seenNames += s + "|"; scanOpts += "<option value=\"" + esc(s) + "\">" + esc(s) + (known ? " (known)" : "") + "</option>";
+    seenNames += s + "|"; scanOpts += "<option value=\"" + esc(s) + "\">" + esc(s) + (known ? " (known)" : "") + "  " + String(WiFi.RSSI(i)) + " dBm" + (WiFi.RSSI(i) < -80 ? " weak" : "") + "</option>";
   }
   if (n > 0) WiFi.scanDelete();
 }
@@ -362,6 +367,7 @@ void pageScan() { scanNets(); web.sendHeader("Location", "/"); web.send(302, "te
 void bye(const String &what) { web.send(200, "text/html", String(PAGE_HEAD) + "<h1>" + what + "</h1><p>The screen restarts. You can close this and go back to your own Wi-Fi.</p>"); delay(1500); ESP.restart(); }
 void pageSave() {
   String ss = web.arg("s2").length() ? web.arg("s2") : web.arg("s"), pp = web.arg("p"), ng = web.arg("ng"); ss.trim();
+  if (ss.length() && !pp.length()) for (int i = 0; i < nNets; i++) if (nets[i] == ss) pp = passes[i];   // a known one chosen again keeps its password
   String kn[5], kp[5]; int k = 0; if (ss.length()) { kn[k] = ss; kp[k++] = pp; }
   for (int i = 0; i < nNets && k < 5; i++) if (!web.hasArg("f" + String(i)) && nets[i] != ss) { kn[k] = nets[i]; kp[k++] = passes[i]; }
   nNets = k; for (int i = 0; i < k; i++) { nets[i] = kn[i]; passes[i] = kp[i]; } saveNets();
@@ -409,7 +415,8 @@ void setup() {
   randomSeed(esp_random());
   for (int i = 0; i < 30; i++) snow[i] = {(float)random(W), (float)random(H), i % 4 ? 0.45f + random(40) / 100.0f : 0.9f + random(50) / 100.0f, 0.12f + random(100) / 400.0f, random(628) / 100.0f};
   loadCfg(); lock = xSemaphoreCreateMutex();
-  WiFi.mode(WIFI_STA); WiFi.setHostname("novel-touch"); WiFi.setAutoReconnect(true); WiFi.setSleep(false);
+  WiFi.setHostname("novel-touch"); WiFi.mode(WIFI_STA); WiFi.setAutoReconnect(true); WiFi.setSleep(false);
+  WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) { if (e == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) lastReason = info.wifi_sta_disconnected.reason; });
   bool keyHeld = digitalRead(KEY_A) == LOW;   // the side button held while it is switched on: setup, and only then
   xTaskCreatePinnedToCore(netTask, "net", 16384, NULL, 1, NULL, 0);
   if (keyHeld || !nNets) startSetup(0);   // only with no Wi-Fi at all; a missing printer is said on the screen instead
@@ -546,8 +553,9 @@ void loop() {
     text(MONO, "setup", W / 2 - textW(MONO, "setup", 1) / 2, H / 2 + 4, INK, 0.8f, 1);
   }
   if (mode == CONNECTING && k > 6) {   // still looking: what for, and how to change it
-    String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("joining ") + (trying.length() ? trying : nNets ? nets[0] : String("a Wi-Fi")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
+    String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("joining ") + (trying.length() ? trying : nNets ? nets[0] : String("a Wi-Fi")) + (tryRssi ? String("  ") + tryRssi + " dBm" : String("")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
     text(MONO, l1.c_str(), W / 2 - textW(MONO, l1.c_str(), 0) / 2, 128, INK, 0.6f, 0);
+    if (whyNot.length() && WiFi.status() != WL_CONNECTED) text(MONO, whyNot.c_str(), W / 2 - textW(MONO, whyNot.c_str(), 0) / 2, 112, INK, 0.75f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
