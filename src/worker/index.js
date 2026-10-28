@@ -201,10 +201,10 @@ async function touchAuth(db, req, id) {
 }
 async function touchList(db, req, id) {
   if (!(await touchAuth(db, req, id))) return fail(401, 'token');
-  const { results } = await db.prepare(`SELECT j.id, j.code, j.created, s.body FROM jobs j LEFT JOIN stories s ON s.id = j.story WHERE j.printer = ? AND j.status = 'held' ORDER BY j.created LIMIT 5`).bind(id).all();
+  const { results } = await db.prepare(`SELECT j.id, j.code, j.created, j.escpos IS NOT NULL AS paper, s.body FROM jobs j LEFT JOIN stories s ON s.id = j.story WHERE j.printer = ? AND j.status = 'held' ORDER BY j.created LIMIT 5`).bind(id).all();
   const c = await db.prepare("SELECT sum(status = 'held') AS w, sum(status IN ('queued', 'printing')) AS q FROM jobs WHERE printer = ?").bind(id).first();
   return json({ waiting: (c && c.w) || 0, printing: (c && c.q) || 0, held: results.map(r => { let b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) { /* none */ }
-    return { job: r.id, code: r.code || '', at: r.created, say: String(b.text || '').slice(0, 140), wish: (Array.isArray(b.wish) ? b.wish : []).map(w => String(w).slice(0, 90)).slice(0, 4), life: b.tx && b.tx.cn ? String(b.tx.cn).slice(0, 40) : '' }; }) });
+    return { job: r.id, code: r.code || '', at: r.created, say: String(b.text || '').slice(0, 140), wish: (Array.isArray(b.wish) ? b.wish : []).map(w => String(w).slice(0, 90)).slice(0, 4), life: b.tx && b.tx.cn ? String(b.tx.cn).slice(0, 40) : '', paper: !!r.paper }; }) });
 }
 async function touchAct(db, req, id, job) {
   if (!(await touchAuth(db, req, id))) return fail(401, 'token');

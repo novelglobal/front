@@ -6,17 +6,18 @@ Two small things that sit beside a printer. The touch screen holds each slip unt
 
 ## The touch screen: LilyGO T-Display-S3 (touch)
 
-The screen lies on its side. The sea is lit from above, with marine snow drifting up. The irukandji is the same one as on the site: the box bell, the eye of dots, four tentacles of beads.
+The screen lies on its side: one flat blueprint blue, chalk lines and dots, the site's own type (Archivo Narrow and Departure Mono). The irukandji is the one on the site: the box bell, the eye of dots, four tentacles of beads. A small screen bands any shading or glow, so nothing on it is shaded. Its light is a scatter of fine dots round the bell, and marine snow drifts up.
 
 **When a slip arrives**
 - The jellyfish swims up from below. The camera goes in close to its eye, then draws back.
 - It stays on the left. On the right are the slip's heading in large type, its first line, and its code.
 - At the top right: how many slips are waiting, and how many are printing.
-- A ring of dots breathes round the jellyfish, with a ripple going out now and then, and its pupil glows. That is the cue to touch it.
+- A second ring breathes round its pupil, and now and then one thin ring goes out from it. That is the cue to touch it.
 
 **One press prints it** (a tap, under half a second)
 - Rings go out, its eye opens wide, and light runs down the tentacles.
 - Over about four seconds, the paper feeds out of its bell, line by line, as the printer prints it.
+- A line for the radios alone ("to the radios") has no paper: thin rings go out instead, and nothing prints.
 - The paper tears off and falls, and the jellyfish jets away.
 
 **Holding squashes it** (about three seconds)
@@ -92,9 +93,9 @@ Arduino keeps every sketch in a folder with the same name as the file: `novel-to
 
 **Then give it the Wi-Fi and the three lines,** in either of two ways.
 
-**From a phone (easiest; no typing in Arduino).** Upload the sketch as it is. With no Wi-Fi or printer set, it opens its own Wi-Fi instead, and the screen shows a password:
+**From a phone (easiest; no typing in Arduino).** Upload the sketch as it is. With no Wi-Fi or printer set, it opens its own Wi-Fi instead, and the screen shows a code to scan and the password:
 
-1. On your phone, open **Settings → Wi-Fi** and join **NOVEL TOUCH**, using the password on the screen.
+1. Point your phone's camera at the code on the screen, and tap to join **NOVEL TOUCH**. Or join it in **Settings → Wi-Fi**; the password is **novelglobal**.
 2. A page opens by itself. If it doesn't, open **192.168.4.1** in the browser.
 3. Choose your Wi-Fi, which must be 2.4 GHz, and type its password.
 4. Paste the three lines from the approval page into the box below. Paste all three as they are.
@@ -152,16 +153,18 @@ The screen turns blue and a small jellyfish dozes while it joins the Wi-Fi. With
 2. The jellyfish appears with its words. Tap it: the slip prints.
 3. It stays away for 15 seconds. Print another, and hold the jellyfish for about three seconds until it pops: it is squashed, and nothing prints.
 
-The side button (KEY, GPIO 14) works like a press on the screen.
+The side button marked KEY (GPIO 14) works like a press on the screen. BOOT (GPIO 0), held three seconds, opens setup.
 
 ### Moving it to another Wi-Fi
 
 It remembers up to five Wi-Fis and joins whichever one it finds. To add one:
 
-- When it can't find any Wi-Fi it knows, it opens **NOVEL TOUCH** by itself after 40 seconds.
-- Or, with nothing waiting, hold the side button for **five seconds**.
+- **Hold the BOOT button for three seconds**, at any time. A ring of dots fills round the word *setup*, then the screen shows **NOVEL TOUCH** and its code.
+- Or switch it on where it knows no Wi-Fi: after 40 seconds it opens **NOVEL TOUCH** by itself.
 
-Then follow "From a phone" above. The same page can forget old Wi-Fis, and takes three new lines if the token changes. The setup Wi-Fi closes after ten minutes.
+Setup never comes from the touch screen, so people playing with it can't change anything. The side button marked **KEY** is a press, like the screen.
+
+Then follow "From a phone" above. The same page can forget old Wi-Fis, and takes three new lines if the token changes. The setup Wi-Fi closes after ten minutes, and the screen restarts.
 
 The Pi learns a new Wi-Fi in the same way (see the receiver's README, "Wi-Fi from a phone"). Moving the printer means doing both. The two don't depend on each other, so either can go first.
 
@@ -178,7 +181,7 @@ A tap now gives a short knock, a print a firmer one, and a squash a long one.
 
 | What you see | What to do |
 |---|---|
-| A ring in the bottom-right corner | No Wi-Fi. Hold the side button five seconds (with nothing waiting) and set it from a phone. Use 2.4 GHz only. |
+| A ring in the bottom-right corner | No Wi-Fi. Hold BOOT three seconds and set it from a phone. Use 2.4 GHz only. |
 | A ring with ? | The site refused the token. Turn TOUCH SCREEN off and on again on the approval page, and paste the new lines on the setup page. |
 | Blue, but no slip ever appears | Check the three `NG_` lines. Is TOUCH SCREEN ON for this printer? Is the slip going to this printer? |
 | A blank or white screen | Press RST once after uploading. Check that PSRAM is set to OPI PSRAM and the board is ESP32S3 Dev Module. Still blank? Flash LilyGO's factory test (in the `firmware` folder of github.com/Xinyuan-LilyGO/T-Display-S3) to check the board itself. |
@@ -189,133 +192,164 @@ A tap now gives a short knock, a print a firmer one, and a squash a long one.
 
 ## The radio: LilyGO T-Beam Supreme (Meshtastic, 915 MHz)
 
-With the radio on the same Wi-Fi as the printer's Raspberry Pi (no cable: the Pi's USB is taken by the printer), every slip that printer prints also goes out over the mesh as its signal line: `ng:` followed by about 200 characters, which is everything needed to make the piece again. A signal can also be sent to the radios without printing.
+**What it does.** Every slip this printer prints also goes out over the mesh as one line: `ng:` and up to 200 characters, which is everything needed to make the piece again. Any Meshtastic radio on the same channel receives it. Pasted into the site, the line becomes the piece again: its words, its life, its place, its marks, and online its photograph.
 
-Any Meshtastic user on the channel receives the line. Paste it into the site, and the piece comes back: its words, its life, its place and its marks. When online, the photograph is fetched again too.
+**How it connects.** The radio and the Pi share a Wi-Fi; no cable runs between them. The Pi's only free USB port is taken by the printer. The Pi hands each line to the radio over that Wi-Fi.
 
-**Before you power the T-Beam, screw the antenna on.** Running the radio without an antenna can damage it.
+**What you need**
+- the T-Beam Supreme and its LoRa antenna;
+- a USB-C cable that carries data;
+- a computer with Chrome or Edge;
+- your phone with the **Meshtastic** app;
+- power for the radio afterwards: a USB-C charger, a power bank, or an 18650 battery in its holder;
+- the name and password of the Wi-Fi the Pi is on. It must be the main network, not a guest network, which keeps devices apart.
 
-### 1. Put Meshtastic on it
+**Screw the antenna on before the radio is ever powered.** Running it without one can damage the radio.
 
-1. Screw on the LoRa antenna (the larger one).
-2. On a computer, open **flasher.meshtastic.org** in Chrome or Edge.
-3. Plug the T-Beam Supreme in by USB-C.
-4. Under **Device**, choose **LILYGO T-Beam Supreme**.
-5. Under **Firmware**, choose the latest **Stable**.
-6. Click **Flash**, then pick the port.
-7. Tick **Full Erase and Install** (the first time only).
-8. Click **Continue** and wait for it to finish.
+Work through the steps in order. Each one ends with a check; don't go on until it passes.
 
-If no port appears:
+### A. Put Meshtastic on it (computer, about 5 minutes)
 
-1. Hold the **BOOT** button.
-2. Press **RST**.
-3. Let go of BOOT.
-4. Try again.
+1. Screw the antenna on.
+2. Plug the radio into the computer by USB-C.
+3. Open **flasher.meshtastic.org** in Chrome or Edge.
+4. Click **Device** and choose **LILYGO T-Beam Supreme**.
+5. Click **Firmware** and choose the newest version marked **Stable**.
+6. Click **Flash**. The browser asks for a port; choose the one that appeared when you plugged the radio in, and click **Connect**.
+7. Turn on **Full Erase and Install**, then click **Erase Flash and Install** (the wording can vary slightly).
+8. Wait for it to finish (a few minutes).
 
-### 2. Set its region and channel
+**If no port appears:** keep it plugged in, hold **BOOT**, press and release **RST**, let go of BOOT, then click Flash again.
 
-1. Install the **Meshtastic** app on your phone (App Store or Google Play).
-2. Turn on Bluetooth, open the app and pair with the T-Beam. The PIN shows on its screen.
-3. Open **Settings → LoRa → Region** and choose **ANZ** (915 MHz).
+**Check:** the radio's little screen shows **Meshtastic**, then a page with its short name (four letters).
+
+### B. Set its region, channel and name (phone, over Bluetooth)
+
+1. On your phone, turn on Bluetooth and open the **Meshtastic** app.
+2. Tap the **+** or **Connect** button, choose the radio, and type the **PIN** shown on the radio's screen.
+3. Open **Settings → LoRa → Region**, choose **ANZ**, and save. The radio restarts.
+4. Optional: open **Settings → User** and give it a name, such as **novel.global printer**.
+5. Leave **Channels** on the default (**LongFast**), so anyone nearby on the default channel hears it.
+   - For a private mesh instead: add a channel with its own name, tap **Generate** for a new key, and make it the **primary** channel. Then share its QR code with the other radios.
+   - The Pi always sends on the primary channel.
+
+**Check:** the radio's screen shows **ANZ** and the channel name (LongFast unless you changed it).
+
+### C. Put the radio on the Pi's Wi-Fi (phone, last thing over Bluetooth)
+
+The Meshtastic firmware runs Wi-Fi or Bluetooth, not both: once Wi-Fi is on, the phone can no longer reach the radio by Bluetooth. That is why B comes first.
+
+1. In the app, open **Settings → Network**.
+2. Turn on **WiFi enabled**.
+3. Type the Wi-Fi name in **SSID** and the password in **PSK**, exactly. It must be the 2.4 GHz network the Pi is on.
 4. Save. The radio restarts.
-5. Leave **Channels** on the default (LongFast) to reach everyone nearby. For a private mesh:
-   1. Add a channel with its own name and a random key.
-   2. Make it the primary channel.
-   3. Share its QR code with the other radios.
 
-The Pi sends on the primary channel.
+**Check:** within a minute, the radio's screen shows a Wi-Fi page with an address, such as `192.168.1.37`. Write the address down.
 
-### 3. Put it on the Pi's Wi-Fi
+### D. Point the Pi at the radio (on the Pi)
 
-The T-Beam and the Pi talk over the Wi-Fi they share. The radio needs only power: a USB-C charger, a power bank, or its own 18650 battery.
+Open a terminal on the Pi: on a screen and keyboard, or by `ssh` from your computer as you did when you set the Pi up. Then:
 
-Do this last. Once the radio's Wi-Fi is on, its Bluetooth turns off (Meshtastic runs one or the other), so finish step 2 first.
-
-1. In the Meshtastic app, open **Settings → Network**.
-2. Turn **WiFi enabled** on.
-3. Type the Wi-Fi name (**SSID**) and password (**PSK**). Use the Wi-Fi the Pi is on, 2.4 GHz.
-4. Save. The radio restarts and joins the Wi-Fi. Its screen shows its address (for example `192.168.1.37`). It also answers to the name `meshtastic.local`.
-
-### 4. Point the Pi at it
-
-1. On the Pi, install Meshtastic's library:
+1. Make sure Python's installer is there (Raspberry Pi OS Lite leaves it out):
 
    ```sh
-   sudo -u da python3 -m pip install --user meshtastic
+   sudo apt update && sudo apt install -y python3-pip
    ```
 
-2. Open the settings file:
+   Then install Meshtastic's library for the printer's user. This takes several minutes on a Pi:
 
    ```sh
-   sudo nano /etc/da-pull.env
+   sudo -u da python3 -m pip install --user --break-system-packages meshtastic
    ```
 
-3. Set this line, then save (Ctrl+O, Enter, Ctrl+X):
+   `--break-system-packages` is needed on Raspberry Pi OS Bookworm, which otherwise refuses with *externally-managed-environment*. With `--user`, the library goes only into the printer user's own folder, and the system's Python is untouched.
 
-   ```
-   DA_MESH=tcp:meshtastic.local
-   ```
-
-   If the name is not found, use the address on the radio's screen instead, such as `DA_MESH=tcp:192.168.1.37`. Then fix that address in your router, so it never changes. The router setting is usually called a DHCP reservation.
-
-4. Restart the printer's service:
-
-   ```sh
-   sudo systemctl restart da-pull
-   ```
-
-5. Check that the Pi can see the radio:
+2. Check the Pi can reach the radio:
 
    ```sh
    sudo -u da python3 -m meshtastic --host meshtastic.local --info
    ```
 
-   It prints the radio's details. If it hangs, the two are not on the same Wi-Fi.
+   **Check:** it prints the radio's details: its name, `ANZ`, and its channels. If it says the name can't be found, try the address from step C instead of `meshtastic.local`. If it hangs, the two are not on the same Wi-Fi, or the network keeps devices apart (a guest network).
 
-**Moving to another Wi-Fi.** The radio and the Pi must move together. The Pi learns a new Wi-Fi from a phone (see the receiver's README, "Wi-Fi from a phone"). To tell the radio:
+3. Send one line by hand:
 
-1. Plug the radio into a computer by USB.
-2. Open **client.meshtastic.org** in Chrome and connect by **Serial**.
-3. Change **Network → WiFi** and save.
+   ```sh
+   sudo -u da python3 -m meshtastic --host meshtastic.local --sendtext "novel.global test"
+   ```
 
-**Reading messages on your phone.** With its Bluetooth off, the phone app reaches this radio over Wi-Fi: add it by its address, `meshtastic.local` or its IP. Or keep a second radio for your phone on Bluetooth, on the same channel.
+4. Tell the printer's service where the radio is:
 
-### 5. Turn it on for the printer
+   ```sh
+   sudo nano /etc/da-pull.env
+   ```
 
-1. On the approval page, find the printer.
-2. Click **MESH OFF**. It changes to **MESH ON**.
-3. Click **TEST PRINT**.
+   Find the line `DA_MESH=` and make it:
 
-The slip prints, and the Meshtastic app on your phone shows a test line arrive.
+   ```
+   DA_MESH=tcp:meshtastic.local
+   ```
 
-If nothing arrives, check the log on the Pi:
+   If step 2 only worked with the address, use the address instead, such as `DA_MESH=tcp:192.168.1.37`. Then give the radio a fixed address in your router; the setting is usually called a **DHCP reservation**. Save with **Ctrl+O**, **Enter**, then **Ctrl+X**.
+
+5. Restart the service:
+
+   ```sh
+   sudo systemctl restart da-pull
+   ```
+
+### E. Turn it on for the printer (approval page)
+
+1. On the approval page, find the printer and click **MESH OFF**. It changes to **MESH ON**.
+2. Click **TEST PRINT**.
+
+**Check:** a test slip prints, and nothing goes wrong in the Pi's log:
 
 ```sh
-journalctl -u da-pull -f
+journalctl -u da-pull -n 30
 ```
 
-Look for `mesh not sent` and the reason. `Connection refused` or a timeout means the Pi cannot reach the radio: check that the radio's Wi-Fi is on, that both are on the same Wi-Fi, and the address in `DA_MESH`.
+- `DA-TEST printed` with no `mesh not sent` line before it: the line went out to the radio.
+- `mesh not sent` with `Connection refused` or a timeout: the Pi can't reach the radio. Go back to D2.
 
-### 6. Send and receive signals
+**Seeing it arrive.** The phone can't use this radio by Bluetooth while its Wi-Fi is on. To watch lines arrive, either:
+- in the app, add the radio by its address (`meshtastic.local` or its IP), where your app offers a network connection; or
+- keep a second Meshtastic radio for your phone, on Bluetooth, on the same channel. This also proves the line really went over the air.
 
-**Send:**
+### F. Using it
 
+**Every printed slip** sends its line by itself, once MESH is on. With the touch screen, that is when the jellyfish is pressed.
+
+**Sending without printing:**
 1. On the site, go to print.
-2. Under the piece, press the signal key (the small waves).
-3. The signal sheet shows the piece as a QR code and as its `ng:` line, with its size out of 200. From there you can:
-   - **send to the radios**: goes out from every printer whose MESH is on, with nothing printed;
-   - **copy** the line;
-   - **share** it, to put it in any message, including the Meshtastic app itself.
+2. Press the signal key (the small waves) under the piece. The sheet shows its QR code, its `ng:` line, and its size out of 200.
+3. Choose one:
+   - **Send to the radios:** it goes out from every printer whose MESH is on. With the touch screen on, it waits there like a slip, marked **to the radios**. A press sends it, with rings going out and nothing printed; holding squashes it.
+   - **Copy** the line.
+   - **Share** the line into any message, including the Meshtastic app.
 
-A printed slip sends its signal on its own.
-
-**Receive:**
-
+**Receiving:**
 1. When an `ng:` line arrives in the Meshtastic app, copy it.
-2. On the site, press the signal key and paste the line into the field.
+2. On the site, press the signal key and paste it into the field, or paste it anywhere on the site.
 
-Pasting anywhere on the site works too. The piece is rebuilt and opens in print, ready to print, save or change.
+The piece is rebuilt and opens in print, ready to print, save or change. The site doesn't listen to the radio by itself; a line comes in when someone pastes it.
+
+### Moving the printer
+
+The Pi, the radio and the touch screen each need the new Wi-Fi:
+- **The Pi:** from a phone; see the receiver's README, "Wi-Fi from a phone".
+- **The touch screen:** from a phone; see "Moving it to another Wi-Fi" above.
+- **The radio:** plug it into a computer, open **client.meshtastic.org** in Chrome, connect by **Serial**, then change **Config → Network → WiFi** and save. You can't do this by Bluetooth while its Wi-Fi is on.
+
+If the radio's address changes and you used an address rather than `meshtastic.local`, update `DA_MESH` on the Pi.
+
+### Sense check
+
+- **Legal:** 915 MHz with region ANZ is licence-free in Australia, within Meshtastic's own limits.
+- **Public:** on the default channel, anyone nearby with a radio can read the lines. They hold a piece's words and its place, rounded to about 10 m. For a closed group, use a private channel (B5).
+- **Size:** 200 characters fits in one Meshtastic message (about 230 bytes at most). Longer pieces lose their longest words first, until the line fits.
+- **Reach:** a few kilometres in the open, much less through buildings. Each radio passes messages on, up to three hops by default.
+- **If the radio is off,** the slip still prints; only its line is lost, and the log says `mesh not sent`.
 
 ---
 
