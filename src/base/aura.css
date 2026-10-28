@@ -484,3 +484,8 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-inbox nav { display: flex; gap: 8px; flex: none; }
 #aura .au-inbox .au-k.on { background: rgba(244, 241, 232, .9); animation: au-next 1s ease-in-out infinite; }
 #aura .au-inbox .au-k.on svg { stroke: #17457F; }
+
+/* the press on a phone: one row, never a second line; the notice line set a little lower, off the top */
+@media (max-width: 759px) { .au-press { flex-wrap: nowrap; gap: 7px; } #aura .au-press .au-sm { width: 36px; height: 36px; min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; }
+  #aura .au-press .au-big { width: 54px; height: 54px; min-width: 54px; max-width: 54px; min-height: 54px; max-height: 54px; } #aura .au-press .au-pips { display: none; } }
+.au-line { margin-top: 18px; }

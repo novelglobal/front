@@ -152,7 +152,7 @@ async function send(db, env, req) {
   if (toMesh) {
     const { results: radios } = await db.prepare(`SELECT p.id, p.auto, (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('held', 'queued', 'printing')) AS q
       FROM printers p WHERE p.mesh = 1 AND p.token IS NOT NULL`).all();
-    for (const r of radios) { if (r.q >= LIMIT.perPrinter) continue; const jb = { id: rid(), status: r.auto ? 'queued' : 'held' }; job = job || jb;
+    for (const r of radios) { if (r.q >= LIMIT.perPrinter) continue; const jb = { id: rid(), status: 'queued' }; job = job || jb;
       ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)').bind(jb.id, r.id, id, b.code, b.mesh, jb.status, t)); }
   }
   await db.batch(ops);
@@ -217,8 +217,8 @@ async function touchList(db, req, id) {
 async function touchAct(db, req, id, job) {
   if (!(await touchAuth(db, req, id))) return fail(401, 'token');
   const b = await body(req);
-  if (b.action === 'print') { await db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id).run(); return json({ ok: true }); }
-  if (b.action === 'squash') { await db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id).run(); return json({ ok: true }); }
+  if (b.action === 'print') { await db.batch([db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id), db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job)]); return json({ ok: true }); }
+  if (b.action === 'squash') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ?, photo = NULL WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id)]); return json({ ok: true }); }
   return fail(400, 'action');
 }
 async function report(db, req, id, job) {
@@ -243,6 +243,10 @@ async function admin(db, env, req, parts) {
     const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 200`).bind(st).all();
     return json({ stories: results.map(r => ({ ...r, photo: !!r.has_photo, has_photo: undefined })) });
+  }
+  if (what === 'stories' && id === 'clear' && req.method === 'POST') {   // everything waiting refused at once, its held prints with it
+    await db.batch([db.prepare("DELETE FROM jobs WHERE status = 'held' AND story IN (SELECT id FROM stories WHERE status = 'waiting')"), db.prepare("UPDATE stories SET status = 'refused', decided = ?, photo = NULL WHERE status = 'waiting'").bind(now())]);
+    return json({ ok: true });
   }
   if (what === 'stories' && id && req.method === 'POST') {
     const b = await body(req); const t = now();

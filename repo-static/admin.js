@@ -72,7 +72,8 @@
   }
   async function stories(st) {
     const r = await api('stories?status=' + st); const { stories: list } = await r.json();
-    main.replaceChildren(...(list.length ? list.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })]));
+    const clear = st === 'waiting' && list.length ? [el('button', { type: 'button', text: `CLEAR ALL ${list.length} WAITING`, onclick: async () => { if (!confirm(`Refuse and clear all ${list.length} waiting, with their held prints?`)) return; await api('stories/clear', { method: 'POST', body: '{}' }); stories(st); } })] : [];
+    main.replaceChildren(...clear, ...(list.length ? list.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })]));
   }
 
   /* ───────── printers: paired with a token shown once; printing with or without approval; a test print ───────── */
