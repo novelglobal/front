@@ -51,9 +51,36 @@ While the screen is on, that printer holds every slip for the screen. **AUTO** i
 
 ### 3. Load the sketch
 
-1. Open `src/touch/novel-touch/novel-touch.ino` from this repository. Download the folder from GitHub, or use your clone in GitHub Desktop.
-2. At the top, replace the three `NG_` lines with the three you copied.
-3. Put your Wi-Fi name and password in `WIFI_SSID` and `WIFI_PASS`. The Wi-Fi must be 2.4 GHz.
+Arduino keeps every sketch in a folder with the same name as the file: `novel-touch.ino` must sit in a folder called `novel-touch`. If the file is on its own, Arduino offers to make that folder for you, and that is fine.
+
+**If you downloaded `novel-touch.ino` on its own:**
+
+1. In Arduino IDE, click **File → Open…**.
+2. Choose `novel-touch.ino` (in Downloads) and click **Open**.
+3. Arduino asks: *"The file novel-touch.ino needs to be inside a sketch folder named novel-touch. Create this folder, move the file, and continue?"* Click **OK**.
+4. The sketch opens in a new window, with a tab called `novel-touch.ino`. The file now lives in `Downloads/novel-touch/novel-touch.ino`, and that is where it is saved from now on.
+
+**Or, without any folder question:**
+
+1. In Arduino IDE, click **File → New Sketch**. A new window opens with an empty `setup()` and `loop()`.
+2. Click in the code, press **Ctrl+A** (**Cmd+A** on a Mac), then **Delete**. The window is empty.
+3. Open `novel-touch.ino` on GitHub (`src/touch/novel-touch/novel-touch.ino`). Click the **Copy raw file** button (two overlapping squares, top right of the code).
+4. Back in Arduino, press **Ctrl+V** (**Cmd+V**).
+5. Click **File → Save As…**, name it `novel-touch` and click **Save**.
+
+**Then fill in your five lines** (all at the top, lines 14 to 18). Change only the words between the quotation marks, and keep the quotation marks:
+
+```
+#define WIFI_SSID  "your wi-fi"     → your Wi-Fi's name, exactly, capitals and spaces included (2.4 GHz)
+#define WIFI_PASS  "its password"   → its password
+#define NG_HOST    "novel.global"   → from the approval page
+#define NG_PRINTER "printer id"     → from the approval page
+#define NG_TOKEN   "touch token"    → from the approval page
+```
+
+The approval page gave you the last three ready-made. You can paste them over these three lines whole. `NG_HOST` is whichever site's approval page you used: a token made on the staging site works only with the staging host, and the touch screen works on novel.global only once staging is merged into main.
+
+Press **Ctrl+S** (**Cmd+S**) to save.
 
 ### 4. Choose the board
 
