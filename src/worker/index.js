@@ -196,6 +196,8 @@ async function next(db, req, id) {
   const j = await db.prepare("SELECT * FROM jobs WHERE printer = ? AND (status = 'queued' OR (status = 'printing' AND lease < ?)) ORDER BY created LIMIT 1").bind(id, t).first();
   if (!j) return new Response(null, { status: 204, headers: TEXT_H });
   if (j.tries >= 5) { await db.prepare("UPDATE jobs SET status = 'failed', error = 'tried five times', done = ? WHERE id = ?").bind(t, j.id).run(); return new Response(null, { status: 204, headers: TEXT_H }); }
+  /* a slip with both paper and a mesh line: the line goes on as a job of its own, taken next, so a print that fails never keeps it off the mesh */
+  if (j.escpos && j.mesh) { await db.batch([db.prepare("INSERT INTO jobs (id, printer, story, code, mesh, status, created) VALUES (?, ?, ?, ?, ?, 'queued', ?)").bind(rid(), id, j.story, j.code, j.mesh, j.created), db.prepare('UPDATE jobs SET mesh = NULL WHERE id = ?').bind(j.id)]); j.mesh = null; }
   await db.prepare("UPDATE jobs SET status = 'printing', lease = ?, tries = tries + 1 WHERE id = ?").bind(t + 60e3, j.id).run();
   return json({ job: j.id, code: j.code, escpos: j.escpos || null, mesh: j.mesh || null });
 }
