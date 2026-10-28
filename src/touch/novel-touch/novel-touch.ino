@@ -28,7 +28,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 3"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "29 Oct · 4"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -103,30 +103,27 @@ void act(const String &job, const String &what) {
    interrupted by another scan. Each failure is kept with its reason, for the screen to say */
 String trying, whyNot; int tryNext = 0, tryRssi = 0; volatile int lastReason = 0;
 void join() {
-  /* every Wi-Fi it knows: those it can see first, strongest first, each aimed at its strongest transmitter (a router and its
-     extender often share a name); then those it can't see, in case the scan missed them. Each attempt moves on to the next */
-  WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(300));   // nothing half-joined left over
-  int n = WiFi.scanNetworks(), rs[5], ch[5], order[5]; uint8_t bs[5][6]; bool vis[5];
-  for (int tries = 0; n < 0 && tries < 3; tries++) { vTaskDelay(pdMS_TO_TICKS(1500)); n = WiFi.scanNetworks(); }   // a scan that failed is tried again, never read as 'not in range'
-  for (int k = 0; k < nNets; k++) { vis[k] = false; rs[k] = -1000; ch[k] = 0; order[k] = k;
-    for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); ch[k] = WiFi.channel(i); memcpy(bs[k], WiFi.BSSID(i), 6); vis[k] = true; } }
+  /* the order: those it can see first, strongest first; then those it can't, in case the scan missed them. The scan only orders;
+     the join itself is the first sketch's, which worked: a plain begin, the chip's own retries on for this one Wi-Fi, 30 s */
+  WiFi.setAutoReconnect(false); WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(400));
+  int n = WiFi.scanNetworks(), rs[5], order[5]; bool vis[5];
+  for (int tries = 0; n < 0 && tries < 3; tries++) { vTaskDelay(pdMS_TO_TICKS(1500)); n = WiFi.scanNetworks(); }
+  for (int k = 0; k < nNets; k++) { vis[k] = false; rs[k] = -1000; order[k] = k;
+    for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); vis[k] = true; } }
   if (n > 0) WiFi.scanDelete();
   for (int i = 0; i < nNets; i++) for (int j = i + 1; j < nNets; j++) { int a = order[i], b = order[j];
     if ((vis[b] && !vis[a]) || (vis[a] == vis[b] && rs[b] > rs[a])) { order[i] = b; order[j] = a; } }
-  int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0; lastReason = 0;
-  /* the ESP32 often fails a first try at a Wi-Fi that is fine (its own retry is off, see setup): so up to three tries here, the
-     third letting it choose the transmitter itself; a try it is refused ends at once and the next begins */
-  for (int attempt = 0; attempt < 3 && WiFi.status() != WL_CONNECTED && !setupOn; attempt++) {
-    if (attempt) { WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(600)); }
-    lastReason = 0;
-    if (vis[k] && attempt < 2) WiFi.begin(nets[k].c_str(), passes[k].c_str(), ch[k], bs[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
-    for (int w = 0; w < 30 && WiFi.status() != WL_CONNECTED && !setupOn; w++) { vTaskDelay(pdMS_TO_TICKS(500)); if (lastReason && w > 3) break; }
-  }
+  int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0;
+  WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN); WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);   // where a router and extender share a name, the stronger
+  WiFi.setAutoReconnect(true); lastReason = 0;
+  WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  for (int w = 0; w < 60 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
   if (WiFi.status() != WL_CONNECTED && !setupOn) {
     int r = lastReason;
-    String why = nets[k] + ": " + (n < 0 ? String("couldn't scan") : !vis[k] ? String("not seen: 5 GHz, or out of range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
+    String why = nets[k] + ": " + ((r == 15 || r == 202 || r == 204) ? String("wrong password?") : (r == 201) ? String("not found (") + n + " seen)"
+      : (r == 210 || r == 211) ? String("its security type isn't supported") : String("no join (code ") + r + (vis[k] ? String(", ") + tryRssi + " dBm)" : String(", not in scan)")));
     xSemaphoreTake(lock, portMAX_DELAY); whyNot = why; xSemaphoreGive(lock);
-    WiFi.disconnect(); tryNext++;
+    WiFi.setAutoReconnect(false); WiFi.disconnect(); tryNext++;
   }
 }
 void netTask(void *) {
