@@ -16,7 +16,7 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const fail = (status, error) => json({ error }, status);
 const now = () => Date.now();
 const H = 3600e3, DAY = 24 * H;
-const LIMIT = { example: 700e3, body: 900e3, sig: 9000, record: 6000, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 420e3, mesh: 240, waiting: 300, perPrinter: 20 };
+const LIMIT = { example: 700e3, body: 2.4e6, sig: 9000, record: 20e3, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 900e3, mesh: 240, waiting: 2000, perPrinter: 20, sends: 20 };
 /* a pack of cells: up to 200, each with a place on the ground and a short name */
 const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
@@ -51,6 +51,7 @@ function ready(db) {
     /* touch: the hash of a small touch screen's token; while set, that screen is where a held slip is printed or squashed */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN touch TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN touch_seen INTEGER').run(); } catch (e) { /* already there */ }
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN refused TEXT').run(); } catch (e) { /* already there */ }
     /* every partner place has a print queue from the start; a printer joins it when its token is made on the approval page */
     if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)').bind(p.id, p.n, p.paper, now())));
   })().catch(e => { readied.delete(db); throw e; }));
@@ -119,29 +120,32 @@ async function photo(db, id, any) {
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
 async function send(db, env, req) {
-  if (await tooMany(db, env, req, 'send', 8, 10 * 60e3)) return fail(429, 'too many');
-  const b = await body(req); const kind = ['record', 'cells', 'example', 'message'].includes(b.kind) ? b.kind : 'story';
+  const b = await body(req);
+  /* a send refused for a printer is noted on it, for the approval page to show */
+  const refuse = async (code, why) => { if (typeof b.dest === 'string' && b.dest && b.dest !== 'mesh') { try { await db.prepare('UPDATE printers SET refused = ? WHERE id = ?').bind(JSON.stringify({ why, at: now() }), b.dest).run(); } catch (e) { /* no such printer */ } } return fail(code, why); };
+  if (await tooMany(db, env, req, 'send', LIMIT.sends, 10 * 60e3)) return refuse(429, 'too many sends from one place in ten minutes');
+  const kind = ['record', 'cells', 'example', 'message'].includes(b.kind) ? b.kind : 'story';
   if (!CODE.test(b.code || '')) return fail(400, 'code');
   /* a message to novel.global (the portfolio's send message) is a story kept private: printed once approved, never listed */
   if ((kind === 'story' || kind === 'message') && !(typeof b.body === 'string' && /^[A-Za-z0-9_-]{20,}$/.test(b.body) && b.body.length <= LIMIT.sig)) return fail(400, 'story');
-  if (kind === 'record' && !(typeof b.body === 'string' && b.body.length <= LIMIT.record && (() => { try { return typeof JSON.parse(b.body) === 'object'; } catch (e) { return false; } })())) return fail(400, 'record');
+  if (kind === 'record' && !(typeof b.body === 'string' && b.body.length <= LIMIT.record && (() => { try { return typeof JSON.parse(b.body) === 'object'; } catch (e) { return false; } })())) return refuse(400, 'record too long');
   if (kind === 'cells' && (!cellsOk(b.body) || b.dest || b.photo)) return fail(400, 'cells');
   /* BOARD 00, the example, rewritten: only while it is open to editing on the approval page, and shown only once approved */
   if (kind === 'example' && !(await settingsOf(db)).exampleEdit) return fail(403, 'locked');
   if (kind === 'example' && (b.dest || b.photo || !(typeof b.body === 'string' && b.body.length <= LIMIT.example && (() => { try { const j = JSON.parse(b.body); return !!j && Array.isArray(j.objects); } catch (e) { return false; } })()))) return fail(400, 'example');
   const lat = +b.lat, lng = +b.lng; if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(400, 'where');
-  const pic = b.photo ? dataURL(b.photo) : null; if (b.photo && !pic) return fail(400, 'photo');
+  const pic = b.photo ? dataURL(b.photo) : null;   // a photograph too large or of another kind is left off; the print still goes
   const dest = typeof b.dest === 'string' && b.dest ? b.dest : ''; const toMesh = dest === 'mesh';
   const P = dest && !toMesh ? await db.prepare('SELECT * FROM printers WHERE id = ?').bind(dest).first() : null;
   if (dest && !toMesh && !P) return fail(400, 'dest');
   if (toMesh && !(typeof b.mesh === 'string' && b.mesh)) return fail(400, 'mesh');
-  if (dest && b.escpos != null && !b64ok(b.escpos, LIMIT.escpos)) return fail(400, 'escpos');
+  if (dest && b.escpos != null && !b64ok(b.escpos, LIMIT.escpos)) return refuse(400, 'the print is too long');
   if (b.mesh != null && (typeof b.mesh !== 'string' || enc.encode(b.mesh).length > LIMIT.mesh)) return fail(400, 'mesh');
-  const { n } = await db.prepare("SELECT count(*) AS n FROM stories WHERE status = 'waiting'").first(); if (n >= LIMIT.waiting) return fail(503, 'busy');
+  const { n } = await db.prepare("SELECT count(*) AS n FROM stories WHERE status = 'waiting'").first(); if (n >= LIMIT.waiting) return refuse(503, 'too many stories waiting for approval');
   const id = rid(); const t = now(); const ops = [db.prepare('INSERT INTO stories (id, code, kind, status, body, photo, lat, lng, dest, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, b.code, kind, 'waiting', b.body, pic, lat, lng, dest || null, t)];
   let job = null;
   if (P && (b.escpos || b.mesh)) {
-    const { q } = await db.prepare("SELECT count(*) AS q FROM jobs WHERE printer = ? AND status IN ('held', 'queued', 'printing')").bind(dest).first(); if (q >= LIMIT.perPrinter) return fail(503, 'queue full');
+    const { q } = await db.prepare("SELECT count(*) AS q FROM jobs WHERE printer = ? AND status IN ('held', 'queued', 'printing')").bind(dest).first(); if (q >= LIMIT.perPrinter) return refuse(503, 'its queue is full');
     job = { id: rid(), status: P.auto ? 'queued' : 'held' };
     ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(job.id, dest, id, b.code, b.escpos || null, P.mesh ? (b.mesh || null) : null, job.status, t));
   }
@@ -259,7 +263,7 @@ async function admin(db, env, req, parts) {
     return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'printers' && !id) {
-    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.seen, p.can, p.off,
+    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
