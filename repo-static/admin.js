@@ -91,7 +91,8 @@
         const mesh = `${p.mesh ? '✓ MESH ON' : '· MESH OFF'}`;
         const last = L ? `LAST SLIP ${L.code || ''} ${String(L.status).toUpperCase()} ${when(L.at)}${L.paper ? '' : ' (RADIO ONLY)'}${L.mesh ? ' · WITH A MESH LINE' : ''}${L.error ? ' · ' + L.error : ''}` : '✗ NO SLIP HAS BEEN SENT TO THIS PRINTER';
         const hint = !L ? 'Pieces go to the printer chosen on the site; make one on this site and print it here.' : L.status === 'held' ? (p.touch ? 'Waiting for a press on the touch screen.' : 'Waiting for approval below.') : L.status === 'queued' ? (fresh(p.seen) ? 'The Pi will take it in a moment.' : 'Waiting for the Pi to ask.') : L.status === 'failed' ? 'The Pi could not print it: see the error (printd answered 500 means the printer is off or unplugged).' : '';
-        return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${hint ? '  —  ' + hint : ''}` }); })(),
+        let R = null; try { R = p.refused ? JSON.parse(p.refused) : null; } catch (e) { /* none */ } const ref = R && (!L || R.at > L.at) ? `  ·  ✗ LAST SEND REFUSED ${when(R.at)}: ${R.why}` : '';
+        return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${ref}${hint ? '  —  ' + hint : ''}` }); })(),
       el('div', { class: 'acts' },
         el('button', { type: 'button', text: p.paired ? 'NEW TOKEN' : 'PAIR A PRINTER', onclick: async () => { if (p.paired && !confirm('A new token stops the old one working. Go on?')) return; const j = await setP(p.id, { action: 'token' }); tok.hidden = false; tok.textContent = `This token shows once. Put it on the receiver, in /etc/da-pull.env:\n\nDA_SERVER=${location.origin}\nDA_PRINTER=${p.id}\nDA_TOKEN=${j.token}`; } }),
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,

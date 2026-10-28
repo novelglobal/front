@@ -149,7 +149,7 @@ try {
     call('/api/stories', { method: 'POST', body: story('DA-1234'), origin: 'https://elsewhere.example' }),
     call('/api/stories', { method: 'POST', raw: '{"kind":"story",' + '"x":"' + 'a'.repeat(1000000) + '"}' }),
   ]);
-  check('a bad code, a bad story, an unknown place, a photograph not a JPEG, another site, too large: each refused', bad.map(b => b.status).join(',') === '400,400,400,400,403,413', bad.map(b => b.status).join(','));
+  check('a bad code, a bad story, an unknown place, another site, too large: each refused; a photograph not a JPEG is left off and the rest goes', bad.map(b => b.status).join(',') === '400,400,400,201,403,400', bad.map(b => b.status).join(','));
   /* the portfolio: a post written on the approval page is a draft, unseen, until published */
   const pd0 = await call('/api/admin/posts', { method: 'POST', body: { title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a', 'javascript:alert(1)'], cover: JPEG } });
   const pd = await call('/api/admin/posts', { method: 'POST', key: KEY, body: { title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a', 'javascript:alert(1)'], cover: JPEG } });
@@ -189,7 +189,7 @@ try {
   await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
   const mp = await call('/api/stories'); const mc = await call('/api/stories/DA-3MSG'); const mph = await call(`/api/photos/${ms.json.id}`); const mr = await call(`/api/receipts/${ms.json.id}`);
   check('a message is private: approved, its print joins the queue; it is never listed, found by its code, nor its photograph shown', ms.status === 201 && !mp.json.stories.some(x => x.code === 'DA-3MSG') && mc.status === 404 && mph.status === 404 && mr.json.job && mr.json.job.status === 'queued', JSON.stringify({ s: ms.status, listed: mp.json.stories.some(x => x.code === 'DA-3MSG'), mc: mc.status, mph: mph.status, job: mr.json.job }));
-  let last = 0; for (let i = 0; i < 9; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJ'[i] + 'QR') })).status;
+  let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }
 await server.close();
