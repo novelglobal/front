@@ -101,16 +101,20 @@ void act(const String &job, const String &what) {
    interrupted by another scan. Each failure is kept with its reason, for the screen to say */
 String trying, whyNot; int tryNext = 0, tryRssi = 0; volatile int lastReason = 0;
 void join() {
-  int n = WiFi.scanNetworks(), cand[5], rs[5], c = 0;
-  for (int k = 0; k < nNets; k++) { int best = -1000; for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > best) best = WiFi.RSSI(i); if (best > -1000) { cand[c] = k; rs[c++] = best; } }
+  /* every Wi-Fi it knows: those it can see first, strongest first, each aimed at its strongest transmitter (a router and its
+     extender often share a name); then those it can't see, in case the scan missed them. Each attempt moves on to the next */
+  int n = WiFi.scanNetworks(), rs[5], ch[5], order[5]; uint8_t bs[5][6]; bool vis[5];
+  for (int k = 0; k < nNets; k++) { vis[k] = false; rs[k] = -1000; ch[k] = 0; order[k] = k;
+    for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); ch[k] = WiFi.channel(i); memcpy(bs[k], WiFi.BSSID(i), 6); vis[k] = true; } }
   if (n > 0) WiFi.scanDelete();
-  for (int i = 0; i < c; i++) for (int j = i + 1; j < c; j++) if (rs[j] > rs[i]) { int t = cand[i]; cand[i] = cand[j]; cand[j] = t; t = rs[i]; rs[i] = rs[j]; rs[j] = t; }
-  int k = c ? cand[tryNext % c] : tryNext % nNets; tryRssi = c ? rs[tryNext % c] : 0; trying = nets[k]; lastReason = 0;
-  WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  for (int i = 0; i < nNets; i++) for (int j = i + 1; j < nNets; j++) { int a = order[i], b = order[j];
+    if ((vis[b] && !vis[a]) || (vis[a] == vis[b] && rs[b] > rs[a])) { order[i] = b; order[j] = a; } }
+  int k = order[tryNext % nNets]; trying = nets[k]; tryRssi = vis[k] ? rs[k] : 0; lastReason = 0;
+  if (vis[k]) WiFi.begin(nets[k].c_str(), passes[k].c_str(), ch[k], bs[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
   for (int w = 0; w < 50 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
   if (WiFi.status() != WL_CONNECTED && !setupOn) {
     int r = lastReason;
-    whyNot = trying + ": " + (!c ? String("not in range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
+    whyNot = trying + ": " + (!vis[k] ? String("not in range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
     WiFi.disconnect(); tryNext++;
   }
 }
