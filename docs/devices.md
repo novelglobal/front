@@ -275,6 +275,12 @@ Open a terminal on the Pi: on a screen and keyboard, or by `ssh` from your compu
 
    `--break-system-packages` is needed on Raspberry Pi OS Bookworm, which otherwise refuses with *externally-managed-environment*. With `--user`, the library goes only into the printer user's own folder, and the system's Python is untouched.
 
+   The printer's service is kept away from home folders, so let it read that one library (otherwise its log says *No module named 'meshtastic'*):
+
+   ```sh
+   sudo mkdir -p /etc/systemd/system/da-pull.service.d && printf '[Service]\nProtectHome=read-only\n' | sudo tee /etc/systemd/system/da-pull.service.d/mesh.conf && sudo systemctl daemon-reload
+   ```
+
 2. Check the Pi can reach the radio:
 
    ```sh
