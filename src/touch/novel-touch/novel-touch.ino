@@ -38,6 +38,9 @@
 #define KEY_A     14
 
 const int W = 320, H = 170;
+/* the kinds that functions below take, named before any function: Arduino lists every function's heading above the first one */
+struct Part { float x, y, vx, vy, rot, vr, s; float px[6], py[6]; uint8_t n, kind; bool on; };   // kind: 0 a bead, 1 a piece of bell or tentacle (a short line), 2 the eye, 3 a bubble
+enum Mode { CONNECTING, SETUP, ASLEEP, AWAKE, ARRIVE, HELD, SQUISH, PRINTING, BURST, QUIET };
 Arduino_DataBus *bus = new Arduino_ESP32PAR8Q(7, 6, 8, 9, 39, 40, 41, 42, 45, 46, 47, 48);
 Arduino_GFX *tft = new Arduino_ST7789(bus, 5, NG_TURN, true, 170, 320, 35, 0, 35, 0);
 Arduino_Canvas *g = new Arduino_Canvas(W, H, tft);
@@ -207,8 +210,7 @@ void drawSea(float t, float dt) {
 }
 
 /* ───────── what is left after a squash: pieces, swept by a current, and a fish ───────── */
-struct Part { float x, y, vx, vy, rot, vr, s; float px[6], py[6]; uint8_t n, kind; bool on; } parts[60];
-// kind: 0 a bead, 1 a piece of bell or tentacle (a short line), 2 the eye, 3 a bubble
+Part parts[60];
 int nParts = 0;
 void addPart(Part p) { if (nParts < 60) { p.on = true; parts[nParts++] = p; } }
 struct Fish { float x, y, chomp; bool on; } fish;
@@ -325,7 +327,7 @@ void startSetup(float t) {
 }
 
 /* ───────── what it is doing ───────── */
-enum Mode { CONNECTING, SETUP, ASLEEP, AWAKE, ARRIVE, HELD, SQUISH, PRINTING, BURST, QUIET } mode = CONNECTING;
+Mode mode = CONNECTING;
 float modeAt = 0, springAt = -9, springFrom = 0, nextTick = 0; int awakeKind = 0;
 Slip slip; String printLines[12]; int nPrint = 0;
 void go(Mode m, float t) { mode = m; modeAt = t; if (m == ARRIVE) { slip = seen.first; buzz(15); } }
