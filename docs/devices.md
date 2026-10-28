@@ -111,7 +111,7 @@ A tap now gives a short knock, a print a firmer one, and a squash a long one.
 
 ## The radio: LilyGO T-Beam Supreme (Meshtastic, 915 MHz)
 
-With the radio plugged into the printer's Raspberry Pi, every slip that printer prints also goes out over the mesh as its signal line: `ng:` followed by about 200 characters, which is everything needed to make the piece again. A signal can also be sent to the radios without printing.
+With the radio on the same Wi-Fi as the printer's Raspberry Pi (no cable: the Pi's USB is taken by the printer), every slip that printer prints also goes out over the mesh as its signal line: `ng:` followed by about 200 characters, which is everything needed to make the piece again. A signal can also be sent to the radios without printing.
 
 Any Meshtastic user on the channel receives the line. Paste it into the site, and the piece comes back: its words, its life, its place and its marks. When online, the photograph is fetched again too.
 
@@ -148,36 +148,62 @@ If no port appears:
 
 The Pi sends on the primary channel.
 
-### 3. Plug it into the Pi
+### 3. Put it on the Pi's Wi-Fi
 
-1. Plug the T-Beam into one of the Pi's USB ports. It appears as `/dev/ttyACM0`.
-2. On the Pi, install Meshtastic's library:
+The T-Beam and the Pi talk over the Wi-Fi they share. The radio needs only power: a USB-C charger, a power bank, or its own 18650 battery.
+
+Do this last. Once the radio's Wi-Fi is on, its Bluetooth turns off (Meshtastic runs one or the other), so finish step 2 first.
+
+1. In the Meshtastic app, open **Settings → Network**.
+2. Turn **WiFi enabled** on.
+3. Type the Wi-Fi name (**SSID**) and password (**PSK**). Use the Wi-Fi the Pi is on, 2.4 GHz.
+4. Save. The radio restarts and joins the Wi-Fi. Its screen shows its address (for example `192.168.1.37`). It also answers to the name `meshtastic.local`.
+
+### 4. Point the Pi at it
+
+1. On the Pi, install Meshtastic's library:
 
    ```sh
    sudo -u da python3 -m pip install --user meshtastic
    ```
 
-3. Open the settings file:
+2. Open the settings file:
 
    ```sh
    sudo nano /etc/da-pull.env
    ```
 
-4. Set this line, then save (Ctrl+O, Enter, Ctrl+X):
+3. Set this line, then save (Ctrl+O, Enter, Ctrl+X):
 
    ```
-   DA_MESH=auto
+   DA_MESH=tcp:meshtastic.local
    ```
 
-   If the Pi has more than one USB serial device plugged in, use `DA_MESH=/dev/ttyACM0` instead of `auto`.
+   If the name is not found, use the address on the radio's screen instead, such as `DA_MESH=tcp:192.168.1.37`. Then fix that address in your router, so it never changes. The router setting is usually called a DHCP reservation.
 
-5. Restart the printer's service:
+4. Restart the printer's service:
 
    ```sh
    sudo systemctl restart da-pull
    ```
 
-### 4. Turn it on for the printer
+5. Check that the Pi can see the radio:
+
+   ```sh
+   sudo -u da python3 -m meshtastic --host meshtastic.local --info
+   ```
+
+   It prints the radio's details. If it hangs, the two are not on the same Wi-Fi.
+
+**Moving to another Wi-Fi.** The radio and the Pi must move together. The Pi learns a new Wi-Fi from a phone (see the receiver's README, "Wi-Fi from a phone"). To tell the radio:
+
+1. Plug the radio into a computer by USB.
+2. Open **client.meshtastic.org** in Chrome and connect by **Serial**.
+3. Change **Network → WiFi** and save.
+
+**Reading messages on your phone.** With its Bluetooth off, the phone app reaches this radio over Wi-Fi: add it by its address, `meshtastic.local` or its IP. Or keep a second radio for your phone on Bluetooth, on the same channel.
+
+### 5. Turn it on for the printer
 
 1. On the approval page, find the printer.
 2. Click **MESH OFF**. It changes to **MESH ON**.
@@ -191,9 +217,9 @@ If nothing arrives, check the log on the Pi:
 journalctl -u da-pull -f
 ```
 
-Look for `mesh not sent` and the reason.
+Look for `mesh not sent` and the reason. `Connection refused` or a timeout means the Pi cannot reach the radio: check that the radio's Wi-Fi is on, that both are on the same Wi-Fi, and the address in `DA_MESH`.
 
-### 5. Send and receive signals
+### 6. Send and receive signals
 
 **Send:**
 
@@ -217,6 +243,7 @@ Pasting anywhere on the site works too. The piece is rebuilt and opens in print,
 
 ## Notes
 
+- Neither device needs a cable to the Pi. The touch screen talks to this site over Wi-Fi. The radio talks to the Pi over the shared Wi-Fi, and the Pi talks to this site.
 - Both devices talk only to this site's own server. The touch screen uses its own token, which is separate from the Pi's token. Turning TOUCH SCREEN OFF stops it at once.
 - A held slip that nobody presses expires after a day, like any other.
 - `src/touch/` is the sketch's source. It is not part of the website's build.
