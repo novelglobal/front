@@ -28,7 +28,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 2"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "29 Oct · 3"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -114,8 +114,14 @@ void join() {
   for (int i = 0; i < nNets; i++) for (int j = i + 1; j < nNets; j++) { int a = order[i], b = order[j];
     if ((vis[b] && !vis[a]) || (vis[a] == vis[b] && rs[b] > rs[a])) { order[i] = b; order[j] = a; } }
   int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0; lastReason = 0;
-  if (vis[k]) WiFi.begin(nets[k].c_str(), passes[k].c_str(), ch[k], bs[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
-  for (int w = 0; w < 50 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
+  /* the ESP32 often fails a first try at a Wi-Fi that is fine (its own retry is off, see setup): so up to three tries here, the
+     third letting it choose the transmitter itself; a try it is refused ends at once and the next begins */
+  for (int attempt = 0; attempt < 3 && WiFi.status() != WL_CONNECTED && !setupOn; attempt++) {
+    if (attempt) { WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(600)); }
+    lastReason = 0;
+    if (vis[k] && attempt < 2) WiFi.begin(nets[k].c_str(), passes[k].c_str(), ch[k], bs[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
+    for (int w = 0; w < 30 && WiFi.status() != WL_CONNECTED && !setupOn; w++) { vTaskDelay(pdMS_TO_TICKS(500)); if (lastReason && w > 3) break; }
+  }
   if (WiFi.status() != WL_CONNECTED && !setupOn) {
     int r = lastReason;
     String why = nets[k] + ": " + (n < 0 ? String("couldn't scan") : !vis[k] ? String("not seen: 5 GHz, or out of range") : (r == 15 || r == 202 || r == 204 || r == 2) ? String("wrong password?") : r == 201 ? String("not found") : tryRssi < -80 ? String("signal too weak (") + tryRssi + " dBm)" : String("no answer (") + r + ")");
