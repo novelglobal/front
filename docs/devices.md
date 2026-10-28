@@ -99,7 +99,11 @@ Arduino keeps every sketch in a folder with the same name as the file: `novel-to
 2. A page opens by itself. If it doesn't, open **192.168.4.1** in the browser.
 3. Choose your Wi-Fi, which must be 2.4 GHz, and type its password.
 4. Paste the three lines from the approval page into the box below. Paste all three as they are.
-5. Tap **Join**. The screen restarts, joins your Wi-Fi, and goes to work.
+5. Tap **Save and restart**. The screen restarts, joins your Wi-Fi, and goes to work.
+
+The page also shows the printer and the Wi-Fis the screen already knows:
+- If your Wi-Fi isn't in the list, tap **Scan again**.
+- To change nothing, tap **Done, change nothing**, or press **BOOT** once on the board.
 
 **Or in the sketch.** At the top, change the words between the quotation marks, and keep the quotation marks:
 

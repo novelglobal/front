@@ -317,29 +317,55 @@ const char *PAGE_HEAD = "<!doctype html><meta name=viewport content='width=devic
   "<style>body{background:#17457F;color:#F4F1E8;font:16px/1.4 -apple-system,system-ui,sans-serif;margin:0;padding:22px;max-width:520px}"
   "input,select,textarea{width:100%;box-sizing:border-box;font:16px ui-monospace,monospace;padding:10px;margin:4px 0 14px;border:1.5px solid #F4F1E8;border-radius:8px;background:#0E2F6E;color:#F4F1E8}"
   "button{font:600 17px system-ui;padding:12px 26px;border-radius:30px;border:0;background:#F4F1E8;color:#17457F}label{font-size:13px;opacity:.8}h1{font-weight:500;font-size:20px}</style>";
-void pageRoot() {
-  String s = PAGE_HEAD; s += "<h1>novel.global · touch</h1><form method=post action=/save><label>Wi-Fi</label><select name=s>" + scanOpts + "</select>";
-  s += "<label>or a Wi-Fi not listed</label><input name=s2 autocomplete=off><label>its password</label><input name=p type=password>";
-  s += "<label>the three lines from the approval page (leave empty to keep them)</label><textarea name=ng rows=4 placeholder='#define NG_HOST ...'></textarea>";
-  if (nNets) { s += "<label>Wi-Fis it knows (tick to forget)</label><div style='margin:6px 0 16px'>"; for (int i = 0; i < nNets; i++) s += "<div><input type=checkbox name=f" + String(i) + " style='width:auto;margin-right:8px'>" + esc(nets[i]) + "</div>"; s += "</div>"; }
-  s += "<button>Join</button></form>"; web.send(200, "text/html", s);
+/* the Wi-Fis it can see, strongest first, each once; the ones it knows marked. Scanning can clash with its own search for a
+   known Wi-Fi, so it waits for that and tries again */
+void scanNets() {
+  int n = WIFI_SCAN_FAILED;
+  for (int tries = 0; tries < 5 && n < 0; tries++) {
+    n = WiFi.scanNetworks(true);   // in the background, then waited for, so a scan already running is not a failure
+    unsigned long s0 = millis(); while ((n = WiFi.scanComplete()) == WIFI_SCAN_RUNNING && millis() - s0 < 9000) delay(100);
+    if (n < 0) { WiFi.scanDelete(); delay(600); }
+  }
+  scanOpts = ""; String seenNames = "|";
+  for (int pass = 0; pass < 2; pass++) for (int i = 0; i < n && i < 30; i++) {
+    String s = WiFi.SSID(i); if (!s.length() || seenNames.indexOf("|" + s + "|") >= 0) continue;
+    bool known = false; for (int k = 0; k < nNets; k++) if (nets[k] == s) known = true;
+    if ((pass == 0) != known) continue;   // known ones first
+    seenNames += s + "|"; scanOpts += "<option value=\"" + esc(s) + "\">" + esc(s) + (known ? " (known)" : "") + "</option>";
+  }
+  if (n > 0) WiFi.scanDelete();
 }
+void pageRoot() {
+  String s = PAGE_HEAD; s += "<h1>novel.global &middot; touch</h1>";
+  s += "<p style='opacity:.8;font-size:14px'>Printer: <b>" + (printerId.length() ? esc(printerId) + "</b> on " + esc(host) : String("not set yet</b>")) + "<br>Wi-Fis it knows: <b>" + (nNets ? String("") : String("none")) ;
+  for (int i = 0; i < nNets; i++) s += (i ? ", " : "") + esc(nets[i]); s += "</b></p>";
+  s += "<form method=post action=/save><label>Wi-Fi to join</label><select name=s><option value=''>(keep what it knows)</option>" + scanOpts + "</select>";
+  s += "<p style='margin:-6px 0 14px;font-size:13px'><a style='color:#F4F1E8' href=/scan>Scan again</a> if yours isn't listed (it must be 2.4 GHz)</p>";
+  s += "<label>or type its name</label><input name=s2 autocomplete=off autocapitalize=none><label>its password</label><input name=p type=password>";
+  s += "<label>the three lines from the approval page (leave empty to keep them)</label><textarea name=ng rows=4 placeholder='#define NG_HOST ...'></textarea>";
+  if (nNets) { s += "<label>tick to forget</label><div style='margin:6px 0 16px'>"; for (int i = 0; i < nNets; i++) s += "<div><input type=checkbox name=f" + String(i) + " style='width:auto;margin-right:8px'>" + esc(nets[i]) + "</div>"; s += "</div>"; }
+  s += "<button>Save and restart</button></form>";
+  s += "<form method=post action=/done style='margin-top:18px'><button style='background:none;color:#F4F1E8;border:1.5px solid #F4F1E8'>Done, change nothing</button></form>";
+  web.send(200, "text/html", s);
+}
+void pageScan() { scanNets(); web.sendHeader("Location", "/"); web.send(302, "text/plain", ""); }
+void bye(const String &what) { web.send(200, "text/html", String(PAGE_HEAD) + "<h1>" + what + "</h1><p>The screen restarts. You can close this and go back to your own Wi-Fi.</p>"); delay(1500); ESP.restart(); }
 void pageSave() {
-  String ss = web.arg("s2").length() ? web.arg("s2") : web.arg("s"), pp = web.arg("p"), ng = web.arg("ng");
+  String ss = web.arg("s2").length() ? web.arg("s2") : web.arg("s"), pp = web.arg("p"), ng = web.arg("ng"); ss.trim();
   String kn[5], kp[5]; int k = 0; if (ss.length()) { kn[k] = ss; kp[k++] = pp; }
   for (int i = 0; i < nNets && k < 5; i++) if (!web.hasArg("f" + String(i)) && nets[i] != ss) { kn[k] = nets[i]; kp[k++] = passes[i]; }
   nNets = k; for (int i = 0; i < k; i++) { nets[i] = kn[i]; passes[i] = kp[i]; } saveNets();
   String h2 = between(ng, "NG_HOST"), p2 = between(ng, "NG_PRINTER"), t2 = between(ng, "NG_TOKEN");
   if (h2.length()) prefs.putString("host", h2); if (p2.length()) prefs.putString("prn", p2); if (t2.length()) prefs.putString("tok", t2);
-  web.send(200, "text/html", String(PAGE_HEAD) + "<h1>Joining " + esc(ss) + "…</h1><p>The screen restarts. Join your own Wi-Fi again.</p>");
-  delay(1500); ESP.restart();
+  bye(ss.length() ? "Joining " + esc(ss) + "&hellip;" : String("Saved"));
 }
 float setupAt = 0;
 void startSetup(float t) {
-  setupOn = true; setupAt = t; WiFi.disconnect(); WiFi.mode(WIFI_AP_STA);
-  int n = WiFi.scanNetworks(); scanOpts = ""; for (int i = 0; i < n && i < 20; i++) { String s = WiFi.SSID(i); if (s.length() && scanOpts.indexOf(">" + esc(s) + "<") < 0) scanOpts += "<option>" + esc(s) + "</option>"; }
-  apPass = "novelglobal"; WiFi.softAP("NOVEL TOUCH", apPass.c_str());   // fixed, so its code can be printed on the screen; it is only open at power-on
-  dns.start(53, "*", WiFi.softAPIP()); web.on("/", HTTP_GET, pageRoot); web.on("/save", HTTP_POST, pageSave);
+  setupOn = true; setupAt = t; WiFi.disconnect(); delay(200); WiFi.mode(WIFI_AP_STA);
+  apPass = "novelglobal"; WiFi.softAP("NOVEL TOUCH", apPass.c_str());   // fixed, so its code can be shown on the screen; open only by hand or at power-on
+  scanNets();
+  dns.start(53, "*", WiFi.softAPIP()); web.on("/", HTTP_GET, pageRoot); web.on("/save", HTTP_POST, pageSave); web.on("/scan", HTTP_GET, pageScan);
+  web.on("/done", HTTP_POST, []() { bye("Back to the jellyfish"); });
   web.onNotFound([]() { web.sendHeader("Location", "http://192.168.4.1/"); web.send(302, "text/plain", ""); }); web.begin();
 }
 
@@ -410,7 +436,9 @@ void loop() {
       if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has ? ARRIVE : AWAKE, t);
       else if (k > 40 && !setupOn) startSetup(t);
       break;
-    case SETUP: J.a = 0; camT = {W / 2, H / 2, 1}; if (t - setupAt > 600) ESP.restart(); break;
+    case SETUP: J.a = 0; camT = {W / 2, H / 2, 1}; if (t - setupAt > 600) ESP.restart();
+      { static bool let = false; if (digitalRead(KEY_BOOT) == HIGH) let = true; else if (let && t - setupAt > 1) { delay(50); ESP.restart(); } }   // BOOT let go, then pressed again: leave setup, nothing changed
+      break;
     case ASLEEP:       // nothing waiting: the screen dark half a minute; a touch wakes it
       draw = false; blT = 0; J.a = 0; if (has) go(ARRIVE, t); else if (k > 30 || press) { awakeKind = (awakeKind + 1) % 3; go(AWAKE, t); } break;
     case AWAKE: {      // ten seconds awake: the code to scan, the jellyfish behind it
@@ -501,6 +529,7 @@ void loop() {
     text(BODY, apPass.c_str(), 16, 100, INK, 0.95f, 1);
     text(MONO, "then a page opens", 16, 126, INK, 0.5f, 0);
     text(MONO, "or go to 192.168.4.1", 16, 142, INK, 0.5f, 0);
+    text(MONO, "BOOT again to leave", 16, 160, INK, 0.35f, 0);
     drawQR(QR_JOIN, 29, 246, H / 2, 4);
   }
   if (bootAt >= 0) {   // BOOT held: a ring of dots filling round the word
