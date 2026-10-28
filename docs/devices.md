@@ -57,6 +57,13 @@ The board has no vibration motor of its own, so the squash and the bounce are wh
 
 While the screen is on, that printer holds every slip for the screen. **AUTO** is turned off.
 
+**Staging and live are separate.** The staging site keeps its own stories and queue, so nothing made there reaches a real printer. The Pi prints from **novel.global**. So, for real use:
+- turn the screen on from novel.global's approval page;
+- give the screen **those** three lines, with `NG_HOST "novel.global"`;
+- make the pieces on novel.global.
+
+A screen given staging's lines shows staging's slips, and pressing them prints nothing, because no Pi reads staging.
+
 ### 2. Set up Arduino (once)
 
 1. Install **Arduino IDE 2** from arduino.cc/en/software.
@@ -164,7 +171,7 @@ The side button marked KEY (GPIO 14) works like a press on the screen. BOOT (GPI
 It remembers up to five Wi-Fis and joins whichever one it finds. To add one:
 
 - **Hold the BOOT button for three seconds**, at any time. A ring of dots fills round the word *setup*, then the screen shows **NOVEL TOUCH** and its code.
-- Or switch it on where it knows no Wi-Fi: after 40 seconds it opens **NOVEL TOUCH** by itself.
+- Where it can't find a Wi-Fi it knows, it keeps looking and says which one at the bottom of the screen ("looking for …"). It never opens setup by itself; hold BOOT.
 
 Setup never comes from the touch screen, so people playing with it can't change anything. The side button marked **KEY** is a press, like the screen.
 
@@ -316,9 +323,43 @@ journalctl -u da-pull -n 30
 - `DA-TEST printed` with no `mesh not sent` line before it: the line went out to the radio.
 - `mesh not sent` with `Connection refused` or a timeout: the Pi can't reach the radio. Go back to D2.
 
-**Seeing it arrive.** The phone can't use this radio by Bluetooth while its Wi-Fi is on. To watch lines arrive, either:
-- in the app, add the radio by its address (`meshtastic.local` or its IP), where your app offers a network connection; or
-- keep a second Meshtastic radio for your phone, on Bluetooth, on the same channel. This also proves the line really went over the air.
+**Seeing the lines.** A radio doesn't show what it sends itself. The Meshtastic app shows messages from *other* radios on the same channel, and lines the Pi hands to this radio aren't echoed back to it. To see them:
+- **A second radio (the reliable way):** any Meshtastic radio paired to your phone by Bluetooth, set to **ANZ** on the **same channel**, within range. Each slip's `ng:` line appears in its **Messages → LongFast** (or your channel). Nearby public nodes on LongFast receive them too.
+- **From the Pi**, to watch the radio's traffic as it happens:
+
+  ```sh
+  sudo -u da python3 -m meshtastic --host 192.168.1.182 --listen
+  ```
+
+  Press Ctrl+C to stop.
+
+**The channel.** One channel always exists from the start, even though the app shows nothing until a radio is connected:
+
+| | Default |
+|---|---|
+| Index | 0 (primary) |
+| Name | blank, shown as **LongFast** |
+| Preset | LONG_FAST |
+| Key | the public default (`AQ==`) |
+| Region | ANZ (915–928 MHz) |
+| Hops | 3 |
+
+To see this radio's channels, and the link that lets another radio join the same one:
+
+```sh
+sudo -u da python3 -m meshtastic --host 192.168.1.182 --info
+```
+
+Look for **Channels:** and **Primary channel URL** (`https://meshtastic.org/e/#…`). Open that link on the phone with the second radio, or turn it into a QR code, and that radio joins the same channel.
+
+**A private channel** (optional; only radios with its key read it). Make it from the Pi, then share the new URL:
+
+```sh
+sudo -u da python3 -m meshtastic --host 192.168.1.182 --ch-index 0 --ch-set name novelglobal --ch-set psk random
+sudo -u da python3 -m meshtastic --host 192.168.1.182 --info
+```
+
+Every radio that should read the lines must join with that URL.
 
 ### F. Using it
 
