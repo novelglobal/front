@@ -49,6 +49,11 @@ While the screen is on, that printer holds every slip for the screen. **AUTO** i
    - **GFX Library for Arduino** (by Moon On Our Nation)
    - **ArduinoJson** (by Benoit Blanchon), version 7
 
+**LilyGO's leaflet** warns about two things:
+
+- **Replacing TFT_eSPI, and "do not upgrade":** this does not apply here. That is for LilyGO's own examples, which draw with the TFT_eSPI library. This sketch draws with GFX Library for Arduino instead, so you don't need their TFT_eSPI, and an installed one does no harm. If Arduino offers to update libraries, saying yes is fine.
+- **Entering upload mode by hand:** this does apply when the port does not show. See step 5.
+
 ### 3. Load the sketch
 
 Arduino keeps every sketch in a folder with the same name as the file: `novel-touch.ino` must sit in a folder called `novel-touch`. If the file is on its own, Arduino offers to make that folder for you, and that is fine.
@@ -99,12 +104,14 @@ Under **Tools**, set:
 
 1. Plug the board in by USB-C, using a data cable.
 2. Click **Upload** (the → arrow).
-3. If it will not connect:
-   1. Hold the **BOOT** button (the one beside the USB port).
-   2. Press and release **RST** (the other button).
-   3. Let go of BOOT.
-   4. Upload again.
-   5. Press RST once when the upload finishes.
+3. If no port shows under **Tools → Port**, or the upload says it cannot connect, put the board in upload mode by hand. The button names are printed on the board beside them.
+   1. Keep the USB cable plugged in.
+   2. Press and hold **BOOT**.
+   3. While still holding BOOT, press and release **RST**.
+   4. Let go of BOOT. The screen stays dark; that is upload mode.
+   5. Choose the port that now shows under **Tools → Port**.
+   6. Click **Upload**.
+   7. When it says **Done uploading**, press **RST** once. The sketch starts.
 
 The screen turns blue and the jellyfish appears. Within five seconds of Wi-Fi joining, it shows any waiting slip.
 
@@ -131,7 +138,8 @@ A tap now gives a short knock, a print a firmer one, and a squash a long one.
 |---|---|
 | A ring in the top corner | No Wi-Fi. Check the name and password. Use 2.4 GHz only. |
 | Blue, but no slip ever appears | Check the three `NG_` lines. Is TOUCH SCREEN ON for this printer? Is the slip going to this printer? |
-| A blank or white screen | Check that PSRAM is set to OPI PSRAM and the board is ESP32S3 Dev Module. |
+| A blank or white screen | Press RST once after uploading. Check that PSRAM is set to OPI PSRAM and the board is ESP32S3 Dev Module. Still blank? Flash LilyGO's factory test (in the `firmware` folder of github.com/Xinyuan-LilyGO/T-Display-S3) to check the board itself. |
+| Errors that name `Arduino_ESP32PAR8Q` when compiling | Update GFX Library for Arduino to its newest version. If the error stays, set the board package to 2.0.17: Tools → Board → Boards Manager → esp32, choose 2.0.17, then Install. |
 | Touch does nothing | Use the touch version of the board. The side button still works. The sketch keeps the touch chip awake and stops it resetting itself mid-hold, following CST816_TouchLib (github.com/mjdonders/CST816_TouchLib). That library is worth trying if a board still misses touches. |
 
 ---
