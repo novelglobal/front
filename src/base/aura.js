@@ -935,9 +935,9 @@
         '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i] + ': ' + WISH_HOW[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS[i]) + '</em> ' + esc(WISH_HOW[i]) + '</span></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
     } else if (s === 2) {
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
-        h = '<div class="au-tray">' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
+        h = '<div class="au-tray">' + '<button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
           STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '" class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
-          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + (SR ? '<button data-add="mic" aria-label="Speak words onto the poster">' + svgI('mic') + '</button>' : '') + '<button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' +
+          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + (SR ? '<button data-add="mic" aria-label="Speak words onto the poster">' + svgI('mic') + '</button>' : '') + '' +
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
@@ -1011,6 +1011,10 @@
     return false;
   }
   document.addEventListener('paste', function (e) { if (asleep) return; var cd = e.clipboardData || {}, t = cd.getData ? cd.getData('text') : '', fs = [].slice.call(cd.files || []).filter(function (f) { return /^image\//.test(f.type); }), act = document.activeElement;
+    if (!fs.length) fs = [].slice.call(cd.items || []).filter(function (it) { return it.kind === 'file' && /^image\//.test(it.type); }).map(function (it) { return it.getAsFile(); }).filter(Boolean);
+    if (!fs.length && /^https?:\/\/\S+$/i.test((t || '').trim()) && S.mode === 'iruk' && S.stage === 2 && P) { var u0 = t.trim(); e.preventDefault(); closeBox();
+      fetch(u0).then(function (r) { if (!r.ok || !/^image\//.test(r.headers.get('content-type') || '')) throw 0; return r.blob(); }).then(function (b) { addPics([new File([b], 'pasted', { type: b.type })]); })
+        .catch(function () { addPiece({ k: 't', t: u0.slice(0, 90) }); }); return; }
     if (act && act.id === 'au-sigi') return; var typing = act && /^(TEXTAREA|INPUT)$/.test(act.tagName) && act.id !== 'au-tx'; if (typing && !fs.length && !/ng:[-0-9a-z]+,/i.test(t)) return;
     if (pasted(fs, fs.length ? '' : t)) { e.preventDefault(); closeBox(); } });
   /* the paste key: for a phone, where there is no keyboard to paste with */
@@ -1133,7 +1137,7 @@
      as line work, crisp. The code is set large, a whole number of dots to each module, with clear paper round it.
      Light paper prints black on white; dark paper prints the head and the four lines reversed, white out of black */
   function printSheet(W, D) {
-    var keep = P.paper, dark = keep !== 'white'; P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
+    var keep = P.paper, dark = false;   // the receipt is always black on white: reversed blocks print as white on white P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
     var gl = document.createElement('canvas'); gl.width = B0.W; gl.height = B0.H; drawItems(gl.getContext('2d'), P, B0, true); PRINTMODE = false; P.paper = keep; P._base = null;
     var src = pc.c, k = W / B0.W, m = 14, parts = [], PS = '"Archivo Narrow", "Arial Narrow", Arial, sans-serif';
     var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
@@ -1146,6 +1150,12 @@
       var a = gg.getImageData(0, 0, gc.width, gc.height).data, dx = dc.getContext('2d'), im = dx.getImageData(0, 0, dc.width, dc.height), d = im.data;
       for (var i = 0; i < d.length; i += 4) if (a[i + 3] > 110) { var v = (a[i] * 0.299 + a[i + 1] * 0.587 + a[i + 2] * 0.114) < 128 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
       dx.putImageData(im, 0, 0); };
+    /* a photograph's tones stretched to the full range and lifted a little in the dark, so it neither washes out nor sinks in the dither */
+    var levels = function (c) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data, h = new Array(256).fill(0), n = d.length / 4;
+      for (var i = 0; i < d.length; i += 4) h[Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114)]++;
+      var lo = 0, hi = 255, acc = 0; while (lo < 255 && (acc += h[lo]) < n * 0.02) lo++; acc = 0; while (hi > 0 && (acc += h[hi]) < n * 0.02) hi--; if (hi - lo < 20) return;
+      for (var j = 0; j < d.length; j += 4) for (var k = 0; k < 3; k++) { var v = Math.max(0, Math.min(1, (d[j + k] - lo) / (hi - lo))); d[j + k] = Math.round(Math.pow(v, 0.85) * 255); }
+      g.putImageData(im, 0, 0); };
     var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
     /* the head: the mark, the name, the code */
     var hd = mk(78), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
@@ -1153,7 +1163,7 @@
     var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 26px ' + PS; hx.fillText(code, W - m - hx.measureText(code).width, 40); }
     if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
     /* the picture, edge to edge, with everything laid over it */
-    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); parts.push(dc); } }
+    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); parts.push(dc); } }
     /* the words, at the printer's size */
     var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
     tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];

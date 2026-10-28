@@ -107,7 +107,7 @@ try {
   const m0 = await call('/api/stories', { method: 'POST', ip: '10.0.0.6', body: story('DA-M5H1', { dest: 'mesh' }) });
   const m1 = await call('/api/stories', { method: 'POST', ip: '10.0.0.6', body: story('DA-M5H1', { dest: 'mesh', mesh: MESH }) });
   const pm = (await call('/api/partners')).json.partners;
-  check('sent to the local mesh: it waits, with a mesh line for each radio that is on', m0.status === 400 && m1.status === 201 && m1.json.job && m1.json.job.status === 'held' && pm.find(p => p.id === 'pickles').mesh === true && pm.find(p => p.id === 'kines').mesh === false, JSON.stringify({ m0: m0.status, m1: m1.json, pm }));
+  check('sent to the local mesh: it goes at once, with a mesh line for each radio that is on', m0.status === 400 && m1.status === 201 && m1.json.job && m1.json.job.status === 'queued' && pm.find(p => p.id === 'pickles').mesh === true && pm.find(p => p.id === 'kines').mesh === false, JSON.stringify({ m0: m0.status, m1: m1.json, pm }));
   await call(`/api/admin/stories/${m1.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
   const mj = await call('/api/printers/pickles/next', { token: T });
   check('the radio gets the mesh line alone, no bytes to print', mj.status === 200 && mj.json.code === 'DA-M5H1' && mj.json.escpos === null && mj.json.mesh === MESH, JSON.stringify(mj.json));
