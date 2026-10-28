@@ -467,3 +467,13 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-sigin { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; border-top: 1.5px dotted rgba(244, 241, 232, .3); padding-top: 10px; }
 .au-sigin .au-i { width: 22px; height: 22px; flex: none; opacity: .75; }
 #aura .au-sigin textarea { font: 12px/1.4 'Departure Mono', ui-monospace, Menlo, monospace; min-height: 36px; padding: 4px 2px; }
+/* the press's keys, round on every phone: fixed squares that never stretch, the icon centred by flex (Safari's grid buttons drift),
+   and the small keys' dotted ring drawn as an SVG circle with round dots (Safari draws dotted round borders as uneven dashes) */
+#aura .au-k { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; position: relative; overflow: visible; line-height: 0; vertical-align: middle; }
+#aura .au-k .au-i { display: block; flex: none; }
+#aura .au-sm { width: 40px; height: 40px; min-width: 40px; max-width: 40px; min-height: 40px; max-height: 40px; border: 0; }
+#aura .au-sm::before { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%; pointer-events: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><circle cx='20' cy='20' r='19.2' fill='none' stroke='%23F4F1E8' stroke-opacity='.85' stroke-width='1.5' stroke-linecap='round' stroke-dasharray='0 4.02'/></svg>") center / 100% 100% no-repeat; }
+#aura .au-nav::before { display: none; }
+#aura .au-big { width: 64px; height: 64px; min-width: 64px; max-width: 64px; min-height: 64px; max-height: 64px; }
+@media (max-width: 759px) { #aura .au-press .au-nav { max-width: 34px; max-height: 34px; } }
