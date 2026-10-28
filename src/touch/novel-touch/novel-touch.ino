@@ -9,8 +9,8 @@
    Board: ESP32S3 Dev Module, USB CDC On Boot enabled, PSRAM OPI. Libraries: GFX Library for Arduino (moononournation),
    ArduinoJson (bblanchon). Everything else is the ESP32's own.
    Wi-Fi and the three NG_ lines can be typed here, or set from a phone. Setup never comes from the screen, which people play with:
-   hold the BOOT button three seconds (or switch it on where it knows no Wi-Fi) and it opens its own Wi-Fi, NOVEL TOUCH, with a
-   code to scan and a page to set them.
+   hold the BOOT button three seconds (or switch it on with nothing set yet) and it opens its own Wi-Fi, NOVEL TOUCH, with a
+   code to scan and a page to set them. Where it can't find a Wi-Fi it knows, it keeps looking and says so; it never opens setup itself.
    Its type: Archivo Narrow (SemiBold) and Departure Mono, both under the SIL Open Font License 1.1, drawn into the tables at the end. */
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -431,10 +431,9 @@ void loop() {
   float blT = 255; bool draw = true;
 
   switch (mode) {
-    case CONNECTING:   // a small jellyfish, asleep, until the Wi-Fi is joined; none it knows after 40 s, and it offers setup (this is still power-on)
+    case CONNECTING:   // a small jellyfish, asleep, until the Wi-Fi is joined and the site answers
       J.a = 1; J.x = W / 2; J.y = 52 + sinf(t) * 3; J.bw = 56; J.eye = 2; J.rate = 0.5f; camT = {W / 2, H / 2, 1};
-      if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has ? ARRIVE : AWAKE, t);
-      else if (k > 40 && !setupOn) startSetup(t);
+      if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has ? ARRIVE : AWAKE, t);   // it never opens setup by itself here: it keeps looking, and says what for
       break;
     case SETUP: J.a = 0; camT = {W / 2, H / 2, 1}; if (t - setupAt > 600) ESP.restart();
       { static bool let = false; if (digitalRead(KEY_BOOT) == HIGH) let = true; else if (let && t - setupAt > 1) { delay(50); ESP.restart(); } }   // BOOT let go, then pressed again: leave setup, nothing changed
@@ -535,6 +534,11 @@ void loop() {
   if (bootAt >= 0) {   // BOOT held: a ring of dots filling round the word
     float f = fminf(1, (t - bootAt) / 3); for (int i = 0; i < 40; i++) { float u = -PI / 2 + i / 40.0f * 2 * PI; dotA(W / 2 + cosf(u) * 22, H / 2 + sinf(u) * 22, 1.1f, INK, i < f * 40 ? 0.95f : 0.2f); }
     text(MONO, "setup", W / 2 - textW(MONO, "setup", 1) / 2, H / 2 + 4, INK, 0.8f, 1);
+  }
+  if (mode == CONNECTING && k > 6) {   // still looking: what for, and how to change it
+    String l1 = !printerId.length() ? String("no printer set") : WiFi.status() != WL_CONNECTED ? String("looking for ") + (nNets ? nets[0] : String("a Wi-Fi")) + (nNets > 1 ? " +" + String(nNets - 1) : String("")) : String("on ") + WiFi.SSID() + String(", asking ") + host;
+    text(MONO, l1.c_str(), W / 2 - textW(MONO, l1.c_str(), 0) / 2, 128, INK, 0.6f, 0);
+    if (k > 20) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
   if (mode != SETUP && netErr) { ring(W - 12, H - 12, 3.5f, 1, INK, 0.55f); if (netErr == 3) text(MONO, "?", W - 28, H - 8, INK, 0.7f, 0); }
