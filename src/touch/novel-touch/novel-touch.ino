@@ -29,7 +29,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 5"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "29 Oct · 6"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -94,11 +94,12 @@ void poll() {
     for (JsonVariant v : f["wish"].as<JsonArray>()) if (s.first.n < 4) s.first.wish[s.first.n++] = v.as<String>(); }
   xSemaphoreTake(lock, portMAX_DELAY); s.ver = net.ver + 1; net = s; xSemaphoreGive(lock); netErr = 0;
 }
-void act(const String &job, const String &what) {
+volatile int actCode = 0;   // what the site said to the last press or squash: 200 done; anything else, not
+int act(const String &job, const String &what) {
   WiFiClientSecure c; c.setInsecure(); HTTPClient h; h.setTimeout(9000);
-  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "/" + job)) return;
+  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "/" + job)) return -100;
   h.addHeader("authorization", String("Bearer ") + token); h.addHeader("content-type", "application/json");
-  h.POST(String("{\"action\":\"") + what + "\"}"); h.end();
+  int code = h.POST(String("{\"action\":\"") + what + "\"}"); h.end(); return code;
 }
 /* joining: every Wi-Fi it knows that it can see, strongest first, each in turn, 25 s each (weak signal needs it), never
    interrupted by another scan. Each failure is kept with its reason, for the screen to say */
@@ -137,12 +138,12 @@ void netTask(void *) {
     if (setupOn) { vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) join(); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     String job, what; xSemaphoreTake(lock, portMAX_DELAY); job = askJob; what = askWhat; askJob = ""; xSemaphoreGive(lock);
-    if (job.length()) { act(job, what); last = 0; }
+    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); } actCode = c; last = 0; }   // three tries; the result shown
     if (printerId.length() && millis() - last > 4000) { last = millis(); poll(); }
     vTaskDelay(pdMS_TO_TICKS(120));
   }
 }
-void ask(const String &job, const char *what) { xSemaphoreTake(lock, portMAX_DELAY); askJob = job; askWhat = what; xSemaphoreGive(lock); }
+void ask(const String &job, const char *what) { actCode = 0; xSemaphoreTake(lock, portMAX_DELAY); askJob = job; askWhat = what; xSemaphoreGive(lock); }
 
 /* ───────── drawing, straight into the frame: one flat blueprint blue, chalk lines and dots smoothed at their edges, nothing shaded ─────────
    A small screen bands every gradient and every glow; so light here is made of dots and thin lines, as on the site's paper */
@@ -581,6 +582,9 @@ void loop() {
     if (whyNot.length() && WiFi.status() != WL_CONNECTED) text(MONO, whyNot.c_str(), W / 2 - textW(MONO, whyNot.c_str(), 0) / 2, 112, INK, 0.75f, 0);
     text(MONO, "sketch " NG_VERSION, 8, H - 6, INK, 0.3f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
+  }
+  if ((mode == PRINTING || mode == BURST || mode == QUIET) && actCode) {   // did the site take it
+    String r = actCode == 200 ? String("sent") : String("not sent (") + actCode + ")"; text(MONO, r.c_str(), W - 10 - textW(MONO, r.c_str(), 0), H - 6, INK, actCode == 200 ? 0.45f : 0.85f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
   if (mode != SETUP && netErr) { ring(W - 12, H - 12, 3.5f, 1, INK, 0.55f); if (netErr == 3) text(MONO, "?", W - 28, H - 8, INK, 0.7f, 0); }
