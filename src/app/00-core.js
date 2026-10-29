@@ -105,6 +105,11 @@ const savePrefs = () => store.set('da.prefs', prefs);
 const IN_AURA = window.parent !== window && /[?&]from=aura\b/.test(location.search);
 if (IN_AURA) { document.documentElement.classList.add('in-aura'); const nq = new URLSearchParams(location.search).get('night'); if (nq != null) prefs.night = nq === '1'; }
 /* a picture made here handed to the aura, which puts it on the poster in hand; crisp keeps it line work on the receipt (a code, a score) */
+/* iNaturalist through novel.global (stage 4), with a way round: iNaturalist limits the shared addresses Cloudflare asks from, so when
+   novel.global is turned away, or slow, the browser asks iNaturalist itself, as it did before. Every call to CONFIG.INAT_API goes this way */
+{ const fetch0 = window.fetch.bind(window), DIRECT = 'https://api.inaturalist.org/v1/';
+  window.fetch = (u, o) => { const s = typeof u === 'string' ? u : ''; if (!s.startsWith('/api/inat/')) return fetch0(u, o); const direct = () => fetch0(DIRECT + s.slice(10), o);
+    return fetch0(s, { ...(o || {}), ...(AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {}) }).then(r => (r.ok ? r : direct())).catch(direct); }; }
 const toAura = (url, crisp) => { try { window.parent.postMessage({ ng: 'piece', url, crisp: !!crisp }, location.origin); return true; } catch (e) { return false; } };
 if (!Number.isFinite(prefs.journey) || (IN_AURA && prefs.journey < 4)) { prefs.journey = NEW_HERE && !IN_AURA ? 0 : 4; savePrefs(); }
 const simple = () => prefs.journey < 4;

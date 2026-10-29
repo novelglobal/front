@@ -32,7 +32,7 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); tplFix(); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['frame', 'base', 'FRAME'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -66,6 +66,11 @@ async function loadBoard() {
 /* the board's view: three sizes (the key, or the wheel between them); its bare ground dragged moves it about, the page never
    lost; LOCK holds everything on it still, so any drag moves the view */
 const BZ = [0.55, 1, 1.7]; let bzi = 1, bBase = 1, bLock = false, bPan = null;
+/* two locks: LOCK holds what one has put on the board; FRAME (on unless turned off) holds the template, the four W.I.S.H. squares and
+   their notes, where they are: they can still be chosen to join to and pasted over, never dragged, sized or rewritten */
+let fLock = prefs.frameLock !== false;
+const tplHeld = o => o.set({ selectable: true, evented: true, lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, editable: false, hoverCursor: 'default' });
+const tplFree = (o, locked) => o.set({ selectable: !locked, evented: !locked, lockMovementX: false, lockMovementY: false, lockScalingX: false, lockScalingY: false, lockRotation: false, hasControls: true, editable: true, hoverCursor: locked ? 'grab' : 'move' });
 function boardZoomStep() { bzi = (bzi + 1) % BZ.length; boardZoomTo(bBase * BZ[bzi]); const b = $('#board [data-bt="zoom"]'); if (b) b.dataset.z = String(bzi); }
 function boardZoomTo(z, x, y) { if (!cv) return; cv.zoomToPoint(new window.fabric.Point(x == null ? cv.getWidth() / 2 : x, y == null ? cv.getHeight() / 2 : y), clamp(z, 0.25, 3)); cv.requestRenderAll(); }
 const ptOf = e => { const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; return { x: t.clientX, y: t.clientY }; };
@@ -77,7 +82,8 @@ function boardPanBind() {
 }
 function exFrame(keepView) {
   if (!cv) return; const ex = boardId === 'b00', locked = exLocked() || bLock; $('#board').classList.toggle('locked', exLocked()); $('#board').classList.toggle('ex-edit', ex && !exLocked());
-  cv.selection = false; for (const o of cv.getObjects()) if (o.daKind !== 'link') o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' });
+  cv.selection = false; for (const o of cv.getObjects()) { if (o.daKind === 'link') continue; if (o.daTpl) { if (exLocked()) o.set({ selectable: false, evented: false }); else if (fLock) tplHeld(o); else tplFree(o, bLock); continue; } o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' }); }
+  const fb = $('#board [data-bt="frame"]'); if (fb) fb.setAttribute('aria-pressed', String(fLock));
   if (keepView) { cv.requestRenderAll(); return; }
   /* a board of one's own opens further out: all of it in view, never closer than 0.7 */
   bzi = 1; const own = !ex; if (own && !cv.getObjects().length) { bBase = 0.7; cv.setViewportTransform([0.7, 0, 0, 0.7, 0, 0]); return; }
@@ -326,6 +332,7 @@ async function boardTool(k) {
   if (k === 'exsend') { sendExample(); return; }
   /* the template shown or hidden, and kept so for this board */
   if (k === 'tpl') { const c0 = await showBoard(true); if (!c0) return; if (!c0.getObjects().some(o => o.daTpl)) { tick(600); return; } if (TPLHIDE.has(boardId)) TPLHIDE.delete(boardId); else TPLHIDE.add(boardId); store.set('da.tplhide.v1', [...TPLHIDE]); c0.discardActiveObject(); tplFix(); c0.renderAll(); snd.tick(TPLHIDE.has(boardId) ? 900 : 1500); return; }
+  if (k === 'frame') { const c0 = await showBoard(true); if (!c0) return; fLock = !fLock; prefs.frameLock = fLock; savePrefs(); c0.discardActiveObject(); exFrame(true); tick(fLock ? 900 : 1500); return; }
   if (k === 'zoom' || k === 'lock') { const c0 = await showBoard(true); if (!c0) return; if (k === 'zoom') boardZoomStep(); else { bLock = !bLock; exFrame(true); $('#board').classList.toggle('pinned', bLock); const b = $('#board [data-bt="lock"]'); if (b) b.setAttribute('aria-pressed', String(bLock)); } tick(bLock ? 900 : 1500); return; }
   if (exLocked() && k !== 'out') { await workBoard(); }
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();

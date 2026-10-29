@@ -21,6 +21,8 @@
   --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
 }
 /* night: the page darkens, the ground dims under it. A slip, a receipt, stays paper, as it would in the hand */
+/* a phone's own text size is never applied twice over a page set in pixels */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html.night{color-scheme:dark;--white:#15122A;--paper:#221D40;--grey:#3B3566;--grey-text:#A49ED0;--navy:#F2EFFF;--cobalt:#8FD3FF;--teal-wash:#1E2A3C;--ground:#0D0B1C}
 /* night: buttons and controls carry a clear edge, so nothing sinks into the charcoal */
 html.night .pill,html.night .tog,html.night .mood,html.night .tk,html.night .docs button,html.night .pack-up label,html.night .gigs a,html.night .ib{box-shadow:inset 0 0 0 1px #5A5A5A}
@@ -3257,3 +3259,13 @@ html.plain .zine::after, html.plain #zine::after { display: none !important; }
 
 /* the studio as one of the aura's devices: print, printer bytes and the radios are the aura's last step, so they step aside here */
 html.in-aura [data-pout="print"], html.in-aura [data-pout="escpos"], html.in-aura [data-pout="oled"], html.in-aura [data-pout="mesh"], html.in-aura [data-prn], html.in-aura #tp-info { display: none !important; }
+/* narrow screens and a phone's large text (a page of 260 to 340 px): the radio's four knobs fold into two rows beside the play key, never off its edge */
+@media (max-width:340px){.dev.radio.jr-dev{grid-template-columns:52px 62px minmax(0,1fr)!important}.dev.radio .rd-knobs{grid-template-columns:repeat(2,30px)!important;gap:4px!important;justify-content:center}.dev.radio .rd-knobs .rd-k,.dev.radio .rd-knob{width:30px!important;height:30px!important}}
+
+/* the one wall in the portfolio: every poster from novel.global's wall, small; one touched shows large across the page */
+#sec-wall .wall-g{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
+#sec-wall .wall-k{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+#sec-wall .wall-k img{display:block;width:100%;height:auto;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+#sec-wall li:has(.wall-k.big){grid-column:1/-1}
+#sec-wall .wall-k.big{cursor:zoom-out}
+#sec-wall .lab-row .pill{margin-left:auto}

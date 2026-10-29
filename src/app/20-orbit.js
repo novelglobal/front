@@ -85,6 +85,16 @@ function saveTiles() {
   while (!store.set('da.tiles.v5', TILES) && keys.length) delete TILES[keys.shift()];
 }
 rebuildBiz();
+/* stage 5: the places shown from the approval page join the listed ones; kept on this device, so they hold offline */
+const placeRow = p => [p.n, '', 'LISTED', +p.lat, +p.lng, { role: p.role || '', cat: p.cat || 'service', url: p.url || '', what: p.what || '', addr: [p.addr, p.sub].filter(Boolean).join(', '), cur: 1 }];
+function addPlaces(list) {
+  const have = new Set(LISTED.map(r => `${r[0]}|${r[3].toFixed(4)}|${r[4].toFixed(4)}`)); let n = 0;
+  for (const p of list || []) { if (!p || !p.n || !Number.isFinite(+p.lat) || !Number.isFinite(+p.lng)) continue; const k = `${p.n}|${(+p.lat).toFixed(4)}|${(+p.lng).toFixed(4)}`; if (have.has(k)) continue; have.add(k); LISTED.push(placeRow(p)); n++; }
+  if (n) rebuildBiz(); return n;
+}
+addPlaces(store.get('da.places.v1', []));
+function loadPlaces() { return fetch('/api/places').then(r => (r.ok ? r.json() : null)).then(j => { if (!j || !Array.isArray(j.places)) return; store.set('da.places.v1', j.places); if (addPlaces(j.places) && typeof placesChanged === 'function') placesChanged(); }).catch(() => { /* the kept ones stand */ }); }
+const PLACE_Q = bb => `[out:json][timeout:25];(nwr["shop"]["name"](${bb});nwr["amenity"~"^(cafe|restaurant|fast_food|bar|pub|ice_cream|food_court|biergarten|fuel|car_wash|car_rental|pharmacy|bank|veterinary|marketplace|nightclub|theatre|arts_centre|music_venue|cinema|community_centre|events_venue|library|social_centre|townhall|coworking_space|studio)$"]["name"](${bb});nwr["craft"]["name"](${bb});nwr["office"]["name"](${bb});nwr["leisure"~"^(hackerspace|swimming_pool|sports_centre|garden)$"]["name"](${bb});nwr["tourism"~"^(gallery|museum)$"]["name"](${bb}););out center tags qt;`;
 const tilesFor = (lat, lng, R) => { const di = R / 111320, dj = R / (111320 * Math.cos(lat * Math.PI / 180)); const out = []; for (let i = Math.floor((lat - di) / TILE); i <= Math.floor((lat + di) / TILE); i++) for (let j = Math.floor((lng - dj) / TILE); j <= Math.floor((lng + dj) / TILE); j++) out.push([i, j]); return out; };
 let placesBusy = null, placesFailAt = 0;
 /* the places around a point, fetched if not yet kept; whatever happens the listed places are already here */
@@ -97,9 +107,10 @@ function placesAround(lat, lng, R) {
   placesBusy = (async () => {
     const is = need.map(t => t[0]), js = need.map(t => t[1]);
     const bb = [Math.min(...is) * TILE, Math.min(...js) * TILE, (Math.max(...is) + 1) * TILE, (Math.max(...js) + 1) * TILE].map(v => v.toFixed(4)).join(',');
-    for (const url of [CONFIG.OSM_API]) {
+    /* novel.global first, which keeps every tile for everyone; if it cannot answer in time, OpenStreetMap's own mirrors, as before */
+    for (const url of [CONFIG.OSM_API, ...(CONFIG.OVERPASS || [])]) {
       try {
-        const res = await fetch(`${url}?q=places&bb=${bb}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const res = await fetch(url === CONFIG.OSM_API ? `${url}?q=places&bb=${bb}` : `${url}?data=${encodeURIComponent(PLACE_Q(bb))}`, url === CONFIG.OSM_API && AbortSignal.timeout ? { signal: AbortSignal.timeout(25000) } : undefined); if (!res.ok) throw new Error('HTTP ' + res.status);
         const j = await res.json(); if (j.remark && /error|time/i.test(j.remark)) throw new Error(j.remark);
         const by = new Map(need.map(([i, k]) => [tileKey(i, k), []]));
         for (const el of j.elements || []) {
@@ -120,6 +131,7 @@ function placesAround(lat, lng, R) {
    pond, lake and wetland pool as its own shape, from OpenStreetMap. A square of about five kilometres at a time, kept a month.
    Until a square is here (offline, or the first moment) the few waters written into the config stand in ───────── */
 const WTILE = 0.05, WTILES = store.get('da.water.v1', {});
+const WATER_Q = bb => `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bb});way["natural"="water"](${bb});way["waterway"="riverbank"](${bb});relation["natural"="water"](${bb}););out geom(${bb}) qt;`;
 let waterBusy = null, waterFailAt = 0;
 /* metres east and north of a point, near enough at a city's size */
 const enM = (la0, ln0) => { const kx = 111320 * Math.cos(la0 * Math.PI / 180); return (la, ln) => [(ln - ln0) * kx, (la - la0) * 110574]; };
@@ -154,9 +166,9 @@ function waterAround(lat, lng) {
   if (waterBusy || Date.now() - waterFailAt < 120000) return Promise.resolve(null);
   waterBusy = (async () => {
     const bb = [i * WTILE, j * WTILE, (i + 1) * WTILE, (j + 1) * WTILE].map(v => v.toFixed(4)).join(',');
-    for (const url of [CONFIG.OSM_API]) {
+    for (const url of [CONFIG.OSM_API, ...(CONFIG.OVERPASS || [])]) {
       try {
-        const res = await fetch(`${url}?q=water&bb=${bb}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const res = await fetch(url === CONFIG.OSM_API ? `${url}?q=water&bb=${bb}` : `${url}?data=${encodeURIComponent(WATER_Q(bb))}`, url === CONFIG.OSM_API && AbortSignal.timeout ? { signal: AbortSignal.timeout(25000) } : undefined); if (!res.ok) throw new Error('HTTP ' + res.status);
         const jj = await res.json(); if (jj.remark && /error|time/i.test(jj.remark)) throw new Error(jj.remark);
         WTILES[key] = { t: Date.now(), la: (i + 0.5) * WTILE, ln: (j + 0.5) * WTILE, ...waterOf(jj, (i + 0.5) * WTILE, (j + 0.5) * WTILE) }; saveWater(); waterBusy = null; if (typeof life !== 'undefined') life.moved(); return WTILES[key];
       } catch (e) { /* the next mirror */ }
