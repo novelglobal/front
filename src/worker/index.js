@@ -169,7 +169,7 @@ async function receipt(db, id) {
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
 const SETTINGS = { lifeLock: true, exampleEdit: false };
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
-const TEXTS = { template: 6000 };
+const TEXTS = { template: 6000, words: 4000 };
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {

@@ -91,6 +91,12 @@ try {
   await call('/api/admin/settings', { method: 'POST', key: KEY, body: { template: 'x'.repeat(7000) } }); const tp2 = (await call('/api/settings')).json.template.length;
   await call('/api/admin/settings', { method: 'POST', key: KEY, body: { template: '' } }); const tp3 = (await call('/api/settings')).json.template;
   check('the first board\'s words are rewritten on the approval page and served to everyone; nobody else can; too long is cut; emptied, the site\'s own stand', tpx.status === 401 && tp1 === tw && tp2 === 6000 && tp3 === '', JSON.stringify({ tpx: tpx.status, tp1, tp2, tp3 }));
+  /* INTENTION's and W.I.S.H.'s words, the same way: only those rewritten, as JSON */
+  const ww = JSON.stringify({ 'w.word': 'stories', 'intention.ask': 'what will you do?' });
+  const wwx = await call('/api/admin/settings', { method: 'POST', body: { words: ww } });
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { words: ww } }); const ww1 = (await call('/api/settings')).json.words;
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { words: '' } }); const ww2 = (await call('/api/settings')).json.words;
+  check('INTENTION\'s and W.I.S.H.\'s words are rewritten on the approval page and served to everyone; nobody else can; emptied, the site\'s own stand', wwx.status === 401 && ww1 === ww && ww2 === '', JSON.stringify({ wwx: wwx.status, ww1, ww2 }));
 
   /* online on the map: switched on the approval page, with or without a Pi listening */
   const lv0 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');

@@ -42,6 +42,7 @@ Then:
 7. **Privacy:** Cloudflare's **Web Analytics** is switched on for novel.global: it sends a beacon from every visit to `/cdn-cgi/rum`. It sets no cookies, but it is analytics. To keep the promise of no trackers, turn it off under **novel.global → Analytics & Logs → Web Analytics**.
 8. **The first board's template:** on the approval page, **TRACKS → BOARD 01 · THE TEMPLATE** holds its words: a note to a paragraph, its title on its first line, the title holding its key (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). **SAVE** and every new visitor's first board is laid with them; **THE SITE'S OWN WORDS** goes back to those in `src/config.js`.
 9. **Portfolio:** on the approval page, **PORTFOLIO → NEW POST**. Write a title, a category (such as WORK or WRITING), a date, a summary, the body (paragraphs between blank lines; a line starting `##` is a heading) and links, and choose a cover. **SAVE DRAFT** keeps it private, **PREVIEW** opens it as it will look, and **PUBLISH** puts it on novel.global's portfolio (`novel.global/portfolio.html`) and in the app's PORTFOLIO. **UNPUBLISH** takes it down again; nothing is lost.
+10. **INTENTION and W.I.S.H., the words:** on the approval page, **TRACKS → INTENTION AND W.I.S.H. · THE WORDS** holds every heading, line and hover on the first two steps of novel.global, and the one quick word shown first under each. Each field starts with the site's own words. Change any, then **SAVE**; visitors see them the next time they open the site. **THE SITE'S OWN WORDS** puts them all back.
 
 ### GitHub
 

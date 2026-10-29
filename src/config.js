@@ -45,6 +45,19 @@ window.DA_CONFIG = {
   /* the first board's template: the W.I.S.H. matrix, a box for each letter with what research goes in it, and how the board
      works beside them; every piece can be deleted. The approval page can
      rewrite these words (BOARD TEMPLATE): a note to a paragraph, its title on its first line, the key word in the title */
+  /* the words of INTENTION and W.I.S.H. on the aura (/): each heading, line and hover, and the one quick word shown first under each.
+     Rewritten on the approval page (TRACKS → INTENTION AND W.I.S.H. · THE WORDS); any left empty there are these */
+  WORDS: {
+    'intention.tab': 'intention',
+    'intention.ask': 'what’s your intention?',
+    'intention.say': 'From something you noticed, write what you want to happen. It goes at the top of your poster.',
+    'wish.tab': 'wish',
+    'wish.say': 'One line for each letter. Tap a letter for help.',
+    'w.word': 'theories', 'w.head': 'What we know', 'w.how': 'what you saw',
+    'i.word': 'beliefs', 'i.head': 'It would be great', 'i.how': 'what you want to happen',
+    's.word': 'principles', 's.head': 'So let’s create', 's.how': 'one thing to do',
+    'h.word': 'behaviours', 'h.head': 'Here’s how it works', 'h.how': 'who helps, and how',
+  },
   TEMPLATE: [
     ['HOW', 'HOW THIS BOARD WORKS', 'Put what you find in the four boxes. Pull a string between things that belong together. Move them about until the plan makes sense.'],
     ['W', 'W · WHAT WE KNOW', 'Paste the research here: counts, maps, studies, and what the people who live here have seen.'],

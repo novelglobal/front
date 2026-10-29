@@ -120,7 +120,7 @@ fs.writeFileSync(path.join(out, 'base-db.json'), JSON.stringify({
   canopy: Object.fromEntries(Object.entries(win.DA_CANOPY || {}).filter(([k, v]) => v && v.pc).map(([k, v]) => [k, v.pc])),
 }));
 const BASE = { imagery: win.DA_CONFIG.IMAGERY.url, maxzoom: win.DA_CONFIG.IMAGERY.maxzoom, credit: win.DA_CONFIG.IMAGERY.attribution, centre: [win.DA_CONFIG.SCAN.lat, win.DA_CONFIG.SCAN.lng], bbox: win.DA_CONFIG.BBOX,
-  portal: win.DA_CONFIG.PORTAL_URL, inat: win.DA_CONFIG.INAT_API, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], build: sha };
+  portal: win.DA_CONFIG.PORTAL_URL, inat: win.DA_CONFIG.INAT_API, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], words: win.DA_CONFIG.WORDS || {}, build: sha };
 fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'base.css')), 'css'));
 fs.writeFileSync(path.join(out, 'base.js'), min(read(path.join(src, 'base', 'base.js')), 'js'));
 fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'aura.css')), 'css'));
