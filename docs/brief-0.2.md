@@ -37,7 +37,7 @@ Every heading, line and hover on INTENTION and W.I.S.H. rewritable on the approv
 ### Stage 3 — the intel ring (built)
 The studio as three devices (RADIO, RESEARCH BOARD, PRINT SHOP), one earned with each poster printed. The irukandji holds out on the ring under the eye only the device the step calls for; all three wait at the head of the intel. Opened, the studio fills one window over the aura, its own first visit skipped, the eye on its bar back. Inside it, every press that printed is now "onto my poster": the strip, the board's art or a song's card comes back onto the poster in hand, at art; print is the aura's last step alone.
 
-### Stage 4 — sound as an instrument
+### Stage 4 — sound as an instrument (built)
 The sound key (top right) opens, with an irukandji of its own, one dashboard for everything musical: B's 4-track and the web's voice, C's layers and moods, the radar's sweep, constellations and journeys as songs. Compositions saved, played while exploring, downloaded as 45 second loops, sent as a link or a QR poster.
 
 ### Stage 5 — places
