@@ -555,3 +555,42 @@ html.aura-on body { background: var(--blue, #17457F); }
 /* the W.I.S.H. words start at their letter, so none runs off the screen's edge */
 #aura .au-wish b.fw::after { left: 0; bottom: -15px; animation-name: au-fwl; }
 @keyframes au-fwl { 0% { opacity: 0; transform: translateY(4px); } 10%, 82% { opacity: .92; transform: none; } 100% { opacity: 0; transform: translateY(-2px); } }
+/* where a print goes, said under its key at all times */
+#aura .au-mode { position: relative; }
+#aura .au-mode .au-mw { position: absolute; left: 50%; top: calc(100% + 3px); transform: translateX(-50%); font: 500 9px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; opacity: .85; pointer-events: none; }
+#aura .au-mode.m-mesh { border-style: solid; }
+/* the art tray on a desktop: a thin bar to show there is more, and a grab to move it */
+@media (hover: hover) and (pointer: fine) { #aura .au-tray { scrollbar-width: thin; scrollbar-color: rgba(244, 241, 232, .35) transparent; cursor: grab; } #aura .au-tray.dragging { cursor: grabbing; } #aura .au-tray.dragging button { pointer-events: none; } }
+
+/* ───────── v0.2, stage 3: the deep engine as devices ─────────
+   The studio's pages are small digital things: smoked glass, a pixel icon, a green light, against the chalk and stars of the irukandji.
+   Earned one a poster, they ride the ring under the eye with the catch; all three wait in the intel. Opened, a window over the aura */
+.au-dev { display: none; position: absolute; left: 0; top: 0; width: 34px; height: 30px; margin: -15px 0 0 -17px; place-items: center; border-radius: 5px; background: rgba(16, 18, 22, .86); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 3px 10px rgba(6, 24, 52, .4); color: #E9F2E4; will-change: transform; }
+#aura.m-iruk:not(.st3) .au-dev:not([hidden]) { display: grid; }
+.au-dev .au-i, .au-devs .au-i { width: 20px; height: 20px; stroke: #E9F2E4; }
+.au-dev .led, .au-devs .led, .au-win .led { position: absolute; right: 4px; top: 4px; width: 4px; height: 4px; border-radius: 50%; background: #5CE07A; box-shadow: 0 0 5px #5CE07A; }
+.au-dev:hover, .au-devs button:hover { background: rgba(26, 29, 34, .95); }
+.au-devs { display: flex; justify-content: center; gap: 12px; margin: 0 0 14px; padding-bottom: 14px; }
+.au-devs button { position: relative; width: 46px; height: 40px; display: grid; place-items: center; border-radius: 6px; background: rgba(16, 18, 22, .86); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.au-devs button.fw::after { top: calc(100% + 3px); }
+.au-win { position: fixed; inset: 14px; z-index: 40; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: #121417; box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 24px 70px rgba(0, 0, 0, .55); animation: au-win .38s cubic-bezier(.2, .8, .2, 1); }
+.au-win[hidden] { display: none; }
+@keyframes au-win { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+.au-win header { position: relative; flex: 0 0 40px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; color: #E9F2E4; font: 500 11px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .12em; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.au-win header .led { position: static; flex: 0 0 auto; }
+.au-win header b { font-weight: 500; flex: 1; }
+.au-win header nav { display: flex; gap: 4px; }
+.au-win header nav button, .au-win .au-wx { width: 34px; height: 30px; display: grid; place-items: center; border-radius: 5px; opacity: .55; }
+.au-win header nav button.on, .au-win header nav button:hover { opacity: 1; background: rgba(255, 255, 255, .08); }
+.au-win .au-wx { opacity: .95; margin-left: 6px; background: #17457F; border-radius: 50%; width: 32px; height: 32px; }
+.au-win header .au-i { width: 20px; height: 20px; stroke: #E9F2E4; }
+.au-win iframe { flex: 1; width: 100%; border: 0; background: #0E1013; }
+@media (max-width: 759px) { .au-win { inset: 0; border-radius: 0; } }
+/* the research board, W.I.S.H.'s device: a large digital-ink panel, pale and matte, a slow grey bar, no glow; the radio and the print shop
+   keep the smoked glass. Each device its own material, none of them the irukandji's */
+.au-win.d-board { background: #D8D5CC; padding: 0 10px 10px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), inset 0 0 0 1px rgba(255, 255, 255, .5), 0 24px 70px rgba(0, 0, 0, .5); }
+.au-win.d-board header { color: #26262A; border-bottom: 0; }
+.au-win.d-board header .au-i { stroke: #26262A; }
+.au-win.d-board header .led { background: #6B6B66; box-shadow: none; }
+.au-win.d-board header nav button.on, .au-win.d-board header nav button:hover { background: rgba(0, 0, 0, .07); }
+.au-win.d-board iframe { border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); filter: saturate(.85); }

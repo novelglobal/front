@@ -102,7 +102,11 @@ const prefs = Object.assign({ sound: true, motion: true, areas: false, printers:
 const savePrefs = () => store.set('da.prefs', prefs);
 /* the first visit is one simple way through, gate by gate (43-journey.js): 0 the map, 1 the radio, 2 W.I.S.H., 3 PRINT, 4 done.
    A device that has been here before has done it */
-if (!Number.isFinite(prefs.journey)) { prefs.journey = NEW_HERE ? 0 : 4; savePrefs(); }
+const IN_AURA = window.parent !== window && /[?&]from=aura\b/.test(location.search);
+if (IN_AURA) document.documentElement.classList.add('in-aura');
+/* a picture made here handed to the aura, which puts it on the poster in hand; crisp keeps it line work on the receipt (a code, a score) */
+const toAura = (url, crisp) => { try { window.parent.postMessage({ ng: 'piece', url, crisp: !!crisp }, location.origin); return true; } catch (e) { return false; } };
+if (!Number.isFinite(prefs.journey) || (IN_AURA && prefs.journey < 4)) { prefs.journey = NEW_HERE && !IN_AURA ? 0 : 4; savePrefs(); }
 const simple = () => prefs.journey < 4;
 /* the radar stands only once the radio is started, each visit: PRESS PLAY, or a tap on the map. Where it stood is kept */
 const placed = () => !!S.started;

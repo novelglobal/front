@@ -329,11 +329,12 @@ function openRadioLink() {
   const m = LOOP.on && LOOP.m ? LOOP.m : mixNow(); const url = mixURL(m); const art = mixArt(m, url);
   $$('.card-view').forEach(e => e.remove()); snd.jelly(0);
   const el = document.createElement('div'); el.className = 'card-view link-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'This sound as a link');
-  el.innerHTML = `<div class="tv-in"><img class="lv-art" src="${art}" alt=""><div class="tv-acts">${[['copy', 'share', 'copy link', 'to send or keep'], ['strip', 'receipt', 'onto the strip', 'to print'], ['png', 'download', 'save', 'the picture'], ['x', 'close', 'close', '']].map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-lk="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
+  el.innerHTML = `<div class="tv-in"><img class="lv-art" src="${art}" alt=""><div class="tv-acts">${[['copy', 'share', 'copy link', 'to send or keep'], ['strip', IN_AURA ? 'stories' : 'receipt', IN_AURA ? 'onto my poster' : 'onto the strip', IN_AURA ? '' : 'to print'], ['png', 'download', 'save', 'the picture'], ['x', 'close', 'close', '']].map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-lk="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
   document.body.appendChild(el);
   const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
   el.addEventListener('click', async e => { const b = e.target.closest('[data-lk]');
     if (b && b.dataset.lk === 'copy') { const ok = await copyText(url); toast(ok ? '✓' : url.slice(0, 60)); return; }
+    if (b && b.dataset.lk === 'strip' && IN_AURA) { close(); toAura(art, true); return; }
     if (b && b.dataset.lk === 'strip') { close(); setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); return; }
     if (b && b.dataset.lk === 'png') { const a = document.createElement('a'); a.href = art; a.download = `novel-global-radio-${isoDay(new Date())}.png`; a.click(); tick(1800); return; }
     if (b || e.target === el) close(); });
