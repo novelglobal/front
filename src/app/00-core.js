@@ -234,9 +234,9 @@ const snd = (() => {
   function fxBus(k) {
     if (FXB[k]) return FXB[k]; const was = fxNow; fxNow = null;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.4; const g = ctx.createGain(); lp.connect(g); g.connect(bus); let rm = 1;
-    if (k === 'mist') { lp.frequency.value = 1100; g.gain.value = 1.05; rm = 0.8; }
-    else if (k === 'hall') { lp.frequency.value = 1900; g.gain.value = 0.55; rm = 2.6; const h = ctx.createGain(); h.gain.value = 0.9; lp.connect(h); h.connect(hall); }
-    else { lp.frequency.value = 560; g.gain.value = 1.2; rm = 0.5; const d = ctx.createGain(); d.gain.value = 0.7; lp.connect(d); d.connect(dubEcho()); }
+    if (k === 'mist') { lp.frequency.value = 1300; g.gain.value = 1.05; rm = 0.6; }
+    else if (k === 'hall') { lp.frequency.value = 2600; g.gain.value = 0.5; rm = 3.6; const h = ctx.createGain(); h.gain.value = 1.3; lp.connect(h); h.connect(hall); }
+    else { lp.frequency.value = 380; g.gain.value = 1.4; rm = 0.25; const d = ctx.createGain(); d.gain.value = 1; lp.connect(d); d.connect(dubEcho()); }
     fxNow = was; return (FXB[k] = { in: lp, room: rm });
   }
   const withFx = (k, fn) => { const was = fxNow; fxNow = k; try { return fn(); } finally { fxNow = was; } };

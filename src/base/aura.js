@@ -104,7 +104,7 @@
   /* the pixel irukandji: the creature in cells, its bell breathing and its four tentacles in the current. Ink, blue, or the photograph's own colours */
   function pixJelly(cells, ph, tone, im) {
     var n = cells, c = document.createElement('canvas'); c.width = c.height = n; var g = c.getContext('2d'), cx = (n - 1) / 2, bw = n * 0.36 * (1 - 0.08 * Math.sin(ph)), bh = n * 0.26, top = n * 0.12, cols = null;
-    if (tone === 'photo' && im) { var s = document.createElement('canvas'); s.width = s.height = n; var sx = s.getContext('2d'); var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, m = Math.min(iw, ih); sx.drawImage(im, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, n, n); cols = sx.getImageData(0, 0, n, n).data; }
+    if (tone === 'photo' && im && !PRINTMODE) { var s = document.createElement('canvas'); s.width = s.height = n; var sx = s.getContext('2d'); var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, m = Math.min(iw, ih); sx.drawImage(im, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, n, n); cols = sx.getImageData(0, 0, n, n).data; }
     var put = function (px, py, a) { px = Math.round(px); py = Math.round(py); if (px < 0 || py < 0 || px >= n || py >= n) return; var i = (py * n + px) * 4;
       g.fillStyle = cols ? 'rgba(' + cols[i] + ',' + cols[i + 1] + ',' + cols[i + 2] + ',' + a + ')' : 'rgba(' + pxInk(tone) + ',' + a + ')'; g.fillRect(px, py, 1, 1); };
     for (var y = 0; y <= bh; y++) { var half = bw * Math.sqrt(Math.max(0, 1 - Math.pow((bh - y) / bh, 2))); for (var xx = -half; xx <= half; xx++) { var edge = Math.abs(Math.abs(xx) - half) < 1 || y === Math.round(bh) || y === 0; put(cx + xx, top + y, edge ? 1 : 0.35); } }
@@ -122,7 +122,7 @@
   function pixArt(sub, cells, ph, tone, im, seed) {
     if (!sub || sub === 'jelly') return pixJelly(cells, ph, tone, im);
     var n = cells, c = document.createElement('canvas'); c.width = c.height = n; var g = c.getContext('2d'), rr = rnd((seed || 1) * 13 + n), cols = null;
-    if (tone === 'photo' && im) { var s = document.createElement('canvas'); s.width = s.height = n; var sx = s.getContext('2d'); var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, m = Math.min(iw, ih); sx.drawImage(im, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, n, n); cols = sx.getImageData(0, 0, n, n).data; }
+    if (tone === 'photo' && im && !PRINTMODE) { var s = document.createElement('canvas'); s.width = s.height = n; var sx = s.getContext('2d'); var iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, m = Math.min(iw, ih); sx.drawImage(im, (iw - m) / 2, (ih - m) / 2, m, m, 0, 0, n, n); cols = sx.getImageData(0, 0, n, n).data; }
     var pal = PIX_COL[sub], pick = pal[Math.floor(rr() * pal.length)];
     var col = function (px, py, a, k) { if (cols) { var i = (py * n + px) * 4; return 'rgba(' + cols[i] + ',' + cols[i + 1] + ',' + cols[i + 2] + ',' + a + ')'; }
       return 'rgba(' + (tone === 'colour' && !PRINTMODE ? (k != null ? pal[k % pal.length] : pick) : pxInk(tone)) + ',' + a + ')'; };
@@ -676,10 +676,18 @@
      whose beads are the steps, lit as they sound. A song is made from what is already here: the poster's lines (each word a note), the
      places and lives near (the radius), or the journey of posters on the wall, in one of three moods. Played, it goes on under the whole
      site; kept, it waits on the desk; it leaves as a 45 second loop, a link, or a card with its code on the poster ───────── */
+  /* three moods, deep and under water: tide (a minor pentatonic, slow), bloom (open, a little quicker), doom (alien steps, slowest) */
   var MOODS = [
-    { k: 'tide', ins: ['gamelan', 'harp', 'voice', 'jegog'], bpm: 72, sc: [0, 1, 3, 7, 8], root: 1 },
-    { k: 'bloom', ins: ['harp', 'gamelan', 'voice', 'jegog'], bpm: 92, sc: [0, 2.4, 4.8, 7.2, 9.6], root: 1.12 },
-    { k: 'doom', ins: ['jegog', 'chak', 'voice', 'taiko'], bpm: 60, sc: [0, 1, 3, 7, 8], root: 0.75 }];
+    { k: 'tide', ins: ['drop', 'whale', 'reed', 'sub'], bpm: 66, sc: [0, 3, 5, 7, 10], root: 1 },
+    { k: 'bloom', ins: ['drop', 'reed', 'whale', 'sub'], bpm: 78, sc: [0, 2, 5, 7, 9], root: 1.12 },
+    { k: 'doom', ins: ['grain', 'whale', 'reed', 'sub'], bpm: 54, sc: [0, 1, 5, 6, 10], root: 0.84 }];
+  /* the intention's words set the desk's character, after latentscore's idea of text to musical settings (here in a few lines,
+     no model): light words open the filter, dark ones close it; short quick words lift the tempo a little */
+  var TXT = { bright: 0.45, tempo: 1 };
+  var LIGHTW = /^(sun|light|bloom|joy|bright|morning|gold|play|dance|sing|swim|fly|spring|hope|warm|open|free|green|grow)/, DARKW = /^(night|dark|deep|loss|doom|dead|death|cold|storm|flood|fire|heat|grief|alone|drown|sink|rot|harm|ruin)/;
+  function txtRead() { var s = P ? [P.say].concat(P.lines || []).join(' ') : '', ws = s.toLowerCase().split(/[^a-z]+/).filter(Boolean); if (!ws.length) { TXT.bright = 0.45; TXT.tempo = 1; return; }
+    var l = ws.filter(function (w) { return LIGHTW.test(w); }).length, d = ws.filter(function (w) { return DARKW.test(w); }).length, avg = ws.join('').length / ws.length;
+    TXT.bright = Math.max(0.1, Math.min(0.9, 0.45 + 0.12 * (l - d))); TXT.tempo = Math.max(0.85, Math.min(1.12, 1 + (5 - avg) * 0.03)); }
   var SRCS = [['lines', 'wish'], ['here', 'pin'], ['journey', 'wall'], ['web', 'cons']], STEPS_N = 32;
   var DESK = { el: null, song: null, src: 0, mood: 0, play: false, list: false, mute: [false, false, false, false], step: -1, t0: 0, iv: 0, raf: 0, kept: store.get('da.aura.songs', []) || [] };
   var hashW = function (w) { var h = 2166136261; for (var i = 0; i < w.length; i++) { h ^= w.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; };
@@ -699,13 +707,13 @@
      unjoined neighbour (a spanning tree, as the base drew its nets). Every join is a note: the shorter, the higher; the four
      tracks are the four constellations it falls into, north, east, south and west of here, each played in the order it was drawn */
   function webSong(mood) {
-    var p = hereOf(), pts = spotsAll().filter(function (o) { return NG.dist(p, o) < 1500; }).slice(0, 40), rows = [[], [], [], []];
+    var p = hereOf(), pts = spotsAll().filter(function (o) { return NG.dist(p, o) < 1500; }).slice(0, 40), rows = [[], [], [], []], lab = [{}, {}, {}, {}], geoE = [];
     var tracks = rows.map(function () { var r = []; for (var i = 0; i < STEPS_N; i++) r.push('.'); return r; });
     if (pts.length > 1) { var inT = [0], edges = [], used = {}; used[0] = 1;
       while (inT.length < pts.length) { var best = null; inT.forEach(function (a) { pts.forEach(function (b2, j) { if (used[j]) return; var d = NG.dist(pts[a], b2); if (!best || d < best[2]) best = [a, j, d]; }); }); if (!best) break; used[best[1]] = 1; inT.push(best[1]); edges.push(best); }
       edges.forEach(function (e) { var a = pts[e[0]], b2 = pts[e[1]], my = (a.lat + b2.lat) / 2 - p.lat, mx = ((a.lng + b2.lng) / 2 - p.lng) * Math.cos(p.lat * Math.PI / 180), k = Math.abs(my) > Math.abs(mx) ? (my > 0 ? 0 : 2) : (mx > 0 ? 1 : 3); rows[k].push(e); });
-      rows.forEach(function (es, k) { if (!es.length) return; var n2 = [12, 8, 6, 6][k]; for (var j = 0; j < n2; j++) { var e = es[j % es.length], at = Math.floor(j * STEPS_N / n2); if (k > 1) at -= at % 2; tracks[k][at] = String(Math.max(0, 9 - Math.min(9, Math.floor(e[2] / 90)) - (j >= es.length ? 1 : 0) * (j % 3))); } }); }
-    return { m: mood, s: 3, t: tracks.map(function (r) { return r.join(''); }) };
+      rows.forEach(function (es, k) { if (!es.length) return; var n2 = [12, 8, 6, 6][k]; for (var j = 0; j < n2; j++) { var e = es[j % es.length], at = Math.floor(j * STEPS_N / n2); if (k > 1) at -= at % 2; lab[k][at] = pts[e[0]].t + ' · ' + pts[e[1]].t; geoE.push([e[0], e[1], at]); tracks[k][at] = String(Math.max(0, 9 - Math.min(9, Math.floor(e[2] / 90)) - (j >= es.length ? 1 : 0) * (j % 3))); } }); }
+    return { m: mood, s: 3, t: tracks.map(function (r) { return r.join(''); }), lab: lab, geo: { p: p, pts: pts.map(function (o) { return [o.lat, o.lng]; }), e: geoE } };
   }
   /* where the radius is: the piece's own place, else the map's, else the site's centre (with location off a piece may have none) */
   var hereOf = function () { if (P && isFinite(P.lat) && isFinite(P.lng)) return { lat: +P.lat, lng: +P.lng }; if (NG.map && isFinite(NG.map.lat)) return { lat: NG.map.lat, lng: NG.map.lng }; return { lat: B.centre[0], lng: B.centre[1] }; };
@@ -713,32 +721,52 @@
   var songEmpty = function (sg) { return !sg || sg.t.every(function (r) { return !/\d/.test(r); }); };
   function songMake(src, mood) {
     if (src === 3) return webSong(mood);
-    var W = songWords(src), tracks = W.map(function (ws, k) { var row = []; for (var i = 0; i < STEPS_N; i++) row.push('.');
+    var W = songWords(src), lab = [{}, {}, {}, {}], tracks = W.map(function (ws, k) { var row = []; for (var i = 0; i < STEPS_N; i++) row.push('.');
       var every = [1, 2, 4, 2][k], cap = [12, 8, 4, 6][k];
       /* only what is here: never filled out with words of the site's own, so nothing plays that was not made */
       var own = ws.slice(); while (own.length && own.length < cap * 2) own = own.concat(ws);
       own.slice(0, cap * 2).forEach(function (w, j) { var h = hashW(w + k), at = ((j * [3, 5, 8, 4][k]) + (h % 7)) % STEPS_N; at -= at % every; var d = k === 3 ? h % 5 : h % 10, n2 = row.filter(function (c) { return c !== '.'; }).length;
-        if (row[at] === '.' && n2 < cap) { row[at] = String(d); var e2 = (at + 16) % STEPS_N; if (k < 2 && row[e2] === '.' && n2 + 1 < cap) row[e2] = String((d + 2) % 10); } });
+        if (row[at] === '.' && n2 < cap) { row[at] = String(d); lab[k][at] = w; var e2 = (at + 16) % STEPS_N; if (k < 2 && row[e2] === '.' && n2 + 1 < cap) { row[e2] = String((d + 2) % 10); lab[k][e2] = w; } } });
       return row.join(''); });
-    return { m: mood, s: src, t: tracks };
+    return { m: mood, s: src, t: tracks, lab: lab };
   }
   var songCode = function (sg) { return 'v1' + sg.m + sg.s + sg.t.join('-'); };
   var songOf = function (code) { var m = String(code || '').match(/^v1([0-2])([0-3])([.0-9]{32})-([.0-9]{32})-([.0-9]{32})-([.0-9]{32})$/); return m ? { m: +m[1], s: +m[2], t: [m[3], m[4], m[5], m[6]] } : null; };
   var songsURL = function (codes) { var base = /localhost|\.test$|workers\.dev$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + '#songs=' + codes.join('~'); };
   var songURL = function (sg) { var base = /localhost|\.test$|workers\.dev$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + '#song=' + songCode(sg); };
-  var stepDur = function (sg) { return 60 / MOODS[sg.m].bpm / 4; };
+  var stepDur = function (sg) { return 60 / (MOODS[sg.m].bpm * TXT.tempo) / 4; };
+  /* the desk's own voices, deep and under water: a drop falling into the water, a whale's slow glide, a reed pad through a closed
+     filter, a sub felt more than heard, grains of dust. Made each time, nothing recorded */
+  var DV = {
+    drop: function (c, o, t, f, v) { var s = c.createOscillator(), g = c.createGain(); s.type = 'sine'; s.frequency.setValueAtTime(f * 2.6, t); s.frequency.exponentialRampToValueAtTime(f, t + 0.09); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7); s.connect(g); g.connect(o); s.start(t); s.stop(t + 0.75); },
+    whale: function (c, o, t, f, v) { var s = c.createOscillator(), lf = c.createOscillator(), lg = c.createGain(), g = c.createGain(); s.type = 'triangle'; s.frequency.setValueAtTime(f * 0.94, t); s.frequency.linearRampToValueAtTime(f, t + 0.6); s.frequency.linearRampToValueAtTime(f * 0.97, t + 2.2); lf.frequency.value = 4.2; lg.gain.value = f * 0.012; lf.connect(lg); lg.connect(s.frequency);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4); s.connect(g); g.connect(o); s.start(t); lf.start(t); s.stop(t + 2.5); lf.stop(t + 2.5); },
+    reed: function (c, o, t, f, v) { var lp = c.createBiquadFilter(), g = c.createGain(); lp.type = 'lowpass'; lp.Q.value = 2; lp.frequency.setValueAtTime(f * 1.5, t); lp.frequency.exponentialRampToValueAtTime(f * 4, t + 0.25); lp.frequency.exponentialRampToValueAtTime(f * 1.2, t + 1.4);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5); [-8, 7].forEach(function (dt) { var s = c.createOscillator(); s.type = 'sawtooth'; s.frequency.value = f; s.detune.value = dt; s.connect(lp); s.start(t); s.stop(t + 1.6); }); lp.connect(g); g.connect(o); },
+    sub: function (c, o, t, f, v) { var s = c.createOscillator(), g = c.createGain(); s.type = 'sine'; s.frequency.setValueAtTime(f, t); s.frequency.exponentialRampToValueAtTime(f * 0.96, t + 1.6); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v * 1.4, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7); s.connect(g); g.connect(o); s.start(t); s.stop(t + 1.8); },
+    grain: function (c, o, t, f, v) { if (!c.__grain) { var n = Math.floor(c.sampleRate * 0.4), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() < 0.02 ? Math.random() * 2 - 1 : (Math.random() * 2 - 1) * 0.08; c.__grain = b; }
+      var s = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); s.buffer = c.__grain; bp.type = 'bandpass'; bp.frequency.value = f * 4; bp.Q.value = 6; g.gain.setValueAtTime(v * 1.6, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4); s.connect(bp); bp.connect(g); g.connect(o); s.start(t); s.stop(t + 0.42); }
+  };
+  var DVB = { drop: 392, whale: 196, reed: 98, sub: 49, grain: 220 };
+  /* under water: the desk's notes through a filter that breathes slowly and an echo that comes back fainter; one chain for each
+     sound engine (the speakers, or a loop being made) */
+  function deskOut(c) { if (c.__desk) return c.__desk; var lp = c.createBiquadFilter(), lfo = c.createOscillator(), lg = c.createGain(), dl = c.createDelay(2), fb = c.createGain(), wet = c.createGain(), out = NG.bus(c), inp = c.createGain();
+    lp.type = 'lowpass'; lp.Q.value = 0.9; lp.frequency.value = 900; lfo.frequency.value = 0.07; lg.gain.value = 260; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+    dl.delayTime.value = 0.43; fb.gain.value = 0.38; wet.gain.value = 0.42; inp.connect(lp); lp.connect(out); lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out);
+    c.__desk = { in: inp, lp: lp }; return c.__desk; }
   function noteAt(c, out, sg, k, d, t) {
     if (DESK.mute[k]) return;
-    var M = MOODS[sg.m], I = NG.INS[M.ins[k]] || NG.INS.gamelan, base = (I.base || 220) * M.root * (k === 3 ? 0.5 : 1), oct = Math.floor(d / 5), f = base * Math.pow(2, (M.sc[d % 5] + 12 * oct) / 12);
-    try { I.fn(c, out, t, f, k === 2 ? 0.9 : 0.5, [0.5, 0.42, 0.5, 0.6][k]); } catch (e) { /* a voice missing */ }
+    var M = MOODS[sg.m], name = M.ins[k], V = DV[name] || DV.drop, oct = Math.floor(d / 5), f = (DVB[name] || 196) * M.root * Math.pow(2, (M.sc[d % 5] + 12 * oct) / 12), D2 = deskOut(c);
+    try { D2.lp.frequency.setTargetAtTime(500 + 900 * TXT.bright, t, 0.5); V(c, D2.in, t, f, [0.16, 0.14, 0.1, 0.22][k] * (0.7 + 0.3 * TXT.bright)); } catch (e) { /* a voice missing */ }
   }
+
   /* played: the song on the desk, or (list) every kept song in turn, each twice through, round and round. Nothing plays that is empty */
   function songPlay(on, list) {
     clearInterval(DESK.iv); DESK.iv = 0; DESK.list = !!on && !!list && DESK.kept.length > 0; DESK.step = -1;
     if (DESK.list) { var s0 = songOf(DESK.kept[0].code); if (s0) { DESK.song = s0; DESK.mood = s0.m; DESK.src = s0.s; } }
     DESK.play = !!on && !songEmpty(DESK.song); if (DESK.el) { DESK.el.classList.toggle('playing', DESK.play); DESK.el.classList.toggle('listing', DESK.list && DESK.play); deskSync(); }
     if (!DESK.play) { DESK.list = false; humSet(S.mode !== 'seed'); return; }
-    devLetGo(); humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0, li = 0; DESK.t0 = next;
+    txtRead(); devLetGo(); humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0, li = 0; DESK.t0 = next;
     DESK.iv = setInterval(function () { if (!DESK.play || (!DESK.list && DESK.song !== sg)) return; while (next < c.currentTime + 0.25) {
       if (DESK.list && n === STEPS_N * 2) { li = (li + 1) % DESK.kept.length; var s2 = songOf((DESK.kept[li] || {}).code); if (s2) { sg = DESK.song = s2; DESK.mood = s2.m; DESK.src = s2.s; sd = stepDur(sg); DESK.t0 = next; deskSync(); } n = 0; }
       var st = n % STEPS_N; sg.t.forEach(function (row, k) { var ch = row.charAt(st); if (ch !== '.') noteAt(c, out, sg, k, +ch, next); }); next += sd; n++; } }, 40);
@@ -785,6 +813,12 @@
     for (var k = 0; k < 4; k++) { var x0 = cx + (k - 1.5) * 14, row = sg ? sg.t[k] : '';
       for (var i = 0; i < STEPS_N; i++) { var fy = top + bh + 8 + i * (Hc - top - bh - 14) / STEPS_N, sway = Math.sin(t * 1.2 + i * 0.35 + k) * (2 + i * 0.25), xx = x0 + (k - 1.5) * i * 1.6 + sway, note = row && row.charAt(i) !== '.', lit = i === st;
         g.globalAlpha = lit ? 1 : note ? 0.75 : 0.18; g.beginPath(); g.arc(xx, fy, lit ? 3.4 : note ? 2 : 1, 0, 7); g.fill(); } }
+    if (sg && sg.geo && sg.geo.pts.length > 1) { var G = sg.geo, kx = Math.cos(G.p.lat * Math.PI / 180), R0 = 0.0135, box = Math.min(Wc, Hc) * 0.42, ox = Wc - box - 10, oy = Hc - box - 10,
+        P2 = function (q) { return [ox + box / 2 + (q[1] - G.p.lng) * kx / R0 * box / 2, oy + box / 2 - (q[0] - G.p.lat) / R0 * box / 2]; };
+      G.e.forEach(function (e) { var a1 = P2(G.pts[e[0]]), b1 = P2(G.pts[e[1]]), on = e[2] === st; g.globalAlpha = on ? 1 : 0.25; g.lineWidth = on ? 1.6 : 0.8; g.beginPath(); g.moveTo(a1[0], a1[1]); g.lineTo(b1[0], b1[1]); g.stroke(); });
+      g.globalAlpha = 0.6; G.pts.forEach(function (q) { var a1 = P2(q); g.beginPath(); g.arc(a1[0], a1[1], 1.3, 0, 7); g.fill(); }); g.globalAlpha = 0.3; g.lineWidth = 0.8; g.beginPath(); g.arc(ox + box / 2, oy + box / 2, box / 2, 0, 7); g.stroke(); }
+    if (sg && sg.lab && st >= 0) { var said = []; for (var k3 = 0; k3 < 4; k3++) if (sg.lab[k3][st]) said.push(sg.lab[k3][st]); if (said.length) DESK.said = { w: said.slice(0, 2).join('   '), t: t }; }
+    if (DESK.said && DESK.play && t - DESK.said.t < 2.2) { g.globalAlpha = Math.max(0, 1 - (t - DESK.said.t) / 2.2) * 0.85; g.font = '500 10px "Departure Mono", ui-monospace, Menlo, monospace'; g.fillText(String(DESK.said.w).slice(0, 48), 10, Hc - 8); }
     g.globalAlpha = 1; DESK.raf = requestAnimationFrame(deskDraw);
   }
   function deskKept() { var ul = DESK.el && DESK.el.querySelector('.au-kept'); if (!ul) return;
@@ -1330,7 +1364,7 @@
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
-            hand('au-sm', svgI('tone'), 'data-px="tone" aria-label="Its colour"') + hand('au-big au-place', svgI('plus'), 'data-px="put" aria-label="Put it on the poster"') + '</div></div>' : '') +
+            hand('au-sm', svgI('tone'), 'data-px="tone" aria-label="Its colour"') + hand('au-sm', svgI('pics'), 'data-px="hero" aria-label="As the main picture"') + hand('au-big au-place', svgI('plus'), 'data-px="put" aria-label="Put it on the poster"') + '</div></div>' : '') +
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words" hidden></textarea><nav class="au-tools">' +
           hand('', svgI('turn'), 'data-t="r" aria-label="Turn"') + hand('', '−', 'data-t="s-" aria-label="Smaller"') + hand('', '+', 'data-t="s+" aria-label="Larger"') + hand('', svgI('tone'), 'data-t="tone" aria-label="Tone"') + hand('', svgI('frame'), 'data-t="b" aria-label="Framed or not"') +
           hand('au-rm', '×', 'data-t="x" aria-label="Take it off"') + '</nav></div></figure>' + hint(SAY.art) + goKey(2); }
@@ -1378,6 +1412,8 @@
       panel.querySelector('[data-add="p"]').addEventListener('click', function () { S.pix = !S.pix; paint(); bell(7, 0.16); });
       [].forEach.call(panel.querySelectorAll('[data-px]'), function (b) { b.addEventListener('click', function () { var k = b.dataset.px;
         if (k === 'cells') PIX.cells = PIX.cells === 16 ? 24 : PIX.cells === 24 ? 32 : 16; else if (k === 'cur') PIX.cur = PIX.cur % 3 + 1; else if (k === 'tone') { var tn = ['ink', 'blue'].concat(PIX.sub !== 'jelly' ? ['colour'] : [], picOf(P) ? ['photo'] : []); PIX.tone = tn[(tn.indexOf(PIX.tone) + 1) % tn.length]; }
+        else if (k === 'hero') { var hc = pixArt(PIX.sub, PIX.cells, (performance.now() / 1000) * PIX.cur, PIX.tone, picOf(P), PIX.seed), big = document.createElement('canvas'); big.width = big.height = 960; var bgx = big.getContext('2d'); bgx.fillStyle = back(1); bgx.fillRect(0, 0, 960, 960); bgx.imageSmoothingEnabled = false; bgx.drawImage(hc, 0, 0, 960, 960);
+          big.toBlob(function (bl) { if (bl) intake(new File([bl], 'pixel.png', { type: 'image/png' })); }, 'image/png'); bell(4, 0.16); return; }
         else if (k === 'new') PIX.seed = 1 + Math.floor(Math.random() * 9999);
         else add({ k: 'p', sub: PIX.sub, seed: PIX.seed, cells: PIX.cells, ph: (performance.now() / 1000) * PIX.cur, tone2: PIX.tone }); bell(2, 0.12); }); });
       [].forEach.call(panel.querySelectorAll('[data-pxs]'), function (b) { b.addEventListener('click', function () { PIX.sub = b.dataset.pxs; PIX.seed = 1 + Math.floor(Math.random() * 9999); if (PIX.sub === 'jelly' && PIX.tone === 'colour') PIX.tone = 'ink'; paint(); bell(4, 0.12); }); });
