@@ -258,7 +258,9 @@ async function intelCanvas(sel, s, W = 384, levels = 2) {
    phone's camera reads it off the paper or the screen; the code and the time; the Country */
 async function jCodeCanvas(s, W = 512) {
   const k = W / 384, pad = Math.round(16 * k); try { await document.fonts.load('500 12px "IBM Plex Mono"'); } catch (e) { /* fallback type */ }
-  const qr = qrOf(linkOf(s) || meshText(s), 'M') || qrOf(linkOf(s) || meshText(s), 'L'); const n = qr ? qr.getModuleCount() : 0; const m = n ? Math.max(2, Math.floor((W - pad * 2) * 0.86 / (n + 8))) : 0;
+  /* a long link at M can leave only three dots a square, too fine to read off a desk's screen: L then, if its squares come out larger */
+  const fit = q => q ? Math.floor((W - pad * 2) * 0.86 / (q.getModuleCount() + 8)) : 0, txt = linkOf(s) || meshText(s), qM = qrOf(txt, 'M'), qL = qrOf(txt, 'L');
+  const qr = qM && fit(qM) >= fit(qL) ? qM : qL || qM; const n = qr ? qr.getModuleCount() : 0; const m = n ? Math.max(2, fit(qr)) : 0;
   const side = n ? (n + 8) * m : 0; const H = side + Math.round(70 * k);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#000'; x.textBaseline = 'top';
   const ox = Math.round((W - side) / 2) + 4 * m; if (qr) for (let r = 0; r < n; r++) for (let q = 0; q < n; q++) if (qr.isDark(r, q)) x.fillRect(ox + q * m, 4 * m + r * m, m, m);
