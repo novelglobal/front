@@ -1905,7 +1905,9 @@ function boardSheet() {
   $('#pb-print').addEventListener('click', function () { if (!board.out) return; var n = { id: 'p' + Date.now().toString(36), at: Date.now(), lat: map.lat, lng: map.lng, say: '', tags: [], mine: true }; n.code = code(n.id); stepS(n, pixelArt(board.frames[board.i], board.cells, 2, 8, 11 + board.i * 7)); });
   paint();
 }
+/* a picture pasted anywhere in the base opens the pixel board; while the aura is open it is the aura's, which puts it on the poster in hand */
 document.addEventListener('paste', function (e) {
+  if (window.AURA && window.AURA.awake && window.AURA.awake()) return;
   var items = (e.clipboardData && e.clipboardData.items) || []; for (var i = 0; i < items.length; i++) if (items[i].type.indexOf('image') === 0) {
     if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
     loadImg(URL.createObjectURL(items[i].getAsFile())).then(function (im) {

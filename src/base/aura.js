@@ -345,6 +345,8 @@
     });
     (P.adds || []).forEach(function (a, i) {
       var it = { key: 'a' + i, X: a.x * W, Y: a.y * H, tf: a };
+      /* laid by a signal, until moved by hand: three to a row below the words and what was caught */
+      if (a.band) { var bi = a.band - 1; it.X = pad + (bi % 3) * (W - pad * 2 - 220) / 2; it.Y = B0.band + (caught(P).length ? 340 : 0) + 10 + Math.floor(bi / 3) * 240; }
       if (a.k === 's' && MARKS[a.g]) { it.w = it.h = 132; it.draw = function (x) { x.translate(6, 6); x.scale(3.75, 3.75); var mk = new Path2D(MARKS[a.g]), tn = a.tone || 'ink'; x.lineCap = x.lineJoin = 'round';
         if (tn !== 'clear') { x.strokeStyle = tn === 'turn' ? ink(0.9) : back(0.9); x.lineWidth = 2.1; x.stroke(mk); } x.strokeStyle = tn === 'turn' ? back() : ink(); x.lineWidth = 0.8; x.stroke(mk); }; }
       else if (a.k === 't') { m.font = tFont(34); var ls = wrap(m, a.t || ' ', 420); it.w = Math.max(80, Math.max.apply(null, ls.map(function (l) { return m.measureText(l).width; })) + 40); it.h = ls.length * 44 + 22;
@@ -467,9 +469,10 @@
   /* where the tentacles are put to work, read from the page each frame: W.I.S.H.'s four lines, or the four sides of the piece */
   var FORM = { key: 'hang', lines: null, rect: null };
   function readForm() {
-    FORM.lines = null; FORM.rect = null; var key = 'hang';
+    FORM.lines = null; FORM.rect = null; FORM.wline = null; var key = 'hang';
     if (S.mode === 'iruk' && !S.deep && panel) {
       if (S.stage === 1) { var tas = panel.querySelectorAll('.au-wish textarea'); if (tas.length === 4) { var ls = [].map.call(tas, function (ta) { var r = ta.getBoundingClientRect(); return [r.left, r.right, r.bottom - 1]; }); if (ls[0][1] > ls[0][0]) { FORM.lines = ls; key = 'wish'; } } }
+      else if (S.stage === 3) { var l2 = panel.querySelector('.au-line2'); if (l2) { var r3 = l2.getBoundingClientRect(); if (r3.width > 20 && r3.bottom > L.panel.t && r3.top < L.panel.t + L.panel.h) { FORM.wline = [r3.left + 2, r3.right - 2, r3.top + r3.height / 2]; key = 'line'; } } }
       else if (S.stage >= 2) { var el = panel.querySelector('.au-drag canvas'); if (el) { var r = el.getBoundingClientRect(), P0 = L.panel; if (r.width > 20) { FORM.rect = [r.left - 9, Math.max(P0.t - 6, r.top - 9), r.right + 9, Math.min(P0.t + P0.h + 6, r.bottom + 9)]; key = 'frame' + S.stage; } } }
     }
     if (key !== FORM.key) { FORM.from = LAST; FORM.at = performance.now() / 1000; FORM.key = key; }
@@ -483,6 +486,11 @@
       /* W.I.S.H.: each tentacle sweeps down from the catch to the margin and lies along its own line; W and I from the left, S and H from the right */
       var ln = FORM.lines[i], sx = left ? ln[0] - (i === 0 ? 7 : 14) : ln[1] + (i === 3 ? 7 : 14), a0 = left ? ln[0] : ln[1], a1 = left ? ln[1] : ln[0];
       ctl = held.concat([[g[0] + (sx - g[0]) * 0.7, g[1] + (ln[2] - g[1]) * 0.3], [sx, ln[2] - 16], [a0 + (left ? 2 : -2), ln[2]]]); k0 = ctl.length - 1; ctl.push([a0 + (a1 - a0) * 0.04, ln[2]]);
+    } else if (FORM.wline && i === 3) {
+      /* print: it lets go of its key, sweeps out past the wall's right end and is the line itself, sagging a little, the receipts clipped to it */
+      var wl = FORM.wline, wx2 = Math.min(L.W - 6, wl[1] + (mob ? 8 : 22));
+      ctl = held.concat([[g[0] + (wx2 - g[0]) * 0.6, g[1] + (wl[2] - g[1]) * 0.35], [wx2, wl[2] - 12], [wl[1], wl[2]]]); k0 = ctl.length - 1;
+      for (var q4 = 1; q4 <= 8; q4++) ctl.push([wl[1] + (wl[0] - wl[1]) * q4 / 8, wl[2] + Math.sin(Math.PI * q4 / 8) * 2.5]);
     } else if (FORM.rect) {
       /* the piece: they cross at the catch, go down outside it, and close the four sides as one loop: left, bottom, right, top */
       var R = FORM.rect, TL = [R[0], R[1]], TR = [R[2], R[1]], BR = [R[2], R[3]], BL = [R[0], R[3]], o = mob ? 5 : 16, side, L1 = Math.max(2, R[0] - o), L2 = Math.max(2, R[0] - 2 * o), R1 = Math.min(L.W - 2, R[2] + o), R2 = Math.min(L.W - 2, R[2] + 2 * o);
@@ -544,13 +552,13 @@
   /* the step that would come next, once this one has something: a light runs down its tentacle to the tip */
   var nextStep = function () { return S.deep || S.stage >= 3 || !ready() ? -1 : S.stage + 1; };
   function drawIruk(t, a) {
-    readForm(); var T = irukTargets(t), b = T.bell, k0 = a, nx = nextStep(), work = FORM.key !== 'hang'; LAST = T.tents;
+    readForm(); var T = irukTargets(t), b = T.bell, k0 = a, nx = nextStep(), work = FORM.key !== 'hang' && FORM.key !== 'line'; LAST = T.tents;
     /* the aura: a slow light round the bell, breathing with it */
     var g = x.createRadialGradient(L.bx, b.top + L.bh * 0.5, 4, L.bx, b.top + L.bh * 0.5, L.bw * 1.7); g.addColorStop(0, 'rgba(244,241,232,' + (0.13 + 0.07 * b.p) * a + ')'); g.addColorStop(1, 'rgba(244,241,232,0)');
     x.fillStyle = g; x.fillRect(L.bx - L.bw * 2, b.top - L.bw, L.bw * 4, L.bw * 3.4);
     var P0 = L.panel, faint = function (inside) { x.save(); x.beginPath(); x.rect(P0.l, P0.t, P0.w, P0.h); if (!inside) { x.rect(L.W, 0, -L.W, L.H); x.clip('evenodd'); } else x.clip(); };
     [false, true].forEach(function (inside) { if (work && inside) return; if (!work) faint(inside); else x.save(); var A = inside ? (S.deep || P && P.photo ? 0.08 : 0.14) : 1;
-      T.tents.forEach(function (pts, i) {
+      T.tents.forEach(function (pts, i) { if (FORM.wline && i === 3) return;
         var on = i === S.stage, nxt = i === nx, w = on ? 1.15 : 0.8, a2 = A * k0;
         stroke(pts, w, (on ? 0.9 : nxt ? 0.7 : 0.5) * a2, true);
         stroke(pts.map(function (p) { return [p[0] + 1.6, p[1] - 1]; }).slice(0, NT - 6), 0.3, 0.18 * a2, true);
@@ -558,6 +566,7 @@
         for (var j = 4; j < NT - 1; j += 2) { var tw = 0.5 + 0.5 * Math.sin(t * 2.6 - j * 0.5 + i), big = j % 6 === 0, sting = S.sting && t - S.sting < 1.8 ? Math.max(0, 1 - Math.abs((t - S.sting) / 1.4 - j / NT) * 8) : 0, run = Math.max(sting, nxt ? Math.max(0, 1 - Math.abs(((t * 0.55) % 1.2) - j / NT) * 9) : 0);
           dot(pts[j][0], pts[j][1], (big ? 2.1 : 1.2) * (on ? 1.15 : 1) * (1 + run * 0.8), Math.min(1, (on ? 0.4 + 0.55 * tw : 0.22 + 0.25 * tw) + run * 0.7) * a2); }
       }); x.restore(); });
+    if (FORM.wline) { var tl3 = T.tents[3]; stroke(tl3, 1.1, 0.88 * k0, false); for (var j3 = 4; j3 < NT - 1; j3 += 3) dot(tl3[j3][0], tl3[j3][1], j3 % 6 === 0 ? 1.8 : 1.1, (0.35 + 0.3 * Math.sin(t * 2.2 - j3 * 0.4)) * k0); }
     stroke(b.pts, 1.4, 0.95 * a, false, true);
     stroke(b.pts.map(function (p) { return [p[0] + 1.2, p[1] + 0.8]; }), 0.4, 0.25 * a, false, true);
     /* the bell is the eye that notices, drawn in dots as the bark painting draws it; its four tears run down as the tentacles.
@@ -717,6 +726,8 @@
     pxtrash: '<ellipse cx="16" cy="12" rx="8" ry="5.5"/><ellipse cx="16" cy="11.5" rx="3.5" ry="1.8"/><path d="M11 16l1.5 9h7L21 16"/><circle cx="16" cy="21" r=".9" class="f"/>',
     pxclip: '<path d="M12 26V9a4 4 0 0 1 8 0v14a2.5 2.5 0 0 1-5 0V11"/>',
     dice: '<path d="M7 7h18v18H7z"/><circle cx="12" cy="12" r="1.3" class="f"/><circle cx="20" cy="20" r="1.3" class="f"/><circle cx="16" cy="16" r="1.3" class="f"/>',
+    pin: '<path d="M16 28s-8-8.5-8-14a8 8 0 0 1 16 0c0 5.5-8 14-8 14z"/><circle cx="16" cy="14" r="2.8" class="f"/>',
+    more: '<circle cx="16" cy="16" r="11.5"/><path d="M16 14.5v8"/><circle cx="16" cy="10.4" r="1.3" class="f"/>',
     mark: '<path d="M4 11h10v10H4z" class="f"/><circle cx="23" cy="16" r="5.6" class="f" style="opacity:.55"/>',
     wall: '<path d="M3 7c4 2 22 2 26 0"/><path d="M11 9v16h10V9" class="d"/><path d="M13 5.5v5M19 5.5v5"/>',
     pics: '<path d="M10 11h17v14H10z"/><path d="M10 22l5-5 4 4 2-2 6 6"/><path d="M5 6h17v3M5 6v14h3" class="d"/>',
@@ -751,6 +762,9 @@
     month: 'What to look for this month.'
   };
   /* why El Niño matters now, from the season's own reports (sources in docs/sources.md) */
+  var NINO_MORE = ['El Niño is a warming of the tropical Pacific that shifts weather around the world. For south-east Australia it usually means a hotter, drier spring and summer.',
+    'Heat and dry ground stress wildlife first: birds, flying-foxes and possums struggle on days over 35°, and creeks and ponds shrink.',
+    'More days of high fire danger. Know your area’s fire danger rating, and check VicEmergency before you go out.'];
   var NINO_WHY = 'El Niño is here and may be one of the strongest on record. Expect hotter, drier days and more fire risk. Wildlife feels it first.';
   var hint = function (t, cls2) { var long = t.length > 70; return '<p class="au-hint ' + (cls2 || '') + '" data-on="' + ((long ? Math.min(8, 2 + Math.round(t.length / 40)) : 2) + 5) + '" data-off="' + (long ? 28 : 20) + '">' + esc(t) + '</p>'; };
   /* the next step, always at the foot of the page: a dotted line to the next step's own icon, and where it leads */
@@ -768,8 +782,8 @@
   var FW = 0;
   var flashWords = function (wait) { clearTimeout(FW); FW = setTimeout(function () {
     var on = [].filter.call(document.querySelectorAll('#aura [data-fw]'), function (e) { return e.offsetParent !== null && (panel.contains(e) || e.classList.contains('au-tab') && e.classList.contains('on')); });
-    on.forEach(function (e, i) { e.classList.remove('fw'); void e.offsetWidth; e.style.setProperty('--fd', (still ? 0 : i * 0.64).toFixed(2) + 's'); e.classList.add('fw'); });
-    FW = setTimeout(function () { on.forEach(function (e) { e.classList.remove('fw'); }); }, on.length * 640 + 3200); }, wait || 120); };
+    on.forEach(function (e, i) { e.classList.remove('fw'); void e.offsetWidth; e.style.setProperty('--fd', (still ? 0 : i * 1.2).toFixed(2) + 's'); e.classList.add('fw'); });
+    FW = setTimeout(function () { on.forEach(function (e) { e.classList.remove('fw'); }); }, on.length * 1200 + 5600); }, wait || 120); };
   var hintsQuiet = function () { HS.at = performance.now() / 1000 + 10; HS.i = -1; if (HS.el) HS.el.classList.remove('on'); HS.el = null; };
   setInterval(function () {
     var t = performance.now() / 1000, box = S.deep ? deep : panel; if (!box) return;
@@ -1002,6 +1016,7 @@
       say.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); keep(); think(); if (goReady(0)) step(1); } });
     }
     if (s === 1) {
+      starLetters();
       /* a letter tapped says what goes on its line, there on the line, for a few seconds, and hands one the line */
       [].forEach.call(panel.querySelectorAll('.au-wish b'), function (bb) { bb.addEventListener('click', function () { var li = bb.parentNode; li.classList.add('tip'); clearTimeout(li.__t); li.__t = setTimeout(function () { li.classList.remove('tip'); }, 6000); var ta = li.querySelector('textarea'); if (ta) ta.focus(); }); });
       [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var i = +ta.dataset.i; ta.addEventListener('input', function () { ta.parentNode.classList.toggle('empty', !ta.value); });
@@ -1034,6 +1049,27 @@
       redraw(); dragWire(); if (S.pix) pixRun();
     }
     if (s === 3) wallWire();
+  }
+  /* W.I.S.H.'s letters, never written: small stars drift in from round about and gather into each letter's shape, then twinkle where they
+     settled, faint, brighter while its line is in hand. The letter itself stays in the page for screen readers, unseen */
+  var STARS = { raf: 0 };
+  function starLetters() {
+    cancelAnimationFrame(STARS.raf); var bs = [].slice.call(panel.querySelectorAll('.au-wish b')); if (!bs.length) return;
+    var t0 = performance.now(), CW = 60, CH = 64, dp = Math.min(2, window.devicePixelRatio || 1);
+    var sets = bs.map(function (bb, li) {
+      var c = document.createElement('canvas'); c.width = CW * dp; c.height = CH * dp; c.className = 'au-stars'; c.setAttribute('aria-hidden', 'true');
+      var off = document.createElement('canvas'); off.width = CW; off.height = CH; var o = off.getContext('2d'); o.font = '700 36px ' + SANS; o.textAlign = 'center'; o.textBaseline = 'middle'; o.fillText('WISH'.charAt(li), CW / 2, CH / 2 + 2);
+      var dd = o.getImageData(0, 0, CW, CH).data, pts = [], R = rnd(li * 7 + 3);
+      for (var y = 1; y < CH; y += 2.3) for (var x0 = 1; x0 < CW; x0 += 2.3) { if (dd[(Math.round(y) * CW + Math.round(x0)) * 4 + 3] > 140 && R() < 0.6) { var an = R() * 7, rr = 12 + R() * 26;
+        pts.push({ x: x0 + (R() - 0.5), y: y + (R() - 0.5), sx: CW / 2 + Math.cos(an) * rr, sy: CH / 2 + Math.sin(an) * rr, r: 0.45 + R() * 0.8, ph: R() * 7, dl: R() * 0.9 + li * 0.3 }); } }
+      bb.appendChild(c); return { c: c, g: c.getContext('2d'), pts: pts, li: bb.parentNode };
+    });
+    (function tick(now) { if (!sets[0].c.isConnected) return; var t = (now - t0) / 1000;
+      sets.forEach(function (st) { var g = st.g, hot = st.li.matches(':focus-within'); g.setTransform(dp, 0, 0, dp, 0, 0); g.clearRect(0, 0, CW, CH); g.fillStyle = '#F4F1E8';
+        st.pts.forEach(function (q) { var k = still ? 1 : Math.max(0, Math.min(1, (t - q.dl) / 1.8)); k = 1 - Math.pow(1 - k, 3);
+          var px = q.sx + (q.x - q.sx) * k + (still ? 0 : Math.sin(t * 0.7 + q.ph) * 0.3), py = q.sy + (q.y - q.sy) * k + (still ? 0 : Math.cos(t * 0.6 + q.ph) * 0.3);
+          g.globalAlpha = Math.max(0, (hot ? 1 : 0.72) * (0.55 + 0.45 * Math.sin(t * 1.5 + q.ph)) * (0.3 + 0.7 * k)); g.beginPath(); g.arc(px, py, q.r, 0, 7); g.fill(); }); });
+      STARS.raf = requestAnimationFrame(tick); })(t0);
   }
   /* the piece let go: a new one begins at the eye. What was printed stays on the wall */
   function letGo() { fresh(); if (S.stage === 0) paint(); else step(0); bell(0, 0.24); }
@@ -1162,7 +1198,7 @@
       var p = at(e); if (!hold) { c.style.cursor = hit(p) ? 'grab' : ''; return; }
       hold.moved = Math.max(hold.moved, Math.abs(e.clientX - hold.x0) + Math.abs(e.clientY - hold.y0));
       var b = lastBoxes[hold.k], W = c.width, H = c.height, nx = Math.max(0, Math.min(W - b[2], p[0] - hold.dx)) / W, ny = Math.max(0, Math.min(H - b[3], p[1] - hold.dy)) / H;
-      if (hold.k.charAt(0) === 'a' && hold.k.length > 1) { var a = P.adds[+hold.k.slice(1)]; a.x = nx; a.y = ny; } else P.pos[hold.k] = [nx, ny];
+      if (hold.k.charAt(0) === 'a' && hold.k.length > 1) { var a = P.adds[+hold.k.slice(1)]; a.x = nx; a.y = ny; delete a.band; } else P.pos[hold.k] = [nx, ny];
       /* carried near the top or foot of the view, the page moves with it */
       var vr = panel.getBoundingClientRect(), edge = 56; if (e.clientY > vr.bottom - edge) panel.scrollTop += 12; else if (e.clientY < vr.top + edge) panel.scrollTop -= 12;
       if (!artRaf) artRaf = requestAnimationFrame(function () { artRaf = 0; redraw(); }); });
@@ -1302,7 +1338,8 @@
     p.say = m[6]; p.lines = [m[7], m[8], m[9], m[10]]; p.catch.map = true; p.catch.data = [NG.when(p.at).slice(0, 6).toLowerCase()];
     var marks = m[5] || '', n2 = 0; p.paper = marks.indexOf('w') >= 0 ? 'white' : 'blue'; p.catch.nino = marks.indexOf('n') >= 0;
     marks.replace(/[wn]/g, '').split('').forEach(function (ch, i) { var st = 'abcdef'.indexOf(ch), mk = 'ghijklmnopqr'.indexOf(ch), a = st >= 0 ? { k: 'st', g: st, r: (i % 2 ? 6 : -6) } : mk >= 0 ? { k: 's', g: MARK_ORDER[mk] } : null; if (!a) return;
-      a.x = 0.12 + (n2 % 3) * 0.28; a.y = 0.1 + Math.floor(n2 / 3) * 0.16; n2++; p.adds.push(a); });
+      a.band = n2 + 1; a.x = a.y = 0; n2++; p.adds.push(a); });
+    if (n2) p.len = Math.ceil(n2 / 3) * 240;
     p.from = (m[11] || '').toUpperCase(); return p;
   }
   /* a line pasted, typed or scanned back in: it becomes the piece in hand, at print, in front */
@@ -1421,11 +1458,12 @@
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
     deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' +
-      '<div class="au-c"><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
+      '<div class="au-c"><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul>' +
       '<details class="au-near au-rd" id="au-rd" open><summary aria-label="The readings here">' + svgI('cur') + '<i></i></summary><ul class="au-vals" id="au-vals"></ul></details>' + hint(SAY.vals) + '<div class="au-now"><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button>' +
-      '<button class="au-seab" id="au-seab" aria-expanded="false" aria-label="This month: what to watch for, near here">' + svgI('moon2') + '<b>' + esc(NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3)) + '</b></button><button class="au-seab" id="au-actb" aria-expanded="false" aria-label="What to do now">' + svgI('act') + '</button></div>' + hint(NINO_WHY, 'au-why') +
+      '<button class="au-seab" id="au-seab" aria-expanded="false" aria-label="This month: what to watch for, near here">' + svgI('moon2') + '<b>' + esc(NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3)) + '</b></button><button class="au-seab" id="au-actb" aria-expanded="false" aria-label="What to do now">' + svgI('act') + '</button><button class="au-seab" id="au-ninob" aria-expanded="false" aria-label="More about El Niño">' + svgI('more') + '</button></div>' + hint(NINO_WHY, 'au-why') +
+      '<div class="au-ninomore" id="au-ninom" hidden>' + NINO_MORE.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '<p class="au-src"><span>Bureau of Meteorology, climate driver update</span><span>NOAA, ENSO advisory</span></p></div>' +
       '<ul class="au-acts" id="au-acts" hidden>' + ACTS.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul><ul class="au-sea" id="au-sea" hidden></ul>' +
       '<nav class="au-kinds" id="au-kinds">' + KINDS.map(function (k) { return '<button data-k="' + k[0] + '" class="' + (SPW.kind === k[0] ? 'on' : '') + '" aria-label="' + k[0] + '"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true">' + KIND_I[k[0]] + '</svg></button>'; }).join('') + '</nav>' +
       '<div class="au-spw" id="au-spw"></div><i class="au-spend" id="au-spend"></i></div>';
@@ -1433,8 +1471,10 @@
     lens(); NG.db().then(function () { think(); fill(); }); fill();
     $('#au-q').addEventListener('input', fill);
     $('#au-me').addEventListener('click', function () { findMe(true); });
+    MAPV.pin = MAPV.back = null; $('#au-mback').addEventListener('click', mapBack);
     $('#au-seab').addEventListener('click', function () { var ul = $('#au-sea'), op = ul.hidden; ul.hidden = !op; this.setAttribute('aria-expanded', String(op)); this.classList.toggle('on', op); if (op) { seaFill(); nearFill(); } bell(op ? 5 : 1, 0.14); });
     $('#au-near').addEventListener('toggle', function () { if (this.open) nearFill(); bell(3, 0.14); });
+    $('#au-ninob').addEventListener('click', function () { var m2 = $('#au-ninom'), op = m2.hidden; m2.hidden = !op; this.setAttribute('aria-expanded', String(op)); this.classList.toggle('on', op); subSwell(); });
     $('#au-actb').addEventListener('click', function () { var ul = $('#au-acts'), op = ul.hidden; ul.hidden = !op; this.setAttribute('aria-expanded', String(op)); this.classList.toggle('on', op); subSwell(); });
     [].forEach.call(deep.querySelectorAll('[data-k]'), function (b) { b.addEventListener('click', function () { SPW.kind = b.dataset.k; [].forEach.call(deep.querySelectorAll('[data-k]'), function (q) { q.classList.toggle('on', q === b); }); spWall(); subSwell(); }); });
     NG.db().then(function () { spWall(); });
@@ -1508,12 +1548,26 @@
     more(); more();
     var end = $('#au-spend'); SPW.io = 'IntersectionObserver' in window && end ? new IntersectionObserver(function (es) { if (es[0].isIntersecting) more(); }, { root: deep, rootMargin: '400px' }) : null; if (SPW.io) SPW.io.observe(end);
     if (!w.__w) { w.__w = 1; w.addEventListener('click', function (e) { var c = e.target.closest('.au-card'); if (!c) return; var f = (NG.DB().field || []).filter(function (q) { return q.id === c.dataset.id; })[0]; if (!f) return;
+      if (e.target.closest('.au-cpin')) { spWhere(f, c); return; }
       if (e.target.closest('.au-cadd')) { var on = P.catch.life !== f.id; P.catch.life = on ? f.id : ''; P.revealed = 0; think(); spFetch(P); fill(); ping(on); [].forEach.call(w.querySelectorAll('.au-card'), function (q) { q.classList.toggle('got', q.dataset.id === P.catch.life); }); bubbles(5); return; }
       c.classList.toggle('flip'); bubbles(3); try { if (navigator.vibrate) navigator.vibrate(5); } catch (er) { /* no touch */ } }); }
   }
   function spCard(f) { var got = P && P.catch.life === f.id;
     return '<div class="au-card' + (got ? ' got' : '') + '" data-id="' + esc(f.id) + '" role="button" tabindex="0" aria-label="' + esc(f.cn) + '"><div class="au-cin"><div class="au-cf"><img alt="" loading="lazy"></div>' +
-      '<div class="au-cb"><b>' + esc(f.cn) + '</b><i>' + esc(f.n || '') + '</i><span>' + esc(f.event || f.where || '') + '</span><button class="au-cadd" aria-label="Add to my poster">' + svgI('plus') + '</button></div></div></div>'; }
+      '<div class="au-cb"><b>' + esc(f.cn) + '</b><i>' + esc(f.n || '') + '</i><span>' + esc(f.event || f.where || '') + '</span><button class="au-cadd" aria-label="Add to my poster">' + svgI('plus') + '</button><button class="au-cpin" aria-label="Where it was seen near here, on the map">' + svgI('pin') + '</button></div></div></div>'; }
+  /* where a life was last seen near here (iNaturalist, as placing a noticing reveals sightings): the map goes there and marks it; a key on the
+     map takes one back to the card and the map back to where it was */
+  function spWhere(f, card) {
+    if (!B.inat || !P) return; var mp = $('#au-cmap'); if (!mp) return; card.classList.add('busy');
+    fetch(B.inat + '/observations?taxon_name=' + encodeURIComponent(f.n) + '&lat=' + P.lat.toFixed(4) + '&lng=' + P.lng.toFixed(4) + '&radius=25&per_page=1&order=desc&order_by=observed_on&locale=en').then(function (r) { return r.json(); }).then(function (j) {
+      card.classList.remove('busy'); var o = ((j && j.results) || [])[0], c = o && o.geojson && o.geojson.coordinates; if (!c) { card.classList.add('none'); setTimeout(function () { card.classList.remove('none'); }, 1600); bell(0, 0.1); return; }
+      MAPV.back = MAPV.back || { lat: MAPV.lat, lng: MAPV.lng, z: MAPV.z, top: deep.scrollTop, id: f.id }; MAPV.back.id = f.id; MAPV.pin = { lat: +c[1], lng: +c[0] };
+      MAPV.lat = MAPV.pin.lat; MAPV.lng = MAPV.pin.lng; MAPV.z = 15; if (MAPV.draw) MAPV.draw(); var bk = $('#au-mback'); if (bk) bk.hidden = false;
+      deep.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); bell(4, 0.16); bubbles(3);
+    }).catch(function () { card.classList.remove('busy'); });
+  }
+  function mapBack() { var b2 = MAPV.back; if (!b2) return; MAPV.lat = b2.lat; MAPV.lng = b2.lng; MAPV.z = b2.z; MAPV.pin = null; MAPV.back = null; if (MAPV.draw) MAPV.draw(); var bk = $('#au-mback'); if (bk) bk.hidden = true;
+    deep.scrollTo({ top: b2.top, behavior: still ? 'auto' : 'smooth' }); var cd = deep.querySelector('.au-card[data-id="' + b2.id + '"]'); if (cd) { cd.classList.add('flip', 'lit'); setTimeout(function () { cd.classList.remove('lit'); }, 1800); } bell(2, 0.14); }
   function spPhoto(c) {
     var id = c.dataset.id, im = c.querySelector('img'), done2 = function (u) { if (u && im) { im.src = u; im.onload = function () { c.classList.add('in'); }; } else c.classList.add('none'); };
     if (SPW.ph[id] !== undefined) { done2(SPW.ph[id]); return; }
@@ -1580,6 +1634,7 @@
       NG.notes().forEach(function (q) { if (!isFinite(q.lat)) return; var s = at(q.lat, q.lng); g.globalAlpha = 0.6; g.beginPath(); g.arc(s[0], s[1], 3, 0, 7); g.fill(); });
       var s0 = at(p.lat, p.lng); ((p.note && p.note.seen) || []).forEach(function (q) { var s = at(q.lat, q.lng); g.globalAlpha = 0.5; g.setLineDash([2, 5]); g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s[0], s[1]); g.stroke(); g.setLineDash([]); g.beginPath(); g.arc(s[0], s[1], 2.6, 0, 7); g.fill(); });
       if (S.me) { var sm = at(S.me[0], S.me[1]); g.globalAlpha = 0.25; g.beginPath(); g.arc(sm[0], sm[1], Math.max(10, Math.min(60, S.me[2] / (156543 * Math.cos(S.me[0] * Math.PI / 180) / Math.pow(2, z)))), 0, 7); g.fill(); g.globalAlpha = 1; g.beginPath(); g.arc(sm[0], sm[1], 4.5, 0, 7); g.fill(); g.beginPath(); g.arc(sm[0], sm[1], 8, 0, 7); g.stroke(); }
+      if (MAPV.pin) { var sp = at(MAPV.pin.lat, MAPV.pin.lng); g.globalAlpha = 1; g.lineWidth = 1.2; g.beginPath(); g.arc(sp[0], sp[1], 11, 0, 7); g.stroke(); g.beginPath(); g.arc(sp[0], sp[1], 4, 0, 7); g.fill(); g.setLineDash([1.5, 4]); g.beginPath(); g.arc(sp[0], sp[1], 18, 0, 7); g.stroke(); g.setLineDash([]); }
       g.globalAlpha = 1; g.lineWidth = 1.4; g.beginPath(); g.arc(s0[0], s0[1], 9, Math.PI, 0); g.closePath(); g.stroke();
       for (var i = 0; i < 4; i++) for (var j = 1; j < 5; j++) { g.beginPath(); g.arc(s0[0] - 6 + i * 4, s0[1] + j * 4, 1, 0, 7); g.fill(); }
     }
@@ -1596,6 +1651,7 @@
   }
 
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
+  api.awake = function () { return !asleep; };
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
   api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
