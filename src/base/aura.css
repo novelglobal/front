@@ -594,3 +594,31 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-win.d-board header .led { background: #6B6B66; box-shadow: none; }
 .au-win.d-board header nav button.on, .au-win.d-board header nav button:hover { background: rgba(0, 0, 0, .07); }
 .au-win.d-board iframe { border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); filter: saturate(.85); }
+
+/* ───────── v0.2, stage 4: the sound desk ─────────
+   A device like the others (smoked glass, a green light, pixel keys), with an irukandji of its own drawn in light: four tentacles, four
+   tracks, a bead a step. No words but the one quick word under each key */
+.au-desk { position: fixed; right: 16px; top: 54px; z-index: 41; width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; border-radius: 14px; background: rgba(18, 20, 23, .94); color: #E9F2E4; box-shadow: 0 0 0 1px rgba(255, 255, 255, .12), 0 24px 60px rgba(0, 0, 0, .5); animation: au-win .32s cubic-bezier(.2, .8, .2, 1); }
+.au-desk[hidden] { display: none; }
+.au-desk header { display: flex; align-items: center; gap: 10px; height: 40px; font: 500 11px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .12em; }
+.au-desk header b { font-weight: 500; flex: 1; }
+.au-desk header .led { width: 4px; height: 4px; border-radius: 50%; background: #5CE07A; box-shadow: 0 0 5px #5CE07A; }
+.au-desk .au-wx { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #17457F; }
+.au-desk canvas { width: 100%; height: 170px; display: block; border-radius: 8px; background: radial-gradient(ellipse at 50% 20%, rgba(23, 69, 127, .55), rgba(10, 12, 15, .9) 70%); }
+.au-desk .au-i { width: 20px; height: 20px; stroke: #E9F2E4; }
+.sd-row { display: flex; justify-content: center; align-items: center; gap: 6px; padding-bottom: 14px; }
+.sd-gap { width: 10px; }
+.sd-k { position: relative; width: 38px; height: 34px; display: grid; place-items: center; border-radius: 6px; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); opacity: .7; }
+.sd-k:hover { opacity: 1; }
+.sd-k.on { opacity: 1; background: rgba(92, 224, 122, .14); box-shadow: inset 0 0 0 1px rgba(92, 224, 122, .55); }
+.sd-k.going { animation: au-next 1s ease-in-out infinite; }
+.sd-big { position: relative; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: #17457F; box-shadow: 0 0 0 1.4px rgba(233, 242, 228, .8); }
+.sd-tri { width: 0; height: 0; margin-left: 4px; border-left: 15px solid #E9F2E4; border-top: 10px solid transparent; border-bottom: 10px solid transparent; }
+.au-desk.playing .sd-tri { margin: 0; width: 14px; height: 16px; border: 0; border-left: 4px solid #E9F2E4; border-right: 4px solid #E9F2E4; box-sizing: border-box; }
+.au-kept { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.au-kept:empty { display: none; }
+.au-kept li { position: relative; }
+.au-kept button[data-ks] { width: 34px; height: 30px; display: grid; place-items: center; border-radius: 5px; background: rgba(255, 255, 255, .06); }
+.au-kept .x { position: absolute; right: -5px; top: -5px; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; line-height: 15px; background: #2a2d33; color: #E9F2E4; opacity: 0; }
+.au-kept li:hover .x { opacity: 1; }
+@media (max-width: 759px) { .au-desk { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; } }

@@ -2,7 +2,7 @@
    The app itself: network first, so an edit to config.js or examples.js shows on the next load; the cached copy when there is no signal.
    Its libraries and type (vendor/): kept first, since they change only with a release, and a release renames the cache.
    Imagery, land and photos: kept once seen. Live data: network first, the last answer when offline. */
-const V = 'da-v104';
+const V = 'da-v105';
 const SHELL = ['./', 'index.html', 'base.css', 'base.js', 'aura.css', 'aura.js', 'base-db.json', 'studio', 'style.css', 'config.js', 'places.js', 'examples.js', 'field.js', 'briefs.js', 'marks.js', 'app.js', 'guide.html', 'field.html', 'portfolio.html', 'vendor/maplibre-gl.js', 'vendor/maplibre-gl.css', 'vendor/qrcode.js', 'vendor/fabric.min.js', 'ladder.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'printer-top.jpg'];
 const KEEP = /arcgisonline\.com|elevation-tiles-prod|inaturalist-open-data|static\.inaturalist\.org/;
 const LIVE = /api\.inaturalist\.org|open-meteo\.com|overpass|data\.melbourne\.vic\.gov\.au/;
