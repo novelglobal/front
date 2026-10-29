@@ -510,12 +510,12 @@ html.aura-on body { background: var(--blue, #17457F); }
 /* one word first: each key's word, in turn, quickly, then gone */
 #aura .au-tray, #aura .au-press { padding-bottom: 16px; }
 #aura .au-tray [data-fw], #aura .au-press [data-fw], #aura .au-wish b[data-fw] { position: relative; }
-#aura .fw::after { content: attr(data-fw); position: absolute; left: 50%; top: calc(100% + 1px); transform: translate(-50%, 2px); font: 500 10px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; color: var(--ink); opacity: 0; pointer-events: none; animation: au-fw 3s var(--fd, 0s) ease both; }
+#aura .fw::after { content: attr(data-fw); position: absolute; left: 50%; top: calc(100% + 1px); transform: translate(-50%, 2px); font: 500 10px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; color: var(--ink); opacity: 0; pointer-events: none; animation: au-fw 5s var(--fd, 0s) ease both; }
 #aura .au-line.fw::after { top: calc(100% + 6px); }
 #aura .au-wish b.fw::after { top: auto; bottom: -14px; }
 #aura .au-tab.fw::after { top: calc(100% - 4px); }
-@keyframes au-fw { 0% { opacity: 0; transform: translate(-50%, 4px); } 18%, 70% { opacity: .9; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -2px); } }
-.still #aura .fw::after, #aura.still .fw::after { animation-duration: 4.8s; }
+@keyframes au-fw { 0% { opacity: 0; transform: translate(-50%, 4px); } 10%, 82% { opacity: .92; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -2px); } }
+.still #aura .fw::after, #aura.still .fw::after { animation-duration: 6s; }
 /* art with nothing begun: a blank receipt to start on */
 #aura .au-begin { margin-top: 10vh; }
 /* the wall: where each poster stands, said small under its clips */
@@ -528,3 +528,30 @@ html.aura-on body { background: var(--blue, #17457F); }
 /* every receipt hangs from the line whatever its length: the track lines them up by their tops, never their middles */
 #aura .au-etrack { align-items: flex-start; }
 #aura .au-eslide { align-items: flex-start; }
+/* print: the tentacle is the line the receipts hang from; the print key it held is let go, and comes back on the other pages */
+#aura.st3 .au-tab[data-s="3"] .au-i { opacity: 0; transform: scale(.6); }
+#aura.st3 .au-tab[data-s="3"].fw::after { display: none; }
+#aura.st3.loose .au-line2 { opacity: 0; }
+/* W.I.S.H.: the letters are stars gathered into their shape (starLetters), never written; the line one writes on is the tentacle itself */
+#aura .au-wish b { position: relative; color: transparent; opacity: 1; }
+#aura .au-wish b .au-stars { position: absolute; left: -15px; top: -20px; width: 60px; height: 64px; pointer-events: none; }
+#aura .au-wish li::before, #aura .au-wish li::after { display: none; }
+#aura .au-wish b.fw::after { color: var(--ink); z-index: 2; }
+/* a life's card: where it was seen, on the map; and back */
+#aura .au-cpin { position: absolute; left: 6px; bottom: 6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 0 1.2px var(--ink); }
+#aura .au-cpin .au-i { width: 16px; height: 16px; }
+#aura .au-card.busy .au-cpin { animation: au-next 1s ease-in-out infinite; }
+#aura .au-card.none .au-cpin { opacity: .3; }
+#aura .au-card.lit { box-shadow: 0 0 0 2px var(--ink), 0 0 18px rgba(244, 241, 232, .5); }
+#aura .au-mback { position: absolute; left: 8px; top: 50px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(23, 69, 127, .85); box-shadow: 0 0 0 1.3px var(--ink); }
+#aura .au-mback[hidden] { display: none; }
+#aura .au-mback .au-i { width: 18px; height: 18px; }
+/* El Niño, more: opened in place, plain, with where it comes from */
+.au-ninomore { margin: 4px 0 12px; animation: au-in .35s ease; }
+.au-ninomore[hidden] { display: none; }
+.au-ninomore p { margin: 0 0 8px; font-size: 13px; line-height: 1.45; }
+.au-ninomore .au-src { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11px; opacity: .8; }
+.au-ninomore a { color: var(--ink); }
+/* the W.I.S.H. words start at their letter, so none runs off the screen's edge */
+#aura .au-wish b.fw::after { left: 0; bottom: -15px; animation-name: au-fwl; }
+@keyframes au-fwl { 0% { opacity: 0; transform: translateY(4px); } 10%, 82% { opacity: .92; transform: none; } 100% { opacity: 0; transform: translateY(-2px); } }
