@@ -92,6 +92,7 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
+  if (AURA_ONLY != null && i !== AURA_ONLY) { i = AURA_ONLY; part = null; }
   /* a first visit opens only the pages it has reached, and SELECT belongs to PRINT alone */
   if (simple() && i > jMax()) { i = jMax(); part = null; }
   if (simple() && i !== 2) closePick();

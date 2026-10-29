@@ -103,6 +103,8 @@ const savePrefs = () => store.set('da.prefs', prefs);
 /* the first visit is one simple way through, gate by gate (43-journey.js): 0 the map, 1 the radio, 2 W.I.S.H., 3 PRINT, 4 done.
    A device that has been here before has done it */
 const IN_AURA = window.parent !== window && /[?&]from=aura\b/.test(location.search);
+/* the one device the aura opened this window for: its page, and no other */
+const AURA_ONLY = IN_AURA ? ({ radio: 0, wish: 1, print: 2 })[new URLSearchParams(location.search).get('only')] : undefined;
 if (IN_AURA) { document.documentElement.classList.add('in-aura'); const nq = new URLSearchParams(location.search).get('night'); if (nq != null) prefs.night = nq === '1'; }
 /* a picture made here handed to the aura, which puts it on the poster in hand; crisp keeps it line work on the receipt (a code, a score) */
 /* iNaturalist through novel.global (stage 4), with a way round: iNaturalist limits the shared addresses Cloudflare asks from, so when
