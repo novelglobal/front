@@ -443,7 +443,7 @@ function sendAnim(dev) {
 const POSTERS2 = store.get('da.posters2.v1', []);
 let lastPoster = '';
 /* the strip again, in colour: drawn on a canvas of its own from what is on it, each thing in ink swapped for its colour self */
-async function colourStrip(s) {
+async function colourStrip(s, scale) {
   if (!zc) return null; const f = window.fabric; const c2 = new f.StaticCanvas(null, { width: zc.getWidth(), height: zc.getHeight(), backgroundColor: zc.backgroundColor || '#FFFFFF' });
   await new Promise(r => c2.loadFromJSON(zc.toJSON(ZINE_PROPS), r));
   /* the receipt's head keeps its place and its size exactly: only its photograph, at the top of it, is laid over in colour,
@@ -457,7 +457,7 @@ async function colourStrip(s) {
     const w = o.getScaledWidth(), h = o.getScaledHeight(); o.filters = []; await new Promise(r => o.setSrc(src, r, { crossOrigin: 'anonymous' })); const k = Math.min(w / (o.width || 1), h / (o.height || 1)); o.set({ scaleX: k, scaleY: k }); o.setCoords();
   }
   /* drawn whole, with a margin of paper under its last line so nothing at its foot is lost when it is shown */
-  c2.renderAll(); const out = document.createElement('canvas'); const k = Math.min(1, 600 / c2.getWidth()) * 2; const foot = Math.round(24 * k); out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k) + foot;
+  c2.renderAll(); const out = document.createElement('canvas'); const k = scale || Math.min(1, 600 / c2.getWidth()) * 2; const foot = Math.round(24 * k); out.width = Math.round(c2.getWidth() * k); out.height = Math.round(c2.getHeight() * k) + foot;
   const ox = out.getContext('2d'); ox.fillStyle = '#FFFFFF'; ox.fillRect(0, 0, out.width, out.height); ox.drawImage(c2.toCanvasElement(k), 0, 0); c2.dispose(); return out;
 }
 async function savePoster(quiet) {
@@ -616,7 +616,7 @@ async function pressOut(k, given) {
   if (k === 'send' && !given && !s && zc && !zc.getObjects().length) { tick(600); return; }
   const out = given || await stripOut(); if (!out) return; const { url, F } = out; const SW = out.w || F.w, SH = out.h || 520;
   /* inside the aura the strip goes onto the poster there; printing is the aura's own last step */
-  if (IN_AURA && !given && (k === 'send' || k === 'print')) { toAura(url, false); tick(1800); return; }
+  if (IN_AURA && !given && (k === 'send' || k === 'print')) { const cs = await colourStrip(s, 4).catch(() => null); toAura(cs ? cs.toDataURL('image/png') : url, false); tick(1800); return; }
   if (!given && ['print', 'send', 'png', 'escpos', 'oled', 'mesh'].includes(k)) keepExport(out, s && s.code);
   /* the paper is torn off at 1.5 s; the tear is heard then, not when the network answers */
   const tearAt = performance.now() + (reduced() ? 0 : 1500);

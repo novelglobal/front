@@ -76,7 +76,7 @@ applyShared(); loadShared(); loadExample(); flushOutbox(); checkSent(); loadPart
 jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true);
 /* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */
 /* sent here by one of the base's keys, the page asked for opens; otherwise the site lands on RADIO as it always has */
-if (!pendingHash) setView(0); else if (viewOfHash(pendingHash) >= 0) { const part = pendingHash.toLowerCase(); pendingHash = ''; if (window.__fromBase) setView(PARTS[part][0], false, PARTS[part][1] ? part : null); else setView(0); }
+if (!pendingHash) setView(0); else if (viewOfHash(pendingHash) >= 0) { const part = pendingHash.toLowerCase(); pendingHash = ''; if (window.__fromBase || IN_AURA) setView(PARTS[part][0], false, PARTS[part][1] ? part : null); else setView(0); }
 /* the bare map, on a first visit: no page over it until the radar is down; a link sent skips it to the radio */
 if (simple() && prefs.journey < 1) setOpen(false); else if (simple() && !S.open) setView(0);
 /* and before it, the veil: What have you noticed? */

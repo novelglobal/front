@@ -85,7 +85,7 @@ fs.writeFileSync(path.join(out, 'studio.html'), `<!doctype html>
 <link rel="stylesheet" href="style.css">
 <script>
 /* the studio is the devices site, the one for class: its devices on unless turned off in Settings; a link from the base still skips the first visit */
-try { var dp = JSON.parse(localStorage.getItem('da.prefs') || '{}'); if (localStorage.getItem('da.devices') === '0') document.documentElement.classList.add('plain');
+try { var dp = JSON.parse(localStorage.getItem('da.prefs') || '{}'); if (localStorage.getItem('da.devices.v2') === '0') document.documentElement.classList.add('plain');
   if (/[?&]from=base/.test(location.search)) { window.__fromBase = true; if ((dp.journey || 0) < 4) { dp.journey = 4; localStorage.setItem('da.prefs', JSON.stringify(dp)); } history.replaceState(null, '', location.pathname + location.hash); } } catch (e) { document.documentElement.classList.add('plain'); }
 </script>
 </head>

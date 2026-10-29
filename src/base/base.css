@@ -168,6 +168,8 @@ ul.seen li.wait::before, ul.seen li.empty::before { display: none; }
 .ctl select { flex: 1; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--rule); background: var(--paper); border-radius: 0; -webkit-appearance: none; appearance: none; }
 .pips { font-size: 11px; letter-spacing: .2em; color: var(--sol); }
 .pips.x { color: var(--hi); } .pips.wait { color: var(--dim); animation: blink 1.2s steps(2) infinite; }
+.pips small { margin-left: 8px; font-size: 9px; letter-spacing: .12em; opacity: .8; }
+.pips.held { animation: blink 2.4s steps(2) infinite; }
 .status { min-height: 18px; margin-top: 8px; text-align: center; }
 
 /* W.I.S.H.: the thread, as a news page of strategies; the hero above it */
