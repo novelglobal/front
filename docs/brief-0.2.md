@@ -40,7 +40,7 @@ The studio as three devices (RADIO, RESEARCH BOARD, PRINT SHOP), one earned with
 ### Stage 4 — sound as an instrument (built)
 The sound key (top right) opens, with an irukandji of its own, one dashboard for everything musical: B's 4-track and the web's voice, C's layers and moods, the radar's sweep, constellations and journeys as songs. Compositions saved, played while exploring, downloaded as 45 second loops, sent as a link or a QR poster.
 
-### Stage 5 — places
+### Stage 5 — places (built)
 Search finds places and pins on the map and the map finds them in search. New cities, data packs and custom builds from the approval page.
 
 ## What stays

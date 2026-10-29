@@ -549,8 +549,33 @@
       if (s.burst > 0) { s.x += s.vx * dt / L.W; s.y += s.vy * dt / L.H; s.vx *= Math.pow(0.12, dt); s.vy *= Math.pow(0.12, dt); s.burst -= dt; }
       else if (!still) { s.y -= dt * (0.004 + s.r * 0.003); s.x += (Math.sin(t * 0.2 + s.ph) * 0.002 + CUR[0] * 0.006) * dt; }
       if (s.y < -0.02) s.y = 1.02; if (s.x < -0.02) s.x = 1.02; if (s.x > 1.02) s.x = -0.02; if (s.y > 1.04) s.y = -0.02;
-      dot(s.x * L.W, s.y * L.H, s.r, s.a * (0.6 + 0.4 * Math.sin(t * 0.9 + s.ph)));
+      dot(s.x * L.W, s.y * L.H, s.r * (DARK ? 1.1 : 1), Math.min(1, s.a * (DARK ? 1.35 : 1)) * (0.6 + 0.4 * Math.sin(t * 0.9 + s.ph)));
     });
+  }
+  /* the Bermuda fireworm: in the dark, now and then, a bright neon green that lives a moment and is gone. One of three each time: a worm
+     darting and fading into the dark, a squirt of green sparks, or a depth charge, a slow green pulse spreading and sinking */
+  var WORMS = [], GREEN = '57,255,106';
+  function worm(kind, px, py) {
+    var t = performance.now() / 1000, a = Math.random() * Math.PI * 2;
+    if (kind === 0) WORMS.push({ k: 0, t0: t, life: 1.8, x: px, y: py, a: a, v: 120 + Math.random() * 90, trail: [] });
+    else if (kind === 1) { var sp = []; for (var i = 0; i < 26; i++) { var b = a + (Math.random() - 0.5) * 1.6, v = 60 + Math.random() * 160; sp.push({ x: px, y: py, vx: Math.cos(b) * v, vy: Math.sin(b) * v - 30 }); } WORMS.push({ k: 1, t0: t, life: 1.4, sp: sp }); }
+    else WORMS.push({ k: 2, t0: t, life: 2.2, x: px, y: py });
+  }
+  function worms(t, dt) {
+    if (still) return;
+    if (!S.wormAt) S.wormAt = t + 4 + Math.random() * 6;
+    if (t > S.wormAt) { S.wormAt = t + 7 + Math.random() * 14; worm(Math.floor(Math.random() * 3), L.W * (0.08 + Math.random() * 0.84), L.H * (0.18 + Math.random() * 0.72)); }
+    if (!WORMS.length) return; x.save(); x.globalCompositeOperation = 'lighter';
+    WORMS = WORMS.filter(function (w) { var k = (t - w.t0) / w.life; if (k >= 1) return false; var fade = k < 0.15 ? k / 0.15 : 1 - Math.pow((k - 0.15) / 0.85, 1.6);
+      x.shadowColor = 'rgba(' + GREEN + ',.9)'; x.shadowBlur = 14;
+      if (w.k === 0) { w.a += Math.sin(t * 9 + w.t0) * dt * 3; w.x += Math.cos(w.a) * w.v * dt; w.y += Math.sin(w.a) * w.v * dt; w.trail.push([w.x, w.y]); if (w.trail.length > 14) w.trail.shift();
+        x.strokeStyle = 'rgba(' + GREEN + ',' + (0.85 * fade) + ')'; x.lineWidth = 2.2; x.lineCap = 'round'; x.beginPath(); w.trail.forEach(function (q, i) { var wob = Math.sin(i * 1.3 + t * 20) * 1.2; if (i) x.lineTo(q[0] + wob, q[1] - wob); else x.moveTo(q[0], q[1]); }); x.stroke();
+        x.fillStyle = 'rgba(200,255,210,' + fade + ')'; x.beginPath(); x.arc(w.x, w.y, 2.2, 0, 7); x.fill(); }
+      else if (w.k === 1) { w.sp.forEach(function (q) { q.vx *= Math.pow(0.25, dt); q.vy = q.vy * Math.pow(0.25, dt) - 8 * dt; q.x += q.vx * dt; q.y += q.vy * dt; x.fillStyle = 'rgba(' + GREEN + ',' + (0.9 * fade) + ')'; x.beginPath(); x.arc(q.x, q.y, 1.6, 0, 7); x.fill(); }); }
+      else { var r = 8 + 130 * k; x.shadowBlur = 24; x.strokeStyle = 'rgba(' + GREEN + ',' + (0.55 * fade) + ')'; x.lineWidth = 1.6; x.beginPath(); x.arc(w.x, w.y + 20 * k, r, 0, 7); x.stroke();
+        var g = x.createRadialGradient(w.x, w.y, 1, w.x, w.y, r * 0.6); g.addColorStop(0, 'rgba(' + GREEN + ',' + (0.35 * fade) + ')'); g.addColorStop(1, 'rgba(' + GREEN + ',0)'); x.fillStyle = g; x.fillRect(w.x - r, w.y - r, r * 2, r * 2); }
+      return true; });
+    x.restore();
   }
   function drawGlobe(t, scale, alpha) {
     var rs = globePts(S.spin, scale);
@@ -612,7 +637,7 @@
     else pos = slipAt(T, S.stage, held);
     var m = MINI.c, w = 22, h = m ? m.height / m.width * w : 40;
     x.save(); x.translate(pos[0], pos[1]); x.rotate((pos[2] - Math.PI / 2) * 0.25 + Math.sin(t * 0.9) * 0.05); x.globalAlpha = 0.95 * a;
-    x.fillStyle = m ? 'rgba(23,69,127,1)' : 'rgba(23,69,127,.6)'; x.fillRect(-w / 2, 0, w, h); if (m) x.drawImage(m, -w / 2, 0, w, h);
+    var sb = DARK ? '24,25,28' : '23,69,127'; x.fillStyle = m ? 'rgba(' + sb + ',1)' : 'rgba(' + sb + ',.6)'; x.fillRect(-w / 2, 0, w, h); if (m) x.drawImage(m, -w / 2, 0, w, h);
     x.beginPath(); x.moveTo(-w / 2, 0); x.lineTo(w / 2, 0); x.lineTo(w / 2, h); for (var z = 0; z <= 6; z++) x.lineTo(w / 2 - z * w / 6, h + (z % 2 ? 2.5 : 0)); x.closePath();
     x.lineWidth = 0.9; x.strokeStyle = 'rgba(244,241,232,.85)'; if (!m) x.setLineDash([2, 2.5]); x.stroke(); x.setLineDash([]);
     dot(0, -1.5, 1.6, 0.9 * a); x.restore();
@@ -718,22 +743,23 @@
     ul.innerHTML = DESK.kept.map(function (k2, i) { return '<li><button data-ks="' + i + '" aria-label="A kept song, ' + esc(MOODS[+k2.code.charAt(2)] ? MOODS[+k2.code.charAt(2)].k : '') + '">' + svgI(['pxjelly', 'pxcoral', 'moon2'][+k2.code.charAt(2)] || 'cur') + '</button><button class="x" data-kx="' + i + '" aria-label="Let it go">×</button></li>'; }).join('');
     [].forEach.call(ul.querySelectorAll('[data-ks]'), function (b) { b.addEventListener('click', function () { var sg = songOf(DESK.kept[+b.dataset.ks].code); if (sg) { DESK.song = sg; DESK.src = sg.s; DESK.mood = sg.m; deskSync(); songPlay(true); } }); });
     [].forEach.call(ul.querySelectorAll('[data-kx]'), function (b) { NG.sureTap(b, function () { DESK.kept.splice(+b.dataset.kx, 1); store.set('da.aura.songs', DESK.kept); deskKept(); }); }); }
-  function deskSync() { if (!DESK.el) return; [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.classList.toggle('on', +b.dataset.mood === DESK.mood); }); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); }
+  function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.classList.toggle('on', +b.dataset.mood === DESK.mood); }); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); }
   function deskOpen(given) {
+    closeDev();
     if (!DESK.el) {
       var k = function (cls, inner, attrs) { return '<button class="' + cls + '" ' + attrs + '>' + inner + '</button>'; };
       DESK.el = document.createElement('section'); DESK.el.className = 'au-desk'; DESK.el.setAttribute('role', 'dialog'); DESK.el.setAttribute('aria-label', 'Sound');
-      DESK.el.innerHTML = '<header><i class="led"></i><b>SOUND</b>' + k('au-wx', svgI('eyet'), 'aria-label="Back to novel.global"') + '</header><canvas aria-hidden="true"></canvas>' +
+      DESK.el.innerHTML = '<header><i class="led"></i><b>SOUND</b>' + k('sd-k sd-drone', svgI('hum'), 'id="sd-drone" data-fw="hum" aria-label="The hum on or off"') + k('au-wx', svgI('eyet'), 'aria-label="Back to novel.global"') + '</header><canvas aria-hidden="true"></canvas>' +
         '<nav class="sd-row">' + SRCS.map(function (s2, i) { return k('sd-k', svgI(s2[1]), 'data-src="' + i + '" data-fw="' + s2[0] + '" aria-label="Made from: ' + s2[0] + '"'); }).join('') + '<i class="sd-gap"></i>' +
         MOODS.map(function (m2, i) { return k('sd-k', svgI(['pxjelly', 'pxcoral', 'moon2'][i]), 'data-mood="' + i + '" data-fw="' + m2.k + '" aria-label="Mood: ' + m2.k + '"'); }).join('') + '</nav>' +
         '<nav class="sd-row sd-play">' + k('sd-k', svgI('again'), 'id="sd-new" data-fw="again" aria-label="Make it again"') + k('sd-big', '<i class="sd-tri"></i>', 'id="sd-go" aria-label="Play or stop"') + k('sd-k', svgI('plus'), 'id="sd-keep" data-fw="keep" aria-label="Keep it"') + '</nav>' +
-        '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="45 s loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="onto my poster" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + k('sd-k sd-drone', svgI('tone'), 'id="sd-drone" data-fw="hum" aria-label="The hum on or off"') + '</nav>' +
+        '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="45 s loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="onto my poster" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + '</nav>' +
         '<ul class="au-kept"></ul>';
       root.appendChild(DESK.el);
-      var mk2 = function () { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play) songPlay(true); };
-      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; mk2(); bell(DESK.src + 2, 0.12); }); });
-      [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.addEventListener('click', function () { DESK.mood = +b.dataset.mood; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); } else mk2(); }); });
-      DESK.el.querySelector('#sd-new').addEventListener('click', mk2);
+      var mk2 = function (go) { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
+      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; mk2(true); }); });
+      [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.addEventListener('click', function () { DESK.mood = +b.dataset.mood; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); songPlay(true); } else mk2(true); }); });
+      DESK.el.querySelector('#sd-new').addEventListener('click', function () { mk2(); });
       DESK.el.querySelector('#sd-go').addEventListener('click', function () { if (!DESK.song) mk2(); songPlay(!DESK.play); });
       DESK.el.querySelector('#sd-keep').addEventListener('click', function () { if (!DESK.song) return; var code = songCode(DESK.song); if (!DESK.kept.some(function (q) { return q.code === code; })) { DESK.kept.unshift({ code: code, at: Date.now() }); DESK.kept.splice(12); store.set('da.aura.songs', DESK.kept); } deskKept(); bubbles(3); });
       DESK.el.querySelector('#sd-loop').addEventListener('click', function () { var b = this; if (!DESK.song) return; b.classList.add('going'); songLoop(DESK.song).then(function (r) { b.classList.remove('going'); if (!r) return; S.lastLoop = r.seconds; var a = document.createElement('a'); a.download = 'novel-global-' + MOODS[DESK.song.m].k + '-loop.wav'; a.href = URL.createObjectURL(r.blob); document.body.appendChild(a); a.click(); a.remove(); }); });
@@ -762,12 +788,13 @@
       fr.addEventListener('load', function () { try { var lp = fr.contentWindow.location.pathname; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { /* not ours */ } });
       WIN.querySelector('.au-wx').addEventListener('click', closeDev);
       [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.addEventListener('click', function () { openDev(+b.dataset.wd); }); }); }
-    var f = WIN.querySelector('iframe'), want = '/studio?from=aura#' + d[2];
-    if (!f.getAttribute('src')) f.setAttribute('src', want); else { try { f.contentWindow.location.hash = d[2]; } catch (e) { f.setAttribute('src', want); } }
+    var f = WIN.querySelector('iframe'), want = '/studio?from=aura&night=' + (DARK ? 1 : 0) + '#' + d[2];
+    if (!f.getAttribute('src') || f.getAttribute('src') === 'about:blank') f.setAttribute('src', want); else { try { f.contentWindow.location.hash = d[2]; } catch (e) { f.setAttribute('src', want); } }
     WIN.className = 'au-win d-' + d[0]; WIN.querySelector('header b').textContent = d[1]; [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.classList.toggle('on', +b.dataset.wd === i); });
-    WIN.hidden = false; root.classList.add('win'); S.win = i; humSet(false); bell(5 + i, 0.18); try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) { /* none */ }
+    if (DESK.play) songPlay(false); WIN.hidden = false; root.classList.add('win'); S.win = i; humSet(false); bell(5 + i, 0.18); try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) { /* none */ }
   }
-  function closeDev() { if (!WIN || WIN.hidden) return; WIN.hidden = true; root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed'); bell(0, 0.16); }
+  /* closed, the studio is let go (a hidden page that keeps drawing draws onto nothing); opened again, it starts afresh at its page */
+  function closeDev() { if (!WIN || WIN.hidden) return; WIN.hidden = true; WIN.querySelector('iframe').setAttribute('src', 'about:blank'); root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed'); bell(0, 0.16); }
   window.addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.ng !== 'piece' || typeof e.data.url !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/.test(e.data.url)) return;
     closeDev(); var p = piece(); p.blank = 1; var crisp = !!e.data.crisp;
@@ -888,6 +915,8 @@
     dradio: '<path d="M6 12h20v14H6z"/><path d="M9 16h6v6H9z" class="f"/><path d="M18 16h5M18 19h5M18 22h3" class="d"/><path d="M10 12L22 6"/>',
     dboard: '<path d="M5 7h22v18H5z"/><path d="M9 11h5v4H9zM18 11h5v6h-5zM9 19h6v3H9z" class="f"/><path d="M14 13l4 1M12 15v4" class="d"/>',
     dshop: '<path d="M7 13h18v9H7z"/><path d="M10 13V6h12v7"/><path d="M10 22v4h12v-4" class="f"/><circle cx="21.5" cy="16.5" r="1" class="f"/>',
+    hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
+    key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
     mark: '<path d="M4 11h10v10H4z" class="f"/><circle cx="23" cy="16" r="5.6" class="f" style="opacity:.55"/>',
     wall: '<path d="M3 7c4 2 22 2 26 0"/><path d="M11 9v16h10V9" class="d"/><path d="M13 5.5v5M19 5.5v5"/>',
     pics: '<path d="M10 11h17v14H10z"/><path d="M10 22l5-5 4 4 2-2 6 6"/><path d="M5 6h17v3M5 6v14h3" class="d"/>',
@@ -909,6 +938,20 @@
      Nothing stays on the paper to be read over and over */
   /* INTENTION's and W.I.S.H.'s words: the site's own (config.js, through the build), any rewritten on the approval page laid over them.
      The last rewritten words are kept on the device, so they hold offline */
+  /* the cities and data packs from the approval page, written as words: a line '# name' begins a city, 'centre lat, lng' places it,
+     and every other line is one of its places, 'name, lat, lng'. Kept on the device, so they hold offline */
+  /* dark: the deep grey night, chosen at the start's top left and kept; the studio, the devices and every page go with it */
+  var DARK = !!store.get('da.aura.dark', false);
+  var CITIES = [];
+  function citiesOf(text) {
+    var out = [], c = null; String(text || '').split(/\r?\n/).forEach(function (ln) { ln = ln.trim(); if (!ln) return;
+      if (ln.charAt(0) === '#') { c = { name: ln.replace(/^#+\s*/, '').slice(0, 60), lat: NaN, lng: NaN, places: [] }; out.push(c); return; } if (!c) return;
+      var m = ln.match(/^(.*?),\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/); if (!m) return; var nm = m[1].trim(), la = +m[2], lo = +m[3]; if (Math.abs(la) > 90 || Math.abs(lo) > 180) return;
+      if (/^centre$|^center$/i.test(nm)) { c.lat = la; c.lng = lo; } else if (c.places.length < 400) c.places.push([nm.slice(0, 80), la, lo]); });
+    return out.filter(function (c2) { if (!isFinite(c2.lat) && c2.places.length) { c2.lat = c2.places[0][1]; c2.lng = c2.places[0][2]; } return isFinite(c2.lat); });
+  }
+  var citiesSet = function (t) { CITIES = citiesOf(t); var D = NG.DB(); if (D && D.places) { var have = {}; D.places.forEach(function (q) { have[q[0]] = 1; }); CITIES.forEach(function (c) { c.places.forEach(function (q) { if (!have[q[0]]) { D.places.push(q); have[q[0]] = 1; } }); }); } };
+  citiesSet(store.get('da.aura.cities', '')); NG.db().then(function () { citiesSet(store.get('da.aura.cities', '')); });
   var WORDS0 = B.words || {}, WORDS = {};
   var wordsSet = function (o) { WORDS = {}; Object.keys(WORDS0).forEach(function (k) { WORDS[k] = WORDS0[k]; }); if (o && typeof o === 'object') Object.keys(WORDS0).forEach(function (k) { if (typeof o[k] === 'string' && o[k].trim()) WORDS[k] = o[k].trim().slice(0, 240); }); };
   var wd = function (k, d) { return WORDS[k] || d || ''; };
@@ -947,8 +990,9 @@
   var FW = 0;
   var flashWords = function (wait) { clearTimeout(FW); FW = setTimeout(function () {
     var on = [].filter.call(document.querySelectorAll('#aura [data-fw]'), function (e) { return e.offsetParent !== null && (panel.contains(e) || e.classList.contains('au-tab') && e.classList.contains('on')); });
-    on.forEach(function (e, i) { e.classList.remove('fw'); void e.offsetWidth; e.style.setProperty('--fd', (still ? 0 : i * 1.2).toFixed(2) + 's'); e.classList.add('fw'); });
-    FW = setTimeout(function () { on.forEach(function (e) { e.classList.remove('fw'); }); }, on.length * 1200 + 5600); }, wait || 120); };
+    /* one at a time, each gone before the next comes: the first ten keys, never a crowd */
+    on = on.slice(0, 10); on.forEach(function (e, i) { e.classList.remove('fw'); void e.offsetWidth; e.style.setProperty('--fd', (i * 2.3).toFixed(2) + 's'); e.classList.add('fw'); });
+    FW = setTimeout(function () { on.forEach(function (e) { e.classList.remove('fw'); }); }, on.length * 2300 + 800); }, wait || 120); };
   var hintsQuiet = function () { HS.at = performance.now() / 1000 + 10; HS.i = -1; if (HS.el) HS.el.classList.remove('on'); HS.el = null; };
   setInterval(function () {
     var t = performance.now() / 1000, box = S.deep ? deep : panel; if (!box) return;
@@ -964,7 +1008,8 @@
   ui.innerHTML =
     '<button id="au-seed" aria-label="Begin"></button>' +
     [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['eyet', 'wish', 'print'][i]) + '</button>'; }).join('') +
-    '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
+    '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
+    '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
     STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + [wd('intention.tab', 'intention'), wd('wish.tab', 'wish'), 'art', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
@@ -976,7 +1021,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev'));
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : ''); }
+  function setMode(m) { S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : ''); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
 
@@ -994,6 +1039,7 @@
     if (!still && (S.mode === 'globe' || S.mode === 'bang')) S.spin += dt * 2 * Math.PI / 110;
     if (S.mode === 'iruk') under(t);
     snow(t, dt, S.mode === 'seed' ? 14 : 70);
+    if (DARK) worms(t, dt);
     var rs = null, T = null;
     if (S.mode === 'seed') drawSeed(t);
     else if (S.mode === 'bang') { drawBang(t, k / 2.6); if (k > 2.6) setMode('globe'); }
@@ -1049,6 +1095,12 @@
   root.addEventListener('pointerdown', function (e) { if (S.mode === 'seed' && e.target === cv) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); toIruk(+o.dataset.s); }); });
   $('#au-up').addEventListener('click', toGlobe);
+  function setDark(on) { DARK = !!on; store.set('da.aura.dark', DARK); root.classList.toggle('dark', DARK); document.documentElement.classList.toggle('aura-dark', DARK); var b = $('#au-theme'); if (b) b.setAttribute('aria-pressed', String(DARK)); WORMS.length = 0; S.wormAt = 0; }
+  document.documentElement.classList.toggle('aura-dark', DARK);
+  $('#au-theme').addEventListener('click', function () { setDark(!DARK); bell(DARK ? 0 : 4, 0.18); subSwell(); });
+  /* open everything: every device on the ring and every mark, as if every poster were already made; asked once more first */
+  NG.sureTap($('#au-open'), function () { ROUNDS = Math.max(ROUNDS, MARK_ORDER.length); store.set('da.aura.rounds', ROUNDS); harp([0, 2, 4, 7, 9]); root.classList.add('opened'); setTimeout(function () { root.classList.remove('opened'); }, 2400); if (DARK) for (var q = 0; q < 3; q++) worm(2, L.W * (0.3 + 0.2 * q), L.H * 0.5); });
+  api.dark = function (on) { if (on != null) setDark(on); return DARK; };
   /* the eye takes in a photograph from any step, and the step stays where it is (after a round, it begins the next piece) */
   $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (done()) { fresh(); if (S.stage === 3) step(0); } intake(f); bell(0, 0.24); ripple(L.bx, L.by + L.bh * 0.5); });
   tabs.forEach(function (b) { b.addEventListener('click', function () { step(+b.dataset.s); }); });
@@ -1635,9 +1687,9 @@
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
     deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' +
-      '<div class="au-c"><nav class="au-devs">' + DEVS.map(function (d, i) { return '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>'; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
+      '<div class="au-c">' + (CITIES.length ? '<nav class="au-cities">' + '<button data-city="-1" data-fw="here" aria-label="Where I am">' + svgI('pin') + '</button>' + CITIES.map(function (c, i) { return '<button data-city="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</nav>' : '') + '<nav class="au-devs">' + DEVS.map(function (d, i) { return '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>'; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
-      '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul>' +
+      '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul><ul class="au-spots" id="au-spots"></ul>' +
       '<details class="au-near au-rd" id="au-rd" open><summary aria-label="The readings here">' + svgI('cur') + '<i></i></summary><ul class="au-vals" id="au-vals"></ul></details>' + hint(SAY.vals) + '<div class="au-now"><button class="au-nino" id="au-nino" aria-pressed="' + !!p.catch.nino + '"></button>' +
       '<button class="au-seab" id="au-seab" aria-expanded="false" aria-label="This month: what to watch for, near here">' + svgI('moon2') + '<b>' + esc(NG.when(Date.now()).replace(/^\d+\s*/, '').slice(0, 3)) + '</b></button><button class="au-seab" id="au-actb" aria-expanded="false" aria-label="What to do now">' + svgI('act') + '</button><button class="au-seab" id="au-ninob" aria-expanded="false" aria-label="More about El Niño">' + svgI('more') + '</button></div>' + hint(NINO_WHY, 'au-why') +
       '<div class="au-ninomore" id="au-ninom" hidden>' + NINO_MORE.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '<p class="au-src"><span>Bureau of Meteorology, climate driver update</span><span>NOAA, ENSO advisory</span></p></div>' +
@@ -1645,6 +1697,11 @@
       '<nav class="au-kinds" id="au-kinds">' + KINDS.map(function (k) { return '<button data-k="' + k[0] + '" class="' + (SPW.kind === k[0] ? 'on' : '') + '" aria-label="' + k[0] + '"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true">' + KIND_I[k[0]] + '</svg></button>'; }).join('') + '</nav>' +
       '<div class="au-spw" id="au-spw"></div><i class="au-spend" id="au-spend"></i></div>';
     $('#au-dx').addEventListener('click', closeDeep);
+    /* a city chosen: the map goes there and the piece with it, its places now near, found and sung; where I am brings it home */
+    [].forEach.call(deep.querySelectorAll('[data-city]'), function (b) { b.addEventListener('click', function () { var i = +b.dataset.city, c = CITIES[i], p = piece();
+      if (c) { p.lat = c.lat; p.lng = c.lng; p.src = 'TAP'; } else if (S.me) { p.lat = S.me[0]; p.lng = S.me[1]; p.src = 'HERE'; } else { findMe(true); return; }
+      MAPV.pin = null; MAPV.back = null; MAPV.lat = p.lat; MAPV.lng = p.lng; NEAR = null; think(); changed(); if (MAPV.draw) MAPV.draw(); fill(); var nr2 = $('#au-near'); if (nr2 && nr2.open) setTimeout(nearFill, 10);
+      [].forEach.call(deep.querySelectorAll('[data-city]'), function (q) { q.classList.toggle('on', q === b); }); bell(3 + Math.max(0, i), 0.16); subSwell(); }); });
     [].forEach.call(deep.querySelectorAll('[data-dv]'), function (b) { b.addEventListener('click', function () { openDev(+b.dataset.dv); }); });
     lens(); NG.db().then(function () { think(); fill(); }); fill();
     $('#au-q').addEventListener('input', fill);
@@ -1744,6 +1801,20 @@
       deep.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); bell(4, 0.16); bubbles(3);
     }).catch(function () { card.classList.remove('busy'); });
   }
+  /* every named spot the map and the search share: places and waters from the field data (with any city's places added), the cities
+     themselves, and one's own noticings by their words or code */
+  function spotsAll() {
+    var D = NG.DB(), out = [];
+    if (D) { (D.places || []).forEach(function (q) { out.push({ t: q[0], lat: q[1], lng: q[2], k: 'p' }); }); (D.waters || []).forEach(function (q) { out.push({ t: q[0], lat: q[1], lng: q[2], k: 'w' }); }); }
+    CITIES.forEach(function (c) { out.push({ t: c.name, lat: c.lat, lng: c.lng, k: 'c' }); c.places.forEach(function (q) { out.push({ t: q[0], lat: q[1], lng: q[2], k: 'p' }); }); });
+    (NG.notes() || []).forEach(function (n) { if (isFinite(n.lat) && (n.say || n.code)) out.push({ t: (n.say || n.code).slice(0, 48), lat: +n.lat, lng: +n.lng, k: 'n', code: n.code }); });
+    return out;
+  }
+  function findSpots(q) { q = q.toLowerCase(); var seen = {}; return spotsAll().filter(function (o) { var t = String(o.t).toLowerCase(); if (seen[t] || (t.indexOf(q) < 0 && String(o.code || '').toLowerCase() !== q)) return false; seen[t] = 1; return true; }).sort(function (a, b) { return String(a.t).toLowerCase().indexOf(q) - String(b.t).toLowerCase().indexOf(q); }); }
+  function mapGo(lat, lng) {
+    MAPV.back = MAPV.back || { lat: MAPV.lat, lng: MAPV.lng, z: MAPV.z, top: deep.scrollTop, id: '' }; MAPV.pin = { lat: lat, lng: lng }; MAPV.lat = lat; MAPV.lng = lng; MAPV.z = Math.max(MAPV.z, 16);
+    if (MAPV.draw) MAPV.draw(); var bk = $('#au-mback'); if (bk) bk.hidden = false; deep.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); bell(4, 0.14);
+  }
   function mapBack() { var b2 = MAPV.back; if (!b2) return; MAPV.lat = b2.lat; MAPV.lng = b2.lng; MAPV.z = b2.z; MAPV.pin = null; MAPV.back = null; if (MAPV.draw) MAPV.draw(); var bk = $('#au-mback'); if (bk) bk.hidden = true;
     deep.scrollTo({ top: b2.top, behavior: still ? 'auto' : 'smooth' }); var cd = deep.querySelector('.au-card[data-id="' + b2.id + '"]'); if (cd) { cd.classList.add('flip', 'lit'); setTimeout(function () { cd.classList.remove('lit'); }, 1800); } bell(2, 0.14); }
   function spPhoto(c) {
@@ -1774,6 +1845,9 @@
     var said = (P.say + ' ' + P.lines.join(' ')).toLowerCase(), q = (($('#au-q') || {}).value || '').trim().toLowerCase();
     if (P.catch.life) add(lifeOf(P));
     if (D) D.field.forEach(function (f) { var cn = f.cn.toLowerCase(); if (said.indexOf(cn) >= 0 || (q.length > 1 && (cn.indexOf(q) >= 0 || String(f.n || '').toLowerCase().indexOf(q) >= 0))) add(f); });
+    var spots = q.length > 1 ? findSpots(q).slice(0, 6) : [], pl = $('#au-spots');
+    if (pl) { pl.innerHTML = spots.map(function (o, i) { return '<li><button data-spot="' + i + '" aria-label="' + esc(o.t) + ', on the map">' + svgI('pin') + esc(o.t) + '</button></li>'; }).join('');
+      [].forEach.call(pl.querySelectorAll('[data-spot]'), function (b) { b.addEventListener('click', function () { var o = spots[+b.dataset.spot]; mapGo(o.lat, o.lng, o.t); }); }); }
     var ul = $('#au-names'); ul.innerHTML = rows.slice(0, 8).map(function (f) { return '<li><button data-sp="' + esc(f.id) + '" aria-pressed="' + (P.catch.life === f.id) + '" class="' + (P.catch.life === f.id ? 'on' : '') + '">' + esc(f.cn) + '</button></li>'; }).join('');
     [].forEach.call(ul.querySelectorAll('[data-sp]'), function (b) { b.addEventListener('click', function () { var on = P.catch.life !== b.dataset.sp; P.catch.life = on ? b.dataset.sp : ''; P.revealed = 0; think(); spFetch(P); if (!on && P.eye && !P.img) P.eye = null; fill(); ping(on); }); });
     /* the readings: each a value alone */
@@ -1812,6 +1886,7 @@
       NG.notes().forEach(function (q) { if (!isFinite(q.lat)) return; var s = at(q.lat, q.lng); g.globalAlpha = 0.6; g.beginPath(); g.arc(s[0], s[1], 3, 0, 7); g.fill(); });
       var s0 = at(p.lat, p.lng); ((p.note && p.note.seen) || []).forEach(function (q) { var s = at(q.lat, q.lng); g.globalAlpha = 0.5; g.setLineDash([2, 5]); g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s[0], s[1]); g.stroke(); g.setLineDash([]); g.beginPath(); g.arc(s[0], s[1], 2.6, 0, 7); g.fill(); });
       if (S.me) { var sm = at(S.me[0], S.me[1]); g.globalAlpha = 0.25; g.beginPath(); g.arc(sm[0], sm[1], Math.max(10, Math.min(60, S.me[2] / (156543 * Math.cos(S.me[0] * Math.PI / 180) / Math.pow(2, z)))), 0, 7); g.fill(); g.globalAlpha = 1; g.beginPath(); g.arc(sm[0], sm[1], 4.5, 0, 7); g.fill(); g.beginPath(); g.arc(sm[0], sm[1], 8, 0, 7); g.stroke(); }
+      MAPV.spots = []; spotsAll().forEach(function (o) { var s3 = at(o.lat, o.lng); if (s3[0] < -10 || s3[1] < -10 || s3[0] > W + 10 || s3[1] > H + 10) return; MAPV.spots.push([s3[0], s3[1], o]); g.globalAlpha = o.k === 'n' ? 0.7 : 0.45; g.lineWidth = 1; g.beginPath(); g.arc(s3[0], s3[1], o.k === 'n' ? 3.5 : 4.5, 0, 7); g.stroke(); });
       if (MAPV.pin) { var sp = at(MAPV.pin.lat, MAPV.pin.lng); g.globalAlpha = 1; g.lineWidth = 1.2; g.beginPath(); g.arc(sp[0], sp[1], 11, 0, 7); g.stroke(); g.beginPath(); g.arc(sp[0], sp[1], 4, 0, 7); g.fill(); g.setLineDash([1.5, 4]); g.beginPath(); g.arc(sp[0], sp[1], 18, 0, 7); g.stroke(); g.setLineDash([]); }
       g.globalAlpha = 1; g.lineWidth = 1.4; g.beginPath(); g.arc(s0[0], s0[1], 9, Math.PI, 0); g.closePath(); g.stroke();
       for (var i = 0; i < 4; i++) for (var j = 1; j < 5; j++) { g.beginPath(); g.arc(s0[0] - 6 + i * 4, s0[1] + j * 4, 1, 0, 7); g.fill(); }
@@ -1821,6 +1896,8 @@
     el.addEventListener('pointerdown', function (e) { drag = [e.clientX, e.clientY, wx(MAPV.lng, MAPV.z), wy(MAPV.lat, MAPV.z)]; moved = 0; try { el.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } });
     el.addEventListener('pointermove', function (e) { if (!drag) return; var dx = e.clientX - drag[0], dy = e.clientY - drag[1]; moved = Math.max(moved, Math.abs(dx) + Math.abs(dy)); MAPV.lng = ux(drag[2] - dx, MAPV.z); MAPV.lat = uy(drag[3] - dy, MAPV.z); draw(); });
     el.addEventListener('pointerup', function (e) {
+      var rr0 = el.getBoundingClientRect(), hit = drag && moved < 6 ? (MAPV.spots || []).filter(function (s3) { return Math.hypot(s3[0] - (e.clientX - rr0.left), s3[1] - (e.clientY - rr0.top)) < 12; })[0] : null;
+      if (hit) { var qi = $('#au-q'); if (qi) { qi.value = hit[2].t; fill(); } MAPV.pin = { lat: hit[2].lat, lng: hit[2].lng }; draw(); ping(true); drag = null; return; }
       if (drag && moved < 6) { var r = el.getBoundingClientRect(), X = wx(MAPV.lng, MAPV.z) + (e.clientX - r.left - el.clientWidth / 2), Y = wy(MAPV.lat, MAPV.z) + (e.clientY - r.top - el.clientHeight / 2);
         p.lat = uy(Y, MAPV.z); p.lng = ux(X, MAPV.z); p.src = 'TAP'; p.catch.map = true; NEAR = null; think(); var nr2 = $('#au-near'); if (nr2 && nr2.open) setTimeout(nearFill, 10); if (p.note) { p.note.lat = +p.lat.toFixed(5); p.note.lng = +p.lng.toFixed(5); NG.saveNotes(); } draw(); fill(); ping(true); }
       drag = null; });
@@ -1830,7 +1907,7 @@
 
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
   fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (!st) return; var o = null; try { o = st.words ? JSON.parse(st.words) : {}; } catch (e) { o = {}; }
-    store.set('da.aura.words', o); wordsSet(o); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
+    store.set('da.aura.words', o); wordsSet(o); store.set('da.aura.cities', st.cities || ''); citiesSet(st.cities || ''); NG.db().then(function () { citiesSet(st.cities || ''); }); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
   api.awake = function () { return !asleep; };
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };

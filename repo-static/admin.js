@@ -128,13 +128,24 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(card, ex, tp, wordsCard(st));
+    main.replaceChildren(card, ex, tp, wordsCard(st), citiesCard(st));
   }
   /* INTENTION and W.I.S.H. on the aura (/): every heading, line and hover, and the one quick word shown first. Each field holds the site's
      own words until changed; only the words changed are kept, and an emptied field goes back to the site's own */
   const WORD_LABELS = [['intention.tab', 'INTENTION · ITS QUICK WORD'], ['intention.ask', 'INTENTION · THE QUESTION ON ITS LINE'], ['intention.say', 'INTENTION · THE LINE THAT COMES AND GOES'],
     ['wish.tab', 'W.I.S.H. · ITS QUICK WORD'], ['wish.say', 'W.I.S.H. · THE LINE THAT COMES AND GOES'],
     ...['w', 'i', 's', 'h'].flatMap(l => [[`${l}.word`, `${l.toUpperCase()} · ITS QUICK WORD`], [`${l}.head`, `${l.toUpperCase()} · ITS HEADING (ON HOVER)`], [`${l}.how`, `${l.toUpperCase()} · WHAT GOES ON ITS LINE (ON HOVER)`]])];
+  /* cities and data packs: another place to make in, written plainly; the aura reads them, a chip each in its intel */
+  const CITY_EG = '# Sydney\ncentre, -33.8688, 151.2093\nPaddington Reservoir Gardens, -33.8843, 151.2262\nThe Rocks, -33.8599, 151.2090';
+  function citiesCard(st) {
+    const ta = el('textarea', { class: 'body', maxlength: 40000, spellcheck: 'false', 'aria-label': 'Cities and their places', placeholder: CITY_EG }); ta.value = st.cities || '';
+    const n = (st.cities || '').split(/\n/).filter(l => /^#/.test(l.trim())).length;
+    const sec = el('section', { class: 'printer ed' }); sec.append(el('h3', { text: 'CITIES AND DATA PACKS' }),
+      el('div', { class: 'note', text: `NEW PLACES TO MAKE IN. A LINE STARTING WITH # NAMES A CITY; "centre, lat, lng" PUTS IT ON THE MAP; EVERY OTHER LINE IS ONE OF ITS PLACES: NAME, LAT, LNG. EACH CITY BECOMES A CHIP IN THE INTEL ON NOVEL.GLOBAL, ITS PLACES FOUND BY SEARCH, SHOWN ON THE MAP, NEAR WHOEVER STANDS THERE AND IN THEIR SONGS. ${n ? `${n} ${n === 1 ? 'CITY' : 'CITIES'} NOW.` : 'NONE YET.'}` }), ta,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ cities: ta.value.trim() }) }); show('stations'); } }),
+        el('button', { type: 'button', text: 'NONE', onclick: async () => { if (!confirm('Take every city off?')) return; await api('settings', { method: 'POST', body: JSON.stringify({ cities: '' }) }); show('stations'); } })));
+    return sec;
+  }
   function wordsCard(st) {
     const own = (window.DA_CONFIG || {}).WORDS || {}; let saved = {}; try { saved = st.words ? JSON.parse(st.words) : {}; } catch (e) { saved = {}; }
     const fields = WORD_LABELS.map(([k, label]) => { const inp = el('input', { type: 'text', maxlength: 240, spellcheck: 'true', placeholder: own[k] || '' }); inp.value = saved[k] || own[k] || ''; inp.dataset.k = k; return el('label', { text: label }, inp); });
