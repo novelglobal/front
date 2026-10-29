@@ -26,7 +26,7 @@
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'posts') await posts(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
   }
 
   /* ───────── stories: what each one says, its photograph, where it was sent ───────── */
@@ -129,6 +129,34 @@
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
     main.replaceChildren(card, ex, tp, wordsCard(st), citiesCard(st));
+  }
+  /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
+     or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
+  const PCATS = [['service', 'SERVICE'], ['circular', 'CIRCULAR · REPAIR, REUSE, REFILL'], ['brand', 'BRAND'], ['artists', 'ARTISTS'], ['third', 'THIRD SPACE'], ['network', 'NETWORK']];
+  function placeForm(p, done) {
+    const f = {}; const row = (k, label, attrs = {}) => { f[k] = el('input', { type: 'text', 'aria-label': label, placeholder: label, ...attrs }); f[k].value = p && p[k] != null ? String(p[k]) : ''; return f[k]; };
+    const cat = el('select', { 'aria-label': 'Kind of place' }, ...PCATS.map(([v, t]) => el('option', { value: v, text: t }))); cat.value = (p && p.cat) || 'service';
+    const form = el('form', { class: 'pform', onsubmit: async e => { e.preventDefault(); const o = { cat: cat.value }; for (const k of Object.keys(f)) o[k] = f[k].value.trim();
+        if (!o.n || !Number.isFinite(+o.lat) || !Number.isFinite(+o.lng)) { alert('A name, and its latitude and longitude, are needed.'); return; } await done(o); } },
+      row('n', 'NAME', { maxlength: 80, required: true }), cat, row('what', 'WHAT IT DOES, IN A LINE', { maxlength: 200 }), row('addr', 'ADDRESS', { maxlength: 120 }), row('sub', 'SUBURB', { maxlength: 60 }),
+      row('url', 'ITS OWN SITE (https://…)', { maxlength: 300 }), row('lat', 'LATITUDE, e.g. -37.7718', { inputmode: 'decimal' }), row('lng', 'LONGITUDE, e.g. 144.9782', { inputmode: 'decimal' }), row('role', 'ROLE (one word, optional)', { maxlength: 20 }),
+      el('div', { class: 'acts' }, el('button', { type: 'submit', class: 'on', text: p ? 'SAVE' : 'ADD AND SHOW' })));
+    return form;
+  }
+  async function places() {
+    const get = async st => (await (await api('places?status=' + st)).json()).places || [];
+    const [wait, shown] = await Promise.all([get('waiting'), get('shown')]);
+    const post = async (path, o) => { await api(path, { method: 'POST', body: JSON.stringify(o) }); show('places'); };
+    const add = el('section', { class: 'printer ed' }); add.append(el('h3', { text: 'ADD A PLACE' }), el('div', { class: 'note', text: 'SHOWN AT ONCE ON NOVEL.GLOBAL: ON THE MAP, IN SEARCH AND ON THE RADAR, BESIDE THE PLACES ALREADY WRITTEN INTO THE SITE. RIGHT-CLICK A SPOT IN A MAP APP TO COPY ITS LATITUDE AND LONGITUDE.' }), placeForm(null, o => post('places', o)));
+    const card = (p, waiting) => { const c = el('article', { class: 'card' }); const ed = el('div', { hidden: true });
+      c.append(el('b', { text: p.n }), el('p', { text: [p.cat.toUpperCase(), p.what, [p.addr, p.sub].filter(Boolean).join(', '), `${p.lat}, ${p.lng}`].filter(Boolean).join(' · ') }),
+        p.url ? el('p', { class: 'note', text: p.url }) : null, el('p', { class: 'note', text: (p.src === 'suggested' ? 'SUGGESTED ' : 'ADDED ') + when(p.created) }),
+        el('div', { class: 'acts' }, ...(waiting ? [el('button', { type: 'button', class: 'on', text: 'SHOW', onclick: () => post('places/' + p.id, { action: 'show' }) }), el('button', { type: 'button', class: 'no', text: 'REFUSE', onclick: () => post('places/' + p.id, { action: 'refuse' }) })] : []),
+          el('button', { type: 'button', text: 'CHANGE', onclick: () => { ed.hidden = !ed.hidden; } }),
+          el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => { if (confirm('Delete this place for good?')) post('places/' + p.id, { action: 'delete' }); } })), ed);
+      ed.append(placeForm(p, o => post('places/' + p.id, { action: 'edit', ...o }))); return c; };
+    main.replaceChildren(el('h3', { class: 'lbl', text: `SUGGESTED, WAITING · ${wait.length}` }), ...(wait.length ? wait.map(p => card(p, true)) : [el('p', { class: 'empty', text: 'NONE WAITING' })]),
+      add, el('h3', { class: 'lbl', text: `SHOWN · ${shown.length}` }), ...shown.map(p => card(p, false)));
   }
   /* INTENTION and W.I.S.H. on the aura (/): every heading, line and hover, and the one quick word shown first. Each field holds the site's
      own words until changed; only the words changed are kept, and an emptied field goes back to the site's own */

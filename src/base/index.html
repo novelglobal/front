@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* a link made by the studio (a mix, a story code, a page by name) goes on to the studio, so every printed code still opens; a song's link stays for the aura */
-(function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|print|showcase|pixel|search|guide|now|song=[-.0-9v]+|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
+(function () { var h = location.hash.slice(1); if (h && !/^(radio|wish|shop|print|showcase|pixel|search|guide|now|songs?=[-.0-9v~%7E]+|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) location.replace('studio' + location.search + location.hash); })();
 /* the aura (aura.js) is the start, unless the base is asked for by name (?base) */
 if (!/[?&]base\b/.test(location.search)) document.documentElement.classList.add('aura-on');
 try { var t = localStorage.getItem('da.base.theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) { /* no storage */ }

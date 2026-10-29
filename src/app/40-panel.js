@@ -676,12 +676,25 @@ function sure(btn, fn) {
   if (btn.classList.contains('sure')) { clearTimeout(btn.sureT); btn.classList.remove('sure'); fn(); return; }
   btn.classList.add('sure'); snd.tick(700); buzz([10, 30, 10]); clearTimeout(btn.sureT); btn.sureT = setTimeout(() => btn.classList.remove('sure'), 3000);
 }
+/* the one wall, here too: every poster finished on novel.global (kept by the aura in this browser), the newest first. A touch shows it
+   large; the key goes to the wall itself, where it can be printed again, saved or taken down */
+const wallSection = () => `<section class="sec wall" id="sec-wall" hidden><div class="lab-row">${labI('stories', 'Wall')}<a class="pill" href="/" aria-label="To the wall on novel.global" data-tip="To the wall">${icon('next', 'sm')}</a></div><ol class="wall-g" id="wall-g"></ol></section>`;
+function wallFill() {
+  const sec = $('#sec-wall'), ol = $('#wall-g'); if (!sec || !ol || !window.indexedDB) return;
+  let q; try { q = indexedDB.open('novelglobal', 2); } catch (e) { return; }
+  q.onupgradeneeded = () => { const d = q.result; for (const n of ['folio', 'piece']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); };
+  q.onsuccess = () => { let d; try { d = q.result; const all = [], c = d.transaction('folio').objectStore('folio').openCursor();
+    c.onsuccess = () => { const k = c.result; if (k) { all.push(k.value); k.continue(); return; } all.sort((a, b) => b.at - a.at); sec.hidden = !all.length;
+      ol.innerHTML = all.slice(0, 24).map(f => `<li><button type="button" class="wall-k" aria-label="${esc(f.cap || f.code || 'A poster')}" data-tip="${esc([f.code, f.cap].filter(Boolean).join(' · '))}"><img src="${f.src}" alt="" loading="lazy"></button></li>`).join(''); }; } catch (e) { /* none yet */ } };
+}
+$('#view').addEventListener('click', e => { const k = e.target.closest('.wall-k'); if (!k) return; const on = !k.classList.contains('big'); $$('#wall-g .wall-k.big').forEach(x => x.classList.remove('big')); k.classList.toggle('big', on); tick(on ? 1500 : 1100); });
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
   /* the W.I.S.H.es made here are among the stories, marked as one's own: one module, not two */
-  return printerTop() + quickHTML() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  setTimeout(wallFill, 30);
+  return printerTop() + quickHTML() + wallSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()

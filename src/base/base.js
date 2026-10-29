@@ -840,6 +840,12 @@ function raster(cv) {
   out.push(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00);
   var s = ''; for (var i = 0; i < out.length; i += 0x8000) s += String.fromCharCode.apply(null, out.slice(i, i + 0x8000)); return btoa(s);
 }
+/* iNaturalist through novel.global (stage 4), with a way round: when novel.global is turned away (iNaturalist limits the shared
+   addresses Cloudflare asks from) or slow, the browser asks iNaturalist itself, as it did before */
+(function () { var fetch0 = window.fetch.bind(window), DIRECT = 'https://api.inaturalist.org/v1/';
+  window.fetch = function (u, o) { var s = typeof u === 'string' ? u : ''; if (s.indexOf('/api/inat/') !== 0) return fetch0(u, o); var direct = function () { return fetch0(DIRECT + s.slice(10), o); };
+    var o2 = Object.assign({}, o || {}); if (window.AbortSignal && AbortSignal.timeout) o2.signal = AbortSignal.timeout(8000);
+    return fetch0(s, o2).then(function (r) { return r.ok ? r : direct(); }).catch(direct); }; })();
 function api(path, opt) {
   opt = opt || {}; opt.headers = { 'content-type': 'application/json' };
   return fetch(API + path, opt).then(function (r) { if (r.status === 204) return null; return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || r.status); e.status = r.status; throw e; } return j; }); });
@@ -2155,7 +2161,7 @@ var ORB = (function () {
 })();
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
-  if (/^song=/i.test(h)) return;   // a song's link: the aura's own (aura.js)
+  if (/^songs?=/i.test(h)) return;   // a song's link: the aura's own (aura.js)
   if (!/^(radio|wish|shop|print|showcase|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
   if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }
   if (BTH) return;

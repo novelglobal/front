@@ -57,7 +57,7 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | v0.2, dark | Dark or light at the start's top left: a deep grey night on the same hand-made paper, brighter stars, Bermuda fireworms in neon green (a worm darting into the dark, a squirt of sparks, a depth charge); every page, device and the studio go with it. The start's bottom right: open everything, and the mark as the way to the approval page. The sound key on the start, the hum's switch on the desk's bar; one music at a time | Built, on staging |
 | v0.2, fixes | Prints retried and their state said (held for the screen, refused and why); device art whole and in colour; the radio plays on with its window closed; no backing track, a fog horn for each device; devices open on their own page with their costume back; blue paper prints as a night slip | Built, on staging |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly | Built, on staging |
-| 5 | More places and people | More local brands, designers, businesses and new places, added without a code change |
+| 5 | More places and people | More local brands, designers, businesses and new places, added without a code change | Built, on staging |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |
 | 7 | Climate and emergency, live | Heat, fire, air and emergency warnings that change the danger of each life near them |
 | 8 | More receivers | Printers in cafés and shops, each printing what happens near it |
@@ -202,6 +202,10 @@ Every visitor shares one copy of the data, instead of each browser asking iNatur
 - **Done when:** a sighting posted to iNaturalist appears within about 5 minutes, the app opens offline with the last data it had, and the browser calls no outside data source directly.
 
 ## Stage 5 — more places and people
+
+*Built, on staging.* Places live in the database (`places` table) beside the ones written into `places.js`: added, changed, shown, refused or deleted on the approval page's new PLACES tab; suggested by anyone from the + in the intel on novel.global (its name, what it does, its site, where the map is), waiting there until shown. Shown places join the listed ones everywhere: the radar's knots in the studio, search and the map's rings in the aura, kept on each device for offline. Not yet: hiding one of the places written into `places.js` from the approval page, and drawing places that share knots as one web.
+
+Also in this pass. The sound desk plays only what is made: no filler words, and an empty song is never played or kept. Kept songs play in turn as a playlist, round and round, and go onto the poster as one card with one code (`#songs=`). A fourth source, WEB, plays the radius's constellations: its named places joined to their nearest neighbours, each join a note. Line work on the poster (song and playlist cards, codes, the studio's strips) is drawn in the paper's own ink, so it shows on dark paper. The device keys round the irukandji are hand-drawn glyphs. Checked at 260 px (an iPhone with large text), 320 px, iPad portrait and landscape: the print step's keys wrap, the radio's knobs fold into two rows, the desk scrolls inside itself. Stage 4's routes now go round when refused: iNaturalist turns away Cloudflare's shared addresses (429) and Overpass is slow from there, so the browser asks them directly after 8 s or 25 s, as before.
 
 - More listed places: local brands, designers, independent businesses and new venues, each with its address and site. Each place is asked whether it wants to be shown, and how.
 - The places move into the Stage 2 database, and you add and edit them from the approval page, so a new place does not need a code change. People can suggest a place, which waits for your approval like everything else.

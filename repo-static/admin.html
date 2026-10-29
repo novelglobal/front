@@ -26,6 +26,11 @@
   .note { font: 500 10px var(--mono); letter-spacing: .08em; color: var(--grey); }
   .card { display: grid; grid-template-columns: 140px 1fr; gap: 14px; padding: 14px; margin: 0 0 10px; background: #fff; }
   .card.rec { grid-template-columns: 1fr; }
+  /* places: one column; the form a stack of plain fields */
+  #main > .card:not(:has(img)) { grid-template-columns: 1fr; }
+  .pform { display: grid; gap: 6px; margin-top: 8px; }
+  .pform input, .pform select { font: 500 13px var(--mono); padding: 8px; border: 1px solid #999; background: #fff; }
+  .lbl { font: 600 11px var(--mono); letter-spacing: .1em; margin: 18px 0 8px; }
   .card img { width: 140px; height: 140px; object-fit: cover; background: var(--paper); }
   .card h3 { margin: 0 0 4px; font-size: 15px; }
   .card .meta { font: 500 10px var(--mono); letter-spacing: .06em; color: var(--grey); margin-bottom: 8px; }
@@ -53,7 +58,7 @@
 </head>
 <body>
 <header><b>DIRECT ACTION · APPROVAL</b><nav id="tabs" hidden>
-  <button type="button" data-tab="waiting" class="on">WAITING</button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="printers">PRINTERS</button><button type="button" data-tab="stations">TRACKS</button><button type="button" data-tab="posts">PORTFOLIO</button><button type="button" id="out">LOCK</button>
+  <button type="button" data-tab="waiting" class="on">WAITING</button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="printers">PRINTERS</button><button type="button" data-tab="stations">TRACKS</button><button type="button" data-tab="places">PLACES</button><button type="button" data-tab="posts">PORTFOLIO</button><button type="button" id="out">LOCK</button>
 </nav></header>
 <main id="main">
   <form class="gate" id="gate">

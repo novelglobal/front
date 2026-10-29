@@ -17,6 +17,7 @@ window.DA_CONFIG = {
   DEM_URL: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
   WEATHER_URL: 'https://api.open-meteo.com/v1/forecast?latitude=-37.775&longitude=144.962&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&current=temperature_2m,precipitation&timezone=Australia%2FMelbourne&forecast_days=16',
   OSM_API: '/api/osm',                                              // OpenStreetMap's places and water, through novel.global, kept a tile at a time
+  OVERPASS: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],   // asked directly only when novel.global cannot answer
   OVERLAYS: [
     { id: 'water', label: 'Drinking fountains', dataset: 'drinking-fountains', kind: 'water' },
     { id: 'sensors', label: 'Microclimate sensors, air temperature now', dataset: 'microclimate-sensors-data', kind: 'temp', query: 'order_by=received_at%20desc&limit=100' },

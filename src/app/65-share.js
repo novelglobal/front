@@ -64,7 +64,8 @@ async function directAction(s0, dest, bytes, kind = 'story') {
   /* a place someone marked themselves, perhaps a garden, goes out to about 100 m; a sighting from iNaturalist is already public */
   const s = s0.pin && !s0.pin.id ? { ...s0, pin: { ...s0.pin, lat: +(+s0.pin.lat).toFixed(3), lng: +(+s0.pin.lng).toFixed(3) } } : s0;
   const p = dest && dest !== 'mesh' ? partnerOf(dest) : null;
-  const payload = { kind, code: s.code, body: packSignal(s), lat: +s.pin.lat, lng: +s.pin.lng, dest: p ? p.id : dest === 'mesh' ? 'mesh' : '', mesh: meshText(s) };
+  /* a line for the mesh only when the mesh is where it was sent: a print on 80 mm (or a message) is paper alone, and never waits on the radio */
+  const payload = { kind, code: s.code, body: packSignal(s), lat: +s.pin.lat, lng: +s.pin.lng, dest: p ? p.id : dest === 'mesh' ? 'mesh' : '', ...(dest === 'mesh' ? { mesh: meshText(s) } : {}) };
   if (p) { try { payload.escpos = b64bytes(bytes || await escpos(s, p.paper)); } catch (e) { /* the words go without the bytes */ } }
   const own = s.img && s.img.k === 'own' ? sigSrc(s, false) : ''; if (own && /^data:/.test(own)) { const ph = await photoToSend(own); if (ph) payload.photo = ph; }
   SENT[s.code] = { dest: payload.dest, status: 'sending', at: Date.now() }; saveSent(); tie(2);

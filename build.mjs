@@ -128,11 +128,11 @@ fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'au
 fs.writeFileSync(path.join(out, 'aura.js'), min(read(path.join(src, 'base', 'aura.js')), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));
 /* the security policy for every page (stage 4). Scripts only from novel.global, and the few small ones written into the pages, each
-   allowed by its fingerprint (taken as a browser reads it, every line ending a plain newline); data only from novel.global (which asks iNaturalist and OpenStreetMap for everyone) and the open
+   allowed by its fingerprint (taken as a browser reads it, every line ending a plain newline); data from novel.global (which asks iNaturalist and OpenStreetMap for everyone, the browser going round to them only when it cannot) and the open
    sources still asked directly: the weather, the city's sensors and fountains, the map's imagery and height. Photographs and
    sounds shown from iNaturalist as they are. Nothing frames the site but itself. A source added to the config goes here too */
 const inline = fs.readdirSync(out).filter(f => f.endsWith('.html')).flatMap(f => [...read(path.join(out, f)).matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`));
-const DATA = ['https://api.open-meteo.com', 'https://ensemble-api.open-meteo.com', 'https://data.melbourne.vic.gov.au', 'https://server.arcgisonline.com', 'https://s3.amazonaws.com'];
+const DATA = ['https://api.inaturalist.org', 'https://overpass-api.de', 'https://overpass.kumi.systems', 'https://api.open-meteo.com', 'https://ensemble-api.open-meteo.com', 'https://data.melbourne.vic.gov.au', 'https://server.arcgisonline.com', 'https://s3.amazonaws.com'];
 const INAT_MEDIA = ['https://inaturalist-open-data.s3.amazonaws.com', 'https://static.inaturalist.org'];
 const CSP = [`default-src 'self'`, `script-src 'self' ${[...new Set(inline)].join(' ')}`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: ${[...DATA, ...INAT_MEDIA].join(' ')}`,
   `media-src 'self' data: blob: ${INAT_MEDIA.join(' ')}`, `connect-src 'self' data: blob: ${[...DATA, ...INAT_MEDIA].join(' ')}`, `font-src 'self' data:`, `worker-src 'self' blob:`, `frame-src 'self'`,

@@ -27,6 +27,17 @@ try {
   const pa = await call('/api/partners');
   check('every partner place has a print queue, none paired yet', pa.status === 200 && ['pickles', 'kines', 'elsie'].every(id => pa.json.partners.some(p => p.id === id && !p.paired && !p.ready)), JSON.stringify(pa.json));
   check('novel.global has its own print queue too', pa.json.partners.some(p => p.id === 'novelglobal'), JSON.stringify(pa.json.partners.map(p => p.id)));
+  /* stage 5: a place suggested waits; shown on the approval page it is listed for everyone, changed, and deleted */
+  const pg = await call('/api/places', { method: 'POST', body: { n: 'Test Repair Cafe', what: 'Fixes things', url: 'https://example.org/', lat: -37.77, lng: 144.97, cat: 'circular' }, ip: '10.9.9.9' });
+  const pBad = await call('/api/places', { method: 'POST', body: { n: '', lat: 900, lng: 0 }, ip: '10.9.9.9' });
+  const pl0 = await call('/api/places'), pw = await call('/api/admin/places?status=waiting', { key: KEY });
+  await call(`/api/admin/places/${pg.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } }); const pl1 = await call('/api/places');
+  await call(`/api/admin/places/${pg.json.id}`, { method: 'POST', key: KEY, body: { action: 'edit', n: 'Test Repair Café', lat: -37.771, lng: 144.971, cat: 'circular' } }); const pl2 = await call('/api/places');
+  const pAdd = await call('/api/admin/places', { method: 'POST', key: KEY, body: { n: 'Added Here', lat: -37.76, lng: 144.96 } }), pNo = await call('/api/admin/places?status=waiting', { ip: '10.8.8.8' });
+  await call(`/api/admin/places/${pg.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } }); const pl3 = await call('/api/places');
+  check('a place suggested waits, then is listed once shown, changed, added and deleted on the approval page', pg.status === 201 && pBad.status === 400 && !pl0.json.places.some(p => p.id === pg.json.id) && pw.json.places.some(p => p.id === pg.json.id)
+    && pl1.json.places.some(p => p.id === pg.json.id) && pl2.json.places.some(p => p.n === 'Test Repair Café') && pAdd.status === 201 && pNo.status === 401 && !pl3.json.places.some(p => p.id === pg.json.id) && pl3.json.places.some(p => p.n === 'Added Here'),
+    JSON.stringify([pg.status, pBad.status, pl1.json.places.length, pl3.json.places.map(p => p.n)]));
   /* stage 4: iNaturalist and OpenStreetMap through novel.global, and nothing else through it */
   const ia = await call('/api/inat/users/1'), ib = await call('/api/inat/observations/x'), ic = await call('/api/inat/../admin/stories');
   check('iNaturalist through novel.global: only the routes the site uses', ia.status === 400 && ib.status === 400 && ic.status !== 200, JSON.stringify([ia.status, ib.status, ic.status]));

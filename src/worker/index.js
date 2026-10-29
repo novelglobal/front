@@ -38,6 +38,11 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS hits_k ON hits(k, t)`,
   /* OpenStreetMap as asked of Overpass, kept a tile at a time for everyone: a tile's elements as JSON, and when they came */
   `CREATE TABLE IF NOT EXISTS osm (k TEXT PRIMARY KEY, body TEXT NOT NULL, at INTEGER NOT NULL)`,
+  /* stage 5: the listed places of the human ecology, beyond the ones written into places.js: added on the approval page, or
+     suggested by anyone and waiting there until shown */
+  `CREATE TABLE IF NOT EXISTS places (id TEXT PRIMARY KEY, n TEXT NOT NULL, cat TEXT, role TEXT, addr TEXT, sub TEXT, url TEXT, what TEXT,
+     lat REAL NOT NULL, lng REAL NOT NULL, status TEXT NOT NULL, src TEXT, created INTEGER NOT NULL, decided INTEGER)`,
+  `CREATE INDEX IF NOT EXISTS places_status ON places(status, decided)`,
 ];
 const readied = new WeakMap();
 function ready(db) {
@@ -93,6 +98,7 @@ async function tidy(db) {
     db.prepare('DELETE FROM jobs WHERE done IS NOT NULL AND done < ?').bind(t - 7 * DAY),
     db.prepare("DELETE FROM stories WHERE status IN ('waiting', 'refused') AND created < ?").bind(t - 30 * DAY),
     db.prepare('DELETE FROM osm WHERE at < ?').bind(t - 45 * DAY),
+    db.prepare("DELETE FROM places WHERE status IN ('waiting', 'refused') AND created < ?").bind(t - 60 * DAY),
   ]);
 }
 
@@ -195,8 +201,9 @@ async function next(db, req, id) {
   /* TURN OFF, pressed on the approval page in the last two minutes, comes before any slip. An older one is dropped, so a
      printer moved and switched on days later is never turned off by it; a receiver that cannot turn off is never sent it */
   if (p.off) { await db.prepare('UPDATE printers SET off = NULL WHERE id = ?').bind(id).run(); if (t - p.off < 2 * 60e3 && /\boff\b/.test(can)) return json({ off: true }); }
-  /* the oldest job waiting, or one whose printer went quiet while printing it: taken for a minute */
-  const j = await db.prepare("SELECT * FROM jobs WHERE printer = ? AND (status = 'queued' OR (status = 'printing' AND lease < ?)) ORDER BY created LIMIT 1").bind(id, t).first();
+  /* the oldest job waiting, or one whose printer went quiet while printing it: taken for a minute. Paper always first: a line for the
+     mesh alone waits until no print does, since the radio can take most of a minute to answer and a print should never wait on it */
+  const j = await db.prepare("SELECT * FROM jobs WHERE printer = ? AND (status = 'queued' OR (status = 'printing' AND lease < ?)) ORDER BY (escpos IS NULL), created LIMIT 1").bind(id, t).first();
   if (!j) return new Response(null, { status: 204, headers: TEXT_H });
   if (j.tries >= 5) { await db.prepare("UPDATE jobs SET status = 'failed', error = 'tried five times', done = ? WHERE id = ?").bind(t, j.id).run(); return new Response(null, { status: 204, headers: TEXT_H }); }
   /* a slip with both paper and a mesh line: the line goes on as a job of its own, taken next, so a print that fails never keeps it off the mesh */
@@ -271,6 +278,7 @@ async function admin(db, env, req, parts) {
     for (const [k, max] of Object.entries(TEXTS)) if (typeof b[k] === 'string') await put(k, b[k].replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '').slice(0, max));
     return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
+  if (what === 'places') return adminPlaces(db, req, id);
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
@@ -314,11 +322,13 @@ async function imgThrough(url) {
 const UA = { 'user-agent': 'novel.global (https://novel.global)', accept: 'application/json' };
 /* the iNaturalist routes the site uses, and how long each answer is good for, in seconds */
 const INAT_PATHS = [[/^observations$/, 180], [/^observations\/histogram$/, 86400], [/^observations\/\d{1,12}$/, 3600], [/^taxa$/, 604800], [/^taxa\/\d{1,10}$/, 604800]];
+let inatRest = 0;   // while iNaturalist turns novel.global away: answered at once, so the browser goes round
 async function inatThrough(url) {
   const path = url.pathname.slice('/api/inat/'.length), rule = INAT_PATHS.find(r => r[0].test(path));
   if (!rule || url.search.length > 2000) return fail(400, 'inat');
+  if (Date.now() < inatRest) return fail(429, 'inat');
   let r; try { r = await fetch(`https://api.inaturalist.org/v1/${path}${url.search}`, { headers: UA, cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': rule[1], '300-599': 0 } } }); } catch (e) { return fail(502, 'inat'); }
-  if (!r.ok) return fail(r.status === 429 ? 429 : 502, 'inat');
+  if (!r.ok) { if (r.status === 429 || r.status === 403) inatRest = Date.now() + 60e3; return fail(r.status === 429 ? 429 : 502, 'inat'); }
   return new Response(r.body, { headers: { ...JSON_H, 'cache-control': `public, max-age=${Math.min(rule[1], 300)}` } });
 }
 /* the two things asked of OpenStreetMap: the places with a name (as the radar's knots), and the water. Built here from a box of
@@ -343,7 +353,7 @@ async function osmThrough(db, env, req, url) {
   if (await tooMany(db, env, req, 'osm', 40, 10 * 60e3)) return have.size ? osmOut(all()) : fail(429, 'osm');
   const sq = stale.map(k => k.split(':')[1].split(',').map(Number)), box = [Math.min(...sq.map(q => q[0])), Math.min(...sq.map(q => q[1])), Math.max(...sq.map(q => q[0])) + 1, Math.max(...sq.map(q => q[1])) + 1].map(v => (v * K.tile).toFixed(4)).join(',');
   for (const u of OVERPASS) {
-    let j; try { const r = await fetch(`${u}?data=${encodeURIComponent(K.q(box))}`, { headers: UA }); if (!r.ok) continue; j = await r.json(); } catch (e) { continue; }
+    let j; try { const r = await fetch(`${u}?data=${encodeURIComponent(K.q(box))}`, { headers: UA, signal: AbortSignal.timeout(20000) }); if (!r.ok) continue; j = await r.json(); } catch (e) { continue; }
     if (!j || !Array.isArray(j.elements) || (j.remark && /error|time/i.test(j.remark))) continue;
     /* each element kept with the tile it stands in (water: its one tile, whole); a tile with nothing in it is kept too, as empty */
     const by = new Map(stale.map(k => [k, []]));
@@ -354,6 +364,45 @@ async function osmThrough(db, env, req, url) {
     return osmOut(all());
   }
   return have.size ? osmOut(all()) : fail(502, 'osm');
+}
+
+/* ───────── stage 5, places and people: a place is its name, what kind of place (cat), what it does near a life (role), where it is
+   (address, suburb, lat, lng), its own site and a line on what it does. Shown ones are read by every visitor and join the listed
+   places on the map, in search and on the radar; a suggestion waits on the approval page like a story ───────── */
+const PLACE_CATS = ['brand', 'circular', 'service', 'artists', 'third', 'network'];
+const PLACE_COLS = 'id, n, cat, role, addr, sub, url, what, lat, lng, status, src, created, decided';
+function placeOf(b) {
+  const n = str(b.n, 80), lat = +b.lat, lng = +b.lng, url = str(b.url, 300);
+  if (!n || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { n, cat: PLACE_CATS.includes(b.cat) ? b.cat : 'service', role: /^[a-z]{1,20}$/.test(b.role || '') ? b.role : '', addr: str(b.addr, 120), sub: str(b.sub, 60),
+    url: /^https:\/\/[^\s<>"]+$/.test(url) ? url : '', what: str(b.what, 200), lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+}
+async function listPlaces(db) {
+  const { results } = await db.prepare("SELECT id, n, cat, role, addr, sub, url, what, lat, lng FROM places WHERE status = 'shown' ORDER BY n LIMIT 2000").all();
+  return new Response(JSON.stringify({ places: results }), { headers: { ...JSON_H, 'cache-control': 'public, max-age=300' } });
+}
+async function suggestPlace(db, env, req) {
+  if (await tooMany(db, env, req, 'place', 6, 10 * 60e3)) return fail(429, 'too many places from one place in ten minutes');
+  const p = placeOf(await body(req)); if (!p) return fail(400, 'place');
+  const { n } = await db.prepare("SELECT count(*) AS n FROM places WHERE status = 'waiting'").first(); if (n >= 500) return fail(503, 'too many places waiting');
+  const id = rid(); await db.prepare('INSERT INTO places (id, n, cat, role, addr, sub, url, what, lat, lng, status, src, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, 'waiting', 'suggested', now()).run();
+  return json({ id, status: 'waiting' }, 201);
+}
+async function adminPlaces(db, req, id) {
+  if (req.method === 'GET') { const st = ['waiting', 'shown', 'refused'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
+    const { results } = await db.prepare(`SELECT ${PLACE_COLS} FROM places WHERE status = ? ORDER BY created DESC LIMIT 1000`).bind(st).all(); return json({ places: results }); }
+  if (req.method !== 'POST') return fail(405, 'method');
+  const b = await body(req), t = now();
+  /* added here: shown at once */
+  if (!id) { const p = placeOf(b); if (!p) return fail(400, 'place'); const nid = rid();
+    await db.prepare('INSERT INTO places (id, n, cat, role, addr, sub, url, what, lat, lng, status, src, created, decided) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(nid, p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, 'shown', 'admin', t, t).run(); return json({ id: nid, status: 'shown' }, 201); }
+  if (b.action === 'show' || b.action === 'refuse') { await db.prepare('UPDATE places SET status = ?, decided = ? WHERE id = ?').bind(b.action === 'show' ? 'shown' : 'refused', t, id).run(); return json({ ok: true }); }
+  if (b.action === 'delete') { await db.prepare('DELETE FROM places WHERE id = ?').bind(id).run(); return json({ ok: true }); }
+  if (b.action === 'edit') { const p = placeOf(b); if (!p) return fail(400, 'place');
+    await db.prepare('UPDATE places SET n = ?, cat = ?, role = ?, addr = ?, sub = ?, url = ?, what = ?, lat = ?, lng = ? WHERE id = ?').bind(p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, id).run(); return json({ ok: true }); }
+  return fail(400, 'action');
 }
 
 /* ───────── the portfolio: posts written on the approval page, drafts until published. Only published posts are read here ───────── */
@@ -401,6 +450,8 @@ async function api(req, env, url) {
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
   if (p[0] === 'osm' && !p[1] && m === 'GET') return osmThrough(db, env, req, url);
+  if (p[0] === 'places' && !p[1] && m === 'GET') return listPlaces(db);
+  if (p[0] === 'places' && !p[1] && m === 'POST') return suggestPlace(db, env, req);
   if (p[0] === 'posts' && !p[1] && m === 'GET') return listPosts(db);
   if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
