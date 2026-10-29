@@ -1137,7 +1137,8 @@
      as line work, crisp. The code is set large, a whole number of dots to each module, with clear paper round it.
      Light paper prints black on white; dark paper prints the head and the four lines reversed, white out of black */
   function printSheet(W, D) {
-    var keep = P.paper, dark = false;   // the receipt is always black on white: reversed blocks print as white on white P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
+    /* the receipt is always black on white: reversed blocks print as white on white */
+    var keep = P.paper, dark = false; P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
     var gl = document.createElement('canvas'); gl.width = B0.W; gl.height = B0.H; drawItems(gl.getContext('2d'), P, B0, true); PRINTMODE = false; P.paper = keep; P._base = null;
     var src = pc.c, k = W / B0.W, m = 14, parts = [], PS = '"Archivo Narrow", "Arial Narrow", Arial, sans-serif';
     var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
