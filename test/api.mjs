@@ -97,6 +97,12 @@ try {
   await call('/api/admin/settings', { method: 'POST', key: KEY, body: { words: ww } }); const ww1 = (await call('/api/settings')).json.words;
   await call('/api/admin/settings', { method: 'POST', key: KEY, body: { words: '' } }); const ww2 = (await call('/api/settings')).json.words;
   check('INTENTION\'s and W.I.S.H.\'s words are rewritten on the approval page and served to everyone; nobody else can; emptied, the site\'s own stand', wwx.status === 401 && ww1 === ww && ww2 === '', JSON.stringify({ wwx: wwx.status, ww1, ww2 }));
+  /* cities and data packs, written as words on the approval page and served to everyone */
+  const cityW = '# Sydney\ncentre, -33.8688, 151.2093\nThe Rocks, -33.8599, 151.2090';
+  const cityX = await call('/api/admin/settings', { method: 'POST', body: { cities: cityW } });
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { cities: cityW } }); const city1 = (await call('/api/settings')).json.cities;
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { cities: '' } }); const city2 = (await call('/api/settings')).json.cities;
+  check('cities and their places are written on the approval page and served to everyone; nobody else can; emptied, none', cityX.status === 401 && city1 === cityW && city2 === '', JSON.stringify({ cityX: cityX.status, city1, city2 }));
 
   /* online on the map: switched on the approval page, with or without a Pi listening */
   const lv0 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');

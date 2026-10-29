@@ -103,7 +103,7 @@ const savePrefs = () => store.set('da.prefs', prefs);
 /* the first visit is one simple way through, gate by gate (43-journey.js): 0 the map, 1 the radio, 2 W.I.S.H., 3 PRINT, 4 done.
    A device that has been here before has done it */
 const IN_AURA = window.parent !== window && /[?&]from=aura\b/.test(location.search);
-if (IN_AURA) document.documentElement.classList.add('in-aura');
+if (IN_AURA) { document.documentElement.classList.add('in-aura'); const nq = new URLSearchParams(location.search).get('night'); if (nq != null) prefs.night = nq === '1'; }
 /* a picture made here handed to the aura, which puts it on the poster in hand; crisp keeps it line work on the receipt (a code, a score) */
 const toAura = (url, crisp) => { try { window.parent.postMessage({ ng: 'piece', url, crisp: !!crisp }, location.origin); return true; } catch (e) { return false; } };
 if (!Number.isFinite(prefs.journey) || (IN_AURA && prefs.journey < 4)) { prefs.journey = NEW_HERE && !IN_AURA ? 0 : 4; savePrefs(); }

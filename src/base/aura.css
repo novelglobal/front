@@ -29,7 +29,9 @@ html.aura-on body { background: var(--blue, #17457F); }
 #au-seed, .au-orb, #au-base, #au-bell, #au-up, .au-tab, #au-catch, #au-snd, #au-panel, #au-deep { display: none; }
 #aura.m-seed #au-seed { display: block; position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin: -70px; border-radius: 50%; }
 #aura.m-bang .au-orb, #aura.m-globe .au-orb { display: grid; }
-#aura.m-globe #au-base { display: block; }
+#aura.m-globe #au-base, #aura.m-globe #au-theme, #aura.m-seed #au-theme { display: flex; }
+/* the sound key on the start too: the desk, and on it the hum's own switch */
+#aura.m-globe #au-snd, #aura.m-bang #au-snd { display: block; }
 #aura.m-iruk #au-bell, #aura.m-iruk #au-up, #aura.m-iruk .au-tab, #aura.m-iruk #au-snd, #aura.m-iruk #au-panel { display: block; }
 #aura.m-iruk:not(.st3) #au-catch { display: grid; }
 #aura.m-iruk.deep #au-panel { visibility: hidden; }
@@ -41,10 +43,22 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-orb .au-i { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -40px 0 0 -17px; transition: transform .25s; }
 /* the numbers as references are set: small, raised, to the right */
 .au-orb:hover .au-i, .au-orb:focus-visible .au-i { transform: scale(1.18); }
-#au-base { position: absolute; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); width: 34px; height: 30px; opacity: .45; }
-#au-base i { position: absolute; left: 4px; top: 50%; width: 18px; border-top: 1.5px dotted var(--ink); }
-#au-base i::after { content: ''; position: absolute; right: -8px; top: -4.5px; width: 6px; height: 6px; border-radius: 50%; border: 1.3px solid var(--ink); }
-#au-base:hover { opacity: 1; }
+/* the start's bottom right: open everything, and the mark, which is also the way to the approval page (nothing says so) */
+#au-base { position: absolute; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom)); display: none; align-items: center; gap: 12px; }
+#au-base #au-open { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; opacity: .55; box-shadow: 0 0 0 1px rgba(244, 241, 232, .35); }
+#au-base #au-open:hover { opacity: 1; }
+#au-base #au-open .au-i { width: 18px; height: 18px; }
+#au-base #au-open.sure { opacity: 1; font-size: 14px; }
+#au-base #au-admin { display: block; width: 34px; height: 16px; opacity: .8; }
+#au-base #au-admin svg { width: 100%; height: 100%; display: block; }
+#au-base #au-admin:hover { opacity: 1; }
+/* the start's top left: dark or light, hung from the top as the corner keys inside are; the circle half filled */
+#au-theme { position: absolute; left: 14px; top: 0; width: 34px; height: 66px; display: none; }
+#au-theme i { position: absolute; left: 16px; top: 0; height: 40px; border-left: 1.5px dotted var(--faint); }
+#au-theme b { position: absolute; left: 10px; top: 38px; width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 0 0 1.4px var(--ink); background: linear-gradient(90deg, var(--ink) 50%, transparent 50%); transition: transform .5s ease; }
+#aura.dark #au-theme b { transform: rotate(180deg); }
+@media (max-width: 759px) { #au-theme { left: 2px; } }
+#aura.opened::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgba(244, 241, 232, .22), transparent 60%); animation: au-in 2.4s ease reverse both; }
 
 /* the irukandji's keys: the bell; the four steps, icons alone at the tips; the one thing it holds */
 #au-bell { position: absolute; left: 0; top: 0; border-radius: 50% 50% 18% 18%; cursor: pointer; }
@@ -510,12 +524,12 @@ html.aura-on body { background: var(--blue, #17457F); }
 /* one word first: each key's word, in turn, quickly, then gone */
 #aura .au-tray, #aura .au-press { padding-bottom: 16px; }
 #aura .au-tray [data-fw], #aura .au-press [data-fw], #aura .au-wish b[data-fw] { position: relative; }
-#aura .fw::after { content: attr(data-fw); position: absolute; left: 50%; top: calc(100% + 1px); transform: translate(-50%, 2px); font: 500 10px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; color: var(--ink); opacity: 0; pointer-events: none; animation: au-fw 5s var(--fd, 0s) ease both; }
+#aura .fw::after { content: attr(data-fw); position: absolute; left: 50%; top: calc(100% + 1px); transform: translate(-50%, 2px); font: 500 10px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; color: var(--ink); opacity: 0; pointer-events: none; animation: au-fw 2.2s var(--fd, 0s) ease both; }
 #aura .au-line.fw::after { top: calc(100% + 6px); }
 #aura .au-wish b.fw::after { top: auto; bottom: -14px; }
 #aura .au-tab.fw::after { top: calc(100% - 4px); }
 @keyframes au-fw { 0% { opacity: 0; transform: translate(-50%, 4px); } 10%, 82% { opacity: .92; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -2px); } }
-.still #aura .fw::after, #aura.still .fw::after { animation-duration: 6s; }
+.still #aura .fw::after, #aura.still .fw::after { animation-duration: 2.2s; }
 /* art with nothing begun: a blank receipt to start on */
 #aura .au-begin { margin-top: 10vh; }
 /* the wall: where each poster stands, said small under its clips */
@@ -622,3 +636,38 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-kept .x { position: absolute; right: -5px; top: -5px; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; line-height: 15px; background: #2a2d33; color: #E9F2E4; opacity: 0; }
 .au-kept li:hover .x { opacity: 1; }
 @media (max-width: 759px) { .au-desk { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; } }
+
+/* ───────── v0.2, stage 5: places ───────── */
+/* places found by name: each a small pin and its name, sent to the map */
+.au-spots { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.au-spots:empty { display: none; }
+.au-spots button { display: flex; align-items: center; gap: 4px; font-size: 13px; opacity: .85; }
+.au-spots button:hover { opacity: 1; }
+.au-spots .au-i { width: 14px; height: 14px; }
+/* the cities from the approval page, a quiet row of names at the head of the intel */
+.au-cities { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 12px; padding-bottom: 12px; }
+.au-cities button { position: relative; padding: 4px 10px; border-radius: 14px; font-size: 12px; box-shadow: 0 0 0 1px rgba(244, 241, 232, .3); opacity: .75; }
+.au-cities button.on, .au-cities button:hover { opacity: 1; box-shadow: 0 0 0 1.3px var(--ink); }
+.au-cities .au-i { width: 14px; height: 14px; display: block; }
+/* the desk's water takes its mood: tide the deep blue, bloom a warm coral dusk, doom a deep violet */
+.au-desk canvas { transition: background .8s ease; }
+.au-desk[data-mood="bloom"] canvas { background: radial-gradient(ellipse at 50% 20%, rgba(226, 92, 64, .45), rgba(28, 14, 16, .92) 72%); }
+.au-desk[data-mood="doom"] canvas { background: radial-gradient(ellipse at 50% 20%, rgba(98, 62, 170, .5), rgba(10, 8, 18, .94) 72%); }
+
+/* ───────── dark: the deep grey night, the same hand-made paper, the stars brighter, the fireworms' green. Everything that was the
+   blue goes to the grey with it: the keys, the pages, the devices, the viewer ───────── */
+html.aura-on.aura-dark body { background: #18191C; }
+#aura.dark { background-color: #18191C; box-shadow: inset 0 0 180px rgba(0, 0, 0, .55); }
+#aura.dark #au-catch { background: rgba(30, 31, 35, .95); }
+#aura.dark .au-big, #aura.dark .au-rm, #aura.dark .au-me, #aura.dark .au-mback, #aura.dark .au-cb, #aura.dark .au-sig, #aura.dark .au-st, #aura.dark .au-st.mk, #aura.dark .au-map { background-color: #232428; }
+#aura.dark .au-win .au-wx, #aura.dark .au-desk .au-wx, #aura.dark .sd-big { background: #2B2C31; }
+#aura.dark #au-paper[aria-pressed="true"] svg, #aura.dark .au-card.got .au-cadd svg, #aura.dark .au-inbox .au-k.on svg { stroke: #18191C; }
+#aura.dark #au-paper[aria-pressed="true"] svg .f { fill: #18191C; }
+#aura.dark .au-st.pr { color: #18191C; }
+#aura.dark .au-desk canvas { background: radial-gradient(ellipse at 50% 20%, rgba(57, 255, 106, .14), rgba(8, 9, 11, .95) 70%); }
+#aura.dark .au-desk[data-mood="bloom"] canvas { background: radial-gradient(ellipse at 50% 20%, rgba(226, 92, 64, .35), rgba(14, 9, 10, .95) 72%); }
+#aura.dark .au-desk[data-mood="doom"] canvas { background: radial-gradient(ellipse at 50% 20%, rgba(98, 62, 170, .4), rgba(8, 7, 14, .96) 72%); }
+html.aura-dark .au-pswp { --pswp-bg: #18191C; --pswp-icon-color-secondary: #18191C; }
+html.aura-dark .au-pswp .au-x { background: #2B2C31; }
+.au-desk header .sd-drone { width: 34px; height: 28px; opacity: .9; }
+.au-desk header .sd-drone:not(.on) .au-i { opacity: .45; }
