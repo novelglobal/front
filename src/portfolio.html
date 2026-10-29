@@ -44,6 +44,12 @@
   article .links li { padding: 3px 0; }
   .back { display: inline-block; margin-top: 34px; font: 500 10px var(--mono); letter-spacing: .14em; text-decoration: none; color: var(--soft); }
   .back:hover { color: var(--ink); }
+  /* the twelve curations: a row of tabs, the one open underlined; its line under the row */
+  .curs { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 18px 0 0; padding: 0; list-style: none; }
+  .curs button { padding: 4px 0; border: 0; background: none; color: var(--soft); font: 500 10px var(--mono); letter-spacing: .14em; cursor: pointer; border-bottom: 1px solid transparent; }
+  .curs button:hover { color: var(--ink); }
+  .curs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .cur-about { margin: 10px 0 0; max-width: 62ch; color: var(--soft); font-size: 13px; }
   .draft { display: inline-block; margin-left: 8px; padding: 1px 5px; border: 1px solid var(--clay); color: var(--clay); }
 </style>
 </head>
@@ -75,24 +81,37 @@
       el('a', { class: 'back', href: preview ? 'admin' : '#', text: preview ? '← APPROVAL' : '← NOVEL.GLOBAL' })));
     scrollTo(0, 0);
   }
+  /* the twelve curations named on the approval page, each a tab: a post is in the one its curation names. With none named, every
+     category is listed as before */
+  let CURS = [], cur = sessionStorage.getItem('da.cur') || '';
   function index(list) {
     document.title = 'novel.global';
     if (!list.length) { main.replaceChildren(el('p', { class: 'none', text: 'nothing published yet' })); return; }
+    const named = CURS.filter(c => c && c.name);
+    if (named.length) { if (cur && !named.some(c => c.name === cur)) cur = '';
+      const tabs = el('ul', { class: 'curs', role: 'tablist' }, el('li', {}, el('button', { type: 'button', class: cur ? '' : 'on', 'data-cur': '', text: 'ALL' })), ...named.map(c => el('li', {}, el('button', { type: 'button', class: c.name === cur ? 'on' : '', 'data-cur': c.name, text: c.name.toUpperCase() }))));
+      tabs.addEventListener('click', e => { const b = e.target.closest('[data-cur]'); if (!b) return; cur = b.dataset.cur; sessionStorage.setItem('da.cur', cur); index(list); });
+      const about = cur ? (named.find(c => c.name === cur) || {}).about : ''; const shown = cur ? list.filter(x => (x.cat || '') === cur) : list;
+      main.replaceChildren(tabs, about ? el('p', { class: 'cur-about', text: about }) : '', ...(shown.length ? group(shown) : [el('p', { class: 'none', text: 'nothing here yet' })])); return; }
+    main.replaceChildren(...group(list));
+  }
+  function group(list) {
     const cats = [...new Set(list.map(x => x.cat || 'WORK'))];
-    main.replaceChildren(...cats.flatMap(c => { const xs = list.filter(x => (x.cat || 'WORK') === c);
+    return cats.flatMap(c => { const xs = list.filter(x => (x.cat || 'WORK') === c);
       return [el('h2', { class: 'cat' }, el('span', { text: c }), el('span', { text: String(xs.length) })),
         el('ol', { class: 'list' }, xs.map(x => el('li', {}, el('a', { href: '#' + x.slug }, x.cover ? el('img', { class: 'c', src: `/api/posts/${encodeURIComponent(x.slug)}/cover`, alt: '', loading: 'lazy' }) : el('span', { class: 'c' }),
-          el('span', { class: 't' }, x.title, x.summary ? el('span', { class: 's', text: x.summary }) : null), el('span', { class: 'd', text: day(x.day) })))))]; }));
+          el('span', { class: 't' }, x.title, x.summary ? el('span', { class: 's', text: x.summary }) : null), el('span', { class: 'd', text: day(x.day) })))))]; });
   }
   async function route() {
     try {
       if (preview) { const j = await get(`/api/admin/posts/${encodeURIComponent(preview)}`); const r = await fetch(`/api/admin/posts/${encodeURIComponent(preview)}/cover`, { headers: { authorization: `Bearer ${KEY}` }, cache: 'no-store' }); post(j.post, r.ok ? URL.createObjectURL(await r.blob()) : ''); return; }
       const slug = decodeURIComponent(location.hash.slice(1));
       if (slug && slug !== 'portfolio') { const j = await get(`/api/posts/${encodeURIComponent(slug)}`); post(j.post, `/api/posts/${encodeURIComponent(slug)}/cover`); return; }
-      const j = await get('/api/posts'); index(j.posts || []);
+      const [j, st] = await Promise.all([get('/api/posts'), fetch('/api/settings').then(r => (r.ok ? r.json() : {})).catch(() => ({}))]); try { CURS = st.curations ? JSON.parse(st.curations) : []; } catch (e) { CURS = []; } index(j.posts || []);
     } catch (e) { main.replaceChildren(el('p', { class: 'none', text: e === 404 ? 'not found' : 'no signal' })); }
   }
   addEventListener('hashchange', route); route();
+  fetch('/api/beat?k=open-portfolio', { keepalive: true }).catch(() => {});
 })();
 </script>
 </body>

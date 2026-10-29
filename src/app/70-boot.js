@@ -71,6 +71,7 @@ if (BUILD.branch) { const t = document.createElement('div'); t.className = 'prev
 S.mo = nowK();
 derive(); buildTribes(); buildHeroes(); headBar(); syncDock(); renderView(); flags(); loadEvents();
 /* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
+if (!IN_AURA) fetch('/api/beat?k=open-studio', { keepalive: true }).catch(() => {});
 applyShared(); loadShared(); loadExample(); flushOutbox(); checkSent(); loadPartners().then(() => { if (S.open && !S.mode && (S.view === 0 || S.view === 2)) refreshPanel(); }); loadSettings(); loadPlaces();
 /* a first visit (43-journey.js): only what it has reached shows; a link someone was sent skips the bare map */
 jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true);
