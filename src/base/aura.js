@@ -178,16 +178,20 @@
     var body = []; lines.forEach(function (l) { if (l) wrap(x, l, aw).forEach(function (w, k) { body.push([k ? '' : '·', w]); }); });
     x.font = '42px ' + FONT; var title = !P.say || lines.indexOf(P.say) >= 0 ? [] : wrap(x, P.say, aw).slice(0, 3);
     var band = caught(P).length ? 340 : 0, foot = 176 + Math.max(-(caught(P).length ? 300 : 0), Math.min(3000, P.len || 0));
-    var H = pad + 54 + (a ? a.height + 36 : 10) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + lines.filter(Boolean).length * 8 + 40 + band + foot + pad;
+    var H = pad + 54 + (a ? a.height + 36 : 10) + (P.wtop && a ? 16 : 0) + title.length * 52 + (title.length ? 16 : 0) + body.length * 38 + lines.filter(Boolean).length * 8 + 40 + band + foot + pad;
     c.height = H; paper(x, W, H);
-    x.fillStyle = ink(); x.textBaseline = 'top'; globeMark(x, pad + 16, pad + 17, 15, ink()); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + 42, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
+    if (P.wm) { var wh = aw * 0.42; x.save(); x.globalAlpha = 0.12; ngMark(x, (W - wh * 2.36) / 2, H * 0.46, wh, ink(), CORAL); x.restore(); }
+    x.fillStyle = ink(); x.textBaseline = 'top'; var mw = ngMark(x, pad + 1, pad + 17, 20, ink(), PRINTMODE ? 'rgb(128,128,128)' : CORAL); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + mw + 13, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
     if (n.code) { var cw2 = x.measureText(n.code).width; x.fillText(n.code, W - pad - cw2, pad + 4); }
-    var ay = pad + 54, y = ay + 10, ax = 0; if (a) { ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7);
+    /* the picture, then the words under it; or, turned (wtop), the words first and the picture under them */
+    var ay = pad + 54, y = ay + 10, ax = 0;
+    var art = function () { if (!a) return; ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7);
       if (!P.img && P.spCredit) { x.font = '13px ' + FONT; x.fillStyle = 'rgba(255,255,255,.85)'; var cr = P.spCredit.slice(0, 80), cwid = x.measureText(cr).width; x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(ax + a.width - cwid - 14, ay + a.height - 22, cwid + 10, 18); x.fillStyle = 'rgba(255,255,255,.9)'; x.fillText(cr, ax + a.width - cwid - 9, ay + a.height - 20); }
-      y = ay + a.height + 36; }
-    x.fillStyle = ink(); x.font = '42px ' + FONT; title.forEach(function (l) { x.fillText(l, pad, y); y += 52; }); if (title.length) y += 16;
+      y = ay + a.height + 36; };
     /* the four lines as sentences alone (W.I.S.H. is how they were made, not what the poster says), a small space between them */
-    body.forEach(function (b, i) { if (b[0] && i) y += 8; x.font = '600 29px ' + SANS; x.fillText(b[1], pad, y + 1); y += 38; });
+    var said = function () { x.fillStyle = ink(); x.font = '42px ' + FONT; title.forEach(function (l) { x.fillText(l, pad, y); y += 52; }); if (title.length) y += 16;
+      body.forEach(function (b, i) { if (b[0] && i) y += 8; x.font = '600 29px ' + SANS; x.fillText(b[1], pad, y + 1); y += 38; }); };
+    if (P.wtop && a && (title.length || body.length)) { y = ay + 4; said(); ay = y + 26; art(); y -= 14; } else { art(); said(); }
     y += 14; var dots = []; for (var i = 0; i <= 40; i++) dots.push([pad + aw * i / 40, y]); x.setLineDash([2, 9]); handLine(x, dots, 2, 0.55, 2); x.setLineDash([]);
     /* the code back to the site, small, dark on light so a phone reads it from the paper */
     var Q = window.qrcode, qrR = null; if (Q && n.code) { try { var q = Q(0, 'M'); q.addData(NG.noteURL(n)); q.make(); var mc = q.getModuleCount(), cell = Math.max(4, Math.floor(176 / mc)), qs = cell * mc, qx = W - pad - qs - 10, qy = H - pad - qs - 10;
@@ -197,6 +201,19 @@
   }
   /* the mark of novel.global: a world in a lattice, a band across it redacted, two bars run out of it either way.
      Drawn in two colours (the pen, and the paper showing through) so it sits on blue or white alike */
+  /* the mark of novel.global: a square, the novel (a book), and a circle, the global, side by side. Two solid shapes and nothing in them,
+     each its own tone so neither is ever lost on the paper: the square in the ink, the circle in coral on screen and in grey on the
+     receipt (a fine checker of dots, which the thermal head prints as grey). Balanced by eye rather than by rule: the circle a touch
+     larger than the square so they weigh the same, the gap a third of the square, and each a hair off true (the square turned a third
+     of a degree, the circle half a pixel low), so it reads as made by hand. sq and ci are fills (a colour or a pattern). Returns its width */
+  var CORAL = 'rgb(226,92,64)';
+  var dotFill = function (x, n) { var c = document.createElement('canvas'); c.width = c.height = n; var g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 1, 1); if (n === 2) g.fillRect(1, 1, 1, 1); return x.createPattern(c, 'repeat'); };
+  function ngMark(x, X, Y, h, sq, ci) {
+    var r = h * 0.53, gap = h * 0.3, cx = X + h + gap + r;
+    x.save(); x.fillStyle = sq; x.translate(X + h / 2, Y); x.rotate(-0.006); x.fillRect(-h / 2, -h / 2, h - 0.4, h); x.restore();
+    x.save(); x.fillStyle = ci; x.beginPath(); x.arc(cx, Y + 0.5, r, 0, Math.PI * 2); x.fill(); x.restore();
+    return h + gap + r * 2;
+  }
   function globeMark(x, cx, cy, r, fg) {
     var S2 = Math.ceil(r * 3.2), o = S2 / 2, c = document.createElement('canvas'); c.width = c.height = S2; var g = c.getContext('2d'), lw = Math.max(1, r * 0.075);
     g.fillStyle = fg; g.beginPath(); g.arc(o, o, r, 0, 7); g.fill(); g.globalCompositeOperation = 'destination-out'; g.lineWidth = lw; g.strokeStyle = '#000'; g.fillStyle = '#000';
@@ -355,7 +372,7 @@
     });
     return boxes;
   }
-  function posterKey(P) { return [P.len || 0, P.paper, P.say, (P.lines || []).join('|'), (P.photo || '').length, !!P.img, !!P.spImg, P.ptone, P.note && P.note.code, caught(P).length > 0, P.note && (P.note.seen || []).length, !!window.qrcode].join('~'); }
+  function posterKey(P) { return [P.len || 0, P.paper, P.say, (P.lines || []).join('|'), (P.photo || '').length, !!P.img, !!P.spImg, P.ptone, P.note && P.note.code, caught(P).length > 0, P.note && (P.note.seen || []).length, !!window.qrcode, !!P.wtop, !!P.wm].join('~'); }
   function posterNow(P) {
     /* → { c, boxes }: the base kept, the caught and the added drawn over it */
     usePaper(P.paper === 'white');
@@ -567,7 +584,7 @@
   var miniSoon = function () { clearTimeout(MINI.t); MINI.t = setTimeout(miniMake, 600); };
   function slipAt(T, i, f) { var pts = T.tents[i], j = Math.max(1, Math.min(NT - 2, Math.round(f * (NT - 1)))), p = pts[j], q = pts[j + 1]; return [p[0], p[1], Math.atan2(q[1] - p[1], q[0] - p[0])]; }
   function slipDraw(T, t, a) {
-    var held = 0.5, pos = null, k;
+    var held = S.stage === 0 ? 0.58 : 0.5, pos = null, k;
     if (S.round && t - S.round < 2.6) { k = Math.min(1, (t - S.round) / 1.6); pos = slipAt(T, 3, 0.92 - 0.88 * k); if (k >= 1) return; }
     else if (S.stage >= 2 && !S.deep && !(S.pass && t - S.pass.t0 < 1.1)) return;
     else if (S.pass && t - S.pass.t0 < 1.1) { k = (t - S.pass.t0) / 1.1; pos = k < 0.5 ? slipAt(T, S.pass.from, held - (held - 0.08) * k * 2) : slipAt(T, S.pass.to, 0.08 + (held - 0.08) * (k - 0.5) * 2); }
@@ -669,8 +686,10 @@
 
   /* ───────── the keys: the three pages on the globe; the bell, which is the eye; the four steps, icons alone at the tentacles' tips;
      the one thing held. No words on hover: the names are for those who listen for them (aria) ───────── */
-  var STEPS = [['notice', 'radio'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
+  var STEPS = [['notice', 'eyet'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
   var ICON = {
+    /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */
+    eyet: '<g class="lid"><path d="M4 12.5c3.5-4.6 7.5-6.7 12-6.7s8.5 2.1 12 6.7c-3.5 4.6-7.5 6.7-12 6.7s-8.5-2.1-12-6.7z"/><circle cx="16" cy="12.5" r="3.6"/><circle cx="16" cy="12.5" r="1.3" class="f pu"/></g><path d="M10.5 18.5v8M14 19.2v9.5M18 19.2v9.5M21.5 18.5v8" class="d"/>',
     radio: '<circle cx="16" cy="19" r="2.2" class="f"/><path d="M16 21.5v8.5M12.4 15.2a5.2 5.2 0 0 1 7.2 0M9.3 12.1a9.6 9.6 0 0 1 13.4 0M6.2 9a14 14 0 0 1 19.6 0" class="d"/>',
     wish: '<path d="M9 13.5C9 8 12 5 16 5s7 3 7 8.5v1.2H9z"/><path d="M10.5 15v13M14 15v14M18 15v14M21.5 15v13" class="t"/>',
     art: '<path d="M5 26c6-3 4-10 11-12s9-8 11-9"/><circle cx="9" cy="9" r="3"/><path d="M20 22l6 4M22 18h6" class="d"/>',
@@ -698,6 +717,10 @@
     pxtrash: '<ellipse cx="16" cy="12" rx="8" ry="5.5"/><ellipse cx="16" cy="11.5" rx="3.5" ry="1.8"/><path d="M11 16l1.5 9h7L21 16"/><circle cx="16" cy="21" r=".9" class="f"/>',
     pxclip: '<path d="M12 26V9a4 4 0 0 1 8 0v14a2.5 2.5 0 0 1-5 0V11"/>',
     dice: '<path d="M7 7h18v18H7z"/><circle cx="12" cy="12" r="1.3" class="f"/><circle cx="20" cy="20" r="1.3" class="f"/><circle cx="16" cy="16" r="1.3" class="f"/>',
+    mark: '<path d="M4 11h10v10H4z" class="f"/><circle cx="23" cy="16" r="5.6" class="f" style="opacity:.55"/>',
+    wall: '<path d="M3 7c4 2 22 2 26 0"/><path d="M11 9v16h10V9" class="d"/><path d="M13 5.5v5M19 5.5v5"/>',
+    pics: '<path d="M10 11h17v14H10z"/><path d="M10 22l5-5 4 4 2-2 6 6"/><path d="M5 6h17v3M5 6v14h3" class="d"/>',
+    wpos: '<path d="M6 7h20M6 11h14" /><path d="M8 16h16v11H8z" class="d"/><path d="M27 15v9M24.5 21.5L27 24l2.5-2.5"/>',
     pic: '<path d="M5 8h22v17H5z"/><path d="M5 22l7-7 5 5 3-3 7 7" /><circle cx="21" cy="13" r="2"/>',
     act: '<path d="M16 4c3 5 7 8 7 13a7 7 0 0 1-14 0c0-5 4-8 7-13z"/><path d="M13 18l2 2 4-5"/>',
     sig: '<circle cx="16" cy="20" r="2" class="f"/><path d="M11 15a7 7 0 0 1 10 0M7.5 11.5a12 12 0 0 1 17 0M4 8a17 17 0 0 1 24 0"/><path d="M16 22v6" class="d"/>',
@@ -718,7 +741,7 @@
     notice: 'From something you noticed, write what you want to happen. It goes at the top of your poster.',
     wish: 'One line for each letter. Tap a letter for help.',
     art: 'Drag to move. Tap to edit.',
-    artEmpty: 'Nothing here yet. Start with what you noticed.',
+    artEmpty: 'Start a blank receipt: a photo and a few words, ready to print. Or begin with what you noticed.',
     print: 'Print sends this to the novel.global printer on 80 mm paper, and it goes up on your wall. Pick blue or white paper first.',
     wall: 'Everything you have printed. Swipe through, tap one to see it full screen, or bring one back to keep working on it.',
     map: 'Tap where you saw it.',
@@ -740,6 +763,13 @@
   /* one line at a time: when a step (or the catch) is opened, ten seconds of quiet, then its lines in turn, each for its own time,
      ten seconds apart, round again. Never two at once */
   var HS = { at: 0, i: -1, el: null, box: null };
+  /* one word first: a step opened says, key by key, one plain word for what each does, quickly and in turn, and then is quiet,
+     so the longer lines that follow have the page to themselves */
+  var FW = 0;
+  var flashWords = function (wait) { clearTimeout(FW); FW = setTimeout(function () {
+    var on = [].filter.call(document.querySelectorAll('#aura [data-fw]'), function (e) { return e.offsetParent !== null && (panel.contains(e) || e.classList.contains('au-tab') && e.classList.contains('on')); });
+    on.forEach(function (e, i) { e.classList.remove('fw'); void e.offsetWidth; e.style.setProperty('--fd', (still ? 0 : i * 0.64).toFixed(2) + 's'); e.classList.add('fw'); });
+    FW = setTimeout(function () { on.forEach(function (e) { e.classList.remove('fw'); }); }, on.length * 640 + 3200); }, wait || 120); };
   var hintsQuiet = function () { HS.at = performance.now() / 1000 + 10; HS.i = -1; if (HS.el) HS.el.classList.remove('on'); HS.el = null; };
   setInterval(function () {
     var t = performance.now() / 1000, box = S.deep ? deep : panel; if (!box) return;
@@ -754,11 +784,11 @@
   var markI = function (g) { return '<svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><path d="' + MARKS[g] + '"/></svg>'; };
   ui.innerHTML =
     '<button id="au-seed" aria-label="Begin"></button>' +
-    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['radio', 'wish', 'print'][i]) + '</button>'; }).join('') +
+    [0, 1, 3].map(function (s, i) { return '<button class="au-orb" data-s="' + s + '" aria-label="' + ['RADIO', 'W.I.S.H.', 'PRINT'][i] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + svgI(['eyet', 'wish', 'print'][i]) + '</button>'; }).join('') +
     '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
-    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
+    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + ['intention', 'wish', 'art', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
     '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
     '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
     '<section id="au-panel" aria-live="polite"></section><section id="au-deep" hidden></section>' +
@@ -820,7 +850,7 @@
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
     setMode('bang'); store.set('da.aura.seen', 1);
   }
-  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.from = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); }
+  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.from = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
   /* a printed piece is finished: the round is over. Going on (to any step but print, to the eye or to the catch) begins the next piece, clear;
      the finished one stays on the wall, to be brought back */
@@ -830,7 +860,7 @@
     hintsQuiet();
     if (i !== 3 && done()) fresh();
     var from = S.stage; if (i === S.stage && !S.deep) { paint(); keys(); return; }
-    S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst();
+    S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
     S.pass = { from: from, to: i, t0: performance.now() / 1000 }; if (L.tips) ripple(L.tips[i][0], L.tips[i][1] - 10);
   }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('#au-say, .au-wish textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
@@ -852,10 +882,11 @@
   /* ───────── the piece: one at a time, kept as it is made, until it is printed and the round is over. The engine reads it underneath;
      nothing it knows is said unless it is caught ───────── */
   var P = null;
-  var ready = function () { return !!(P && (P.photo || P.spPhoto || P.say || (P.lines || []).some(Boolean) || caught(P).length || (P.adds || []).length)); };
+  var filled = function () { return !!(P && (P.photo || P.spPhoto || P.say || (P.lines || []).some(Boolean) || caught(P).length || (P.adds || []).length)); };
+  var ready = function () { return !!(P && (P.blank || filled())); };
   function newPiece() { return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [], tf: {}, paper: 'blue', ptone: 'as' }; }
   var piece = function () { if (done()) fresh(); if (!P) { P = newPiece(); where(P); } return P; };
-  var KEEP = ['len', 'id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx'];
+  var KEEP = ['len', 'id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx', 'wtop', 'blank', 'wallOnly', 'wm'];
   function pack(p) { var o = {}; KEEP.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); o.noteId = p.note ? p.note.id : ''; return JSON.parse(JSON.stringify(o)); }
   function unpack(o) {
     var p = newPiece(); KEEP.forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; }); p.mine = true; p.catch = p.catch || { map: false, life: '', data: [], nino: false }; p.adds = p.adds || []; p.pos = p.pos || {}; p.tf = p.tf || {};
@@ -926,18 +957,23 @@
     var s = S.stage, h = '', pic = P && (P.photo || P.spPhoto);
     if (s === 0) {
       h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"><button class="au-rm" id="au-unph" aria-label="Let the photograph go">×</button></figure>' : '') +
-        '<label class="au-line' + (P && P.say ? ' has' : '') + '"><span class="au-ask au-hint" data-on="7" data-off="20" aria-hidden="true">what\u2019s your intention?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What\u2019s your intention?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
+        '<label class="au-line' + (P && P.say ? ' has' : '') + '" data-fw="intention"><span class="au-ask au-hint" data-on="7" data-off="20" aria-hidden="true">what\u2019s your intention?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What\u2019s your intention?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
     } else if (s === 1) {
       /* what was noticed comes with it: the picture, the life if caught, the day; the line becomes W */
       var L4 = P ? P.lines : ['', '', '', ''], f = P && lifeOf(P), said = P ? [f ? f.cn : '', NG.when(P.at).slice(0, 6)].filter(Boolean).join(' · ') : '';
       /* the intention heads the poem: what one wants to happen, then the four lines under it */
       h = (P && (pic || f) ? '<div class="au-whead">' + (pic ? '<img alt="" src="' + (P.photo || P.spPhoto) + '">' : '') + '<span>' + esc(said) + '</span></div>' : '') + (P && P.say ? '<p class="au-intent">' + esc(P.say) + '</p>' : '') +
-        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS[i]) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i] + ': ' + WISH_HOW[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS[i]) + '</em> ' + esc(WISH_HOW[i]) + '</span></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
+        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS[i]) + '" data-fw="' + ['theories', 'beliefs', 'principles', 'behaviours'][i] + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i] + ': ' + WISH_HOW[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS[i]) + '</em> ' + esc(WISH_HOW[i]) + '</span></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
     } else if (s === 2) {
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
-        h = '<div class="au-tray">' + '<button data-add="p" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' + have.map(function (g) { return '<button data-mark="' + g + '" class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
-          STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '" class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
-          '<label class="au-trayph" aria-label="Add pictures to the poster">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" aria-label="Paste">' + svgI('paste') + '</button><button data-add="len+" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" aria-label="Shorter">' + svgI('shorter') + '</button><button data-add="t" aria-label="Add words">' + svgI('text') + '</button>' + (SR ? '<button data-add="mic" aria-label="Speak words onto the poster">' + svgI('mic') + '</button>' : '') + '' +
+        /* in order of use: the hero photograph, more pictures, paste, words, speech, the lines above or below; then the making */
+        h = '<div class="au-tray">' + '<label class="au-trayph" data-fw="photo" aria-label="The main photograph">' + svgI('pic') + '<input type="file" accept="image/*" id="au-file3" hidden></label>' +
+          '<label class="au-trayph" data-fw="pictures" aria-label="Add pictures to the poster">' + svgI('pics') + '<input type="file" accept="image/*" id="au-file2" multiple hidden></label><button data-add="v" data-fw="paste" aria-label="Paste">' + svgI('paste') + '</button><button data-add="t" data-fw="words" aria-label="Add words">' + svgI('text') + '</button>' + (SR ? '<button data-add="mic" data-fw="speak" aria-label="Speak words onto the poster">' + svgI('mic') + '</button>' : '') +
+          '<button data-add="wpos" data-fw="' + (P.wtop ? 'lines up' : 'lines down') + '" class="' + (P.wtop ? 'on' : '') + '" aria-label="The W.I.S.H. lines above or below the picture" aria-pressed="' + !!P.wtop + '">' + svgI('wpos') + '</button>' +
+          '<button data-add="wm" data-fw="watermark" class="' + (P.wm ? 'on' : '') + '" aria-label="The mark as a watermark" aria-pressed="' + !!P.wm + '">' + svgI('mark') + '</button>' +
+          '<button data-add="p" data-fw="pixel" class="' + (S.pix ? 'on' : '') + '" aria-label="The pixel irukandji">' + svgI('pix') + '</button>' + have.map(function (g, i) { return '<button data-mark="' + g + '"' + (i ? '' : ' data-fw="mark"') + ' class="' + (g === S.newMark ? 'new' : '') + '" aria-label="Add a mark: ' + g + '">' + markI(g) + '</button>'; }).join('') +
+          STAMPS.map(function (w, g) { return '<button data-stamp="' + g + '"' + (g ? '' : ' data-fw="stamp"') + ' class="au-stamp" aria-label="A stamp: ' + esc(w) + '"><img alt="" src="' + stampThumb(g) + '"></button>'; }).join('') +
+          '<button data-add="len+" data-fw="longer" aria-label="Longer">' + svgI('longer') + '</button><button data-add="len-" data-fw="shorter" aria-label="Shorter">' + svgI('shorter') + '</button>' +
           mine.map(function (ic, i) { return '<button data-ic="' + i + '" aria-label="Add your icon"><img alt="" src="' + esc(ic.src) + '"></button>'; }).join('') + '</div>' +
           (S.pix ? '<div class="au-pix"><nav class="au-subs">' + PIX_SUBS.map(function (q) { return '<button data-pxs="' + q + '" class="' + (PIX.sub === q ? 'on' : '') + '" aria-label="' + { jelly: 'The irukandji', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }[q] + '">' + svgI('px' + q) + '</button>'; }).join('') + '</nav>' +
             '<canvas width="96" height="96"></canvas><div>' + hand('au-sm', svgI('grid'), 'data-px="cells" aria-label="Cells"') + hand('au-sm', svgI('cur'), 'data-px="cur" aria-label="The current"') + (PIX.sub !== 'jelly' ? hand('au-sm', svgI('dice'), 'data-px="new" aria-label="Another one"') : '') +
@@ -945,7 +981,7 @@
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words" hidden></textarea><nav class="au-tools">' +
           hand('', svgI('turn'), 'data-t="r" aria-label="Turn"') + hand('', '−', 'data-t="s-" aria-label="Smaller"') + hand('', '+', 'data-t="s+" aria-label="Larger"') + hand('', svgI('tone'), 'data-t="tone" aria-label="Tone"') + hand('', svgI('frame'), 'data-t="b" aria-label="Framed or not"') +
           hand('au-rm', '×', 'data-t="x" aria-label="Take it off"') + '</nav></div></figure>' + hint(SAY.art) + goKey(2); }
-      else h = hint(SAY.artEmpty, 'au-empty') + '<button class="au-go" data-go="0" aria-label="Back to what you noticed"><i></i>' + svgI('radio') + '<b class="au-arrow"></b></button>';
+      else h = '<div class="au-press au-begin">' + hand('au-big', svgI('paper'), 'id="au-blank" data-fw="blank receipt" aria-label="Begin a blank receipt"') + hand('au-sm', svgI('eyet'), 'data-go="0" data-fw="notice" aria-label="Back to what you noticed"') + '</div>' + hint(SAY.artEmpty, 'au-empty');
     } else {
       /* print is the showcase: the piece being made hangs in front on the same line as everything printed, its press under it;
          swiped along, each printed one can be printed again, saved, brought back or taken down */
@@ -973,8 +1009,12 @@
         ta.addEventListener('input', keep);
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready() && goReady(1)) step(2); }); });
     }
+    var bl = $('#au-blank'); if (bl) bl.addEventListener('click', function () { var p = piece(); p.blank = 1; changed(); paint(); bell(6, 0.2); flashWords(300); });
     if (s === 2 && ready()) {
       var add = addPiece;
+      $('#au-file3').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) intake(f); });
+      panel.querySelector('[data-add="wm"]').addEventListener('click', function () { P.wm = !P.wm; changed(); paint(); bell(5, 0.14); });
+      panel.querySelector('[data-add="wpos"]').addEventListener('click', function () { P.wtop = !P.wtop; changed(); paint(); bell(3, 0.14); });
       [].forEach.call(panel.querySelectorAll('[data-mark]'), function (b) { b.addEventListener('click', function () { if (b.dataset.mark === S.newMark) S.newMark = null; add({ k: 's', g: b.dataset.mark }); }); });
       [].forEach.call(panel.querySelectorAll('[data-stamp]'), function (b) { b.addEventListener('click', function () { add({ k: 'st', g: +b.dataset.stamp, r: Math.round(Math.random() * 24 - 12) }); }); });
       [].forEach.call(panel.querySelectorAll('[data-ic]'), function (b) { b.addEventListener('click', function () { var ic = (NG.icons() || []).slice(-6)[+b.dataset.ic]; if (ic) add({ k: 'i', src: ic.src }); }); });
@@ -1001,7 +1041,7 @@
   function addPiece(a) { if (!P) return; a.x = a.x != null ? a.x : 0.3 + Math.random() * 0.2; a.y = a.y != null ? a.y : 0.12 + Math.random() * 0.2; P.adds.push(a); S.sel = 'a' + (P.adds.length - 1); changed(); redraw(); bell(6, 0.18); if (a.k === 't' && !a.t) setTimeout(function () { var t2 = $('#au-tx'); if (t2) t2.focus(); }, 80); }
   /* pictures, from the phone, the computer or the clipboard: each its own piece */
   function addPics(files) { (files || []).slice(0, 6).forEach(function (f, j) { var u = URL.createObjectURL(f);
-    NG.loadImg(u).then(function (im) { var src = NG.shrink(im, 700, 0.85); URL.revokeObjectURL(u); addPiece({ k: 'im', src: src, ar: (im.naturalHeight || im.height) / Math.max(1, im.naturalWidth || im.width), r: Math.round(Math.random() * 10 - 5) + j * 3 }); bubbles(3); }).catch(function () { URL.revokeObjectURL(u); }); }); }
+    NG.loadImg(u).then(function (im) { var src = NG.shrink(im, 1400, 0.9); URL.revokeObjectURL(u); addPiece({ k: 'im', src: src, ar: (im.naturalHeight || im.height) / Math.max(1, im.naturalWidth || im.width), r: Math.round(Math.random() * 10 - 5) + j * 3 }); bubbles(3); }).catch(function () { URL.revokeObjectURL(u); }); }); }
   /* pasting: a line from the radios anywhere becomes the piece in hand; in art, pictures and words go on the poster */
   function pasted(items, text) {
     if (text && /ng:[-0-9a-z]+,/i.test(text)) return takeSig(text);
@@ -1144,7 +1184,7 @@
     var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
     /* every dot black or white: words and lines only, never the photograph */
     var hard = function (c, inv) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data; for (var i = 0; i < d.length; i += 4) { var v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) < 150 ? 0 : 255; if (inv) v = 255 - v; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } g.putImageData(im, 0, 0); return c; };
-    var crop = function (y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0 || 0)); x1 = Math.min(B0.W, Math.round(x1 || B0.W)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1)); if (y1 - y0 < 4 || x1 - x0 < 4) return null; var kk = W / (x1 - x0), h = Math.round((y1 - y0) * kk), c = mk(h), g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, x1 - x0, y1 - y0, 0, 0, W, h); return c; };
+    var crop = function (y0, y1, x0, x1, from) { x0 = Math.max(0, Math.round(x0 || 0)); x1 = Math.min(B0.W, Math.round(x1 || B0.W)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1)); if (y1 - y0 < 4 || x1 - x0 < 4) return null; var kk = W / (x1 - x0), h = Math.round((y1 - y0) * kk), c = mk(h), g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(from || src, x0, y0, x1 - x0, y1 - y0, 0, 0, W, h); return c; };
     /* words placed over the picture: not dithered with it but laid over it whole, black on a white halo (white on black, turned) */
     var lay = function (dc, y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0)); x1 = Math.min(B0.W, Math.round(x1)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1));
       var gc = document.createElement('canvas'); gc.width = dc.width; gc.height = dc.height; var gg = gc.getContext('2d'); gg.imageSmoothingQuality = 'high'; gg.drawImage(gl, x0, y0, x1 - x0, y1 - y0, 0, 0, dc.width, Math.round((y1 - y0) * W / (x1 - x0)));
@@ -1160,11 +1200,12 @@
     var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
     /* the head: the mark, the name, the code */
     var hd = mk(78), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
-    globeMark(hx, m + 22, 39, 21, '#000'); hx.font = '700 34px "Helvetica Neue", Helvetica, Arial, sans-serif'; hx.fillText('novel.global', m + 54, 40);
+    var hmw = ngMark(hx, m + 1, 39, 26, '#000', dotFill(hx, 2)); hx.font = '700 34px "Helvetica Neue", Helvetica, Arial, sans-serif'; hx.fillText('novel.global', m + hmw + 14, 40);
     var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 26px ' + PS; hx.fillText(code, W - m - hx.measureText(code).width, 40); }
     if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
     /* the picture, edge to edge, with everything laid over it */
-    if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); parts.push(dc); } }
+    var picP = null; if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); picP = dc; } }
+    if (picP && !P.wtop) parts.push(picP);
     /* the words, at the printer's size */
     var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
     tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];
@@ -1175,8 +1216,21 @@
       rows.forEach(function (r, i) { if (r[0] && i) y += 10; tx.font = '600 32px ' + PS; tx.fillText(r[1], m, y + 1); y += 42; });
       parts.push(hard(tw, dark));
     }
+    if (picP && P.wtop) parts.push(picP);
     /* what was caught or added below the words, as line work */
-    var qTop = B0.qr ? B0.qr.y - 24 : B0.H - B0.pad; var bd = crop(B0.band - 16, qTop, B0.pad - 8, B0.W - B0.pad + 8); if (bd && !blank(hard(bd))) parts.push(bd);
+    /* pictures placed there are photographs, not line work: they are dithered as the main picture is, the rest kept crisp */
+    /* everything below the words to the foot, beside the code too; the code's own place left clear, as it is set again crisp below */
+    var bx = [B0.band - 16, B0.H - 2, B0.pad - 8, B0.W - B0.pad + 8], bd = crop(bx[0], bx[1], bx[2], bx[3]), bk = W / (bx[3] - bx[2]);
+    var clearQR = function (c) { if (!B0.qr) return; var g4 = c.getContext('2d'); g4.fillStyle = '#fff'; g4.fillRect((B0.qr.x - 16 - bx[2]) * bk, (B0.qr.y - 16 - bx[0]) * bk, (B0.qr.s + 32) * bk, (B0.qr.s + 32) * bk); };
+    if (bd) { clearQR(bd); var ln = mk(bd.height); ln.getContext('2d').drawImage(bd, 0, 0); hard(ln);
+      if (!blank(ln)) { var pm = document.createElement('canvas'); pm.width = B0.W; pm.height = B0.H; var pg = pm.getContext('2d'), anyPic = false; pg.fillStyle = '#000';
+        items(P, B0).forEach(function (it) { var a2 = it.key.charAt(0) === 'a' && it.key.length > 1 ? P.adds[+it.key.slice(1)] : null; if (!a2 || a2.k !== 'im') return; anyPic = true;
+          var s2 = it.tf.s || 1, w2 = it.w * s2, h2 = it.h * s2; pg.save(); pg.translate(it.X + w2 / 2, it.Y + h2 / 2); pg.rotate((it.tf.r || 0) * Math.PI / 180); pg.scale(s2, s2); pg.fillRect(-it.w / 2 - 8, -it.h / 2 - 8, it.w + 16, it.h + 16); pg.restore(); });
+        if (anyPic) { var mc2 = crop(bx[0], bx[1], bx[2], bx[3], pm), md = mc2.getContext('2d').getImageData(0, 0, W, mc2.height).data; levels(bd); var dt = NG.forPrint(bd, W, D), dd = dt.getContext('2d').getImageData(0, 0, W, dt.height).data, lx = ln.getContext('2d'), li = lx.getImageData(0, 0, W, ln.height), l2 = li.data;
+          for (var i3 = 0; i3 < l2.length && i3 < dd.length; i3 += 4) if (md[i3] < 128) { var v3 = dd[i3] < 128 ? 0 : 255; l2[i3] = l2[i3 + 1] = l2[i3 + 2] = v3; } lx.putImageData(li, 0, 0); }
+        /* no empty paper under the last mark */
+        var ld = ln.getContext('2d').getImageData(0, 0, W, ln.height).data, last = 0; for (var yy3 = ln.height - 1; yy3 >= 0 && !last; yy3--) for (var xx3 = 0; xx3 < W; xx3 += 2) if (ld[(yy3 * W + xx3) * 4] < 128) { last = yy3; break; }
+        var lt = mk(Math.min(ln.height, last + 18)); lt.getContext('2d').drawImage(ln, 0, 0); parts.push(lt); } }
     /* the code: large, crisp, its quiet paper round it; beside it the day */
     var Q = window.qrcode, ft = null; if (Q && P.note && P.note.code) { try {
       var q = Q(0, 'M'); q.addData(NG.noteURL(P.note)); q.make(); var mc = q.getModuleCount(), cell = Math.max(5, Math.floor(230 / mc)), side = cell * mc, quiet = cell * 4;
@@ -1189,23 +1243,29 @@
     /* one strip of paper; a little run-out at the end for the tear */
     var H = parts.reduce(function (s2, c) { return s2 + c.height; }, 0) + 40, out = mk(H), o = out.getContext('2d'), yy = 0;
     parts.forEach(function (c) { o.drawImage(c, 0, yy); yy += c.height; });
+    if (P.wm) { var wc = mk(H), wx = wc.getContext('2d'), wh2 = (W - m * 2) * 0.42, top = H - 40 - (ft ? ft.height : 0); ngMark(wx, (W - wh2 * 2.36) / 2, Math.min(top - wh2, H * 0.46), wh2, dotFill(wx, 4), dotFill(wx, 7));
+      var wd = wx.getImageData(0, 0, W, top).data, oi = o.getImageData(0, 0, W, top), od = oi.data; for (var i5 = 0; i5 < od.length; i5 += 4) if (wd[i5] < 128 && od[i5] > 128) { od[i5] = od[i5 + 1] = od[i5 + 2] = 0; } o.putImageData(oi, 0, 0); }
     return out;
   }
   function posterPrint(W) {
     if (!NG.forPrint || !NG.ditherLib) return Promise.resolve(null);
     return Promise.all([fontReady(), NG.ditherLib(), NG.qrLib ? NG.qrLib() : null]).then(function (r) { var out = printSheet(W, r[1]); S.lastPrint = [out.width, out.height]; S.lastSheet = out; return out; }).catch(function (e) { console.error('print sheet: ' + (e && e.stack || e)); return null; });
   }
+  var PMODES = [['paper', 'print', '80 mm'], ['mesh', 'sig', '80 mm + mesh'], ['wall', 'wall', 'wall only']];
+  S.pmode = store.get('da.aura.pmode', 'paper'); if (!PMODES.some(function (m) { return m[0] === S.pmode; })) S.pmode = 'paper';
+  var pmode = function () { return PMODES.filter(function (m) { return m[0] === S.pmode; })[0]; };
   function printNow() {
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
     var art = P.photo ? 'photo' : 'net', photo = NG.PHOTOS[n.id] || P.photo || P.spPhoto || '', show2 = { line: 1, life: !!lifeOf(P), facts: 0, links: 0, code: 1 };
-    NG.printers().then(function (list) {
+    var toWall = S.pmode === 'wall';
+    (toWall ? Promise.resolve('kept') : NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, sigOf(P)); });
-    }).then(function (s) {
-      st.innerHTML = NG.pips(s); btn.classList.remove('going'); if (n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
+      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null); });
+    })).then(function (s) {
+      st.innerHTML = toWall ? '' : NG.pips(s); btn.classList.remove('going'); if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P).then(function (c) {
-        var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code };
+        var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
         if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
         S.round = performance.now() / 1000; S.sting = S.round;
@@ -1270,12 +1330,12 @@
   }
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
-  var making = function () { return !!P && !P.sent; };
+  var making = function () { return !!P && !P.sent && filled(); };
   var showList = function () { return (making() ? [{ id: 'now', now: 1 }] : []).concat(slides()); };
   function wallHTML() {
     var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button><div class="au-press">' + hand('au-sm', svgI('in'), 'id="au-sigk0" aria-label="Take in a line"') + '</div>';
     WALL = Math.max(0, Math.min(WALL, all.length - 1));
-    return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i>' + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
+    return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i><b class="au-st' + (f.now ? ' mk' : f.wall ? '' : ' pr') + '">' + (f.now ? 'in the making' : f.wall ? 'on the wall' : 'sent to print') + '</b>' + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
       (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '') +
       '<div class="au-press" id="au-wpress"></div>';
   }
@@ -1283,14 +1343,17 @@
   function wallPress() {
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
-    if (f.now) pr.innerHTML = nav(-1) + hand('au-sm au-reset', svgI('again'), 'id="au-reset" aria-label="Start again: this piece is let go"') + hand('au-sm', svgI('paper'), 'id="au-paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') +
-      hand('au-sm', svgI('save'), 'id="au-save" aria-label="Save"') + hand('au-big', svgI('print'), 'id="au-print" aria-label="Print"') + hand('au-sm', svgI('sig'), 'id="au-sigk" aria-label="Signal"') + '<span class="au-pips" id="au-pips"></span>' + nav(1);
-    else pr.innerHTML = (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" aria-label="Begin a new piece"') : '') + nav(-1) +
-      (f.piece ? hand('au-big', svgI('print'), 'id="au-again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" aria-label="Save"') +
-      (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" aria-label="Bring it back to work on"') : '') + (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" aria-label="Signal"') : '') + (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" aria-label="Take it down"') : '') + nav(1);
+    var pm = pmode();
+    if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : 'Print') + '"') +
+      hand('au-sm au-mode', svgI(pm[1]), 'id="au-mode" data-fw="' + pm[2] + '" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
+      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm au-reset', svgI('again'), 'id="au-reset" data-fw="start again" aria-label="Start again: this piece is let go"') + '<span class="au-pips" id="au-pips"></span>' + nav(1);
+    else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
+      (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
+      (FOLIO.some(function (q) { return q.id === f.id; }) ? hand('au-sm', svgI('bin'), 'id="au-drop" data-fw="take down" aria-label="Take it down"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
+      $('#au-mode').addEventListener('click', function () { var i = PMODES.indexOf(pmode()); S.pmode = PMODES[(i + 1) % PMODES.length][0]; store.set('da.aura.pmode', S.pmode); wallPress(); bell(4 + i, 0.14); flashWords(0); });
       $('#au-save').addEventListener('click', function () { saveImg(SAVE.file, function () { return poster(P); }, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); });
       $('#au-paper').addEventListener('click', function () { P.paper = P.paper === 'white' ? 'blue' : 'white'; changed(); redraw(); this.setAttribute('aria-pressed', String(P.paper === 'white')); bell(5, 0.16); });
       NG.sureTap($('#au-reset'), function () { letGo(); });
@@ -1299,7 +1362,7 @@
       var nm = 'novel-global-' + (f.code || 'poster') + '.jpg', wf = null; fetch(f.src).then(function (r) { return r.blob(); }).then(function (b) { wf = new File([b], nm, { type: b.type || 'image/jpeg' }); }).catch(function () {});
       var ws = $('#au-wsave'); if (ws) ws.addEventListener('click', function () { saveImg(wf, function () { return NG.loadImg(f.src).then(function (im) { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); return c; }); }, nm); });
       /* printed again: it comes forward as the piece in hand, goes to the printer, and takes its own place on the wall again */
-      var ag = $('#au-again'); if (ag) ag.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); WALL = 0; paint(); fontReady().then(function () { setTimeout(function () { if ($('#au-print')) printNow(); }, 400); }); bell(5, 0.2); });
+      var ag = $('#au-again'); if (ag) NG.sureTap(ag, function () { P = unpack(f.piece); P.sent = 0; think(); WALL = 0; paint(); fontReady().then(function () { setTimeout(function () { if ($('#au-print')) printNow(); }, 400); }); bell(5, 0.2); });
       var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { folioDrop(f.id).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
     }

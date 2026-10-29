@@ -489,3 +489,42 @@ html.aura-on body { background: var(--blue, #17457F); }
 @media (max-width: 759px) { .au-press { flex-wrap: nowrap; gap: 7px; } #aura .au-press .au-sm { width: 36px; height: 36px; min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; }
   #aura .au-press .au-big { width: 54px; height: 54px; min-width: 54px; max-width: 54px; min-height: 54px; max-height: 54px; } #aura .au-press .au-pips { display: none; } }
 .au-line { margin-top: 18px; }
+
+/* ───────── v0.2, stage 1: the journey smoothed ───────── */
+/* the eye with its tears: it blinks now and then, its pupil breathes */
+#aura .au-i .lid { transform-box: view-box; transform-origin: 16px 12.5px; animation: au-blink 6.5s ease-in-out infinite; }
+#aura .au-i .pu { transform-box: fill-box; transform-origin: center; animation: au-pupil 3.6s ease-in-out infinite; }
+#aura .au-tab[data-s="1"] .au-i .lid { animation-delay: 1.4s; }
+@keyframes au-blink { 0%, 93%, 100% { transform: scaleY(1); } 95.5% { transform: scaleY(.08); } }
+@keyframes au-pupil { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.35); opacity: 1; } }
+/* the plain lines sit centred */
+#aura .au-hint { text-align: center; margin-left: auto; margin-right: auto; max-width: 34em; }
+#aura .au-empty { text-align: center; margin-top: 3vh; }
+/* the lines one writes on: half as heavy, fainter */
+#aura textarea, #aura input { border-bottom-width: .75px; border-bottom-color: rgba(244, 241, 232, .26); }
+#aura textarea:focus, #aura input:focus { border-bottom-color: rgba(244, 241, 232, .6); }
+#aura .au-wish li::after { height: 2px; bottom: -1px; background: radial-gradient(circle, rgba(244, 241, 232, .32) .65px, transparent .95px) 0 50% / 9px 2px repeat-x; }
+#aura .au-wish li:focus-within::after { background-image: radial-gradient(circle, rgba(244, 241, 232, .7) .7px, transparent 1px); }
+/* the intention a little lower, beside the receipt the eye holds out */
+#aura.st0 .au-in > .au-line:first-child { margin-top: calc(var(--ph, 500px) * .2); }
+/* one word first: each key's word, in turn, quickly, then gone */
+#aura .au-tray, #aura .au-press { padding-bottom: 16px; }
+#aura .au-tray [data-fw], #aura .au-press [data-fw], #aura .au-wish b[data-fw] { position: relative; }
+#aura .fw::after { content: attr(data-fw); position: absolute; left: 50%; top: calc(100% + 1px); transform: translate(-50%, 2px); font: 500 10px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; color: var(--ink); opacity: 0; pointer-events: none; animation: au-fw 3s var(--fd, 0s) ease both; }
+#aura .au-line.fw::after { top: calc(100% + 6px); }
+#aura .au-wish b.fw::after { top: auto; bottom: -14px; }
+#aura .au-tab.fw::after { top: calc(100% - 4px); }
+@keyframes au-fw { 0% { opacity: 0; transform: translate(-50%, 4px); } 18%, 70% { opacity: .9; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -2px); } }
+.still #aura .fw::after, #aura.still .fw::after { animation-duration: 4.8s; }
+/* art with nothing begun: a blank receipt to start on */
+#aura .au-begin { margin-top: 10vh; }
+/* the wall: where each poster stands, said small under its clips */
+#aura .au-st { position: absolute; left: 50%; top: 16px; z-index: 3; transform: translateX(-50%); font: 500 9px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; background: rgba(23, 69, 127, .85); color: var(--ink); box-shadow: 0 0 0 1px rgba(244, 241, 232, .35); white-space: nowrap; pointer-events: none; }
+#aura .au-st.mk { box-shadow: 0 0 0 1px rgba(244, 241, 232, .35); border: 0; background: rgba(23, 69, 127, .6); }
+#aura .au-st.pr { background: var(--ink); color: #17457F; }
+#aura .au-mode .au-i { opacity: .9; }
+/* the viewer's close: smaller */
+.au-pswp .au-x { width: 32px; height: 32px; font-size: 15px; }
+/* every receipt hangs from the line whatever its length: the track lines them up by their tops, never their middles */
+#aura .au-etrack { align-items: flex-start; }
+#aura .au-eslide { align-items: flex-start; }
