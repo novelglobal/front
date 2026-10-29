@@ -8,7 +8,7 @@ window.DA_CONFIG = {
   PAGES: 8,                                                         // × 200 sightings
   HISTORY: { years: 6, days: 30, per: 200 },                        // the same weeks in past years
   CAP: { m: 150, n: 2 },                                            // in any spot about `m` metres across, at most `n` sightings of one kind show; the rest wait
-  INAT_API: 'https://api.inaturalist.org/v1',
+  INAT_API: '/api/inat',                                           // iNaturalist, through novel.global (stage 4): one call for everyone, kept a few minutes
   INAT_WEB: 'https://www.inaturalist.org/observations/',
   INAT_TAXA: 'https://www.inaturalist.org/taxa/',
   INAT_UPLOAD: 'https://www.inaturalist.org/observations/upload',
@@ -16,7 +16,7 @@ window.DA_CONFIG = {
   IMAGERY: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics', note: 'free to view with credit; not open data' },
   DEM_URL: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
   WEATHER_URL: 'https://api.open-meteo.com/v1/forecast?latitude=-37.775&longitude=144.962&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&current=temperature_2m,precipitation&timezone=Australia%2FMelbourne&forecast_days=16',
-  OVERPASS: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
+  OSM_API: '/api/osm',                                              // OpenStreetMap's places and water, through novel.global, kept a tile at a time
   OVERLAYS: [
     { id: 'water', label: 'Drinking fountains', dataset: 'drinking-fountains', kind: 'water' },
     { id: 'sensors', label: 'Microclimate sensors, air temperature now', dataset: 'microclimate-sensors-data', kind: 'temp', query: 'order_by=received_at%20desc&limit=100' },
