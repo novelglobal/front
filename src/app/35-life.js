@@ -311,6 +311,7 @@ const life = (() => {
   /* drinking water: a small filled drop, blue, an ink edge */
   function drop(ctx, x, y) { ctx.beginPath(); ctx.moveTo(x, y - 5.4); ctx.quadraticCurveTo(x + 3.4, y - 1, x + 3.1, y + 1.2); ctx.arc(x, y + 1.2, 3.1, 0, Math.PI); ctx.quadraticCurveTo(x - 3.4, y - 1, x, y - 5.4); ctx.closePath(); ctx.fillStyle = '#3C9AD8'; ctx.fill(); ctx.lineWidth = 0.9; ctx.strokeStyle = 'rgba(12,14,14,.85)'; ctx.stroke(); }
   function water(ctx) {
+    if (!(W > 0 && H > 0)) return;   // the map not laid out yet (a page opening, or a window put away): nothing to lay water on
     if (!wcv) wcv = document.createElement('canvas'); if (wcv.width !== Math.round(W * dpr) || wcv.height !== Math.round(H * dpr)) { wcv.width = Math.round(W * dpr); wcv.height = Math.round(H * dpr); }
     const w = wcv.getContext('2d'); w.setTransform(dpr, 0, 0, dpr, 0, 0); w.clearRect(0, 0, W, H); w.fillStyle = '#3C9AD8'; w.lineJoin = 'round';
     const kept = waterKept(); const covered = (la, ln) => kept.some(t => t.rivers && Math.floor(la / WTILE) === Math.floor(t.la / WTILE) && Math.floor(ln / WTILE) === Math.floor(t.ln / WTILE));

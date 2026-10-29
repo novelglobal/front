@@ -37,7 +37,7 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
   if (!first) await ctx.addInitScript(p => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', p); } catch (e) { /* no storage */ } }, (dark ? '{"found":true,"start2":true,"night":true,"time":false,"placed":true,"journey":4' : '{"found":true,"start2":true,"night":false,"time":false,"placed":true,"journey":4') + (front ? '}' : ',"face":{"0":"back","1":"back","2":"back"}}'));
   else if (!journey) await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', '{"journey":4}'); } catch (e) { /* no storage */ } });
   /* the studio's devices as built, unless a check is about the plain studio (after the prefs above, so they still stand) */
-  if (!plain) await ctx.addInitScript(() => { try { localStorage.setItem('da.devices', '1'); } catch (e) { /* no storage */ } });
+  if (!plain) await ctx.addInitScript(() => { try { localStorage.setItem('da.devices.v2', '1'); } catch (e) { /* no storage */ } });
   await ctx.route('**/*', async route => {
     const url = route.request().url(); const u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -1327,10 +1327,10 @@ if (run('hide')) try {
   const f2 = await page.evaluate(() => ({ name: document.querySelector('#r-name').textContent, stored: (JSON.parse(localStorage.getItem('da.five.v1') || '[]')[0]) || null }));
   check('RESET brings the first back', f2.name === hf.name && !f2.stored, JSON.stringify(f2));
   await page.evaluate(() => { window.__da.closeRecord(); window.__da.setOpen(true); window.__da.setView(3); }); await sleep(700);
-  const sh = await page.evaluate(() => (document.querySelector('#ix-hidden') || {}).textContent || '');
+  const sh = await page.evaluate(() => (document.querySelector('#ix-hidden') || { dataset: {} }).dataset.tip || '');
   await tap(page, '#ix-hidden'); await sleep(500);
   const back = await page.evaluate(id => window.__da.life.items.some(i => i.o.id === id) && !document.querySelector('#ix-hidden'), it);
-  check('settings counts what is hidden, and brings it all back', /1 HIDDEN/.test(sh) && back, sh);
+  check('settings counts what is hidden, and brings it all back', /^1 hidden/.test(sh) && back, sh);
   await ctx.close();
 } catch (e) { results.push(`FAIL  section hide: ${e.message.split('\n')[0]}`); }
 
@@ -1749,7 +1749,7 @@ if (run('base')) try {
   await page.click('#s-rec [data-i="0"]'); await page.waitForSelector('#p-slip canvas'); await page.click('#sheet .hd .x'); await sleep(400);
   check('a poster opened from PRINT closes back to PRINT, not to the start', await page.evaluate(() => !!document.querySelector('#s-rec') && document.body.classList.contains('away')));
   /* the studio is its own site now, the devices site for class: devices on, no bar back to the base over its words */
-  { const sp = await ctx.newPage(); await sp.addInitScript(() => { try { localStorage.removeItem('da.devices'); } catch (e) { /* fine */ } }); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
+  { const sp = await ctx.newPage(); await sp.addInitScript(() => { try { localStorage.removeItem('da.devices.v2'); } catch (e) { /* fine */ } }); await sp.goto('https://oan.test/studio?from=base'); await sp.waitForFunction(() => window.__da && window.__da.S.mapReady, null, { timeout: 60000 }); await sleep(2000);
     const so = await sp.evaluate(() => ({ plain: document.documentElement.classList.contains('plain'), veil: !!document.querySelector('#jr-veil'), home: (document.querySelector('#to-base') || {}).getAttribute ? document.querySelector('#to-base').getAttribute('href') : null }));
     check('the studio stands apart: its devices on by default, no first visit from a link, and no bar back to the base', !so.plain && !so.veil && so.home === null, JSON.stringify(so)); await sp.close(); }
   /* the guide: grouped and minimised first */
@@ -1976,7 +1976,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   check(`aura (${tag}): what is touched is caught (the life, a reading, El Niño, the map where it was), counted on the thing held`, ['map', 'life', 'data', 'nino'].every(k => c1.piece.caught.includes(k)) && dots.length === 4, JSON.stringify({ caught: c1.piece.caught, dots }));
   await tap(page, '#au-dx'); await sleep(1600); await shot(page, `${P}09-art.png`);
   const af = (await st()).form; check(`aura (${tag}): in art the four tentacles are the four sides round the piece`, af === 'frame2', af);
-  const lay = (await st()).layers; check(`aura (${tag}): the drone has grown with the steps (a fifth for W.I.S.H., a shimmer for art), quietly`, lay === 2, String(lay));
+  const lay = (await st()).layers; check(`aura (${tag}): only the rings' own drone, no backing layers grown under it`, lay === 0, String(lay));
   const a = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'), x = c.getContext('2d'); let sat = 0; for (let i = 0; i < 40; i++) { const d = x.getImageData(Math.floor(c.width * (0.2 + i / 70)), Math.floor(c.height * 0.2), 1, 1).data; sat = Math.max(sat, Math.max(d[0], d[1], d[2]) - Math.min(d[0], d[1], d[2])); }
     return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '') + (b.textContent.trim() ? '+words' : '')), thumbs: [...document.querySelectorAll('[data-art] canvas')].filter(c => c.width > 0).length, marks: document.querySelectorAll('.au-tray [data-mark]').length, stamps: document.querySelectorAll('.au-tray [data-stamp]').length, words: !!document.querySelector('.au-tray [data-add="t"]'), w: c.width, sat }; });
   check(`aura (${tag}): one way of drawing it, the photograph whole in colour on blueprint; marks and words to add`, a.arts.length === 0 && a.marks >= 4 && a.stamps === 6 && a.words && a.w === 900 && a.sat > 40, JSON.stringify(a));
@@ -2105,8 +2105,8 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   check(`aura (${tag}): a finished piece is taken down from the wall (with a check)`, dropped.folio === 0, String(dropped.folio));
   /* the deep engine as devices: one earned with a poster rides the ring under the eye; opened, the studio in a window over the aura, its own first visit skipped, the eye on its bar back */
   const dv = await page.evaluate(async () => { document.querySelector('.au-tab[data-s="0"]').click(); await new Promise(r => setTimeout(r, 400)); const ring = [...document.querySelectorAll('.au-dev:not([hidden])')].map(b => b.dataset.dev).join(); window.AURA.dev(0); await new Promise(r => setTimeout(r, 400)); const w = document.querySelector('.au-win'), f = w && w.querySelector('iframe');
-    const open = !!w && !w.hidden, src = f ? f.getAttribute('src') : ''; w.querySelector('.au-wx').click(); await new Promise(r => setTimeout(r, 200)); return { ring, open, src, shut: w.hidden }; });
-  check(`aura (${tag}): a poster printed earns a device, and the irukandji holds out the one its step calls for (the radio while noticing); opened, the studio in a window over the aura, and the eye on its bar brings one back`, dv.ring === '0' && dv.open && /^\/studio\?from=aura&night=[01]#radio$/.test(dv.src) && dv.shut, JSON.stringify(dv));
+    const open = !!w && !w.hidden, src = f ? f.getAttribute('src') : ''; w.querySelector('.au-wx').click(); await new Promise(r => setTimeout(r, 200)); const shut = w.classList.contains('away') && f.getAttribute('src') !== 'about:blank'; window.AURA.dev(2); await new Promise(r => setTimeout(r, 2500)); let view = ''; try { view = f.contentDocument.body.dataset.view; } catch (e) { /* none */ } w.querySelector('.au-wx').click(); return { ring, open, src, shut, view }; });
+  check(`aura (${tag}): a poster printed earns a device, and the irukandji holds out the one its step calls for (the radio while noticing); opened, the studio in a window over the aura, and the eye on its bar brings one back`, dv.ring === '0' && dv.open && /^\/studio\?from=aura&night=[01]#radio$/.test(dv.src) && dv.shut && dv.view === 'signs', JSON.stringify(dv));
   /* the sound desk: behind the sound key, a song made from the poster's lines, kept, and rendered as a loop of 45 seconds */
   await tap(page, '#au-snd'); await sleep(500); await shot(page, `${P}15c-sound.png`);
   const sd = await page.evaluate(async () => { const d = document.querySelector('.au-desk'); document.querySelector('#sd-keep').click(); const s = window.AURA.desk(); const l = await window.AURA.songLoop(); window.AURA.desk(false); return { open: !!d, code: s && s.code, kept: window.AURA.desk(false) && s.kept, loop: l }; });

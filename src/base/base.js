@@ -851,9 +851,12 @@ function printers() { if (PRN) return Promise.resolve(PRN); return api('/partner
 var ARTS = ['photo', 'pixel', 'net', 'sign'];
 /* where a print is, as three dots: sent, seen and let through, printed. No words for it; its name on hover */
 var PIP = { sending: 1, waiting: 1, held: 1, shown: 2, queued: 2, printing: 2, printed: 3 };
-function pips(s) {
+/* a print held for the printer's own screen has its own slow pulse (what to do said on hover); one refused or failed, its number,
+   to pass on */
+function pips(s, why) {
   if (s === 'outbox') return '<span class="pips wait" title="offline: sends when there is signal">●○○</span>';
-  if (s === 'failed' || s === 'refused') return '<span class="pips x" title="' + esc(s) + '">✕</span>';
+  if (s === 'failed' || s === 'refused') return '<span class="pips x" title="' + esc(s + (why ? ': ' + why : '')) + '">✕' + (why && /^\d{3}/.test(why) ? '<small>' + why.slice(0, 3) + '</small>' : '') + '</span>';
+  if (s === 'held') return '<span class="pips held" title="held: press it on the printer&#39;s screen">●●○</span>';
   var k = PIP[s] || 0; return '<span class="pips" title="' + esc(s || '') + '">' + '●●●'.slice(0, k) + '○○○'.slice(k) + '</span>';
 }
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art; the W.I.S.H. glyph
@@ -917,8 +920,9 @@ function sendNote(n, cv, dest, wishOn, mesh) {
   var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
   if (cv) payload.escpos = raster(cv); if (mesh) payload.mesh = String(mesh).slice(0, 200);
   if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
-  return send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
-    if (e.status) return 'failed'; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
+  var tries = 0, go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
+  return go().then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
+    if (e.status) { n.sent = { s: 'failed', why: e.status + ' ' + (e.message || '') }; saveNotes(); return 'failed'; } OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
   });
 }
 /* a line for the local mesh alone: no print, sent on to every printer whose radio is on, which says it over Meshtastic. Resolves to its status */
@@ -931,8 +935,8 @@ function download(cv, name) { var a = document.createElement('a'); a.download = 
 function send(payload) { return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* where a print is now: asked again every few seconds while it is in view, and kept on the noticing */
 function follow(n, el, k) {
-  k = k || 0; if (k > 30 || !n.sent || !n.sent.id) return;
-  setTimeout(function () { if (el && !document.contains(el)) return; api('/receipts/' + n.sent.id).then(function (j) { if (!j) return; var s = j.job ? j.job.status : j.status; n.sent.s = s; saveNotes(); if (el) el.innerHTML = pips(s); if (s !== 'printed' && s !== 'failed' && s !== 'refused') follow(n, el, k + 1); }).catch(function () { follow(n, el, k + 1); }); }, 9000);
+  k = k || 0; if (k > 100 || !n.sent || !n.sent.id) return;
+  setTimeout(function () { if (el && !document.contains(el)) return; api('/receipts/' + n.sent.id).then(function (j) { if (!j) return; var s = j.job ? j.job.status : j.status; n.sent.s = s; saveNotes(); if (el) el.innerHTML = pips(s, j.job && j.job.error); if (s !== 'printed' && s !== 'failed' && s !== 'refused') follow(n, el, k + 1); }).catch(function () { follow(n, el, k + 1); }); }, 9000);
 }
 function flush() {
   if (!OUTBOX.length || !navigator.onLine) return; var p = OUTBOX[0];
@@ -940,6 +944,8 @@ function flush() {
     .catch(function (e) { if (e.status) { OUTBOX.shift(); store.set('da.base.outbox', OUTBOX); flush(); } });
 }
 addEventListener('online', flush);
+/* the outbox is not left until the next visit: tried again every 20 seconds while there is anything in it, and when the page comes back */
+setInterval(flush, 20000); document.addEventListener('visibilitychange', function () { if (!document.hidden) flush(); });
 function allStories() { return NOTES.concat(SHARED).sort(function (a, b) { return b.at - a.at; }); }
 /* a knot pressed, or a code opened: its thread */
 function openNote(n) { net.focus = n; net.links = []; if (isFinite(n.lat)) focusOn(n.lat, n.lng, Math.max(map.z, 16)); cur = null; wishSheet(n); }

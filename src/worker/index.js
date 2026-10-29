@@ -161,9 +161,9 @@ async function send(db, env, req) {
 /* the sender's receipt: where their story is, and where its print is in the queue */
 async function receipt(db, id) {
   const s = await db.prepare('SELECT id, code, status, dest FROM stories WHERE id = ?').bind(id).first(); if (!s) return fail(404, 'not found');
-  const j = await db.prepare('SELECT id, printer, status, created, done FROM jobs WHERE story = ? ORDER BY created DESC LIMIT 1').bind(id).first();
+  const j = await db.prepare('SELECT id, printer, status, created, done, error FROM jobs WHERE story = ? ORDER BY created DESC LIMIT 1').bind(id).first();
   let ahead = 0; if (j && j.status === 'queued') ({ ahead } = await db.prepare("SELECT count(*) AS ahead FROM jobs WHERE printer = ? AND status IN ('queued', 'printing') AND created < ?").bind(j.printer, j.created).first());
-  return json({ id, code: s.code, status: s.status, dest: s.dest || '', job: j ? { status: j.status, ahead, done: j.done || null } : null });
+  return json({ id, code: s.code, status: s.status, dest: s.dest || '', job: j ? { status: j.status, ahead, done: j.done || null, error: j.status === 'failed' ? String(j.error || '').slice(0, 60) : null } : null });
 }
 /* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */

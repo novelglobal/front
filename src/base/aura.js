@@ -366,9 +366,9 @@
         it.glyph = function (x) { var turn = (a.tone || 'ink') === 'turn'; x.font = tFont(34); x.textBaseline = 'top'; x.lineJoin = 'round'; x.lineWidth = 9; x.strokeStyle = turn ? '#000' : '#fff'; x.fillStyle = turn ? '#fff' : '#000';
           ls.forEach(function (l, k) { x.strokeText(l, 20, 12 + k * 44); }); ls.forEach(function (l, k) { x.fillText(l, 20, 12 + k * 44); }); }; }
       else if (a.k === 'i') { it.w = it.h = 128; it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); if (!im) return; x.imageSmoothingEnabled = false; var iw = im.naturalWidth, ih = im.naturalHeight, k2 = 128 / Math.max(iw, ih); x.drawImage(fitInk(im, a.src), (128 - iw * k2) / 2, (128 - ih * k2) / 2, iw * k2, ih * k2); }; }
-      else if (a.k === 'im') { it.w = 300; it.h = Math.round(300 * Math.min(1.6, Math.max(0.4, a.ar || 0.75))); it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); var tn = a.tone || 'ink';
+      else if (a.k === 'im') { it.w = a.wd || 300; it.h = Math.round(it.w * Math.min(5, Math.max(0.2, a.ar || 0.75))); it.draw = function (x) { var im = iconImg(a.src, function () { if (window.AURA && AURA.redraw) AURA.redraw(); }); var tn = a.tone || 'ink';
         if (a.b !== false) { x.fillStyle = tn === 'turn' ? ink(0.95) : back(0.95); x.fillRect(-8, -8, it.w + 16, it.h + 16); }
-        if (im) { x.imageSmoothingEnabled = true; x.globalAlpha = tn === 'clear' ? 0.55 : 1; var iw = im.naturalWidth, ih = im.naturalHeight, sc = Math.max(it.w / iw, it.h / ih); x.save(); x.beginPath(); x.rect(0, 0, it.w, it.h); x.clip(); x.drawImage(im, (it.w - iw * sc) / 2, (it.h - ih * sc) / 2, iw * sc, ih * sc); x.restore(); x.globalAlpha = 1; }
+        if (im) { x.imageSmoothingEnabled = true; x.globalAlpha = tn === 'clear' ? 0.55 : 1; var iw = im.naturalWidth, ih = im.naturalHeight, sc = Math.min(it.w / iw, it.h / ih); x.save(); x.beginPath(); x.rect(0, 0, it.w, it.h); x.clip(); x.drawImage(im, (it.w - iw * sc) / 2, (it.h - ih * sc) / 2, iw * sc, ih * sc); x.restore(); x.globalAlpha = 1; }
         if (a.b !== false) handRect(x, -8, -8, it.w + 16, it.h + 16, 1.3, 0.8, 17); }; }
       else if (a.k === 'st' && STAMPS[a.g]) { it.w = it.h = 220; it.draw = function (x) { x.drawImage(stampOf(a.g, a.tone || 'ink', a.b === true), 0, 0, 220, 220); }; }
       else if (a.k === 'p') { it.w = it.h = 160; it.draw = function (x) { var pj = pixArt(a.sub || 'jelly', a.cells || 24, a.ph || 0, a.tone2 || 'ink', picOf(P), a.seed || 1); x.imageSmoothingEnabled = false; if (a.b) handRect(x, 0, 0, 160, 160, 1.2, 0.6, 13); x.drawImage(pj, 0, 0, 160, 160); }; }
@@ -630,11 +630,12 @@
   var miniSoon = function () { clearTimeout(MINI.t); MINI.t = setTimeout(miniMake, 600); };
   function slipAt(T, i, f) { var pts = T.tents[i], j = Math.max(1, Math.min(NT - 2, Math.round(f * (NT - 1)))), p = pts[j], q = pts[j + 1]; return [p[0], p[1], Math.atan2(q[1] - p[1], q[0] - p[0])]; }
   function slipDraw(T, t, a) {
-    var held = S.stage === 0 ? 0.58 : 0.5, pos = null, k;
+    /* in W.I.S.H. the left tentacles carry the letters, so the receipt rides the right one, clear of the W */
+    var held = S.stage === 0 ? 0.58 : 0.5, pos = null, k, on = function (i) { return i === 1 ? 2 : i; };
     if (S.round && t - S.round < 2.6) { k = Math.min(1, (t - S.round) / 1.6); pos = slipAt(T, 3, 0.92 - 0.88 * k); if (k >= 1) return; }
     else if (S.stage >= 2 && !S.deep && !(S.pass && t - S.pass.t0 < 1.1)) return;
-    else if (S.pass && t - S.pass.t0 < 1.1) { k = (t - S.pass.t0) / 1.1; pos = k < 0.5 ? slipAt(T, S.pass.from, held - (held - 0.08) * k * 2) : slipAt(T, S.pass.to, 0.08 + (held - 0.08) * (k - 0.5) * 2); }
-    else pos = slipAt(T, S.stage, held);
+    else if (S.pass && t - S.pass.t0 < 1.1) { k = (t - S.pass.t0) / 1.1; pos = k < 0.5 ? slipAt(T, on(S.pass.from), held - (held - 0.08) * k * 2) : slipAt(T, on(S.pass.to), 0.08 + (held - 0.08) * (k - 0.5) * 2); }
+    else pos = slipAt(T, on(S.stage), held);
     var m = MINI.c, w = 22, h = m ? m.height / m.width * w : 40;
     x.save(); x.translate(pos[0], pos[1]); x.rotate((pos[2] - Math.PI / 2) * 0.25 + Math.sin(t * 0.9) * 0.05); x.globalAlpha = 0.95 * a;
     var sb = DARK ? '24,25,28' : '23,69,127'; x.fillStyle = m ? 'rgba(' + sb + ',1)' : 'rgba(' + sb + ',.6)'; x.fillRect(-w / 2, 0, w, h); if (m) x.drawImage(m, -w / 2, 0, w, h);
@@ -704,9 +705,12 @@
   function songPlay(on) {
     clearInterval(DESK.iv); DESK.iv = 0; DESK.play = !!on && !!DESK.song; DESK.step = -1; if (DESK.el) DESK.el.classList.toggle('playing', DESK.play);
     if (!DESK.play) { humSet(S.mode !== 'seed'); return; }
-    humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0; DESK.t0 = next;
+    devLetGo(); humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0; DESK.t0 = next;
     DESK.iv = setInterval(function () { if (!DESK.play || DESK.song !== sg) return; while (next < c.currentTime + 0.25) { var st = n % STEPS_N; sg.t.forEach(function (row, k) { var ch = row.charAt(st); if (ch !== '.') noteAt(c, out, sg, k, +ch, next); }); next += sd; n++; } }, 40);
   }
+  /* one bar of the song, heard once: what a mood or a source sounds like, without a tune left running */
+  function songTaste() { var sg = DESK.song; if (!sg || DESK.play) return; var c = NG.ac(), out = NG.bus(c), sd = stepDur(sg), t0 = c.currentTime + 0.05;
+    for (var st = 0; st < 16; st++) sg.t.forEach(function (row, k) { var ch = row.charAt(st); if (ch !== '.') noteAt(c, out, sg, k, +ch, t0 + st * sd); }); }
   /* 45 seconds exactly (the tempo eased a hair to fit whole bars), rendered off the clock, its tail folded back to its head so it loops without a seam */
   function songLoop(sg) {
     var OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OC || !NG.wav) return Promise.resolve(null);
@@ -757,8 +761,8 @@
         '<ul class="au-kept"></ul>';
       root.appendChild(DESK.el);
       var mk2 = function (go) { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
-      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; mk2(true); }); });
-      [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.addEventListener('click', function () { DESK.mood = +b.dataset.mood; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); songPlay(true); } else mk2(true); }); });
+      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; mk2(); if (!DESK.play) songTaste(); }); });
+      [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.addEventListener('click', function () { DESK.mood = +b.dataset.mood; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); else songTaste(); } else { mk2(); songTaste(); } }); });
       DESK.el.querySelector('#sd-new').addEventListener('click', function () { mk2(); });
       DESK.el.querySelector('#sd-go').addEventListener('click', function () { if (!DESK.song) mk2(); songPlay(!DESK.play); });
       DESK.el.querySelector('#sd-keep').addEventListener('click', function () { if (!DESK.song) return; var code = songCode(DESK.song); if (!DESK.kept.some(function (q) { return q.code === code; })) { DESK.kept.unshift({ code: code, at: Date.now() }); DESK.kept.splice(12); store.set('da.aura.songs', DESK.kept); } deskKept(); bubbles(3); });
@@ -790,15 +794,20 @@
       [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.addEventListener('click', function () { openDev(+b.dataset.wd); }); }); }
     var f = WIN.querySelector('iframe'), want = '/studio?from=aura&night=' + (DARK ? 1 : 0) + '#' + d[2];
     if (!f.getAttribute('src') || f.getAttribute('src') === 'about:blank') f.setAttribute('src', want); else { try { f.contentWindow.location.hash = d[2]; } catch (e) { f.setAttribute('src', want); } }
+    WIN.classList.remove('away');
     WIN.className = 'au-win d-' + d[0]; WIN.querySelector('header b').textContent = d[1]; [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.classList.toggle('on', +b.dataset.wd === i); });
-    if (DESK.play) songPlay(false); WIN.hidden = false; root.classList.add('win'); S.win = i; humSet(false); bell(5 + i, 0.18); try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) { /* none */ }
+    if (DESK.play) songPlay(false); WIN.hidden = false; WIN.classList.remove('away'); root.classList.add('win'); S.win = i; humSet(false); horn(i); try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* none */ }
   }
-  /* closed, the studio is let go (a hidden page that keeps drawing draws onto nothing); opened again, it starts afresh at its page */
-  function closeDev() { if (!WIN || WIN.hidden) return; WIN.hidden = true; WIN.querySelector('iframe').setAttribute('src', 'about:blank'); root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed'); bell(0, 0.16); }
+  /* closed, the studio is put away, not let go: kept its size and drawing, only unseen and untouchable, so a radio left on goes on
+     playing under the aura, whatever step or device is open. Opened again, it is as it was left */
+  function closeDev() { if (!WIN || WIN.hidden || WIN.classList.contains('away')) return; WIN.classList.add('away'); root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed' && !devOn()); bell(0, 0.16); }
+  var devOn = function () { if (!WIN || !WIN.classList.contains('away')) return false; try { var d2 = WIN.querySelector('iframe').contentWindow.__da; return !!(d2 && d2.S.radio); } catch (e) { return false; } };
+  /* let go for good: the desk's song is the one music now */
+  function devLetGo() { if (!WIN || !WIN.classList.contains('away')) return; WIN.querySelector('iframe').setAttribute('src', 'about:blank'); WIN.classList.remove('away'); WIN.hidden = true; }
   window.addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.ng !== 'piece' || typeof e.data.url !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/.test(e.data.url)) return;
     closeDev(); var p = piece(); p.blank = 1; var crisp = !!e.data.crisp;
-    NG.loadImg(e.data.url).then(function (im) { var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; addPiece({ k: 'im', src: crisp ? e.data.url : NG.shrink(im, 1400, 0.9), ar: h / Math.max(1, w), r: 0, b: false, crisp: crisp ? 1 : 0, x: 0.2, y: 0.12 }); bubbles(4); }).catch(function () {});
+    NG.loadImg(e.data.url).then(function (im) { var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; addPiece({ k: 'im', src: crisp ? e.data.url : NG.shrink(im, 2400, 0.94), ar: h / Math.max(1, w), r: 0, b: false, crisp: crisp ? 1 : 0, wd: crisp ? 300 : h > w * 1.4 ? 360 : 460, x: 0.12, y: 0.08 }); bubbles(4); }).catch(function () {});
     if (S.mode === 'iruk' || S.mode === 'morph') step(2); else if (S.mode === 'globe' || S.mode === 'bang') toIruk(2); else { setMode('globe'); toIruk(2); }
   });
   api.dev = function (i) { if (i == null) closeDev(); else openDev(i); };
@@ -836,10 +845,7 @@
     /* the drone grows with the piece, a little at each step and never loud: W.I.S.H. brings a fifth above, art a high shimmer that
        wanders, print a low breath under it all. One slow swell moves them, and the voices drift apart a few cents and back */
     var lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 5; lfo.connect(lg); hum.v.forEach(function (v) { lg.connect(v.o2.detune); }); lfo.start();
-    hum.ext = [[329.63, 1, 'sine', 0.007], [659.26, 2, 'triangle', 0.0035], [55, 3, 'sine', 0.016]].map(function (L2) {
-      var o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(), p = c.createStereoPanner ? c.createStereoPanner() : null, w = c.createOscillator(), wg = c.createGain();
-      o.type = L2[2]; o.frequency.value = L2[0]; f.type = 'lowpass'; f.frequency.value = L2[0] * 3; g.gain.value = 0; w.frequency.value = 0.05 + L2[1] * 0.023; wg.gain.value = 0.6;
-      o.connect(f); f.connect(g); if (p) { w.connect(wg); wg.connect(p.pan); g.connect(p); p.connect(out); } else g.connect(out); o.start(); w.start(); return { g: g, at: L2[1], top: L2[3] }; });
+    hum.ext = [];   /* only the rings' own drone: the layers that once grew under it played like a backing track */
     out.gain.setTargetAtTime(0.385, c.currentTime, 1.8); window.__auraHum = 0.385;
   }
   function humSet(on) { if (!hum) return; var c = NG.ac(); hum.out.gain.setTargetAtTime(on && !mute ? 0.385 : 0, c.currentTime, on ? 1 : 0.3); window.__auraHum = on && !mute ? 0.385 : 0; }
@@ -856,6 +862,15 @@
   var humGrow = function () { if (!P) return 0; var l = (P.lines || []).filter(Boolean).length / 4, k = caught(P).length / 4, a = Math.min(1, (P.adds || []).length / 3); return Math.min(1, l * 0.45 + k * 0.3 + a * 0.25); };
   var DEG = [0, 3, 5, 7, 10, 12, 15];
   var AC0 = function () { return !!hum || !!window.__auraSound; };
+  /* a device's own call: a deep fog horn, felt more than heard. Two reeds a hair apart over a sub an octave down, through a low
+     filter that opens as it swells, sagging a little as it dies. Each device its own: the radio low and long on a fifth, the
+     research board a minor third, the print shop lowest of all, short, on the octave */
+  var HORNS = [[41.2, 1.5, 2.2], [36.7, 1.19, 1.8], [30.9, 2, 1.4]];
+  function horn(i) { if (mute || !AC0()) return; var h = HORNS[i] || HORNS[0], c = NG.ac(), t = c.currentTime + 0.02, out = NG.bus(c), f = c.createBiquadFilter(), g = c.createGain(), dur = h[2];
+    f.type = 'lowpass'; f.Q.value = 3; f.frequency.setValueAtTime(70, t); f.frequency.linearRampToValueAtTime(260, t + 0.35); f.frequency.exponentialRampToValueAtTime(60, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.3); g.gain.setValueAtTime(0.5, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); f.connect(g); g.connect(out);
+    [[h[0], 'sawtooth', 0.32, -6], [h[0], 'sawtooth', 0.32, 7], [h[0] * h[1], 'sawtooth', 0.14, 0], [h[0] / 2, 'sine', 0.9, 0]].forEach(function (v) { var o = c.createOscillator(), og = c.createGain(); o.type = v[1]; o.frequency.setValueAtTime(v[0], t); o.frequency.linearRampToValueAtTime(v[0] * 0.94, t + dur); o.detune.value = v[3]; og.gain.value = v[2]; o.connect(og); og.connect(f); o.start(t); o.stop(t + dur + 0.1); });
+    window.__auraHorn = i; }
   function bell(i, vol) { if (mute || !AC0()) return; var c = NG.ac(), I = NG.INS.gamelan; I.fn(c, NG.bus(c), c.currentTime + 0.02, 220 * Math.pow(2, DEG[i % DEG.length] / 12), 1.7, vol || 0.28); }
   function harp(seq) { if (mute || !AC0()) return; var c = NG.ac(), I = NG.INS.harp || NG.INS.gamelan; seq.forEach(function (d, i) { I.fn(c, NG.bus(c), c.currentTime + 0.05 + i * 0.16, 220 * Math.pow(2, DEG[d % DEG.length] / 12 + (d >= DEG.length ? 1 : 0)), 1.7, 0.3); }); }
   function boom() {
@@ -1077,7 +1092,7 @@
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
     setMode('bang'); store.set('da.aura.seen', 1);
   }
-  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.from = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
+  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.wline = FORM.from = LAST = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
   /* a printed piece is finished: the round is over. Going on (to any step but print, to the eye or to the catch) begins the next piece, clear;
      the finished one stays on the wall, to be brought back */
@@ -1099,7 +1114,10 @@
   document.documentElement.classList.toggle('aura-dark', DARK);
   $('#au-theme').addEventListener('click', function () { setDark(!DARK); bell(DARK ? 0 : 4, 0.18); subSwell(); });
   /* open everything: every device on the ring and every mark, as if every poster were already made; asked once more first */
-  NG.sureTap($('#au-open'), function () { ROUNDS = Math.max(ROUNDS, MARK_ORDER.length); store.set('da.aura.rounds', ROUNDS); harp([0, 2, 4, 7, 9]); root.classList.add('opened'); setTimeout(function () { root.classList.remove('opened'); }, 2400); if (DARK) for (var q = 0; q < 3; q++) worm(2, L.W * (0.3 + 0.2 * q), L.H * 0.5); });
+  NG.sureTap($('#au-open'), function () { ROUNDS = Math.max(ROUNDS, MARK_ORDER.length); store.set('da.aura.rounds', ROUNDS); harp([0, 2, 4, 7, 9]); root.classList.add('opened'); setTimeout(function () { root.classList.remove('opened'); }, 2400); if (DARK) for (var q = 0; q < 3; q++) worm(2, L.W * (0.3 + 0.2 * q), L.H * 0.5);
+    /* and it shows what it opened: the key stays lit, and the irukandji comes with the radio held out, every device and mark now there */
+    var ok = $('#au-open'); ok.classList.add('on'); ok.setAttribute('aria-label', 'Everything is open'); setTimeout(function () { if (S.mode === 'seed') bang(); setTimeout(function () { if (S.mode === 'globe' || S.mode === 'bang') toIruk(0); }, S.mode === 'globe' ? 300 : 3200); }, 700); });
+  if (ROUNDS >= MARK_ORDER.length) { $('#au-open').classList.add('on'); $('#au-open').setAttribute('aria-label', 'Everything is open'); }
   api.dark = function (on) { if (on != null) setDark(on); return DARK; };
   /* the eye takes in a photograph from any step, and the step stays where it is (after a round, it begins the next piece) */
   $('#au-file').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (done()) { fresh(); if (S.stage === 3) step(0); } intake(f); bell(0, 0.24); ripple(L.bx, L.by + L.bh * 0.5); });
@@ -1470,7 +1488,7 @@
     if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
     /* the picture, edge to edge, with everything laid over it */
     var picP = null; if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); picP = dc; } }
-    if (picP && !P.wtop) parts.push(picP);
+    if (picP) picP._pic = 1; if (picP && !P.wtop) parts.push(picP);
     /* the words, at the printer's size */
     var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
     tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];
@@ -1495,7 +1513,7 @@
           for (var i3 = 0; i3 < l2.length && i3 < dd.length; i3 += 4) if (md[i3] < 128) { var v3 = dd[i3] < 128 ? 0 : 255; l2[i3] = l2[i3 + 1] = l2[i3 + 2] = v3; } lx.putImageData(li, 0, 0); }
         /* no empty paper under the last mark */
         var ld = ln.getContext('2d').getImageData(0, 0, W, ln.height).data, last = 0; for (var yy3 = ln.height - 1; yy3 >= 0 && !last; yy3--) for (var xx3 = 0; xx3 < W; xx3 += 2) if (ld[(yy3 * W + xx3) * 4] < 128) { last = yy3; break; }
-        var lt = mk(Math.min(ln.height, last + 18)); lt.getContext('2d').drawImage(ln, 0, 0); parts.push(lt); } }
+        var lt = mk(Math.min(ln.height, last + 18)); lt.getContext('2d').drawImage(ln, 0, 0); if (anyPic) lt._mask = md; parts.push(lt); } }
     /* the code: large, crisp, its quiet paper round it; beside it the day */
     var Q = window.qrcode, ft = null; if (Q && P.note && P.note.code) { try {
       var q = Q(0, 'M'); q.addData(NG.noteURL(P.note)); q.make(); var mc = q.getModuleCount(), cell = Math.max(5, Math.floor(230 / mc)), side = cell * mc, quiet = cell * 4;
@@ -1504,13 +1522,31 @@
       fx.textBaseline = 'top'; fx.font = '700 30px ' + PS; fx.fillText(NG.when(P.at || Date.now()).slice(0, 6), m, y0 + 4); fx.font = '600 24px ' + PS; fx.fillText(code, m, y0 + 44);
       var f2 = lifeOf(P); if (f2) { fx.font = '600 24px ' + PS; wrap(fx, f2.cn, x0 - quiet - m * 2).slice(0, 2).forEach(function (l, i) { fx.fillText(l, m, y0 + 84 + i * 28); }); }
     } catch (e) { ft = null; } }
-    if (ft) parts.push(hard(ft));
+    if (ft) { hard(ft); ft._keep = [x0 - quiet + cell * 2, cell * 2, side + quiet * 2 - cell * 4, side + quiet * 2 - cell * 4]; parts.push(ft); }
+    /* blue paper prints as a night slip: the paper a fine dark shade (five dots in eight, in a regular weave, so it reads as a polished
+       grey rather than a solid black the head would labour over), every word, line, mark and icon white with a thin dark edge to hold
+       it. Photographs stay as they are; the code keeps a white tile of its own, so it always scans */
+    if (keep !== 'white') parts = parts.map(function (c) { return c._pic ? c : nightOf(c, c._keep, c._mask); });
     /* one strip of paper; a little run-out at the end for the tear */
     var H = parts.reduce(function (s2, c) { return s2 + c.height; }, 0) + 40, out = mk(H), o = out.getContext('2d'), yy = 0;
     parts.forEach(function (c) { o.drawImage(c, 0, yy); yy += c.height; });
+    var dk = keep !== 'white'; if (dk) { o.fillStyle = '#000'; for (var ry = yy; ry < H; ry++) for (var rx = 0; rx < W; rx++) if (BAYER[(ry & 3) * 4 + (rx & 3)] < 10) o.fillRect(rx, ry, 1, 1); }
     if (P.wm) { var wc = mk(H), wx = wc.getContext('2d'), wh2 = (W - m * 2) * 0.42, top = H - 40 - (ft ? ft.height : 0); ngMark(wx, (W - wh2 * 2.36) / 2, Math.min(top - wh2, H * 0.46), wh2, dotFill(wx, 4), dotFill(wx, 7));
-      var wd = wx.getImageData(0, 0, W, top).data, oi = o.getImageData(0, 0, W, top), od = oi.data; for (var i5 = 0; i5 < od.length; i5 += 4) if (wd[i5] < 128 && od[i5] > 128) { od[i5] = od[i5 + 1] = od[i5 + 2] = 0; } o.putImageData(oi, 0, 0); }
+      var wd = wx.getImageData(0, 0, W, top).data, oi = o.getImageData(0, 0, W, top), od = oi.data; for (var i5 = 0; i5 < od.length; i5 += 4) if (wd[i5] < 128 && (dk ? od[i5] < 128 : od[i5] > 128)) { od[i5] = od[i5 + 1] = od[i5 + 2] = dk ? 255 : 0; } o.putImageData(oi, 0, 0); }
     return out;
+  }
+  var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  /* a part of the receipt turned to night: ink to white, paper to the shade, a dark edge round every white mark; keep (a rectangle)
+     and mask (a picture's place) are left as printed */
+  function nightOf(c, keep, mask) {
+    var g = c.getContext('2d'), w = c.width, h = c.height, im = g.getImageData(0, 0, w, h), d = im.data, ink = new Uint8Array(w * h), i, x, y;
+    for (i = 0; i < w * h; i++) ink[i] = d[i * 4] < 128 ? 1 : 0;
+    var kept = function (x2, y2) { return (keep && x2 >= keep[0] && x2 < keep[0] + keep[2] && y2 >= keep[1] && y2 < keep[1] + keep[3]) || (mask && mask[(y2 * w + x2) * 4] < 128); };
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) { i = y * w + x; if (kept(x, y)) continue; var v;
+      if (ink[i]) v = 255; else { var edge = false; for (var dy = -2; dy <= 2 && !edge; dy++) for (var dx = -2; dx <= 2; dx++) { var X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h && ink[Y * w + X]) { edge = true; break; } }
+        v = edge || BAYER[(y & 3) * 4 + (x & 3)] < 10 ? 0 : 255; }
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; }
+    g.putImageData(im, 0, 0); return c;
   }
   function posterPrint(W) {
     if (!NG.forPrint || !NG.ditherLib) return Promise.resolve(null);
@@ -1528,7 +1564,7 @@
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
       return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null); });
     })).then(function (s) {
-      st.innerHTML = toWall ? '' : NG.pips(s); btn.classList.remove('going'); if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
+      st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going'); if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P).then(function (c) {
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
@@ -1661,7 +1697,7 @@
         imageClickAction: 'zoom-or-close', tapAction: 'close', doubleTapAction: 'zoom', closeOnVerticalDrag: true, padding: { top: 36, bottom: 48, left: 12, right: 12 },
         counter: false, zoom: false, close: false, arrowPrev: many, arrowNext: many, arrowPrevTitle: 'Before', arrowNextTitle: 'After', errorMsg: '' });
       ps.on('uiRegister', function () {
-        ps.ui.registerElement({ name: 'aux', order: 9, isButton: true, tagName: 'button', title: '', ariaLabel: 'Close', html: '×', onClick: function () { unshow(); }, appendTo: 'root', onInit: function (el) {
+        ps.ui.registerElement({ name: 'aux', order: 9, isButton: true, tagName: 'button', title: '', ariaLabel: 'Close', html: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.4 11.8 11.6M11.7 4.3 4.3 11.7"/></svg>', onClick: function () { unshow(); }, appendTo: 'root', onInit: function (el) {
           el.classList.add('au-x'); var pin = function () { var s2 = ps.currSlide, im = s2 && s2.content && s2.content.element; if (!im) return; var rc = im.getBoundingClientRect(); if (!rc.width) return;
             var X = Math.min(innerWidth - 50, Math.max(6, rc.right - 24)), Y = Math.min(innerHeight - 50, Math.max(6, rc.top - 20)); el.style.transform = 'translate(' + X.toFixed(0) + 'px,' + Y.toFixed(0) + 'px)'; };
           ['change', 'zoomPanUpdate', 'resize', 'imageSizeChange', 'loadComplete', 'openingAnimationEnd'].forEach(function (ev) { ps.on(ev, function () { requestAnimationFrame(pin); }); }); } });
@@ -1909,7 +1945,7 @@
   fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (!st) return; var o = null; try { o = st.words ? JSON.parse(st.words) : {}; } catch (e) { o = {}; }
     store.set('da.aura.words', o); wordsSet(o); store.set('da.aura.cities', st.cities || ''); citiesSet(st.cities || ''); NG.db().then(function () { citiesSet(st.cities || ''); }); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
   api.awake = function () { return !asleep; };
-  api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
+  api.sleep = function () { asleep = true; devLetGo(); root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
   api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
   /* the last receipt as it went to the printer, for a look at it */
