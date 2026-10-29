@@ -27,6 +27,12 @@ try {
   const pa = await call('/api/partners');
   check('every partner place has a print queue, none paired yet', pa.status === 200 && ['pickles', 'kines', 'elsie'].every(id => pa.json.partners.some(p => p.id === id && !p.paired && !p.ready)), JSON.stringify(pa.json));
   check('novel.global has its own print queue too', pa.json.partners.some(p => p.id === 'novelglobal'), JSON.stringify(pa.json.partners.map(p => p.id)));
+  /* stage 4: iNaturalist and OpenStreetMap through novel.global, and nothing else through it */
+  const ia = await call('/api/inat/users/1'), ib = await call('/api/inat/observations/x'), ic = await call('/api/inat/../admin/stories');
+  check('iNaturalist through novel.global: only the routes the site uses', ia.status === 400 && ib.status === 400 && ic.status !== 200, JSON.stringify([ia.status, ib.status, ic.status]));
+  const oa = await call('/api/osm?q=shops&bb=-37.78,144.96,-37.77,144.97'), ob = await call('/api/osm?q=places&bb=-37.785,144.96,-37.77,144.97'), oc = await call('/api/osm?q=places&bb=-37.9,144.9,-37.7,145.1'),
+    od = await call('/api/osm?q=water&bb=-37.8,144.95,-37.7,145.05'), oe = await call('/api/osm?q=places&bb=-37.77,144.96,-37.78,144.97'), of = await call('/api/osm?q=places&bb=1,2,3');
+  check('OpenStreetMap through novel.global: only places or water, in whole tiles, a few at a time', [oa, ob, oc, od, oe, of].every(r => r.status === 400), JSON.stringify([oa, ob, oc, od, oe, of].map(r => r.status)));
   const im1 = await call('/api/img?u=' + encodeURIComponent('https://example.org/photos/1/medium.jpg')), im2 = await call('/api/img?u=' + encodeURIComponent('http://static.inaturalist.org/photos/1/medium.jpg')), im3 = await call('/api/img?u=' + encodeURIComponent('https://static.inaturalist.org/sounds/1.mp3'));
   check('photographs pass through from iNaturalist only', im1.status === 400 && im2.status === 400 && im3.status === 400, `${im1.status} ${im2.status} ${im3.status}`);
 

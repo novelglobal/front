@@ -36,6 +36,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)`,
   `CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, slug TEXT UNIQUE, title TEXT NOT NULL, summary TEXT, body TEXT, cat TEXT, links TEXT, day TEXT, status TEXT NOT NULL DEFAULT 'draft', cover BLOB, created INTEGER, updated INTEGER)`,
   `CREATE INDEX IF NOT EXISTS hits_k ON hits(k, t)`,
+  /* OpenStreetMap as asked of Overpass, kept a tile at a time for everyone: a tile's elements as JSON, and when they came */
+  `CREATE TABLE IF NOT EXISTS osm (k TEXT PRIMARY KEY, body TEXT NOT NULL, at INTEGER NOT NULL)`,
 ];
 const readied = new WeakMap();
 function ready(db) {
@@ -90,6 +92,7 @@ async function tidy(db) {
     db.prepare("UPDATE jobs SET escpos = NULL, mesh = NULL WHERE status IN ('printed', 'failed', 'expired') AND escpos IS NOT NULL"),
     db.prepare('DELETE FROM jobs WHERE done IS NOT NULL AND done < ?').bind(t - 7 * DAY),
     db.prepare("DELETE FROM stories WHERE status IN ('waiting', 'refused') AND created < ?").bind(t - 30 * DAY),
+    db.prepare('DELETE FROM osm WHERE at < ?').bind(t - 45 * DAY),
   ]);
 }
 
@@ -305,6 +308,54 @@ async function imgThrough(url) {
   return new Response(r.body, { headers: { 'content-type': type, 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' } });
 }
 
+/* ───────── live data through novel.global (stage 4): iNaturalist and OpenStreetMap are asked here, once for everyone, and never by
+   a visitor's browser. What comes back is kept: iNaturalist's answers at the edge for minutes (sightings) to a week (names), and
+   OpenStreetMap's a tile at a time in the database for two weeks (places) or a month (water). A failure is never kept ───────── */
+const UA = { 'user-agent': 'novel.global (https://novel.global)', accept: 'application/json' };
+/* the iNaturalist routes the site uses, and how long each answer is good for, in seconds */
+const INAT_PATHS = [[/^observations$/, 180], [/^observations\/histogram$/, 86400], [/^observations\/\d{1,12}$/, 3600], [/^taxa$/, 604800], [/^taxa\/\d{1,10}$/, 604800]];
+async function inatThrough(url) {
+  const path = url.pathname.slice('/api/inat/'.length), rule = INAT_PATHS.find(r => r[0].test(path));
+  if (!rule || url.search.length > 2000) return fail(400, 'inat');
+  let r; try { r = await fetch(`https://api.inaturalist.org/v1/${path}${url.search}`, { headers: UA, cf: { cacheEverything: true, cacheTtlByStatus: { '200-299': rule[1], '300-599': 0 } } }); } catch (e) { return fail(502, 'inat'); }
+  if (!r.ok) return fail(r.status === 429 ? 429 : 502, 'inat');
+  return new Response(r.body, { headers: { ...JSON_H, 'cache-control': `public, max-age=${Math.min(rule[1], 300)}` } });
+}
+/* the two things asked of OpenStreetMap: the places with a name (as the radar's knots), and the water. Built here from a box of
+   whole tiles, so nothing else can be asked through novel.global */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OSM_Q = {
+  places: { tile: 0.01, most: 8, keep: 14 * DAY, q: bb => `[out:json][timeout:25];(nwr["shop"]["name"](${bb});nwr["amenity"~"^(cafe|restaurant|fast_food|bar|pub|ice_cream|food_court|biergarten|fuel|car_wash|car_rental|pharmacy|bank|veterinary|marketplace|nightclub|theatre|arts_centre|music_venue|cinema|community_centre|events_venue|library|social_centre|townhall|coworking_space|studio)$"]["name"](${bb});nwr["craft"]["name"](${bb});nwr["office"]["name"](${bb});nwr["leisure"~"^(hackerspace|swimming_pool|sports_centre|garden)$"]["name"](${bb});nwr["tourism"~"^(gallery|museum)$"]["name"](${bb}););out center tags qt;` },
+  water: { tile: 0.05, most: 1, keep: 30 * DAY, q: bb => `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bb});way["natural"="water"](${bb});way["waterway"="riverbank"](${bb});relation["natural"="water"](${bb}););out geom(${bb}) qt;` },
+};
+const osmOut = elements => new Response(JSON.stringify({ elements }), { headers: { ...JSON_H, 'cache-control': 'public, max-age=3600' } });
+async function osmThrough(db, env, req, url) {
+  const kind = url.searchParams.get('q'), K = OSM_Q[kind], bb = (url.searchParams.get('bb') || '').split(',').map(Number);
+  if (!K || bb.length !== 4 || !bb.every(Number.isFinite)) return fail(400, 'bb');
+  const ix = bb.map(v => Math.round(v / K.tile)); if (bb.some((v, i) => Math.abs(v / K.tile - ix[i]) > 1e-6)) return fail(400, 'bb');
+  const [i0, j0, i1, j1] = ix; if (i1 <= i0 || j1 <= j0 || i1 - i0 > K.most || j1 - j0 > K.most || Math.abs(bb[0]) > 90 || Math.abs(bb[2]) > 90 || Math.abs(bb[1]) > 180 || Math.abs(bb[3]) > 180) return fail(400, 'bb');
+  const keyOf = (i, j) => `${kind}:${i},${j}`, keys = []; for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) keys.push(keyOf(i, j));
+  const { results } = await db.prepare(`SELECT k, body, at FROM osm WHERE k IN (${keys.map(() => '?').join(',')})`).bind(...keys).all();
+  const have = new Map(results.map(r => [r.k, r])), t = now(), stale = keys.filter(k => !have.has(k) || t - have.get(k).at > K.keep);
+  const all = () => keys.flatMap(k => (have.has(k) ? JSON.parse(have.get(k).body) : []));
+  if (!stale.length) return osmOut(all());
+  /* asked of Overpass only for the tiles missing, at most so often from one place; meanwhile what is kept, even if old, still serves */
+  if (await tooMany(db, env, req, 'osm', 40, 10 * 60e3)) return have.size ? osmOut(all()) : fail(429, 'osm');
+  const sq = stale.map(k => k.split(':')[1].split(',').map(Number)), box = [Math.min(...sq.map(q => q[0])), Math.min(...sq.map(q => q[1])), Math.max(...sq.map(q => q[0])) + 1, Math.max(...sq.map(q => q[1])) + 1].map(v => (v * K.tile).toFixed(4)).join(',');
+  for (const u of OVERPASS) {
+    let j; try { const r = await fetch(`${u}?data=${encodeURIComponent(K.q(box))}`, { headers: UA }); if (!r.ok) continue; j = await r.json(); } catch (e) { continue; }
+    if (!j || !Array.isArray(j.elements) || (j.remark && /error|time/i.test(j.remark))) continue;
+    /* each element kept with the tile it stands in (water: its one tile, whole); a tile with nothing in it is kept too, as empty */
+    const by = new Map(stale.map(k => [k, []]));
+    for (const el of j.elements) { if (K.most === 1) { by.get(stale[0]).push(el); continue; } const la = el.lat != null ? el.lat : el.center && el.center.lat, ln = el.lon != null ? el.lon : el.center && el.center.lon; if (la == null) continue;
+      const k = keyOf(Math.floor(la / K.tile), Math.floor(ln / K.tile)); if (by.has(k)) by.get(k).push(el); }
+    const ops = []; for (const [k, els] of by) { const body = JSON.stringify(els); have.set(k, { k, body, at: t }); if (body.length < 1.5e6) ops.push(db.prepare('INSERT OR REPLACE INTO osm (k, body, at) VALUES (?, ?, ?)').bind(k, body, t)); }
+    if (ops.length) await db.batch(ops);
+    return osmOut(all());
+  }
+  return have.size ? osmOut(all()) : fail(502, 'osm');
+}
+
 /* ───────── the portfolio: posts written on the approval page, drafts until published. Only published posts are read here ───────── */
 const POST_COLS = 'id, slug, title, summary, cat, day, status, cover IS NOT NULL AS has_cover, updated';
 const postOut = r => ({ ...r, cover: !!r.has_cover, has_cover: undefined, links: r.links ? JSON.parse(r.links) : undefined });
@@ -339,6 +390,7 @@ async function savePost(db, req) {
 /* ───────── the router ───────── */
 async function api(req, env, url) {
   if (url.pathname === '/api/img' && req.method === 'GET') return imgThrough(url);
+  if (url.pathname.startsWith('/api/inat/') && req.method === 'GET') return inatThrough(url);
   const db = dbOf(env); if (!db) return fail(503, 'no database');
   await ready(db); if (Math.random() < 0.05) await tidy(db);
   const p = url.pathname.replace(/^\/api\//, '').split('/').filter(Boolean).map(decodeURIComponent); const m = req.method;
@@ -348,6 +400,7 @@ async function api(req, env, url) {
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
+  if (p[0] === 'osm' && !p[1] && m === 'GET') return osmThrough(db, env, req, url);
   if (p[0] === 'posts' && !p[1] && m === 'GET') return listPosts(db);
   if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);

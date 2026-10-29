@@ -21,7 +21,7 @@ const WATER = { elements: [
 ] };
 const OBS = observations(230); const BIZ = businesses(); const HIST = [historic(1), historic(2)];
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.md': 'text/markdown' };
-const cache = new Map(); const unexpected = new Set();
+const cache = new Map(); const unexpected = new Set(); const direct = new Set();
 const BASE_CONFIG = fs.readFileSync(path.join(DIST, 'config.js'), 'utf8');
 /* the app's own server: the real Worker with a fresh local database, behind https://oan.test/api/ */
 const ADMIN_KEY = 'test-admin-key-not-a-real-one';
@@ -39,8 +39,14 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
   /* the studio's devices as built, unless a check is about the plain studio (after the prefs above, so they still stand) */
   if (!plain) await ctx.addInitScript(() => { try { localStorage.setItem('da.devices.v2', '1'); } catch (e) { /* no storage */ } });
   await ctx.route('**/*', async route => {
-    const url = route.request().url(); const u = new URL(url);
+    const url = route.request().url(); let u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
+    /* stage 4: the browser asks novel.global for iNaturalist and OpenStreetMap, and the same stand-in answers come back; a browser
+       asking either directly is noted, and fails the run */
+    if (u.host === 'api.inaturalist.org' || u.host.includes('overpass')) direct.add(u.host);
+    const own = u.host === 'oan.test' || u.host === 'novel.global';
+    if (own && u.pathname.startsWith('/api/inat/')) u = new URL('https://api.inaturalist.org/v1/' + u.pathname.slice('/api/inat/'.length) + u.search);
+    else if (own && u.pathname === '/api/osm') u = new URL('https://overpass-api.de/api/interpreter?data=' + (u.searchParams.get('q') === 'water' ? 'waterway' : 'places'));
     if (net.down) return route.abort('internetdisconnected');
     const ok = (body, type, extra = {}) => route.fulfill({ status: 200, body, headers: { 'content-type': type, 'access-control-allow-origin': '*', ...extra } });
     const json = o => ok(JSON.stringify(o), 'application/json');
@@ -2191,6 +2197,7 @@ if (ONLY.includes('look')) try {
 } catch (e) { results.push(`FAIL  section look: ${e.message.split('\n')[0]}`); }
 
 await browser.close(); await apiServer.close();
+results.push(`${direct.size ? 'FAIL' : 'PASS'}  no browser asks iNaturalist or OpenStreetMap directly: novel.global asks for everyone${direct.size ? ` — ${[...direct].join(', ')}` : ''}`);
 const fails = results.filter(r => r.startsWith('FAIL'));
 console.log(results.join('\n'));
 if (errors.length) console.log('\nERRORS\n' + [...new Set(errors)].slice(0, 30).join('\n'));

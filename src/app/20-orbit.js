@@ -86,7 +86,6 @@ function saveTiles() {
 }
 rebuildBiz();
 const tilesFor = (lat, lng, R) => { const di = R / 111320, dj = R / (111320 * Math.cos(lat * Math.PI / 180)); const out = []; for (let i = Math.floor((lat - di) / TILE); i <= Math.floor((lat + di) / TILE); i++) for (let j = Math.floor((lng - dj) / TILE); j <= Math.floor((lng + dj) / TILE); j++) out.push([i, j]); return out; };
-const PLACE_Q = bb => `[out:json][timeout:25];(nwr["shop"]["name"](${bb});nwr["amenity"~"^(cafe|restaurant|fast_food|bar|pub|ice_cream|food_court|biergarten|fuel|car_wash|car_rental|pharmacy|bank|veterinary|marketplace|nightclub|theatre|arts_centre|music_venue|cinema|community_centre|events_venue|library|social_centre|townhall|coworking_space|studio)$"]["name"](${bb});nwr["craft"]["name"](${bb});nwr["office"]["name"](${bb});nwr["leisure"~"^(hackerspace|swimming_pool|sports_centre|garden)$"]["name"](${bb});nwr["tourism"~"^(gallery|museum)$"]["name"](${bb}););out center tags qt;`;
 let placesBusy = null, placesFailAt = 0;
 /* the places around a point, fetched if not yet kept; whatever happens the listed places are already here */
 function placesAround(lat, lng, R) {
@@ -98,9 +97,9 @@ function placesAround(lat, lng, R) {
   placesBusy = (async () => {
     const is = need.map(t => t[0]), js = need.map(t => t[1]);
     const bb = [Math.min(...is) * TILE, Math.min(...js) * TILE, (Math.max(...is) + 1) * TILE, (Math.max(...js) + 1) * TILE].map(v => v.toFixed(4)).join(',');
-    for (const url of CONFIG.OVERPASS) {
+    for (const url of [CONFIG.OSM_API]) {
       try {
-        const res = await fetch(`${url}?data=${encodeURIComponent(PLACE_Q(bb))}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const res = await fetch(`${url}?q=places&bb=${bb}`); if (!res.ok) throw new Error('HTTP ' + res.status);
         const j = await res.json(); if (j.remark && /error|time/i.test(j.remark)) throw new Error(j.remark);
         const by = new Map(need.map(([i, k]) => [tileKey(i, k), []]));
         for (const el of j.elements || []) {
@@ -121,7 +120,6 @@ function placesAround(lat, lng, R) {
    pond, lake and wetland pool as its own shape, from OpenStreetMap. A square of about five kilometres at a time, kept a month.
    Until a square is here (offline, or the first moment) the few waters written into the config stand in ───────── */
 const WTILE = 0.05, WTILES = store.get('da.water.v1', {});
-const WATER_Q = bb => `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bb});way["natural"="water"](${bb});way["waterway"="riverbank"](${bb});relation["natural"="water"](${bb}););out geom(${bb}) qt;`;
 let waterBusy = null, waterFailAt = 0;
 /* metres east and north of a point, near enough at a city's size */
 const enM = (la0, ln0) => { const kx = 111320 * Math.cos(la0 * Math.PI / 180); return (la, ln) => [(ln - ln0) * kx, (la - la0) * 110574]; };
@@ -156,9 +154,9 @@ function waterAround(lat, lng) {
   if (waterBusy || Date.now() - waterFailAt < 120000) return Promise.resolve(null);
   waterBusy = (async () => {
     const bb = [i * WTILE, j * WTILE, (i + 1) * WTILE, (j + 1) * WTILE].map(v => v.toFixed(4)).join(',');
-    for (const url of CONFIG.OVERPASS) {
+    for (const url of [CONFIG.OSM_API]) {
       try {
-        const res = await fetch(`${url}?data=${encodeURIComponent(WATER_Q(bb))}`); if (!res.ok) throw new Error('HTTP ' + res.status);
+        const res = await fetch(`${url}?q=water&bb=${bb}`); if (!res.ok) throw new Error('HTTP ' + res.status);
         const jj = await res.json(); if (jj.remark && /error|time/i.test(jj.remark)) throw new Error(jj.remark);
         WTILES[key] = { t: Date.now(), la: (i + 0.5) * WTILE, ln: (j + 0.5) * WTILE, ...waterOf(jj, (i + 0.5) * WTILE, (j + 0.5) * WTILE) }; saveWater(); waterBusy = null; if (typeof life !== 'undefined') life.moved(); return WTILES[key];
       } catch (e) { /* the next mirror */ }
