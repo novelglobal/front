@@ -3269,3 +3269,6 @@ html.in-aura [data-pout="print"], html.in-aura [data-pout="escpos"], html.in-aur
 #sec-wall li:has(.wall-k.big){grid-column:1/-1}
 #sec-wall .wall-k.big{cursor:zoom-out}
 #sec-wall .lab-row .pill{margin-left:auto}
+
+/* the studio as one device in the aura's window: its page alone, no rail of pages */
+html.in-aura #rail{display:none!important}

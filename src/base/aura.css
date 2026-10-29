@@ -728,3 +728,13 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 .au-desk .sd-ly .ly1 { box-shadow: 0 -5px 0 -1px currentColor; } .au-desk .sd-ly .ly2 { width: 10px; } .au-desk .sd-ly .ly3 { height: 5px; box-shadow: none; }
 .au-desk .sd-ly.off { opacity: .3; }
 .au-desk .sd-ly.off::after { text-decoration: line-through; }
+
+/* a step not yet earned is not there */
+#aura .au-tab.gated, #aura .au-orb.gated { display: none !important; }
+/* the desk before the four-track is earned: a simple radio, sources, moods and play alone */
+.au-desk.simple .sd-layers, .au-desk.simple #sd-keep, .au-desk.simple #sd-list, .au-desk.simple #sd-new, .au-desk.simple #sd-loop, .au-desk.simple #sd-card, .au-desk.simple #sd-lcard, .au-desk.simple #sd-link, .au-desk.simple .au-kept { display: none !important; }
+/* the desk's words only on a hover or a focus, never all at once */
+.au-desk .sd-k[data-fw]::after { opacity: 0 !important; transition: opacity .2s; }
+.au-desk .sd-k[data-fw]:hover::after, .au-desk .sd-k[data-fw]:focus-visible::after { opacity: .95 !important; }
+/* the blank receipt's word comes slowly */
+#aura .au-hint.au-empty { transition-duration: 2.4s !important; }
