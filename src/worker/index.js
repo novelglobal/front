@@ -43,6 +43,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS places (id TEXT PRIMARY KEY, n TEXT NOT NULL, cat TEXT, role TEXT, addr TEXT, sub TEXT, url TEXT, what TEXT,
      lat REAL NOT NULL, lng REAL NOT NULL, status TEXT NOT NULL, src TEXT, created INTEGER NOT NULL, decided INTEGER)`,
   `CREATE INDEX IF NOT EXISTS places_status ON places(status, decided)`,
+  /* traffic: how many of each thing happened on a day, nothing more (no addresses, no visitors told apart) */
+  `CREATE TABLE IF NOT EXISTS traffic (day TEXT NOT NULL, k TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, k))`,
 ];
 const readied = new WeakMap();
 function ready(db) {
@@ -96,9 +98,10 @@ async function tidy(db) {
     db.prepare("UPDATE jobs SET status = 'expired', escpos = NULL, mesh = NULL, done = ? WHERE status IN ('held', 'queued') AND created < ?").bind(t, t - DAY),
     db.prepare("UPDATE jobs SET escpos = NULL, mesh = NULL WHERE status IN ('printed', 'failed', 'expired') AND escpos IS NOT NULL"),
     db.prepare('DELETE FROM jobs WHERE done IS NOT NULL AND done < ?').bind(t - 7 * DAY),
-    db.prepare("DELETE FROM stories WHERE status IN ('waiting', 'refused') AND created < ?").bind(t - 30 * DAY),
+    db.prepare("DELETE FROM stories WHERE status IN ('waiting', 'refused', 'deleted') AND created < ?").bind(t - 365 * DAY),
+    db.prepare('DELETE FROM traffic WHERE day < ?').bind(new Date(t - 400 * DAY).toISOString().slice(0, 10)),
     db.prepare('DELETE FROM osm WHERE at < ?').bind(t - 45 * DAY),
-    db.prepare("DELETE FROM places WHERE status IN ('waiting', 'refused') AND created < ?").bind(t - 60 * DAY),
+    db.prepare("DELETE FROM places WHERE status IN ('waiting', 'refused', 'deleted') AND created < ?").bind(t - 365 * DAY),
   ]);
 }
 
@@ -176,9 +179,11 @@ async function receipt(db, id) {
 }
 /* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
-const SETTINGS = { lifeLock: true, exampleEdit: false };
+const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false };
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000 };
+/* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
+   curations: the portfolio's twelve groups (JSON: [{ k, name, about }]) */
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000 };
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
@@ -228,7 +233,7 @@ async function touchAct(db, req, id, job) {
   if (!(await touchAuth(db, req, id))) return fail(401, 'token');
   const b = await body(req);
   if (b.action === 'print') { await db.batch([db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id), db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job)]); return json({ ok: true }); }
-  if (b.action === 'squash') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ?, photo = NULL WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id)]); return json({ ok: true }); }
+  if (b.action === 'squash') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id)]); return json({ ok: true }); }
   return fail(400, 'action');
 }
 async function report(db, req, id, job) {
@@ -249,21 +254,24 @@ async function admin(db, env, req, parts) {
   const no = await adminAuth(db, env, req); if (no) return no;
   const [what, id] = parts;
   if (what === 'stories' && !id && req.method === 'GET') {
-    const st = ['waiting', 'shown', 'refused'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
+    const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
     const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 200`).bind(st).all();
     return json({ stories: results.map(r => ({ ...r, photo: !!r.has_photo, has_photo: undefined })) });
   }
   if (what === 'stories' && id === 'clear' && req.method === 'POST') {   // everything waiting refused at once, its held prints with it
-    await db.batch([db.prepare("DELETE FROM jobs WHERE status = 'held' AND story IN (SELECT id FROM stories WHERE status = 'waiting')"), db.prepare("UPDATE stories SET status = 'refused', decided = ?, photo = NULL WHERE status = 'waiting'").bind(now())]);
+    await db.batch([db.prepare("DELETE FROM jobs WHERE status = 'held' AND story IN (SELECT id FROM stories WHERE status = 'waiting')"), db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE status = 'waiting'").bind(now())]);
     return json({ ok: true });
   }
   if (what === 'stories' && id && req.method === 'POST') {
     const b = await body(req); const t = now();
     if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id)]); return json({ ok: true }); }
-    if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ?, photo = NULL WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
+    if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
     if (b.action === 'star' || b.action === 'unstar') { await db.prepare('UPDATE stories SET star = ? WHERE id = ?').bind(b.action === 'star' ? 1 : 0, id).run(); return json({ ok: true }); }
-    if (b.action === 'delete') { await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare('DELETE FROM stories WHERE id = ?').bind(id)]); return json({ ok: true }); }
+    /* deleted is archived: off the site and out of every queue, still here on the approval page, and brought back as waiting */
+    if (b.action === 'delete') { await db.batch([db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE id = ?").bind(t, id)]); return json({ ok: true }); }
+    if (b.action === 'restore') { await db.prepare("UPDATE stories SET status = 'waiting', decided = NULL WHERE id = ?").bind(id).run(); return json({ ok: true }); }
+    if (b.action === 'purge') { await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare("DELETE FROM stories WHERE id = ? AND status = 'deleted'").bind(id)]); return json({ ok: true }); }
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
@@ -272,13 +280,18 @@ async function admin(db, env, req, parts) {
   if (what === 'posts' && !id && req.method === 'POST') return savePost(db, req);
   if (what === 'posts' && id && parts[2] === 'cover') return postCover(db, id, true);
   if (what === 'posts' && id && req.method === 'GET') return onePost(db, id, true);
-  if (what === 'posts' && id && req.method === 'POST') { const b = await body(req); if (b.action !== 'delete') return fail(400, 'action'); await db.prepare('DELETE FROM posts WHERE id = ?').bind(id).run(); return json({ ok: true }); }
+  if (what === 'posts' && id && req.method === 'POST') { const b = await body(req); if (b.action !== 'delete') return fail(400, 'action'); await db.prepare("UPDATE posts SET status = 'deleted', updated = ? WHERE id = ?").bind(now(), id).run(); return json({ ok: true }); }
   if (what === 'settings' && req.method === 'POST') { const b = await body(req); const put = (k, v) => db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, v).run();
     for (const k of Object.keys(SETTINGS)) if (typeof b[k] === 'boolean') await put(k, b[k] ? '1' : '0');
     for (const [k, max] of Object.entries(TEXTS)) if (typeof b[k] === 'string') await put(k, b[k].replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '').slice(0, max));
     return json(await settingsOf(db)); }
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
+  if (what === 'places' && id === 'import' && req.method === 'POST') return importPlaces(db, req);
   if (what === 'places') return adminPlaces(db, req, id);
+  if (what === 'overview' && req.method === 'GET') return overview(db);
+  if (what === 'traffic' && req.method === 'GET') { const { results } = await db.prepare('SELECT day, k, n FROM traffic WHERE day >= ? ORDER BY day DESC, k').bind(new Date(now() - 60 * DAY).toISOString().slice(0, 10)).all(); return json({ traffic: results }); }
+  if (what === 'export' && req.method === 'GET') return exportAll(db);
+  if (what === 'reset' && req.method === 'POST') return resetSite(db, req);
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
@@ -390,7 +403,7 @@ async function suggestPlace(db, env, req) {
   return json({ id, status: 'waiting' }, 201);
 }
 async function adminPlaces(db, req, id) {
-  if (req.method === 'GET') { const st = ['waiting', 'shown', 'refused'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
+  if (req.method === 'GET') { const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
     const { results } = await db.prepare(`SELECT ${PLACE_COLS} FROM places WHERE status = ? ORDER BY created DESC LIMIT 1000`).bind(st).all(); return json({ places: results }); }
   if (req.method !== 'POST') return fail(405, 'method');
   const b = await body(req), t = now();
@@ -399,10 +412,63 @@ async function adminPlaces(db, req, id) {
     await db.prepare('INSERT INTO places (id, n, cat, role, addr, sub, url, what, lat, lng, status, src, created, decided) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(nid, p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, 'shown', 'admin', t, t).run(); return json({ id: nid, status: 'shown' }, 201); }
   if (b.action === 'show' || b.action === 'refuse') { await db.prepare('UPDATE places SET status = ?, decided = ? WHERE id = ?').bind(b.action === 'show' ? 'shown' : 'refused', t, id).run(); return json({ ok: true }); }
-  if (b.action === 'delete') { await db.prepare('DELETE FROM places WHERE id = ?').bind(id).run(); return json({ ok: true }); }
+  if (b.action === 'delete') { await db.prepare("UPDATE places SET status = 'deleted', decided = ? WHERE id = ?").bind(t, id).run(); return json({ ok: true }); }
+  if (b.action === 'restore') { await db.prepare("UPDATE places SET status = 'waiting', decided = NULL WHERE id = ?").bind(id).run(); return json({ ok: true }); }
+  if (b.action === 'purge') { await db.prepare("DELETE FROM places WHERE id = ? AND status = 'deleted'").bind(id).run(); return json({ ok: true }); }
   if (b.action === 'edit') { const p = placeOf(b); if (!p) return fail(400, 'place');
     await db.prepare('UPDATE places SET n = ?, cat = ?, role = ?, addr = ?, sub = ?, url = ?, what = ?, lat = ?, lng = ? WHERE id = ?').bind(p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, id).run(); return json({ ok: true }); }
   return fail(400, 'action');
+}
+
+/* ───────── the approval page's own: the whole site at a glance, everything as one file, places brought in by the hundred, and the
+   site set back to its base. A reset archives (nothing is lost: it can be brought back from the archive) and never touches the
+   printers, their tokens, or the password ───────── */
+const COUNT = async (db, table, extra = '') => { const { results } = await db.prepare(`SELECT status, count(*) AS n FROM ${table} ${extra} GROUP BY status`).all(); return Object.fromEntries(results.map(r => [r.status, r.n])); };
+async function overview(db) {
+  const day = new Date().toISOString().slice(0, 10), wk = new Date(now() - 7 * DAY).toISOString().slice(0, 10);
+  const [stories, places, posts, jobs] = await Promise.all([COUNT(db, 'stories'), COUNT(db, 'places'), COUNT(db, 'posts'), COUNT(db, 'jobs', `WHERE created > ${now() - 7 * DAY}`)]);
+  const { results: pr } = await db.prepare('SELECT id, name, seen, token IS NOT NULL AS paired, mesh, auto, touch IS NOT NULL AS touch FROM printers ORDER BY id').all();
+  const { results: tr } = await db.prepare('SELECT k, sum(n) AS n, max(day = ?) AS today FROM traffic WHERE day >= ? GROUP BY k').bind(day, wk).all();
+  const { results: td } = await db.prepare('SELECT k, n FROM traffic WHERE day = ?').bind(day).all();
+  return json({ stories, places, posts, jobs, printers: pr, week: Object.fromEntries(tr.map(r => [r.k, r.n])), today: Object.fromEntries(td.map(r => [r.k, r.n])), at: now() });
+}
+async function exportAll(db) {
+  const q = async s => (await db.prepare(s).all()).results;
+  const out = { site: 'novel.global', build: BUILD, at: new Date().toISOString(),
+    stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
+    places: await q(`SELECT ${PLACE_COLS} FROM places ORDER BY created DESC`), posts: await q('SELECT id, slug, title, summary, body, cat, links, day, status, created, updated FROM posts ORDER BY created DESC'),
+    printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
+  return new Response(JSON.stringify(out, null, 1), { headers: { ...JSON_H, 'content-disposition': `attachment; filename="novel-global-${out.at.slice(0, 10)}.json"` } });
+}
+async function importPlaces(db, req) {
+  const b = await body(req); const list = Array.isArray(b.places) ? b.places.slice(0, 2000) : []; const t = now(); const ops = []; let bad = 0;
+  for (const raw of list) { const p = placeOf(raw || {}); if (!p) { bad++; continue; } ops.push(db.prepare('INSERT INTO places (id, n, cat, role, addr, sub, url, what, lat, lng, status, src, created, decided) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(rid(), p.n, p.cat, p.role, p.addr, p.sub, p.url, p.what, p.lat, p.lng, 'shown', 'import', t, t)); }
+  for (let i = 0; i < ops.length; i += 50) await db.batch(ops.slice(i, i + 50));
+  return json({ added: ops.length, bad });
+}
+async function resetSite(db, req) {
+  const b = await body(req), t = now(), ops = [];
+  if (b.stories) ops.push(db.prepare("DELETE FROM jobs WHERE status IN ('held', 'queued')"), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE status != 'deleted' AND kind != 'example'").bind(t));
+  if (b.example) ops.push(db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE kind = 'example'").bind(t));
+  if (b.places) ops.push(db.prepare("UPDATE places SET status = 'deleted', decided = ? WHERE status != 'deleted'").bind(t));
+  if (b.posts) ops.push(db.prepare("UPDATE posts SET status = 'draft', updated = ? WHERE status = 'published'").bind(t));
+  if (b.words) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('template', 'words', 'cities')"));
+  if (b.settings) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('lifeLock', 'exampleEdit', 'phreak', 'gates', 'fx')"));
+  if (b.traffic) ops.push(db.prepare('DELETE FROM traffic'));
+  if (!ops.length) return fail(400, 'nothing');
+  await db.batch(ops); return json({ ok: true });
+}
+/* traffic: a day's count of each kind of thing, added after the answer has gone */
+const BEATS = ['open-aura', 'open-studio', 'open-portfolio', 'begin', 'print', 'wall', 'song', 'device'];
+function trafficKey(url, m) {
+  const p = url.pathname.replace(/^\/api\//, '').split('/')[0];
+  if (p === 'beat') { const k = url.searchParams.get('k'); return BEATS.includes(k) ? k : null; }
+  if (['inat', 'osm', 'img', 'places', 'stories', 'posts', 'receipts'].includes(p)) return p + (m === 'POST' ? ':sent' : '');
+  return null;
+}
+function tally(env, ctx, url, m) {
+  const k = trafficKey(url, m), db = dbOf(env); if (!k || !db || !ctx) return;
+  ctx.waitUntil((async () => { try { await ready(db); await db.prepare('INSERT INTO traffic (day, k, n) VALUES (?, ?, 1) ON CONFLICT(day, k) DO UPDATE SET n = n + 1').bind(new Date().toISOString().slice(0, 10), k).run(); } catch (e) { /* a count missed */ } })());
 }
 
 /* ───────── the portfolio: posts written on the approval page, drafts until published. Only published posts are read here ───────── */
@@ -437,7 +503,9 @@ async function savePost(db, req) {
 }
 
 /* ───────── the router ───────── */
-async function api(req, env, url) {
+async function api(req, env, url, ctx) {
+  tally(env, ctx, url, req.method);
+  if (url.pathname === '/api/beat') return new Response(null, { status: 204, headers: TEXT_H });
   if (url.pathname === '/api/img' && req.method === 'GET') return imgThrough(url);
   if (url.pathname.startsWith('/api/inat/') && req.method === 'GET') return inatThrough(url);
   const db = dbOf(env); if (!db) return fail(503, 'no database');
@@ -466,13 +534,13 @@ async function api(req, env, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/api/health') return new Response(`ok ${BUILD}${PREVIEW ? ' preview' : ''}`, { headers: TEXT_H });
     if (url.pathname.startsWith('/api/')) {
       /* the app's own pages only: a request from another site is refused */
       const origin = request.headers.get('origin'); if (origin && request.method !== 'GET' && origin !== url.origin) return fail(403, 'origin');
-      try { return await api(request, env, url); } catch (e) { return fail(e.status || 500, e.status ? e.message : 'error'); }
+      try { return await api(request, env, url, ctx); } catch (e) { return fail(e.status || 500, e.status ? e.message : 'error'); }
     }
     return env.ASSETS.fetch(request);
   },

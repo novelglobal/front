@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
-  const main = $('#main'); let KEY = sessionStorage.getItem('da.admin') || ''; let tab = 'waiting';
+  const main = $('#main'); let KEY = sessionStorage.getItem('da.admin') || ''; let tab = 'overview';
   const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v != null && v !== false) e.setAttribute(k, v === true ? '' : v); } for (const c of kids.flat()) if (c != null) e.append(c); return e; };
   async function api(path, opt = {}) {
     const r = await fetch('/api/admin/' + path, { ...opt, cache: 'no-store', headers: { authorization: `Bearer ${KEY}`, 'content-type': 'application/json' } });
@@ -22,19 +22,24 @@
       el('button', { type: 'submit', text: 'OPEN' }), el('p', { class: 'note', id: 'gate-note', text: 'THE ADMIN_KEY SECRET SET IN CLOUDFLARE · KEPT ONLY IN THIS TAB' }));
     return f;
   }
-  async function open() { $('#tabs').hidden = false; await show(tab); }
+  async function open() { $('#tabs').hidden = false; await show(tab); badges(); }
+  /* how many wait, beside their names in the rail */
+  async function badges() { try { const o = await (await api('overview')).json(); $('#n-waiting').textContent = o.stories.waiting || ''; $('#n-places').textContent = o.places.waiting || ''; } catch (e) { /* later */ } }
+  /* a page's own heading, and a line on what it is for */
+  const head = (t, lede) => [el('h2', { text: t }), lede ? el('p', { class: 'lede', text: lede }) : null];
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
   }
 
   /* ───────── stories: what each one says, its photograph, where it was sent ───────── */
   async function photoOf(id, img) { try { const r = await api('photos/' + id); img.src = URL.createObjectURL(await r.blob()); } catch (e) { img.remove(); } }
   async function act(id, action, card) {
-    if (action === 'delete' && !confirm('Delete this for good?')) return;
+    if (action === 'purge' && !confirm('Delete this for good? It cannot be brought back.')) return;
     await api('stories/' + id, { method: 'POST', body: JSON.stringify({ action }) });
-    card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: action === 'show' ? 'SHOWN · AND SENT TO PRINT' : action === 'refuse' ? 'REFUSED' : 'DELETED' }));
+    card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: { show: 'SHOWN · AND SENT TO PRINT', refuse: 'REFUSED', delete: 'ARCHIVED · IT CAN BE BROUGHT BACK FROM ARCHIVE', restore: 'BACK IN WAITING', purge: 'DELETED FOR GOOD' }[action] || 'DONE' }));
+    badges();
   }
   function storyCard(x) {
     const card = el('article', { class: 'card' + (x.kind !== 'story' && x.kind !== 'message' ? ' rec' : '') });
@@ -63,9 +68,11 @@
     }
     const acts = el('div', { class: 'acts' },
       x.status === 'shown' && x.kind === 'story' ? el('button', { type: 'button', class: x.star ? 'on' : '', text: x.star ? '★ STARRED' : '☆ STAR', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.star ? 'unstar' : 'star' }) }); show('shown'); } }) : null,
-      x.status !== 'shown' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
-      x.status !== 'refused' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
-      el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => act(x.id, 'delete', card) }));
+      x.status === 'deleted' ? el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: () => act(x.id, 'restore', card) }) : null,
+      x.status !== 'shown' && x.status !== 'deleted' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
+      x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
+      x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => act(x.id, 'delete', card) }),
+      x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img);
     card.append(...(x.kind !== 'story' && x.kind !== 'message' ? [] : [img || el('div')]), el('div', {}, body, acts));
     return card;
@@ -73,7 +80,10 @@
   async function stories(st) {
     const r = await api('stories?status=' + st); const { stories: list } = await r.json();
     const clear = st === 'waiting' && list.length ? [el('button', { type: 'button', text: `CLEAR ALL ${list.length} WAITING`, onclick: async () => { if (!confirm(`Refuse and clear all ${list.length} waiting, with their held prints?`)) return; await api('stories/clear', { method: 'POST', body: '{}' }); stories(st); } })] : [];
-    main.replaceChildren(...clear, ...(list.length ? list.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })]));
+    const T = { waiting: ['Waiting', 'Everything sent to novel.global waits here until it is shown (and printed, where it was sent to a printer) or refused.'], shown: ['Shown', 'On the map and the board for everyone. Star one to hold it up first.'], refused: ['Refused', 'Kept here, photographs and all, and never shown. Archive one to put it away.'], deleted: ['Archive', 'Everything archived or reset, kept for a year: bring one back to waiting, or delete it for good.'] }[st] || [st, ''];
+    let extra = []; if (st === 'deleted') { const gone = (await (await api('places?status=deleted')).json()).places || []; if (gone.length) extra = [el('h3', { class: 'lbl', text: `ARCHIVED PLACES · ${gone.length}` }), ...gone.map(p => el('article', { class: 'card' }, el('div', {}, el('b', { text: p.n }), el('p', { class: 'note', text: [p.cat, p.what, `${p.lat}, ${p.lng}`].filter(Boolean).join(' · ') }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: async () => { await api('places/' + p.id, { method: 'POST', body: JSON.stringify({ action: 'restore' }) }); show('deleted'); } }), el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: async () => { if (!confirm('Delete this place for good?')) return; await api('places/' + p.id, { method: 'POST', body: JSON.stringify({ action: 'purge' }) }); show('deleted'); } })))))]; }
+    main.replaceChildren(...head(T[0], T[1]), ...clear, ...(list.length ? list.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })]), ...extra);
   }
 
   /* ───────── printers: paired with a token shown once; printing with or without approval; a test print ───────── */
@@ -128,7 +138,7 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(card, ex, tp, wordsCard(st), citiesCard(st));
+    main.replaceChildren(...head('Words and boards', 'The living layer, BOARD 00 and the first board, the words on INTENTION and W.I.S.H., and the cities to make in.'), card, ex, tp, wordsCard(st), citiesCard(st));
   }
   /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
      or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
@@ -153,9 +163,9 @@
         p.url ? el('p', { class: 'note', text: p.url }) : null, el('p', { class: 'note', text: (p.src === 'suggested' ? 'SUGGESTED ' : 'ADDED ') + when(p.created) }),
         el('div', { class: 'acts' }, ...(waiting ? [el('button', { type: 'button', class: 'on', text: 'SHOW', onclick: () => post('places/' + p.id, { action: 'show' }) }), el('button', { type: 'button', class: 'no', text: 'REFUSE', onclick: () => post('places/' + p.id, { action: 'refuse' }) })] : []),
           el('button', { type: 'button', text: 'CHANGE', onclick: () => { ed.hidden = !ed.hidden; } }),
-          el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: () => { if (confirm('Delete this place for good?')) post('places/' + p.id, { action: 'delete' }); } })), ed);
+          el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => post('places/' + p.id, { action: 'delete' }) })), ed);
       ed.append(placeForm(p, o => post('places/' + p.id, { action: 'edit', ...o }))); return c; };
-    main.replaceChildren(el('h3', { class: 'lbl', text: `SUGGESTED, WAITING · ${wait.length}` }), ...(wait.length ? wait.map(p => card(p, true)) : [el('p', { class: 'empty', text: 'NONE WAITING' })]),
+    main.replaceChildren(...head('Places', 'The places of the human ecology beyond those written into the site: suggested by visitors, or added here. Shown ones are on the map, in search and on the radar for everyone.'), el('h3', { class: 'lbl', text: `SUGGESTED, WAITING · ${wait.length}` }), ...(wait.length ? wait.map(p => card(p, true)) : [el('p', { class: 'empty', text: 'NONE WAITING' })]),
       add, el('h3', { class: 'lbl', text: `SHOWN · ${shown.length}` }), ...shown.map(p => card(p, false)));
   }
   /* INTENTION and W.I.S.H. on the aura (/): every heading, line and hover, and the one quick word shown first. Each field holds the site's
@@ -185,16 +195,16 @@
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for INTENTION and W.I.S.H.?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ words: '' }) }); show('stations'); } })));
     return sec;
   }
-  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...list.map(printerCard)); }
+  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers', 'Each partner place and novel.global itself: paired with a token shown once, printing with or without approval, its touch screen and its radio.'), ...list.map(printerCard)); }
 
   /* ───────── the portfolio: posts written here, kept as drafts until published; a cover, a category, links ───────── */
   async function coverOf(id, img) { try { const r = await api(`posts/${id}/cover`); img.src = URL.createObjectURL(await r.blob()); } catch (e) { /* none */ } }
   async function posts() {
     const r = await api('posts'); const { posts: list } = await r.json();
     const rows = list.map(x => { const img = x.cover ? el('img', { alt: '' }) : el('span', { class: 'ph' }); if (x.cover) coverOf(x.id, img);
-      return el('div', { class: 'post-row' }, img, el('div', {}, el('b', { text: x.title }), el('span', { class: 'note', text: `${x.status === 'published' ? 'PUBLISHED' : 'DRAFT'} · ${x.cat || 'WORK'} · ${x.day || ''} · /portfolio.html#${x.slug}` })),
+      return el('div', { class: 'post-row' }, img, el('div', {}, el('b', { text: x.title }), el('span', { class: 'note', text: `${{ published: 'PUBLISHED', deleted: 'ARCHIVED' }[x.status] || 'DRAFT'} · ${x.cat || 'WORK'} · ${x.day || ''} · /portfolio.html#${x.slug}` })),
         el('button', { type: 'button', text: 'EDIT', onclick: () => editor(x.id) })); });
-    main.replaceChildren(el('div', { class: 'acts', style: 'margin:0 0 12px' }, el('button', { type: 'button', class: 'on', text: 'NEW POST', onclick: () => editor(null) }), el('a', { href: 'portfolio.html', target: '_blank', rel: 'noopener', class: 'note', text: 'THE PORTFOLIO ↗' })),
+    main.replaceChildren(...head('Portfolio', 'Posts for novel.global/portfolio.html, kept as drafts until published, each in one of the twelve curations named in SETTINGS.'), el('div', { class: 'acts', style: 'margin:0 0 12px' }, el('button', { type: 'button', class: 'on', text: 'NEW POST', onclick: () => editor(null) }), el('a', { href: 'portfolio.html', target: '_blank', rel: 'noopener', class: 'note', text: 'THE PORTFOLIO ↗' })),
       ...(rows.length ? rows : [el('p', { class: 'empty', text: 'NO POSTS YET' })]));
   }
   /* a cover chosen on this device: made smaller and re-encoded here, which also drops its location and camera details */
@@ -204,7 +214,8 @@
     let cover; const cv = el('img', { class: 'cv', alt: '' }); if (id && x.cover) coverOf(id, cv);
     const f = (n, tag = 'input', attrs = {}) => el(tag, { name: n, ...attrs });
     const title = f('title', 'input', { maxlength: 140, required: true }); title.value = x.title;
-    const cat = f('cat', 'input', { maxlength: 40, placeholder: 'WORK · HARDWARE · WRITING' }); cat.value = x.cat || '';
+    const cat = f('cat', 'input', { maxlength: 40, placeholder: 'ONE OF THE TWELVE CURATIONS', list: 'cur-list' }); cat.value = x.cat || '';
+    const curs = await curationsOf(); const dl = el('datalist', { id: 'cur-list' }, ...curs.filter(c => c.name).map(c => el('option', { value: c.name })));
     const day = f('day', 'input', { type: 'date' }); day.value = x.day || '';
     const sum = f('summary', 'textarea', { rows: 2, maxlength: 400 }); sum.value = x.summary || '';
     const body = f('body', 'textarea', { class: 'body', maxlength: 40000, placeholder: 'Paragraphs between blank lines. A line starting ## is a heading.' }); body.value = x.body || '';
@@ -222,7 +233,7 @@
       note.textContent = live ? `PUBLISHED · LIVE AT /portfolio.html#${j.slug}` : 'SAVED, BUT NOT YET LISTED FOR EVERYONE: PRESS PUBLISH AGAIN'; return j;
     };
     main.replaceChildren(el('form', { class: 'ed', onsubmit: e => e.preventDefault() },
-      el('label', {}, 'TITLE', title), el('div', { class: 'two' }, el('label', {}, 'CATEGORY', cat), el('label', {}, 'DATE', day)),
+      el('label', {}, 'TITLE', title), el('div', { class: 'two' }, el('label', {}, 'CURATION', cat, dl), el('label', {}, 'DATE', day)),
       el('label', {}, 'SUMMARY', sum), el('label', {}, 'BODY', body), el('label', {}, 'LINKS', links),
       el('label', {}, 'COVER', cv, pick),
       el('div', { class: 'acts' },
@@ -230,8 +241,100 @@
         el('button', { type: 'button', class: 'on', text: x.status === 'published' ? 'UPDATE' : 'PUBLISH', onclick: () => save('published') }),
         x.status === 'published' ? el('button', { type: 'button', text: 'UNPUBLISH', onclick: () => save('draft') }) : null,
         el('button', { type: 'button', text: 'PREVIEW', onclick: async () => { await save(x.status === 'published' ? 'published' : 'draft'); window.open(`portfolio.html?preview=${encodeURIComponent(id)}`, '_blank'); } }),
-        id ? el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: async () => { if (!confirm('Delete this post for good?')) return; await api('posts/' + id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('posts'); } }) : null,
+        id ? el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: async () => { if (!confirm('Archive this post? It comes off the portfolio and stays here as ARCHIVED.')) return; await api('posts/' + id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('posts'); } }) : null,
         el('button', { type: 'button', text: 'BACK', onclick: () => show('posts') }), note)));
+  }
+
+  /* ───────── the overview: what waits, what is on, what happened today and this week ───────── */
+  const TRAFFIC = { 'open-aura': 'novel.global opened', 'open-studio': 'studio opened', 'open-portfolio': 'portfolio opened', begin: 'pieces begun', print: 'prints pressed', wall: 'hung on the wall', song: 'songs kept', device: 'devices opened', 'stories:sent': 'stories sent', stories: 'stories read', 'places:sent': 'places suggested', places: 'places read', inat: 'iNaturalist asked', osm: 'OpenStreetMap asked', img: 'photographs passed', posts: 'portfolio read', receipts: 'prints followed' };
+  async function overview() {
+    const o = await (await api('overview')).json(); const tr = (await (await api('traffic')).json()).traffic || [];
+    const tile = (n, label, to, hot) => el('button', { type: 'button', class: 'tile' + (hot && n ? ' hot' : ''), onclick: () => to && show(to) }, el('b', { text: String(n || 0) }), el('span', { text: label }));
+    const S = o.stories, Pl = o.places, Po = o.posts, J = o.jobs;
+    const fresh = t => t && Date.now() - t < 2 * 60e3;
+    const prn = el('table', {}, el('tr', {}, ...['PRINTER', 'PAIRED', 'HEARD', 'APPROVAL', 'MESH', 'SCREEN'].map(h => el('th', { text: h }))),
+      ...o.printers.map(p => el('tr', {}, el('td', { text: p.name || p.id }), el('td', { text: p.paired ? '✓' : '·' }), el('td', { text: p.seen ? (fresh(p.seen) ? 'LISTENING NOW' : when(p.seen)) : 'NEVER' }), el('td', { text: p.auto ? 'PRINTS AT ONCE' : 'AFTER APPROVAL' }), el('td', { text: p.mesh ? 'ON' : 'OFF' }), el('td', { text: p.touch ? 'ON' : 'OFF' }))));
+    const keys = Object.keys(TRAFFIC).filter(k => o.week[k] || o.today[k]); const top = Math.max(1, ...keys.map(k => o.week[k] || 0));
+    const week = el('table', {}, el('tr', {}, ...['WHAT', 'TODAY', 'LAST 7 DAYS'].map(h => el('th', { text: h }))), ...(keys.length ? keys.map(k => el('tr', {}, el('td', { text: TRAFFIC[k] }), el('td', { text: String(o.today[k] || 0) }), el('td', {}, el('i', { class: 'bar', style: `width:${Math.round(120 * (o.week[k] || 0) / top)}px` }), String(o.week[k] || 0))))
+      : [el('tr', {}, el('td', { colspan: 3, text: 'NOTHING COUNTED YET: COUNTS BEGIN WITH THIS VERSION' }))]));
+    const days = [...new Set(tr.map(r => r.day))].slice(0, 14); const per = d => tr.filter(r => r.day === d && /^open-/.test(r.k)).reduce((a, r) => a + r.n, 0); const dTop = Math.max(1, ...days.map(per));
+    const daily = el('table', {}, el('tr', {}, el('th', { text: 'DAY' }), el('th', { text: 'VISITS (PAGES OPENED)' })), ...days.map(d => el('tr', {}, el('td', { text: d }), el('td', {}, el('i', { class: 'bar', style: `width:${Math.round(200 * per(d) / dTop)}px` }), String(per(d))))));
+    main.replaceChildren(...head('Overview', 'novel.global at a glance. Counts are of things, never of people: no addresses or visitors are kept.'),
+      el('div', { class: 'tiles' }, tile(S.waiting, 'WAITING', 'waiting', 1), tile(S.shown, 'SHOWN', 'shown'), tile(S.refused, 'REFUSED', 'refused'), tile(S.deleted, 'ARCHIVED', 'deleted'), tile(Pl.waiting, 'PLACES SUGGESTED', 'places', 1), tile(Pl.shown, 'PLACES SHOWN', 'places'), tile(Po.published, 'POSTS PUBLISHED', 'posts'), tile(Po.draft, 'DRAFTS', 'posts'),
+        tile(J.printed, 'PRINTED THIS WEEK', 'printers'), tile((J.queued || 0) + (J.held || 0), 'IN A QUEUE NOW', 'printers', 1), tile(J.failed, 'FAILED THIS WEEK', 'printers', 1)),
+      el('h3', { class: 'lbl', text: 'PRINTERS' }), prn, el('h3', { class: 'lbl', text: 'WHAT HAPPENED' }), week, el('h3', { class: 'lbl', text: 'THE LAST TWO WEEKS' }), daily);
+  }
+
+  /* ───────── settings: how the devices are earned, the aura's motion, the phreak, the twelve curations, and going back to base ───────── */
+  async function curationsOf() { try { const st = await (await api('settings')).json(); const c = st.curations ? JSON.parse(st.curations) : []; return Array.from({ length: 12 }, (_, i) => c[i] || { name: '', about: '' }); } catch (e) { return Array.from({ length: 12 }, () => ({ name: '', about: '' })); } }
+  async function site() {
+    const st = await (await api('settings')).json(); let g = {}; try { g = st.gates ? JSON.parse(st.gates) : {}; } catch (e) { g = {}; }
+    const save = async o => { await api('settings', { method: 'POST', body: JSON.stringify(o) }); show('site'); };
+    /* the devices, like a game: earned one a poster (as set), all open, or all closed */
+    const mode = el('select', {}, ...[['earn', 'EARNED: ONE MORE WITH EACH POSTER FINISHED'], ['open', 'OPEN: ALL THREE FROM THE START'], ['closed', 'CLOSED: NONE, THE AURA ALONE']].map(([v, t]) => el('option', { value: v, text: t }))); mode.value = g.mode || 'earn';
+    const at = [0, 1, 2].map(i => { const n = el('input', { type: 'number', min: 0, max: 50, step: 1 }); n.value = String((g.at || [1, 2, 3])[i]); return n; });
+    const gates = el('section', { class: 'ed' }, el('h3', { text: 'DEVICES · HOW THEY ARE EARNED' }), el('p', { class: 'note', text: 'THE RADIO, THE RESEARCH BOARD AND DESIGN RIDE THE RING ROUND THE IRUKANDJI ONCE EARNED. EARNED: EACH NEEDS THIS MANY POSTERS FINISHED ON THAT DEVICE OR BROWSER. OPEN EVERYTHING ON THE START PAGE STILL OPENS ALL FOR WHOEVER PRESSES IT.' }),
+      el('label', {}, 'MODE', mode), el('div', { class: 'three' }, el('label', {}, 'RADIO AFTER', at[0]), el('label', {}, 'RESEARCH BOARD AFTER', at[1]), el('label', {}, 'DESIGN AFTER', at[2])),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ gates: JSON.stringify({ mode: mode.value, at: at.map(n => Math.max(0, Math.min(50, Math.round(+n.value || 0)))) }) }) })));
+    /* motion: calm, as built, or chaos; and the phreak, base64 drifting under the stars */
+    const fx = el('select', {}, ...[['calm', 'CALM: SLOWER, FEWER PARTICLES'], ['base', 'AS BUILT'], ['chaos', 'CHAOS: FASTER, MORE, RESTLESS']].map(([v, t]) => el('option', { value: v, text: t }))); fx.value = st.fx || 'base';
+    const motion = el('section', { class: 'ed' }, el('h3', { text: 'MOTION AND PHREAK' }), el('p', { class: 'note', text: 'HOW THE AURA MOVES FOR EVERY VISITOR. A VISITOR WHO ASKS THEIR DEVICE FOR LESS MOTION ALWAYS GETS STILLNESS. PHREAK: LINES OF BASE64, THE SHAPE A POSTER TRAVELS IN, DRIFT FAINTLY UNDER THE STARS.' }),
+      el('label', {}, 'MOTION', fx), el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox' }); c.checked = !!st.phreak; c.id = 'phreak'; return c; })(), 'BASE64 PHREAK'),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ fx: fx.value, phreak: $('#phreak').checked }) })));
+    /* the twelve curations of the portfolio */
+    const curs = await curationsOf(); const rows = curs.map((c, i) => { const n = el('input', { type: 'text', maxlength: 40, placeholder: `CURATION ${String(i + 1).padStart(2, '0')}` }), a = el('input', { type: 'text', maxlength: 200, placeholder: 'A LINE ABOUT IT (OPTIONAL)' }); n.value = c.name || ''; a.value = c.about || ''; return [n, a]; });
+    const cur = el('section', { class: 'ed' }, el('h3', { text: 'PORTFOLIO · THE TWELVE CURATIONS' }), el('p', { class: 'note', text: 'TWELVE THEMES OR CURATIONS, EACH A TAB ON THE PORTFOLIO. A POST JOINS ONE BY ITS CURATION (CHOSEN WHEN IT IS WRITTEN). ONLY NAMED ONES SHOW.' }),
+      ...rows.map(([n, a], i) => el('div', { class: 'two' }, el('label', {}, String(i + 1).padStart(2, '0'), n), el('label', {}, 'ABOUT', a))),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ curations: JSON.stringify(rows.map(([n, a]) => ({ name: n.value.trim(), about: a.value.trim() }))) }) })));
+    /* back to base: archived (so it can come back), never the printers, their tokens or the password */
+    const R = ['stories', 'example', 'places', 'posts', 'words', 'settings', 'traffic'], RL = { stories: 'EVERY STORY, NOTICING AND PACK (TO THE ARCHIVE)', example: 'BOARD 00 BACK TO THE SITE\'S OWN', places: 'EVERY PLACE ADDED OR SUGGESTED (TO THE ARCHIVE)', posts: 'EVERY PUBLISHED POST BACK TO A DRAFT', words: 'THE WORDS, THE TEMPLATE AND THE CITIES BACK TO THE SITE\'S OWN', settings: 'THESE SETTINGS BACK TO AS BUILT', traffic: 'THE COUNTS' };
+    const boxes = R.map(k => { const c = el('input', { type: 'checkbox' }); c.dataset.k = k; return el('label', { class: 'check' }, c, RL[k]); });
+    const reset = el('section', { class: 'ed' }, el('h3', { text: 'BACK TO THE BASE VERSION' }), el('p', { class: 'note', text: 'CHOOSE WHAT GOES BACK. STORIES AND PLACES GO TO THE ARCHIVE, WHERE THEY CAN BE BROUGHT BACK. THE PRINTERS, THEIR TOKENS AND THE PASSWORD ARE NEVER TOUCHED, SO EVERYTHING KEEPS WORKING.' }), ...boxes,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'RESET WHAT IS TICKED', onclick: async () => { const o = {}; boxes.forEach(b => { const c = b.querySelector('input'); if (c.checked) o[c.dataset.k] = true; }); if (!Object.keys(o).length) return; if (prompt('Type RESET to go back to the base version for what is ticked.') !== 'RESET') return; await api('reset', { method: 'POST', body: JSON.stringify(o) }); show('overview'); badges(); } })),
+      el('h3', { text: 'THIS BROWSER' }), el('p', { class: 'note', text: 'CLEARS WHAT HAS BEEN MADE IN THIS BROWSER ON NOVEL.GLOBAL: POSTERS ON ITS WALL, THE PIECE BEING MADE, KEPT SONGS, BOARDS AND THE STUDIO\'S POSTERS. NOTHING ON THE SERVER, AND THIS PAGE STAYS OPEN.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'CLEAR THIS BROWSER', onclick: async () => { if (!confirm('Clear everything made in this browser on novel.global?')) return; Object.keys(localStorage).filter(k => /^da\./.test(k)).forEach(k => localStorage.removeItem(k)); await new Promise(r => { try { const q = indexedDB.deleteDatabase('novelglobal'); q.onsuccess = q.onerror = q.onblocked = r; } catch (e) { r(); } }); alert('Cleared. novel.global opens as new in this browser.'); } })));
+    main.replaceChildren(...head('Settings', 'How novel.global behaves for everyone. Saved settings reach visitors the next time they open the site.'), gates, motion, cur, reset);
+  }
+
+  /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */
+  const save = (name, text, type) => { const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name }); document.body.append(a); a.click(); a.remove(); };
+  const csv = (rows, cols) => [cols.join(','), ...rows.map(r => cols.map(c => { const v = r[c] == null ? '' : String(r[c]); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','))].join('\n');
+  const PCOLS = ['n', 'cat', 'role', 'what', 'addr', 'sub', 'url', 'lat', 'lng'];
+  const parseCSV = t => { const rows = []; let row = [], v = '', q = false; for (let i = 0; i < t.length; i++) { const ch = t[i]; if (q) { if (ch === '"' && t[i + 1] === '"') { v += '"'; i++; } else if (ch === '"') q = false; else v += ch; } else if (ch === '"') q = true; else if (ch === ',') { row.push(v); v = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(v); rows.push(row); row = []; v = ''; } else v += ch; } if (v || row.length) { row.push(v); rows.push(row); } return rows.filter(r => r.some(x => x.trim())); };
+  async function data() {
+    const all = async () => (await api('export')).json();
+    const dl = el('section', { class: 'ed' }, el('h3', { text: 'DOWNLOAD' }), el('p', { class: 'note', text: 'EVERYTHING AS ONE FILE (STORIES, PLACES, POSTS, PRINTERS WITHOUT THEIR TOKENS, SETTINGS, COUNTS), OR THE PLACES AND STORIES AS SHEETS FOR A SPREADSHEET. PHOTOGRAPHS DOWNLOAD ONE AT A TIME FROM EACH STORY (PHOTO ↓).' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'EVERYTHING (.JSON)', onclick: async () => { const j = await all(); save(`novel-global-${j.at.slice(0, 10)}.json`, JSON.stringify(j, null, 1), 'application/json'); } }),
+        el('button', { type: 'button', text: 'PLACES (.CSV)', onclick: async () => { const j = await all(); save('novel-global-places.csv', csv(j.places, [...PCOLS, 'status', 'src']), 'text/csv'); } }),
+        el('button', { type: 'button', text: 'STORIES (.CSV)', onclick: async () => { const j = await all(); save('novel-global-stories.csv', csv(j.stories, ['code', 'kind', 'status', 'lat', 'lng', 'dest', 'created', 'decided', 'has_photo']), 'text/csv'); } }),
+        el('button', { type: 'button', text: 'COUNTS (.CSV)', onclick: async () => { const j = await all(); save('novel-global-counts.csv', csv(j.traffic, ['day', 'k', 'n']), 'text/csv'); } })));
+    const ta = el('textarea', { class: 'body', spellcheck: 'false', placeholder: 'n,cat,role,what,addr,sub,url,lat,lng\nBrunswick Tool Library,circular,repair,A tool library with a repair café,127 Nicholson St,Brunswick East,https://www.brunswicktoollibrary.org/,-37.7718,144.9782' });
+    const file = el('input', { type: 'file', accept: '.csv,.json,text/csv,application/json' }); file.addEventListener('change', async () => { const f = file.files[0]; if (f) ta.value = await f.text(); });
+    const out = el('span', { class: 'note' });
+    const imp = el('section', { class: 'ed' }, el('h3', { text: 'BRING IN PLACES' }),
+      el('p', { class: 'note', text: 'A SHEET (CSV) WITH A FIRST ROW OF COLUMN NAMES, OR JSON (A LIST OF PLACES). COLUMNS: n (THE NAME, NEEDED), cat (service, circular, brand, artists, third OR network), role (ONE WORD), what (A LINE), addr, sub (SUBURB), url (https:// ONLY), lat AND lng (NEEDED, DECIMAL). EACH ONE IS SHOWN AT ONCE; UP TO 2000 AT A TIME.' }), file, ta,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'BRING THEM IN', onclick: async () => { const t = ta.value.trim(); if (!t) return; let list;
+        try { if (/^[\[{]/.test(t)) { const j = JSON.parse(t); list = Array.isArray(j) ? j : j.places || []; } else { const [hd, ...rs] = parseCSV(t); const h = hd.map(x => x.trim().toLowerCase()); list = rs.map(r => Object.fromEntries(h.map((k, i) => [k, (r[i] || '').trim()]))); } } catch (e) { out.textContent = 'COULD NOT READ IT: ' + e.message; return; }
+        const r = await (await api('places/import', { method: 'POST', body: JSON.stringify({ places: list }) })).json(); out.textContent = `${r.added} ADDED${r.bad ? `, ${r.bad} LEFT OUT (NO NAME, OR NO PLACE)` : ''}`; badges(); } }), out));
+    main.replaceChildren(...head('Data', 'Take everything away, or bring places in.'), dl, imp);
+  }
+
+  /* ───────── the guide: how each part works, the stack, and where things are ───────── */
+  const G = [
+    ['Every day', ['Open OVERVIEW: the numbers in coral want a look. WAITING holds what was sent: SHOW puts it on the map and the board, and sends it to its printer; REFUSE keeps it here, never shown; ARCHIVE puts it away (ARCHIVE can bring it back for a year).', 'PLACES SUGGESTED by visitors wait the same way under PLACES.']],
+    ['Printers', ['PAIR A PRINTER shows a token once: it goes on the Raspberry Pi in /etc/da-pull.env. PRINTS AFTER APPROVAL holds each slip here (or on its touch screen, if one is paired) until shown; PRINTS WITHOUT APPROVAL prints at once.', 'MESH ON sends a line to the T-Beam only for slips sent to the mesh. Paper always prints before any mesh line.', 'TEST PRINT, TURN OFF and the state of each part (Pi, screen, mesh, the last slip) are on each printer.']],
+    ['Places', ['Add one under PLACES, or many under DATA → BRING IN PLACES from a sheet. A sheet has a first row of column names: n, cat, role, what, addr, sub, url, lat, lng. Right-click a spot in a map app to copy its latitude and longitude.', 'Places written into the site itself (places.js) are always there too.']],
+    ['Words, boards and cities', ['WORDS AND BOARDS rewrites the words on INTENTION and W.I.S.H., the first board every visitor gets, and BOARD 00 (open it to editing, change it in the studio, send it, then show it under WAITING).', 'Cities: a line # Name begins a city, "centre, lat, lng" places it, and each other line is "name, lat, lng".']],
+    ['Devices and motion', ['SETTINGS → DEVICES: earned (the default: one more device with each poster finished, after as many posters as you set), open (all three from the start) or closed (none).', 'MOTION: calm, as built or chaos; PHREAK lays faint lines of base64 under the stars. A visitor who asks their device for less motion always gets stillness.']],
+    ['Portfolio', ['Name up to twelve curations under SETTINGS; each named one is a tab on novel.global/portfolio.html. Write posts under PORTFOLIO and give each its curation. Drafts are seen only here (PREVIEW).']],
+    ['Going back to base', ['SETTINGS → BACK TO THE BASE VERSION: tick what goes back, then type RESET. Stories and places go to the ARCHIVE (they can come back); the printers, their tokens and the password are never touched.', 'CLEAR THIS BROWSER empties what was made in this browser (posters on its wall, songs, boards), for testing as a new visitor.']],
+    ['Data and privacy', ['Counts are of things, never of people: no addresses, no visitors told apart. Everything sent is kept for a year (archived ones too), then goes. Photographs are seen only here unless shown.', 'DATA downloads everything as one file, or places, stories and counts as sheets.']],
+    ['The stack', ['novel.global is one Cloudflare Worker (src/worker/index.js) serving the site from dist/ with a D1 database (stories, jobs, printers, places, posts, settings, counts). It asks iNaturalist and OpenStreetMap for everyone, and the browser asks them itself when they turn the Worker away.', 'The receipts print on an Epson TM-T88V through a Raspberry Pi (receiver/pull.py asks for jobs every 3 seconds), with a Meshtastic T-Beam for the mesh and an optional touch screen.', 'The site: plain JavaScript, MapLibre for the studio map, Fabric for the boards and print shop, Web Audio for every sound (nothing recorded). The staging branch is the preview; main is live.']],
+    ['Links', [['Cloudflare dashboard', 'https://dash.cloudflare.com/'], ['The code on GitHub', 'https://github.com/novelglobal/front'], ['iNaturalist API', 'https://api.inaturalist.org/v1/docs/'], ['OpenStreetMap Overpass', 'https://wiki.openstreetmap.org/wiki/Overpass_API'], ['Meshtastic', 'https://meshtastic.org/docs/'], ['Epson ESC/POS', 'https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/index.html']]],
+  ];
+  function guide() {
+    main.replaceChildren(...head('Guide', 'How each part of novel.global works, and where things are.'), ...G.map(([t, ps]) => el('section', { class: 'guide' }, el('h3', { text: t }),
+      ...ps.map(p => Array.isArray(p) ? el('p', {}, el('a', { href: p[1], target: '_blank', rel: 'noopener', text: p[0] + ' ↗' })) : el('p', { text: p })))));
   }
 
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });

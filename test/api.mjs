@@ -189,6 +189,23 @@ try {
   check('published, it is listed with its category and cover, and only https links are kept', po1.json.posts.length === 1 && po1.json.posts[0].cat === 'WORK' && po1.json.posts[0].cover && po1one.json.post.links.join() === 'https://example.org/a' && cov.status === 200 && cov.type === 'image/jpeg', `${JSON.stringify(po1.json)} ${cov.status}`);
   await call(`/api/admin/posts/${pd.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } });
   check('deleted, it is gone', (await call('/api/posts')).json.posts.length === 0);
+  /* the approval page's overhaul: archived not lost, brought back; counts of things; everything as one file; places by the hundred; settings; back to base */
+  const ar = await call('/api/stories', { method: 'POST', body: story('DA-ARC1'), ip: '10.7.7.7' });
+  await call(`/api/admin/stories/${ar.json.id}`, { method: 'POST', key: KEY, body: { action: 'refuse' } }); const arP = await call(`/api/admin/photos/${ar.json.id}`, { key: KEY });
+  await call(`/api/admin/stories/${ar.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } }); const arD = await call('/api/admin/stories?status=deleted', { key: KEY });
+  await call(`/api/admin/stories/${ar.json.id}`, { method: 'POST', key: KEY, body: { action: 'restore' } }); const arW = await call('/api/admin/stories?status=waiting', { key: KEY });
+  check('a story archived stays on the approval page and comes back to waiting', arD.json.stories.some(x => x.id === ar.json.id) && arW.json.stories.some(x => x.id === ar.json.id), JSON.stringify([arD.json.stories.length, arW.json.stories.length, arP.status]));
+  await call('/api/beat?k=open-aura'); await call('/api/beat?k=begin'); await call('/api/beat?k=nonsense'); await new Promise(r => setTimeout(r, 400));
+  const ov = await call('/api/admin/overview', { key: KEY }), tr = await call('/api/admin/traffic', { key: KEY }), ovNo = await call('/api/admin/overview', { ip: '10.6.6.6' });
+  check('the overview counts what waits and what happened (things, never people), and only with the password', ov.status === 200 && ov.json.stories.waiting >= 1 && Array.isArray(ov.json.printers) && tr.json.traffic.some(r => r.k === 'open-aura') && !tr.json.traffic.some(r => r.k === 'nonsense') && ovNo.status === 401, JSON.stringify({ today: ov.json.today, n: tr.json.traffic.length }));
+  const im = await call('/api/admin/places/import', { method: 'POST', key: KEY, body: { places: [{ n: 'Imported One', lat: -37.77, lng: 144.96, cat: 'third' }, { n: 'Imported Two', lat: '-37.771', lng: '144.961' }, { n: '', lat: 1, lng: 1 }] } });
+  const ex = await call('/api/admin/export', { key: KEY });
+  check('everything comes away as one file (never a token), and places come in by the hundred', im.json.added === 2 && im.json.bad === 1 && ex.status === 200 && ex.json.places.some(p => p.n === 'Imported One') && ex.json.stories.length > 0 && !JSON.stringify(ex.json.printers).includes('token"'), JSON.stringify(im.json));
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { gates: JSON.stringify({ mode: 'open', at: [1, 2, 3] }), fx: 'chaos', phreak: true, curations: JSON.stringify([{ name: 'Radio', about: 'x' }]) } }); const stG = await call('/api/settings');
+  check('settings for everyone: how devices are earned, the motion, the phreak, the twelve curations', JSON.parse(stG.json.gates).mode === 'open' && stG.json.fx === 'chaos' && stG.json.phreak === true && JSON.parse(stG.json.curations)[0].name === 'Radio', JSON.stringify(stG.json).slice(0, 200));
+  const rs0 = await call('/api/admin/reset', { method: 'POST', key: KEY, body: {} }); const rs = await call('/api/admin/reset', { method: 'POST', key: KEY, body: { places: true, settings: true } });
+  const plR = await call('/api/places'), stR = await call('/api/settings'), prR = await call('/api/partners'), arch = await call('/api/admin/places?status=deleted', { key: KEY });
+  check('back to base: places to the archive, settings as built, the printers untouched', rs0.status === 400 && rs.status === 200 && plR.json.places.length === 0 && arch.json.places.length >= 2 && stR.json.fx === '' && stR.json.phreak === false && prR.json.partners.length >= 4, JSON.stringify([plR.json.places.length, arch.json.places.length, stR.json.fx]));
   /* the receiver itself: pull.py, against this Worker, writing the slip to a file instead of a printer */
   const py = (process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python']).find(c => { try { return spawnSync(c, ['--version']).status === 0; } catch (e) { return false; } });
   if (py) {
