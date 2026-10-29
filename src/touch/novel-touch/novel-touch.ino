@@ -29,7 +29,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 6"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "29 Oct · 7"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -138,7 +138,9 @@ void netTask(void *) {
     if (setupOn) { vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) join(); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     String job, what; xSemaphoreTake(lock, portMAX_DELAY); job = askJob; what = askWhat; askJob = ""; xSemaphoreGive(lock);
-    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); } actCode = c; last = 0; }   // three tries; the result shown
+    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); } actCode = c; last = 0;   // three tries; the result shown
+      /* the site took it: forget that slip now, so a slow or failed poll can't bring it back */
+      if (c == 200) { xSemaphoreTake(lock, portMAX_DELAY); if (net.first.job == job) { net.first = Slip(); if (net.waiting > 0) net.waiting--; if (what == "print") net.printing++; net.ver++; } xSemaphoreGive(lock); } }
     if (printerId.length() && millis() - last > 4000) { last = millis(); poll(); }
     vTaskDelay(pdMS_TO_TICKS(120));
   }
@@ -454,7 +456,7 @@ void loop() {
   /* what the server last said */
   bool fresh = false; xSemaphoreTake(lock, portMAX_DELAY); if (net.ver != seen.ver) { seen = net; fresh = true; } xSemaphoreGive(lock);
   bool has = seen.first.job.length() > 0;
-  if (fresh && has && (mode == HELD || mode == ARRIVE)) slip = seen.first;
+  if (has && (mode == HELD || mode == ARRIVE) && (fresh || slip.job != seen.first.job)) slip = seen.first;
 
   /* touch: the screen or the side button, both the same; a press, or a hold */
   bool now = touched() || digitalRead(KEY_A) == LOW, tap = false, press = false; float held = 0;
