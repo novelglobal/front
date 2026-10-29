@@ -3254,3 +3254,6 @@ html.plain .zine::after, html.plain #zine::after { display: none !important; }
 /* the way home: the studio is an addition to the base, never a place to get lost in */
 .to-base { position: fixed; z-index: 60; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 5px 10px; font-size: 11px; letter-spacing: .08em; color: #151514; background: #EDEBE4; border: 1px solid #151514; text-decoration: none; }
 .to-base:hover { background: #151514; color: #EDEBE4; }
+
+/* the studio as one of the aura's devices: print, printer bytes and the radios are the aura's last step, so they step aside here */
+html.in-aura [data-pout="print"], html.in-aura [data-pout="escpos"], html.in-aura [data-pout="oled"], html.in-aura [data-pout="mesh"], html.in-aura [data-prn], html.in-aura #tp-info { display: none !important; }

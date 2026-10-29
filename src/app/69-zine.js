@@ -615,6 +615,8 @@ async function pressOut(k, given) {
   /* nothing on the paper and no story at its head: nothing to print */
   if (k === 'send' && !given && !s && zc && !zc.getObjects().length) { tick(600); return; }
   const out = given || await stripOut(); if (!out) return; const { url, F } = out; const SW = out.w || F.w, SH = out.h || 520;
+  /* inside the aura the strip goes onto the poster there; printing is the aura's own last step */
+  if (IN_AURA && !given && (k === 'send' || k === 'print')) { toAura(url, false); tick(1800); return; }
   if (!given && ['print', 'send', 'png', 'escpos', 'oled', 'mesh'].includes(k)) keepExport(out, s && s.code);
   /* the paper is torn off at 1.5 s; the tear is heard then, not when the network answers */
   const tearAt = performance.now() + (reduced() ? 0 : 1500);

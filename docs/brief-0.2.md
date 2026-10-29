@@ -6,6 +6,18 @@ The rule for every stage: A always stays one touch away and is always where one 
 
 Two worlds, kept apart on purpose: the pixel, the digital and the analogue (C's devices, B's pixels, LEDs, OLEDs) against the natural, the ethereal and the mythical (A's irukandji, blueprint, chalk and stars). They sit side by side and answer each other; they are never blended.
 
+## The lore
+
+Devices are thrown into the ocean. They do not die there: the irukandji powers them. This tiny creature is the muse of dancing with doom; through it one sees a new planet arriving and gets to author it. It gives the simple guidance, the framework, the connections and the tools, and the understanding of why sharing things (design) physically (print) matters. It never uses copy. It speaks in visual communication and impact, and gives an aura, a soul, to a praxis or innovation story.
+
+So the integration is not a menu of the old builds. The studio's devices are flotsam the irukandji has caught and lit: it holds out one at a time, the one the step in hand calls for, and what is made with it comes back onto the poster. Restraint and discovery, play and hidden depth, and the whole engine there for anyone who reaches for it.
+
+## Direction pass (producer, journey, art direction)
+
+- **Producer:** one way through stays the spine (intention, W.I.S.H., art, print); every addition hangs off a step and lands back on the poster, so nothing branches into a second product. Print happens once, at the end; everything before it is "onto my poster". Approved.
+- **Journey:** depth is earned, not offered. A device appears only after a poster is printed, and the irukandji holds out only the one its step calls for: the radio while noticing, the research board for W.I.S.H., the print shop in art, nothing at print. All three are always in the intel for those who look. The eye always brings one back. Approved.
+- **Art direction:** two worlds, kept apart on purpose. The irukandji, the globe, the chalk and the stars are natural, ethereal and mythical; the devices are pixel, digital and analogue, each its own material (the radio and the print shop smoked glass with a green light, the research board a pale matte digital-ink panel). They meet only where the jellyfish holds a device. No words where a sign will do. Approved, with one watch: no more than one device beside the catch at once.
+
 ## Stages, in order (one at a time, each checked on the preview)
 
 ### Stage 1 — the journey, smoothed (A only)
@@ -22,8 +34,8 @@ Two worlds, kept apart on purpose: the pixel, the digital and the analogue (C's 
 ### Stage 2 — words from the approval page
 Every heading, line and hover on INTENTION and W.I.S.H. rewritable on the approval page (TRACKS), as BOARD 01's template is. Empty goes back to the site's own words.
 
-### Stage 3 — the intel ring
-The object under the eye (the catch) opens into the intel: the map, the lives, the data, El Niño, as now, and from there into C's devices, each opened in place with a way straight back to A. Each poster made earns one new object (at most three) on a slow horizontal ring under the eye: a device of C brought into A (the radio, the board, the lives), so depth arrives as it is earned and never as clutter.
+### Stage 3 — the intel ring (built)
+The studio as three devices (RADIO, RESEARCH BOARD, PRINT SHOP), one earned with each poster printed. The irukandji holds out on the ring under the eye only the device the step calls for; all three wait at the head of the intel. Opened, the studio fills one window over the aura, its own first visit skipped, the eye on its bar back. Inside it, every press that printed is now "onto my poster": the strip, the board's art or a song's card comes back onto the poster in hand, at art; print is the aura's last step alone.
 
 ### Stage 4 — sound as an instrument
 The sound key (top right) opens, with an irukandji of its own, one dashboard for everything musical: B's 4-track and the web's voice, C's layers and moods, the radar's sweep, constellations and journeys as songs. Compositions saved, played while exploring, downloaded as 45 second loops, sent as a link or a QR poster.
