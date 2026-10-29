@@ -128,7 +128,23 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(card, ex, tp);
+    main.replaceChildren(card, ex, tp, wordsCard(st));
+  }
+  /* INTENTION and W.I.S.H. on the aura (/): every heading, line and hover, and the one quick word shown first. Each field holds the site's
+     own words until changed; only the words changed are kept, and an emptied field goes back to the site's own */
+  const WORD_LABELS = [['intention.tab', 'INTENTION · ITS QUICK WORD'], ['intention.ask', 'INTENTION · THE QUESTION ON ITS LINE'], ['intention.say', 'INTENTION · THE LINE THAT COMES AND GOES'],
+    ['wish.tab', 'W.I.S.H. · ITS QUICK WORD'], ['wish.say', 'W.I.S.H. · THE LINE THAT COMES AND GOES'],
+    ...['w', 'i', 's', 'h'].flatMap(l => [[`${l}.word`, `${l.toUpperCase()} · ITS QUICK WORD`], [`${l}.head`, `${l.toUpperCase()} · ITS HEADING (ON HOVER)`], [`${l}.how`, `${l.toUpperCase()} · WHAT GOES ON ITS LINE (ON HOVER)`]])];
+  function wordsCard(st) {
+    const own = (window.DA_CONFIG || {}).WORDS || {}; let saved = {}; try { saved = st.words ? JSON.parse(st.words) : {}; } catch (e) { saved = {}; }
+    const fields = WORD_LABELS.map(([k, label]) => { const inp = el('input', { type: 'text', maxlength: 240, spellcheck: 'true', placeholder: own[k] || '' }); inp.value = saved[k] || own[k] || ''; inp.dataset.k = k; return el('label', { text: label }, inp); });
+    const changed = Object.keys(saved).filter(k => saved[k] && saved[k] !== own[k]).length;
+    const sec = el('section', { class: 'printer ed' }); sec.append(el('h3', { text: 'INTENTION AND W.I.S.H. · THE WORDS' }),
+      el('div', { class: 'note', text: `THE HEADINGS, LINES AND HOVERS ON THE FIRST TWO STEPS OF NOVEL.GLOBAL, AND THE ONE WORD SHOWN FIRST UNDER EACH. ${changed ? `${changed} REWRITTEN HERE.` : "THE SITE'S OWN WORDS."} SAVED WORDS REACH VISITORS THE NEXT TIME THEY OPEN THE SITE.` }), ...fields,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { const out = {}; fields.forEach(f => { const i = f.querySelector('input'), v = i.value.trim(); if (v && v !== own[i.dataset.k]) out[i.dataset.k] = v; });
+        await api('settings', { method: 'POST', body: JSON.stringify({ words: Object.keys(out).length ? JSON.stringify(out) : '' }) }); show('stations'); } }),
+        el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for INTENTION and W.I.S.H.?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ words: '' }) }); show('stations'); } })));
+    return sec;
   }
   async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...list.map(printerCard)); }
 

@@ -747,10 +747,15 @@
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
      Nothing stays on the paper to be read over and over */
+  /* INTENTION's and W.I.S.H.'s words: the site's own (config.js, through the build), any rewritten on the approval page laid over them.
+     The last rewritten words are kept on the device, so they hold offline */
+  var WORDS0 = B.words || {}, WORDS = {};
+  var wordsSet = function (o) { WORDS = {}; Object.keys(WORDS0).forEach(function (k) { WORDS[k] = WORDS0[k]; }); if (o && typeof o === 'object') Object.keys(WORDS0).forEach(function (k) { if (typeof o[k] === 'string' && o[k].trim()) WORDS[k] = o[k].trim().slice(0, 240); }); };
+  var wd = function (k, d) { return WORDS[k] || d || ''; };
+  wordsSet(store.get('da.aura.words', null));
   var SAY = {
     globe: 'Start here. Tell us one small thing you noticed today.',
-    notice: 'From something you noticed, write what you want to happen. It goes at the top of your poster.',
-    wish: 'One line for each letter. Tap a letter for help.',
+    notice: '', wish: '',
     art: 'Drag to move. Tap to edit.',
     artEmpty: 'Start a blank receipt: a photo and a few words, ready to print. Or begin with what you noticed.',
     print: 'Print sends this to the novel.global printer on 80 mm paper, and it goes up on your wall. Pick blue or white paper first.',
@@ -802,7 +807,7 @@
     '<a id="au-base" href="?base" aria-label="The base"><i></i></a>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
-    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + ['intention', 'wish', 'art', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
+    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + [wd('intention.tab', 'intention'), wd('wish.tab', 'wish'), 'art', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
     '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
     '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
     '<section id="au-panel" aria-live="polite"></section><section id="au-deep" hidden></section>' +
@@ -961,8 +966,8 @@
   var grow = function (ta) { if (!ta.offsetParent || ta.id === 'au-tx') return; ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight + 2, 40) + 'px'; };
   var regrow = function () { [].forEach.call(panel.querySelectorAll('textarea'), grow); };
   /* W.I.S.H., each letter's words, shown only when one looks for it (a pointer on the letter, or the line in hand) */
-  var WISH_SAYS = ['What we know', 'It would be great', 'So let’s create', 'Here’s how it works'];
-  var WISH_HOW = ['what you saw', 'what you want to happen', 'one thing to do', 'who helps, and how'];
+  var WL = ['w', 'i', 's', 'h'];
+  var WISH_SAYS = function (i) { return wd(WL[i] + '.head'); }, WISH_HOW = function (i) { return wd(WL[i] + '.how'); };
   /* the marks one has: four to begin with, one more for every piece that reaches the wall */
   var ROUNDS = +store.get('da.aura.rounds', 0) || 0;
   var marksHave = function () { return MARK_ORDER.slice(0, Math.min(MARK_ORDER.length, 4 + ROUNDS)); };
@@ -971,13 +976,13 @@
     var s = S.stage, h = '', pic = P && (P.photo || P.spPhoto);
     if (s === 0) {
       h = (P && P.photo ? '<figure class="au-ph"><img alt="" src="' + P.photo + '"><button class="au-rm" id="au-unph" aria-label="Let the photograph go">×</button></figure>' : '') +
-        '<label class="au-line' + (P && P.say ? ' has' : '') + '" data-fw="intention"><span class="au-ask au-hint" data-on="7" data-off="20" aria-hidden="true">what\u2019s your intention?</span><textarea id="au-say" rows="1" maxlength="200" aria-label="What\u2019s your intention?" enterkeyhint="next"></textarea></label>' + hint(SAY.notice) + goKey(0);
+        '<label class="au-line' + (P && P.say ? ' has' : '') + '" data-fw="' + esc(wd('intention.tab', 'intention')) + '"><span class="au-ask au-hint" data-on="7" data-off="20" aria-hidden="true">' + esc(wd('intention.ask')) + '</span><textarea id="au-say" rows="1" maxlength="200" aria-label="' + esc(wd('intention.ask')) + '" enterkeyhint="next"></textarea></label>' + hint(wd('intention.say')) + goKey(0);
     } else if (s === 1) {
       /* what was noticed comes with it: the picture, the life if caught, the day; the line becomes W */
       var L4 = P ? P.lines : ['', '', '', ''], f = P && lifeOf(P), said = P ? [f ? f.cn : '', NG.when(P.at).slice(0, 6)].filter(Boolean).join(' · ') : '';
       /* the intention heads the poem: what one wants to happen, then the four lines under it */
       h = (P && (pic || f) ? '<div class="au-whead">' + (pic ? '<img alt="" src="' + (P.photo || P.spPhoto) + '">' : '') + '<span>' + esc(said) + '</span></div>' : '') + (P && P.say ? '<p class="au-intent">' + esc(P.say) + '</p>' : '') +
-        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS[i]) + '" data-fw="' + ['theories', 'beliefs', 'principles', 'behaviours'][i] + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS[i] + ': ' + WISH_HOW[i]) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS[i]) + '</em> ' + esc(WISH_HOW[i]) + '</span></li>'; }).join('') + '</ol>' + hint(SAY.wish) + goKey(1);
+        '<ol class="au-wish">' + [0, 1, 2, 3].map(function (i) { return '<li class="' + (L4[i] ? '' : 'empty') + '"><b data-say="' + esc(WISH_SAYS(i)) + '" data-fw="' + esc(wd(WL[i] + '.word')) + '" tabindex="-1">' + 'WISH'[i] + '</b><textarea data-i="' + i + '" rows="1" maxlength="160" aria-label="' + esc(WISH_SAYS(i) + ': ' + WISH_HOW(i)) + '" enterkeyhint="next">' + esc(L4[i] || '') + '</textarea><span class="au-wtip" aria-hidden="true"><em>' + esc(WISH_SAYS(i)) + '</em> ' + esc(WISH_HOW(i)) + '</span></li>'; }).join('') + '</ol>' + hint(wd('wish.say')) + goKey(1);
     } else if (s === 2) {
       if (ready()) { settle(); var mine = (NG.icons() || []).slice(-6), have = marksHave();
         /* in order of use: the hero photograph, more pictures, paste, words, speech, the lines above or below; then the making */
@@ -1651,6 +1656,8 @@
   }
 
   /* ───────── asleep under the base's pages, awake on the paper ───────── */
+  fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (!st) return; var o = null; try { o = st.words ? JSON.parse(st.words) : {}; } catch (e) { o = {}; }
+    store.set('da.aura.words', o); wordsSet(o); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
   api.awake = function () { return !asleep; };
   api.sleep = function () { asleep = true; root.hidden = true; humSet(false); };
   api.wake = function () { if (location.hash) return; asleep = false; root.hidden = false; humSet(S.mode !== 'seed'); go(); };
