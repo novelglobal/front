@@ -106,7 +106,7 @@
         return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${ref}${hint ? '  —  ' + hint : ''}` }); })(),
       /* the Wi-Fi each is on, as each last said: the same, or not; and how strong */
       (() => { const J = v => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const a = J(p.net), b = J(p.touch_net); if (!a && !b) return null;
-        const bars = r => (r == null ? '' : r > -60 ? ' STRONG' : r > -70 ? ' GOOD' : r > -78 ? ' WEAK' : ' TOO WEAK'); const one = (who, x) => (x ? `${who} ON ${x.n} (${x.rssi} dBm${bars(x.rssi)}) ${when(x.at)}` : `${who} HAS NOT SAID`);
+        const bars = r => (r == null ? '' : r > -60 ? ' STRONG' : r > -70 ? ' GOOD' : r > -78 ? ' WEAK' : ' TOO WEAK'); const one = (who, x) => (x ? `${who} ON ${x.n} (${x.rssi} dBm${bars(x.rssi)})${x.ip ? ' AT ' + x.ip : ''} ${when(x.at)}` : `${who} HAS NOT SAID`);
         const same = a && b ? (a.n === b.n ? '✓ THE SAME WI-FI' : '✗ NOT THE SAME WI-FI: SET THE SCREEN (HOLD BOOT 3 S) OR THE PI (CHANGE WI-FI) TO ONE BOTH REACH') : '';
         return el('div', { class: 'note', text: [one('PI', a), p.touch ? one('SCREEN', b) : '', same].filter(Boolean).join('  ·  ') }); })(),
       el('div', { class: 'acts' },
@@ -253,23 +253,50 @@
 
   /* ───────── the overview: what waits, what is on, what happened today and this week ───────── */
   const TRAFFIC = { 'open-aura': 'novel.global opened', 'open-studio': 'studio opened', 'open-portfolio': 'portfolio opened', begin: 'pieces begun', print: 'prints pressed', wall: 'hung on the wall', song: 'songs kept', device: 'devices opened', 'stories:sent': 'stories sent', stories: 'stories read', 'places:sent': 'places suggested', places: 'places read', inat: 'iNaturalist asked', osm: 'OpenStreetMap asked', img: 'photographs passed', posts: 'portfolio read', receipts: 'prints followed' };
-  async function overview() {
-    const o = await (await api('overview')).json(); const tr = (await (await api('traffic')).json()).traffic || [];
-    const tile = (n, label, to, hot) => el('button', { type: 'button', class: 'tile' + (hot && n ? ' hot' : ''), onclick: () => to && show(to) }, el('b', { text: String(n || 0) }), el('span', { text: label }));
-    const S = o.stories, Pl = o.places, Po = o.posts, J = o.jobs;
-    const fresh = t => t && Date.now() - t < 2 * 60e3;
-    const prn = el('table', {}, el('tr', {}, ...['PRINTER', 'PAIRED', 'HEARD', 'APPROVAL', 'MESH', 'SCREEN'].map(h => el('th', { text: h }))),
-      ...o.printers.map(p => el('tr', {}, el('td', { text: p.name || p.id }), el('td', { text: p.paired ? '✓' : '·' }), el('td', { text: p.seen ? (fresh(p.seen) ? 'LISTENING NOW' : when(p.seen)) : 'NEVER' }), el('td', { text: p.auto ? 'PRINTS AT ONCE' : 'AFTER APPROVAL' }), el('td', { text: p.mesh ? 'ON' : 'OFF' }), el('td', { text: p.touch ? 'ON' : 'OFF' }))));
-    const keys = Object.keys(TRAFFIC).filter(k => o.week[k] || o.today[k]); const top = Math.max(1, ...keys.map(k => o.week[k] || 0));
-    const week = el('table', {}, el('tr', {}, ...['WHAT', 'TODAY', 'LAST 7 DAYS'].map(h => el('th', { text: h }))), ...(keys.length ? keys.map(k => el('tr', {}, el('td', { text: TRAFFIC[k] }), el('td', { text: String(o.today[k] || 0) }), el('td', {}, el('i', { class: 'bar', style: `width:${Math.round(120 * (o.week[k] || 0) / top)}px` }), String(o.week[k] || 0))))
-      : [el('tr', {}, el('td', { colspan: 3, text: 'NOTHING COUNTED YET: COUNTS BEGIN WITH THIS VERSION' }))]));
-    const days = [...new Set(tr.map(r => r.day))].slice(0, 14); const per = d => tr.filter(r => r.day === d && /^open-/.test(r.k)).reduce((a, r) => a + r.n, 0); const dTop = Math.max(1, ...days.map(per));
-    const daily = el('table', {}, el('tr', {}, el('th', { text: 'DAY' }), el('th', { text: 'VISITS (PAGES OPENED)' })), ...days.map(d => el('tr', {}, el('td', { text: d }), el('td', {}, el('i', { class: 'bar', style: `width:${Math.round(200 * per(d) / dTop)}px` }), String(per(d))))));
-    main.replaceChildren(...head('Overview', 'novel.global at a glance. Counts are of things, never of people: no addresses or visitors are kept.'),
-      el('div', { class: 'tiles' }, tile(S.waiting, 'WAITING', 'waiting', 1), tile(S.shown, 'SHOWN', 'shown'), tile(S.refused, 'REFUSED', 'refused'), tile(S.deleted, 'ARCHIVED', 'deleted'), tile(Pl.waiting, 'PLACES SUGGESTED', 'places', 1), tile(Pl.shown, 'PLACES SHOWN', 'places'), tile(Po.published, 'POSTS PUBLISHED', 'posts'), tile(Po.draft, 'DRAFTS', 'posts'),
-        tile(J.printed, 'PRINTED THIS WEEK', 'printers'), tile((J.queued || 0) + (J.held || 0), 'IN A QUEUE NOW', 'printers', 1), tile(J.failed, 'FAILED THIS WEEK', 'printers', 1)),
-      el('h3', { class: 'lbl', text: 'PRINTERS' }), prn, el('h3', { class: 'lbl', text: 'WHAT HAPPENED' }), week, el('h3', { class: 'lbl', text: 'THE LAST TWO WEEKS' }), daily);
+  /* the overview, as a dashboard: dark glass, thin lines, readouts in brackets, gauges, a two-week trace; it refreshes itself every
+     half minute while open, and a snapshot of it can be saved */
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = (tag, a) => { const e = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); return e; };
+  function gauge(parts, label) {   // a ring, each part an arc in its own shade; the total in its middle
+    const tot = parts.reduce((a, p) => a + (p[0] || 0), 0), g = svg('svg', { viewBox: '0 0 120 120', class: 'gauge' }); let at = -90;
+    g.append(svg('circle', { cx: 60, cy: 60, r: 46, fill: 'none', stroke: 'rgba(127,227,211,.12)', 'stroke-width': 8 }));
+    parts.forEach(([n, col]) => { if (!n || !tot) return; const a0 = at * Math.PI / 180, a1 = (at + 360 * n / tot - 1.5) * Math.PI / 180, big = n / tot > 0.5 ? 1 : 0;
+      g.append(svg('path', { d: `M${60 + 46 * Math.cos(a0)} ${60 + 46 * Math.sin(a0)} A46 46 0 ${big} 1 ${60 + 46 * Math.cos(a1)} ${60 + 46 * Math.sin(a1)}`, fill: 'none', stroke: col, 'stroke-width': 8 })); at += 360 * n / tot; });
+    const t = svg('text', { x: 60, y: 58, 'text-anchor': 'middle', class: 'gn' }); t.textContent = String(tot); const l = svg('text', { x: 60, y: 76, 'text-anchor': 'middle', class: 'gl' }); l.textContent = label; g.append(t, l); return g;
   }
+  function trace(vals, w = 520, h = 90) {   // the days as a line, newest at the right, each day a tick
+    const g = svg('svg', { viewBox: `0 0 ${w} ${h}`, class: 'trace', preserveAspectRatio: 'none' }), top = Math.max(1, ...vals), n = vals.length;
+    for (let i = 0; i <= 4; i++) g.append(svg('line', { x1: 0, x2: w, y1: (h - 8) * i / 4 + 4, y2: (h - 8) * i / 4 + 4, stroke: 'rgba(127,227,211,.08)' }));
+    const pts = vals.map((v, i) => [n < 2 ? w / 2 : i * (w - 8) / (n - 1) + 4, h - 4 - (h - 8) * v / top]);
+    if (pts.length) { g.append(svg('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: '#7FE3D3', 'stroke-width': 1.5 })); pts.forEach(p => g.append(svg('circle', { cx: p[0], cy: p[1], r: 2, fill: '#7FE3D3' }))); }
+    return g;
+  }
+  let ovT = null;
+  async function overview() {
+    clearTimeout(ovT);
+    const o = await (await api('overview')).json(); const tr = (await (await api('traffic')).json()).traffic || [];
+    if (tab !== 'overview') return;
+    const S = o.stories, Pl = o.places, Po = o.posts, J = o.jobs, fresh = t => t && Date.now() - t < 2 * 60e3;
+    const read = (n, label, to, hot) => el('button', { type: 'button', class: 'rd' + (hot && n ? ' hot' : ''), onclick: () => to && show(to) }, el('b', { text: String(n || 0).padStart(3, '0') }), el('span', { text: label }));
+    const days = [...new Set(tr.map(r => r.day))].sort().slice(-14), per = (d, re) => tr.filter(r => r.day === d && re.test(r.k)).reduce((a, r) => a + r.n, 0);
+    const keys = Object.keys(TRAFFIC).filter(k => o.week[k] || o.today[k]), top = Math.max(1, ...keys.map(k => o.week[k] || 0));
+    const hud = el('section', { class: 'hud' },
+      el('header', {}, el('b', { text: 'NOVEL.GLOBAL // STATUS' }), el('span', { text: 'SYNC ' + new Date(o.at).toLocaleTimeString('en-AU') }),
+        el('button', { type: 'button', text: 'SAVE SNAPSHOT', onclick: () => { const a = el('a', { href: URL.createObjectURL(new Blob([JSON.stringify({ ...o, traffic: tr }, null, 1)], { type: 'application/json' })), download: `novel-global-status-${new Date().toISOString().slice(0, 16).replace(':', '')}.json` }); document.body.append(a); a.click(); a.remove(); } })),
+      el('div', { class: 'row' },
+        el('div', { class: 'cell g' }, gauge([[S.waiting, '#E25C40'], [S.shown, '#7FE3D3'], [S.refused, '#5F6B7A'], [S.deleted, '#2A3542']], 'SENT')),
+        el('div', { class: 'cell g' }, gauge([[Pl.waiting, '#E25C40'], [Pl.shown, '#7FE3D3'], [Pl.deleted, '#2A3542']], 'PLACES')),
+        el('div', { class: 'cell g' }, gauge([[J.printed, '#7FE3D3'], [(J.queued || 0) + (J.held || 0), '#F2C14E'], [J.failed, '#E25C40']], 'PRINTS 7D')),
+        el('div', { class: 'cell rds' }, read(S.waiting, 'WAITING', 'waiting', 1), read(Pl.waiting, 'PLACES IN', 'places', 1), read((J.queued || 0) + (J.held || 0), 'IN A QUEUE', 'printers', 1), read(J.failed, 'FAILED 7D', 'printers', 1), read(Po.published, 'POSTS LIVE', 'posts'), read(S.deleted, 'ARCHIVED', 'deleted'))),
+      el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'VISITS · 14 DAYS' }), trace(days.map(d => per(d, /^open-/))), el('div', { class: 'ticks' }, ...days.map(d => el('span', { text: d.slice(8) })))),
+      el('div', { class: 'row' },
+        el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'UNITS' }), ...o.printers.map(p => el('div', { class: 'unit' + (fresh(p.seen) ? ' live' : '') }, el('i', { class: 'led' }), el('b', { text: (p.name || p.id).toUpperCase() }),
+          el('span', { text: [p.paired ? 'PAIRED' : 'UNPAIRED', p.seen ? (fresh(p.seen) ? 'LISTENING' : 'LAST ' + when(p.seen)) : 'NEVER HEARD', p.mesh ? 'MESH' : '', p.touch ? 'SCREEN' : ''].filter(Boolean).join(' · ') })))),
+        el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'ACTIVITY · TODAY / 7 DAYS' }), ...(keys.length ? keys.map(k => el('div', { class: 'act' }, el('span', { text: TRAFFIC[k].toUpperCase() }), el('i', { class: 'bar', style: `width:${Math.round(100 * (o.week[k] || 0) / top)}%` }), el('b', { text: `${o.today[k] || 0} / ${o.week[k] || 0}` }))) : [el('span', { class: 'cap', text: 'NOTHING COUNTED YET' })]))));
+    main.replaceChildren(...head('Overview', 'Counts of things, never of people.'), hud);
+    ovT = setTimeout(() => { if (tab === 'overview') overview().catch(() => {}); }, 30000);
+  }
+
 
   /* ───────── settings: how the devices are earned, the aura's motion, the phreak, the twelve curations, and going back to base ───────── */
   async function curationsOf() { try { const st = await (await api('settings')).json(); const c = st.curations ? JSON.parse(st.curations) : []; return Array.from({ length: 12 }, (_, i) => c[i] || { name: '', about: '' }); } catch (e) { return Array.from({ length: 12 }, () => ({ name: '', about: '' })); } }
@@ -301,7 +328,16 @@
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'RESET WHAT IS TICKED', onclick: async () => { const o = {}; boxes.forEach(b => { const c = b.querySelector('input'); if (c.checked) o[c.dataset.k] = true; }); if (!Object.keys(o).length) return; if (prompt('Type RESET to go back to the base version for what is ticked.') !== 'RESET') return; await api('reset', { method: 'POST', body: JSON.stringify(o) }); show('overview'); badges(); } })),
       el('h3', { text: 'THIS BROWSER' }), el('p', { class: 'note', text: 'CLEARS WHAT HAS BEEN MADE IN THIS BROWSER ON NOVEL.GLOBAL: POSTERS ON ITS WALL, THE PIECE BEING MADE, KEPT SONGS, BOARDS AND THE STUDIO\'S POSTERS. NOTHING ON THE SERVER, AND THIS PAGE STAYS OPEN.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'CLEAR THIS BROWSER', onclick: async () => { if (!confirm('Clear everything made in this browser on novel.global?')) return; Object.keys(localStorage).filter(k => /^da\./.test(k)).forEach(k => localStorage.removeItem(k)); await new Promise(r => { try { const q = indexedDB.deleteDatabase('novelglobal'); q.onsuccess = q.onerror = q.onblocked = r; } catch (e) { r(); } }); alert('Cleared. novel.global opens as new in this browser.'); } })));
-    main.replaceChildren(...head('Settings', 'How novel.global behaves for everyone. Saved settings reach visitors the next time they open the site.'), gates, motion, cur, reset);
+    /* the start and the booth: the discs' words, the checklist, how a print starts, the booth's timing */
+    let so = {}; try { so = st.start ? JSON.parse(st.start) : {}; } catch (e) { so = {}; }
+    const chk = (id, on, t) => el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox', id }); c.checked = on; return c; })(), t);
+    const pn = el('select', {}, ...[['paper', 'AS THE PAPER: BLUE PRINTS NIGHT, WHITE PRINTS DAY'], ['day', 'ALWAYS DAY: BLACK ON WHITE'], ['night', 'ALWAYS NIGHT: WHITE ON A DARK SHADE']].map(([v, t]) => el('option', { value: v, text: t }))); pn.value = so.printNight || 'paper';
+    const num = (v, mn, mx, stp) => { const n = el('input', { type: 'number', min: mn, max: mx, step: stp }); n.value = String(v); return n; };
+    const bh = num(so.boothHome != null ? so.boothHome : 3.5, 1, 60, 0.5), bw0 = num((so.boothWait || [2, 5])[0], 0, 60, 1), bw1 = num((so.boothWait || [2, 5])[1], 0, 120, 1);
+    const start = el('section', { class: 'ed' }, el('h3', { text: 'START AND BOOTH' }), chk('so-words', so.discWords !== false, 'THE THREE DISCS SAY WHAT THEY DO, ONCE'), chk('so-check', so.checklist !== false, 'THE CHECKLIST BESIDE DAY AND NIGHT'),
+      el('label', {}, 'A PRINT STARTS', pn), el('div', { class: 'three' }, el('label', {}, 'BOOTH: BACK TO THE START AFTER (S)', bh), el('label', {}, 'BOOTH: NEXT PHOTO AFTER (MIN, AT LEAST)', bw0), el('label', {}, 'UP TO (MIN)', bw1)),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 3.5)), boothWait: [Math.max(0, +bw0.value || 0), Math.max(+bw0.value || 0, +bw1.value || 0)] }) }) })));
+    main.replaceChildren(...head('Settings', 'How novel.global behaves for everyone. Saved settings reach visitors the next time they open the site.'), gates, start, motion, cur, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */

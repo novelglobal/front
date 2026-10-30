@@ -1939,18 +1939,24 @@ function ditherLib() { if (window.CanvasDither) return Promise.resolve(window.Ca
 var siteURL = function (h) { var base = /\.workers\.dev$|localhost|\.test$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + (h ? '#' + h : ''); };
 var EYE_ASCII = '   _.-~~~~-._\n <(   (o)   )>\n   \'-.____.-\'\n    \' \' \' \'';
 var STICKERS = ['*', '<3', '<(o)>', '~~~', ':)', '\\o/', '+'];
+/* novel.global's mark, small, at the booth's head: a square and a circle */
+var MARK_SVG = '<svg class="mk" viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" fill="currentColor"/><circle cx="178.3" cy="56.5" r="48.8" fill="#E25C40"/></svg>';
 function boothOn(dest) {
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
   document.body.classList.add('booth'); sheet.hidden = true;
   var el = $('#booth') || document.body.appendChild(Object.assign(document.createElement('main'), { id: 'booth' }));
   printers().then(function (l) { var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384; });
+  /* opened without a printer named (from the start's print disc): every printer listening now, to choose from, when there is more than one */
+  if (!dest) api('/partners').then(function (j) { var on = ((j && j.partners) || []).filter(function (p) { return p.ready; }); if (on.length < 2) return; var nv = $('#booth .bp'); if (!nv) return;
+    nv.innerHTML = on.map(function (p) { return '<button type="button" data-bp="' + esc(p.id) + '" class="' + (p.id === BTH.dest ? 'on' : '') + '">' + esc(p.name || p.id) + '</button>'; }).join('');
+    $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
   boothStart(el);
 }
 function boothStart(el) {
   el = el || $('#booth'); BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
   var wait = (+store.get('da.booth.next', 0) || 0) - Date.now(); clearTimeout(BTH.t);
   if (wait > 0) { el.innerHTML = '<p class="bm">novel.global</p><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre><div class="am"><a href="' + esc(siteURL()) + '" aria-label="novel.global">[ novel.global ]</a></div>'; BTH.t = setTimeout(function () { if ($('#booth .art') && !$('#bt-pv') && !$('#bt-on')) boothStart(); }, wait); return; }
-  el.innerHTML = '<p class="bm">novel.global</p><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre>' +
+  el.innerHTML = '<p class="bm">' + MARK_SVG + 'novel.global</p><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre>' + '<nav class="bp" aria-label="Which printer"></nav>' +
     '<div class="am"><label aria-label="Take a photograph" title="Take a photograph">[ (o) ]<input type="file" accept="image/*" capture="environment" hidden></label>' +
     '<label aria-label="Upload a photograph" title="Upload a photograph">[ ^ ]<input type="file" accept="image/*" hidden></label></div>';
   $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
@@ -1993,7 +1999,7 @@ function boothEdit() {
   var el = $('#booth');
   el.innerHTML = '<p class="bm">novel.global</p><div class="pv" id="bt-pv"><canvas></canvas></div>' +
     '<div class="am sm" id="bt-st">' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" class="' + (i === BTH.pick ? 'on' : '') + '" aria-label="Sticker ' + esc(t) + '">[ ' + esc(t) + ' ]</button>'; }).join('') + '</div>' +
-    '<div class="am sm"><button id="bt-aa" aria-label="Words" title="Words">[ Aa ]</button><button id="bt-un" aria-label="Undo" title="Undo">[ &lt;- ]</button><button id="bt-x" aria-label="Start again" title="Start again">[ x ]</button><button id="bt-go" class="go" aria-label="Print" title="Print">[ &gt;&gt; ]</button></div>' +
+    '<div class="am sm"><button id="bt-aa" aria-label="Words" title="Words">[ Aa ]</button><button id="bt-un" aria-label="Undo" title="Undo">[ &lt;- ]</button><button id="bt-x" aria-label="Start again" title="Start again">[ x ]</button><button id="bt-dl" aria-label="Save it" title="Save it">[ ↓ ]</button><button id="bt-go" class="go" aria-label="Print" title="Print">[ &gt;&gt; ]</button></div>' +
     '<input id="bt-w" class="bw" maxlength="40" aria-label="Words" hidden>';
   var cv = $('#bt-pv canvas'), paint = function () {
     ditherLib().then(function (D) { var p = forPrint(BTH.im, BTH.paper, D); cv.width = p.width; cv.height = p.height; var x = cv.getContext('2d'); x.drawImage(p, 0, 0); drawStickers(x, p.width, p.height, '#000'); });
@@ -2010,6 +2016,8 @@ function boothEdit() {
   $('#bt-un').addEventListener('click', function () { BTH.st.pop(); paint(); });
   $('#bt-x').addEventListener('click', function () { boothStart(); });
   $('#bt-go').addEventListener('click', boothPrint);
+  /* saved, not printed: the slip as it would print, to keep or share */
+  $('#bt-dl').addEventListener('click', function () { ditherLib().then(function (D) { return boothSlip(D, code('s' + Date.now().toString(36) + '|' + Date.now())); }).then(function (cv) { if (!cv) return; download(cv, 'novel-global-photo.png'); var b = $('#booth'); if (b) b.classList.add('done'); clearTimeout(BTH.home); BTH.home = setTimeout(function () { document.body.classList.remove('booth'); location.href = siteURL(); }, 2500); }); });
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
@@ -2045,18 +2053,23 @@ function boothPrint() {
   ditherLib().then(function (D) { return boothSlip(D, cd); }).then(function (slipCv) {
     var lat = map.lat, lng = map.lng, words = BTH.words.trim(), photo = boothPhoto();
     el.innerHTML = '<p class="bm">novel.global</p><div class="pv slip"></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
-      '<div class="am" id="bt-on"><button id="bt-again" aria-label="Again" title="Again" hidden>[ ↺ ]</button><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">[ novel.global ]</a></div>';
-    $('.pv.slip', el).appendChild(slipCv);
+      '<div class="am" id="bt-on"><button id="bt-again" aria-label="Again" title="Again" hidden>[ ↺ ]</button><button id="bt-save" aria-label="Save it" title="Save it">[ ↓ ]</button><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">[ novel.global ]</a></div>';
+    $('.pv.slip', el).appendChild(slipCv); $('#bt-save').addEventListener('click', function () { download(slipCv, 'novel-global-' + cd + '.png'); });
     var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
     if (photo) PHOTOS[id] = photo; NOTES.unshift(n); saveNotes();
     var body = { type: 'booth', lat: +lat.toFixed(4), lng: +lng.toFixed(4), text: words };
     var payload = { kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv) }; if (photo) payload.photo = photo;
     var pip = $('#bt-pip');
-    send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); })
-      .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); } });
+    /* done: once the printer has it (or it waits safely for a signal), a moment to see it, then straight back to novel.global */
+    var home = function () { clearTimeout(BTH.home); document.body.classList.remove('booth'); location.href = siteURL(); };
+    var soon = function () { var hs = +((store.get('da.aura.start', {}) || {}).boothHome); clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(home, (isFinite(hs) && hs > 0 ? hs : 3.5) * 1000); };
+    send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); if (s !== 'failed') store.set('da.aura.printed', 1); soon(); })
+      .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); soon(); } });
     /* another photograph only after a wait no one sees, two to five minutes, so the printer stays free for everyone */
-    var next = Date.now() + 120e3 + Math.random() * 180e3; store.set('da.booth.next', next);
-    var ag = $('#bt-again'); ag.addEventListener('click', function () { boothStart(); }); clearTimeout(BTH.t); BTH.t = setTimeout(function () { ag.hidden = false; }, next - Date.now());
+    var bw = (store.get('da.aura.start', {}) || {}).boothWait, w0 = Array.isArray(bw) ? Math.max(0, +bw[0] || 0) : 2, w1 = Array.isArray(bw) ? Math.max(w0, +bw[1] || 0) : 5;
+    var next = Date.now() + (w0 + Math.random() * (w1 - w0)) * 60e3; store.set('da.booth.next', next);
+    $('#bt-site').addEventListener('click', function (e) { e.preventDefault(); home(); });
+    var ag = $('#bt-again'); ag.addEventListener('click', function () { clearTimeout(BTH.home); boothStart(); }); clearTimeout(BTH.t); BTH.t = setTimeout(function () { ag.hidden = false; }, next - Date.now());
   });
 }
 /* the poster a printer prints for itself, once it is online: PRINT FREE (the print is free, not the printer), the eye, and its booth's code drawn as a terminal draws

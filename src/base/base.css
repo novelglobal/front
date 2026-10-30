@@ -534,3 +534,14 @@ body.mapmode #oled { bottom: max(16px, env(safe-area-inset-bottom)); }
 .wq { display: flex; gap: 6px; align-items: center; } .wq #w-q { flex: 1; }
 #nw-lines .ln, #w-ed .ln { display: flex; gap: 6px; }
 body.wishmap:not(.mapmode):not(.half) #terrain { pointer-events: auto; }
+
+/* the booth's mark, and its printers to choose from */
+#booth .bm .mk { width: 26px; height: 12px; vertical-align: -1px; margin-right: 8px; }
+#booth .bp { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 0 0 14px; }
+#booth .bp:empty { display: none; }
+#booth .bp button { font: inherit; padding: 4px 10px; border: 1px dashed currentColor; background: none; color: inherit; opacity: .6; }
+#booth .bp button.on { opacity: 1; border-style: solid; }
+/* done in the booth: a moment's confirmation, the slip lifting away, before novel.global */
+#booth.done .pv.slip { animation: bt-away 3.2s ease-in forwards; }
+@keyframes bt-away { 0% { transform: none; opacity: 1; } 60% { transform: translateY(-14px); opacity: 1; } 100% { transform: translateY(-60px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #booth.done .pv.slip { animation: none; } }
