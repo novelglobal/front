@@ -53,16 +53,35 @@
       return el('tr', {}, el('td', { text: w }), el('td', { class: 'mono', text: String(n) }), el('td', { text: String(sum(k)) }), el('td', { class: 'soft', text: i && p ? Math.round(100 * n / p) + '%' : '' }), el('td', {}, el('i', { class: 'bar', style: `display:block;height:6px;background:var(--teal);width:${Math.round(100 * n / top)}%` }))); })));
     const keys = [...new Set(rows.map(r => r.k))].sort((x, y) => sum(y, wk) - sum(x, wk));
     const all = el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['WHAT', 'TODAY', '7 DAYS', '30 DAYS'].map(h => el('th', { text: h })))), el('tbody', {}, ...keys.map(k => el('tr', {}, el('td', { text: (TRAFFIC[k] || k).toUpperCase() }), el('td', { text: String(sum(k, new Date().toISOString().slice(0, 10))) }), el('td', { text: String(sum(k, wk)) }), el('td', { text: String(sum(k)) })))));
-    main.replaceChildren(...head('Use'), el('h3', { text: 'THE JOURNEY' }), path, el('h3', { text: 'EVERYTHING COUNTED' }), all);
+    /* what the counts say, in a few plain lines: where people stop, what is growing, what is never touched */
+    const pct = (n, d) => d ? Math.round(100 * n / d) : 0, prev = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10), sumR = (k, a2, b2) => rows.filter(r => r.k === k && r.day >= a2 && r.day < b2).reduce((n, r) => n + r.n, 0);
+    const ins = []; let worst = null; PATH.forEach(([k, w], i) => { if (!i) return; const n = sum(k, wk), p2 = sum(PATH[i - 1][0], wk); if (p2 >= 5 && (!worst || n / p2 < worst[2])) worst = [w, PATH[i - 1][1], n / p2]; });
+    if (worst) ins.push(`Most stop between ${worst[1].toLowerCase()} and ${worst[0].toLowerCase()}: ${Math.round(worst[2] * 100)}% go on.`);
+    const op = sum('open-aura', wk), bp = sum('booth-print', wk) + sum('booth-save', wk); if (op) ins.push(`${pct(bp, op)}% of visits this week made a booth photo.`);
+    const growth = keys.map(k => [k, sum(k, wk), sumR(k, prev, wk)]).filter(r => r[2] >= 3).sort((p, n) => n[1] / n[2] - p[1] / p[2])[0]; if (growth && growth[1] > growth[2]) ins.push(`Rising fastest: ${(TRAFFIC[growth[0]] || growth[0]).toLowerCase()} (${growth[2]} the week before, ${growth[1]} this week).`);
+    const quiet = ['desk-open', 'dev-0', 'dev-1', 'dev-2', 'step-3', 'yours'].filter(k => !sum(k, wk)); if (quiet.length) ins.push('Not opened this week: ' + quiet.map(k => (TRAFFIC[k] || k).replace(/-/g, ' ')).join(', ') + '.');
+    const days = [...new Set(rows.map(r => r.day))]; const busiest = days.map(d => [d, rows.filter(r => r.day === d && r.k === 'open-aura').reduce((n, r) => n + r.n, 0)]).sort((p, n) => n[1] - p[1])[0]; if (busiest && busiest[1]) ins.push(`Busiest day: ${new Date(busiest[0]).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}, ${busiest[1]} visits.`);
+    main.replaceChildren(...head('Use'), ins.length ? el('ul', { class: 'insights' }, ...ins.map(t => el('li', { text: t }))) : null, el('h3', { text: 'THE JOURNEY' }), path, el('h3', { text: 'EVERYTHING COUNTED' }), all);
   }
 
   /* ───────── makers: each by their three characters, newest first; when seen by the moon, the date after ───────── */
   const LUNA = 29.530588853 * 864e5, NEW0 = Date.UTC(2000, 0, 6, 18, 14), MOONS = ['NEW', 'WAXING CRESCENT', 'FIRST QUARTER', 'WAXING GIBBOUS', 'FULL', 'WANING GIBBOUS', 'LAST QUARTER', 'WANING CRESCENT'];
   const moonOf = t => { const x = (t - NEW0) / LUNA, f = x - Math.floor(x); return MOONS[Math.floor(f * 8 + 0.5) % 8] + ' MOON'; };
   const moonsAgo = t => { const k = Math.floor((Date.now() - NEW0) / LUNA) - Math.floor((t - NEW0) / LUNA); return k <= 0 ? 'THIS MOON' : k === 1 ? 'LAST MOON' : k + ' MOONS AGO'; };
+  /* one maker: what they sent (with its picture), what they said, their level; deleted, all of it goes (their stories to the archive) */
+  async function maker(who) {
+    const j = await (await api('makers/' + who)).json(), m = j.maker || {};
+    const st = (j.stories || []).map(x => el('tr', {}, el('td', {}, thumbCanvas(x.thumb) || ''), el('td', { class: 'mono', text: x.code }), el('td', { text: x.kind.toUpperCase() + ' · ' + x.status.toUpperCase() + (x.gone ? ' · TAKEN DOWN' : '') }), el('td', { text: (() => { try { const b = JSON.parse(x.body); return b.text || ''; } catch (e) { return ''; } })() }), el('td', { class: 'soft', text: when(x.created) })));
+    const tk = (j.talk || []).map(t => el('tr', {}, el('td', { text: t.sec.toUpperCase() }), el('td', { text: (t.re ? '↳ ' : '') + t.text }), el('td', { class: 'soft', text: when(t.at) + (t.hidden ? ' · HIDDEN' : '') })));
+    main.replaceChildren(...head(who + (m.kin != null ? ' · ' + kinName(m.kin) : '')),
+      el('p', { class: 'note', text: `LEVEL ${m.lv || 0} · ${m.posts || 0} SENT · FIRST ${when(m.first)} · LAST ${when(m.last)}${m.stage ? ' · ' + String(m.stage).toUpperCase() : ''}` }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', text: '← MAKERS', onclick: () => show('makers') }), el('button', { type: 'button', class: 'no', text: 'DELETE THIS MAKER', onclick: async () => { if (prompt('Type ' + who + ' to delete this maker: their stories go to the archive, their board posts and their record go.') !== who) return; await api('makers/' + who, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('makers'); } })),
+      el('h3', { text: 'SENT · ' + st.length }), st.length ? el('div', { class: 'tw' }, el('table', { class: 'makers' }, el('tbody', {}, ...st))) : el('p', { class: 'empty', text: 'NOTHING' }),
+      el('h3', { text: 'SAID · ' + tk.length }), tk.length ? el('div', { class: 'tw' }, el('table', { class: 'makers' }, el('tbody', {}, ...tk))) : el('p', { class: 'empty', text: 'NOTHING' }));
+  }
   async function makers() {
     const j = await (await api('makers')).json(), list = j.makers || [];
-    const rows = list.map(m => el('tr', {}, el('td', { class: 'mono', text: m.who + (m.kin != null ? ' · ' + kinName(m.kin).toUpperCase() : '') }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
+    const rows = list.map(m => el('tr', { class: 'go', onclick: () => maker(m.who) }, el('td', { class: 'mono', text: m.who + (m.kin != null ? ' · ' + kinName(m.kin).toUpperCase() : '') }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
       el('td', { text: moonsAgo(m.last) + ' · ' + moonOf(m.last) }), el('td', { class: 'soft', text: when(m.last) }), el('td', { class: 'soft', text: moonsAgo(m.first) })));
     main.replaceChildren(...head('Makers'),
       list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['CODE', 'SENT', 'ON THE SITE', 'TAKEN DOWN', 'STAGE', 'LAST SEEN', 'DATE', 'FIRST SEEN'].map(h => el('th', { text: h })))), el('tbody', {}, ...rows)) : el('p', { class: 'empty', text: 'NO ONE YET' }));
@@ -76,6 +95,9 @@
     card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: { show: 'SHOWN · AND SENT TO PRINT', refuse: 'REFUSED', delete: 'ARCHIVED · IT CAN BE BROUGHT BACK FROM ARCHIVE', restore: 'BACK IN WAITING', purge: 'DELETED FOR GOOD' }[action] || 'DONE' }));
     badges();
   }
+  /* the print as it went to the printer: its small one-bit picture ("w,h,base64"), drawn crisp */
+  function thumbCanvas(t) { const m = /^(\d+),(\d+),(.+)$/.exec(t || ''); if (!m) return null; const w = +m[1], h = +m[2], bin = atob(m[3]), rb = Math.ceil(w / 8), c = el('canvas', { class: 'thumb' }); c.width = w; c.height = h; const x = c.getContext('2d'), im = x.createImageData(w, h);
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { const on = bin.charCodeAt(yy * rb + (xx >> 3)) & (0x80 >> (xx & 7)), i = (yy * w + xx) * 4; im.data[i] = im.data[i + 1] = im.data[i + 2] = on ? 20 : 250; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); return c; }
   function storyCard(x) {
     const card = el('article', { class: 'card' + (x.kind !== 'story' && x.kind !== 'message' ? ' rec' : '') });
     const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}${x.who ? ` · BY ${x.who}` : ''}${(() => { let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { /* none */ } return [o.from ? ' · FROM ' + o.from.toUpperCase() : '', o.city || o.country ? ' · ' + [o.city, o.region, o.country].filter(Boolean).join(', ').toUpperCase() : '', o.dev ? ' · ' + o.dev.toUpperCase() : '', o.stage ? ' · STAGE ' + o.stage.toUpperCase() : '', o.mesh ? ' · MESH: ' + o.mesh : '', x.jobat ? ' · PRINTER ' + x.jobat.toUpperCase() : '', x.kind === 'message' ? ' · DIRECT TO THE PRINTER' : ''].join(''); })()}${x.gone ? ` · TAKEN DOWN BY ITS MAKER ${when(x.gone)} (OFF THE SITE, KEPT HERE)` : ''}`;
@@ -109,17 +131,31 @@
       x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => act(x.id, 'delete', card) }),
       x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
-    const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img);
-    card.append(...(x.kind !== 'story' && x.kind !== 'message' ? [] : [img || el('div')]), el('div', {}, body, acts));
+    const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img); const tc = thumbCanvas(x.thumb);
+    /* its mesh line and where it came from, each on a line of its own */
+    let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { o = {}; }
+    const more = el('div', { class: 'more' }, o.mesh ? el('p', { class: 'mesh', text: 'MESH · ' + o.mesh }) : null, x.jobat ? el('p', { class: 'note', text: 'PRINTER · ' + String(x.jobat).toUpperCase() }) : null);
+    card.append(el('div', { class: 'pics' }, img || null, tc || null, !img && !tc ? el('div', { class: 'nopic' }) : null), el('div', {}, body, more, acts));
     return card;
   }
   async function stories(st) {
     const r = await api('stories?status=' + st); const { stories: list } = await r.json();
     const clear = st === 'waiting' && list.length ? [el('button', { type: 'button', text: `CLEAR ALL ${list.length} WAITING`, onclick: async () => { if (!confirm(`Refuse and clear all ${list.length} waiting, with their held prints?`)) return; await api('stories/clear', { method: 'POST', body: '{}' }); stories(st); } })] : [];
-    const T = { waiting: ['Waiting', 'Everything sent to novel.global waits here until it is shown (and printed, where it was sent to a printer) or refused.'], shown: ['Shown', 'On the map and the board for everyone. Star one to hold it up first.'], refused: ['Refused', 'Kept here, photographs and all, and never shown. Archive one to put it away.'], deleted: ['Archive', 'Everything archived or reset, kept for a year: bring one back to waiting, or delete it for good.'] }[st] || [st, ''];
+    const T = { waiting: ['Waiting', ''], shown: ['Shown', 'On the map and the board for everyone. Star one to hold it up first.'], refused: ['Refused', 'Kept here, photographs and all, and never shown. Archive one to put it away.'], deleted: ['Archive', 'Everything archived or reset, kept for a year: bring one back to waiting, or delete it for good.'] }[st] || [st, ''];
     let extra = []; if (st === 'deleted') { const gone = (await (await api('places?status=deleted')).json()).places || []; if (gone.length) extra = [el('h3', { class: 'lbl', text: `ARCHIVED PLACES · ${gone.length}` }), ...gone.map(p => el('article', { class: 'card' }, el('div', {}, el('b', { text: p.n }), el('p', { class: 'note', text: [p.cat, p.what, `${p.lat}, ${p.lng}`].filter(Boolean).join(' · ') }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: async () => { await api('places/' + p.id, { method: 'POST', body: JSON.stringify({ action: 'restore' }) }); show('deleted'); } }), el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: async () => { if (!confirm('Delete this place for good?')) return; await api('places/' + p.id, { method: 'POST', body: JSON.stringify({ action: 'purge' }) }); show('deleted'); } })))))]; }
-    main.replaceChildren(...head(T[0], T[1]), ...clear, ...(list.length ? list.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })]), ...extra);
+    const q = el('input', { type: 'search', placeholder: 'SEARCH: WORDS, CODE, MAKER, PLACE, PRINTER', class: 'q' }), so = el('select', {}, ...[['new', 'NEWEST'], ['old', 'OLDEST'], ['kind', 'BY KIND'], ['who', 'BY MAKER'], ['pic', 'WITH A PICTURE FIRST']].map(([v, t]) => el('option', { value: v, text: t })));
+    const box = el('div', { class: 'list' }), count = el('span', { class: 'cnt' }), bulk = el('button', { type: 'button', class: 'no' });
+    const hay = x => [x.code, x.kind, x.who, x.dest, x.body, x.origin, x.jobat].join(' ').toLowerCase();
+    let shown = list;
+    const draw = () => { const w = q.value.trim().toLowerCase(); shown = list.filter(x => !w || hay(x).includes(w)).slice();
+      const by = { new: (p, n) => n.created - p.created, old: (p, n) => p.created - n.created, kind: (p, n) => String(p.kind).localeCompare(n.kind) || n.created - p.created, who: (p, n) => String(p.who || '~').localeCompare(n.who || '~') || n.created - p.created, pic: (p, n) => (!!(n.photo || n.thumb) - !!(p.photo || p.thumb)) || n.created - p.created }[so.value]; shown.sort(by);
+      count.textContent = shown.length + ' OF ' + list.length; bulk.textContent = st === 'deleted' ? 'DELETE THESE ' + shown.length + ' FOR GOOD' : 'ARCHIVE THESE ' + shown.length; bulk.hidden = !shown.length || !w;
+      box.replaceChildren(...(shown.length ? shown.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })])); };
+    bulk.onclick = async () => { const n = shown.length, act2 = st === 'deleted' ? 'purge' : 'delete'; if (!confirm((act2 === 'purge' ? 'Delete for good ' : 'Archive ') + n + ' shown by this search?')) return; bulk.disabled = true;
+      for (const x of shown) await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: act2 }) }).catch(() => {}); bulk.disabled = false; show(st); badges(); };
+    q.oninput = draw; so.onchange = draw; draw();
+    main.replaceChildren(...head(T[0]), ...clear, el('div', { class: 'tools' }, q, so, count, bulk), box, ...extra);
   }
 
   /* ───────── printers: paired with a token shown once; printing with or without approval; a test print ───────── */

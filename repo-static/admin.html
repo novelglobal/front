@@ -119,6 +119,25 @@
     .card { grid-template-columns: 1fr; } .card img { width: 100%; height: auto; aspect-ratio: 1; }
     .ed .two, .ed .three { grid-template-columns: 1fr; }
   }
+
+  /* the story list's tools and pictures; makers open; insights */
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; } .tools .q { flex: 1 1 220px; min-width: 0; } .tools .cnt { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--grey); }
+  .card .pics { display: grid; gap: 6px; align-content: start; } .card .pics img, .card .pics canvas { width: 100%; height: auto; display: block; border-radius: 3px; } .card .pics canvas.thumb { image-rendering: pixelated; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+  .card .nopic { aspect-ratio: 1; border: 1px dashed var(--line); border-radius: 3px; } .card .more .mesh { font: 500 12px var(--mono); padding: 6px 8px; background: var(--teal-wash); border-radius: 3px; overflow-wrap: anywhere; }
+  table.makers tr.go { cursor: pointer; } table.makers tr.go:hover td { background: var(--teal-wash); } table.makers canvas.thumb { width: 48px; image-rendering: pixelated; }
+  .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .insights { list-style: none; margin: 0 0 16px; padding: 12px 14px; background: var(--sheet); border-left: 3px solid var(--teal); display: grid; gap: 6px; font: 14px/1.45 var(--sans); }
+  /* phones first: the sections one sliding row, everything one column, nothing wider than the screen */
+  @media (max-width: 760px) {
+    body { overflow-x: hidden; }
+    header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+    nav#tabs { position: sticky !important; top: 0; z-index: 4; flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 4px; scrollbar-width: none; }
+    nav#tabs button { flex: none; white-space: nowrap; }
+    main { padding: 10px !important; min-width: 0; } h2 { font-size: 20px; }
+    .hud { padding: 10px; } .hud .row { grid-template-columns: 1fr 1fr !important; gap: 8px; } .hud .cell { padding: 8px; min-width: 0; } .hud .rds { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+    .hud .act { grid-template-columns: 1fr 60px 52px; } .hud header { flex-wrap: wrap; } .hud .gauge { max-width: 110px; }
+    table.makers { display: block; overflow-x: auto; white-space: nowrap; } .card { padding: 12px; }
+  }
 </style>
 </head>
 <body>

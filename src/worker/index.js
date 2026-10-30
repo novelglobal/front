@@ -327,7 +327,8 @@ async function admin(db, env, req, parts) {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
     const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star, s.who, s.gone, s.origin,
         (SELECT j.printer || ' ' || j.status || COALESCE(' ' || j.error, '') FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS jobat,
-        (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 200`).bind(st).all();
+        (SELECT j.thumb FROM jobs j WHERE j.story = s.id AND j.thumb IS NOT NULL LIMIT 1) AS thumb,
+        (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 1000`).bind(st).all();
     return json({ stories: results.map(r => ({ ...r, photo: !!r.has_photo, has_photo: undefined })) });
   }
   if (what === 'stories' && id === 'clear' && req.method === 'POST') {   // everything waiting refused at once, its held prints with it
@@ -349,6 +350,17 @@ async function admin(db, env, req, parts) {
   if (what === 'photos' && id) return photo(db, id, true);
   if (what === 'talk' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT t.*, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who ORDER BY t.at DESC LIMIT 300').all(); return json({ talk: results }); }
   if (what === 'talk' && id && req.method === 'POST') { const b = await body(req); if (b.action === 'hide' || b.action === 'show') { await db.prepare('UPDATE talk SET hidden = ? WHERE id = ?').bind(b.action === 'hide' ? now() : null, id).run(); return json({ ok: true }); } if (b.action === 'delete') { await db.prepare('DELETE FROM talk WHERE id = ?').bind(id).run(); return json({ ok: true }); } return fail(400, 'action'); }
+  /* one maker: everything they did (what they sent, in every state, and what they said on the board), and deleting them:
+     their stories to the archive (still kept, to purge from there), their board posts and their record gone */
+  if (what === 'makers' && id && req.method === 'GET') {
+    const m = await db.prepare('SELECT * FROM makers WHERE who = ?').bind(id).first(); if (!m) return fail(404, 'not found');
+    const { results: st } = await db.prepare("SELECT s.id, s.code, s.kind, s.status, s.body, s.created, s.decided, s.gone, s.origin, s.photo IS NOT NULL AS has_photo, (SELECT j.thumb FROM jobs j WHERE j.story = s.id AND j.thumb IS NOT NULL LIMIT 1) AS thumb FROM stories s WHERE s.who = ? ORDER BY s.created DESC LIMIT 500").bind(id).all();
+    const { results: tk } = await db.prepare('SELECT id, sec, text, re, at, hidden FROM talk WHERE who = ? ORDER BY at DESC LIMIT 500').bind(id).all();
+    return json({ maker: m, stories: st.map(r => ({ ...r, photo: !!r.has_photo, has_photo: undefined })), talk: tk });
+  }
+  if (what === 'makers' && id && req.method === 'POST') { const b = await body(req); if (b.action !== 'delete') return fail(400, 'action');
+    await db.batch([db.prepare("DELETE FROM jobs WHERE status IN ('held', 'queued') AND story IN (SELECT id FROM stories WHERE who = ?)").bind(id), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE who = ? AND status != 'deleted'").bind(now(), id), db.prepare('DELETE FROM talk WHERE who = ?').bind(id), db.prepare('DELETE FROM makers WHERE who = ?').bind(id)]);
+    return json({ ok: true }); }
   if (what === 'makers' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT m.who, m.first, m.last, m.posts, m.stage, m.kin, m.lv, (SELECT count(*) FROM talk t WHERE t.who = m.who) AS said, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.status = 'shown' AND s.gone IS NULL) AS shown, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.gone IS NOT NULL) AS gone FROM makers m ORDER BY m.last DESC LIMIT 500`).all(); return json({ makers: results }); }
   /* the portfolio's posts: every one, drafts too; one to edit; saved; deleted */
   if (what === 'posts' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT ${POST_COLS} FROM posts ORDER BY day DESC, created DESC LIMIT 500`).all(); return json({ posts: results.map(postOut) }); }
