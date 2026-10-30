@@ -958,6 +958,15 @@ function moon(t) {
 }
 /* how long ago, in moons: "this moon", "last moon", "3 moons ago" */
 function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon' : k === 1 ? 'last moon' : k + ' moons ago'; }
+/* each maker's kin: a species of here, and a mark, handed out by the site in turn (the first 64 makers a species each) */
+var KIN = ['Irukandji', 'Blue-ringed octopus', 'Weedy seadragon', 'Port Jackson shark', 'Little penguin', 'Australian fur seal', 'Southern right whale', 'Burrunan dolphin',
+  'Bluebottle', 'Biscuit star', 'Giant cuttlefish', 'Blue groper', 'Old wife', 'Sea hare', 'Spider crab', 'Pied oystercatcher', 'Crested tern', 'Hooded plover',
+  'Short-tailed shearwater', 'Australasian gannet', 'Silver gull', 'Black swan', 'Australian pelican', 'Superb fairy-wren', 'Rainbow lorikeet', 'Laughing kookaburra',
+  'Tawny frogmouth', 'Powerful owl', 'Australian magpie', 'Galah', 'Sulphur-crested cockatoo', 'Grey-headed flying-fox', 'Brushtail possum', 'Ringtail possum', 'Platypus',
+  'Echidna', 'Eastern grey kangaroo', 'Swamp wallaby', 'Common wombat', 'Koala', 'Sugar glider', 'Growling grass frog', 'Brown tree frog', 'Blue-tongue lizard',
+  'Eastern water dragon', 'Tiger snake', 'Golden sun moth', 'Bogong moth', 'Blue-banded bee', 'Common brown butterfly', 'Garden orb-weaver', 'Huntsman', 'Yabby',
+  'Murray cod', 'River blackfish', 'Short-finned eel', 'River red gum', 'Golden wattle', 'Coast banksia', 'Common heath', 'Bull kelp', 'Eelgrass', 'Coast saltbush', 'Mangrove'];
+function kin(k) { k = +k; if (!isFinite(k) || k < 0) return null; return { n: KIN[k % KIN.length], m: k % 12 }; }
 /* this phone's three characters, made once: printed on what it makes, sent with it, and typed on another phone to carry on there */
 var WHO_CH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', WHO_RE = /^[A-HJ-NP-Z2-9]{3}$/;
 /* kept for one moon from its last use (a send, a print, a poster, a code typed or scanned); unused for longer, this phone lets it go
@@ -970,9 +979,9 @@ function me() {
   c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.who', c); meUsed(); return c;
 }
 function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.who', c); store.set('da.who.pass', 1); meUsed(); return true; }
-function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { return (j && j.mine) || []; }); }
+function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { if (j && j.kin != null) store.set('da.kin', j.kin); return (j && j.mine) || []; }); }
 /* a code typed from a print: this phone carries on as it, as far as it had got (asked of the site; offline, from where it is) */
-function useCode(c) { if (!setMe(c)) return Promise.resolve(false); return api('/mine/' + me()).then(function (j) { var lv = Math.max(+store.get('da.lv', 0) || 0, (j && j.lv) || 0, 1); store.set('da.lv', lv); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }).catch(function () { if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }); }
+function useCode(c) { if (!setMe(c)) return Promise.resolve(false); return api('/mine/' + me()).then(function (j) { var lv = Math.max(+store.get('da.lv', 0) || 0, (j && j.lv) || 0, 1); store.set('da.lv', lv); if (j && j.kin != null) store.set('da.kin', j.kin); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }).catch(function () { if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }); }
 function dropMine(id) { return api('/mine/' + me() + '/' + encodeURIComponent(id), { method: 'POST', body: '{}' }); }
 /* sent with the code, and where its maker is (the page sets NG.stageOf): for the approval page, never the public */
 function send(payload) { payload.who = payload.who || me(); meUsed(); payload.lv = +store.get('da.lv', 0) || 0; if (!payload.from) payload.from = BTH ? 'booth' : document.getElementById('aura') ? 'novel.global' : 'base'; if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
@@ -2284,7 +2293,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

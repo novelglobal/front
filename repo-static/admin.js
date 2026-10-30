@@ -30,7 +30,18 @@
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else if (t === 'use') await use(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else if (t === 'use') await use(); else if (t === 'talk') await talk(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+  }
+
+  /* ───────── talk: the board, every post with its maker's code and kin; hidden ones stay here ───────── */
+  const KIN = ['Irukandji', 'Blue-ringed octopus', 'Weedy seadragon', 'Port Jackson shark', 'Little penguin', 'Australian fur seal', 'Southern right whale', 'Burrunan dolphin', 'Bluebottle', 'Biscuit star', 'Giant cuttlefish', 'Blue groper', 'Old wife', 'Sea hare', 'Spider crab', 'Pied oystercatcher', 'Crested tern', 'Hooded plover', 'Short-tailed shearwater', 'Australasian gannet', 'Silver gull', 'Black swan', 'Australian pelican', 'Superb fairy-wren', 'Rainbow lorikeet', 'Laughing kookaburra', 'Tawny frogmouth', 'Powerful owl', 'Australian magpie', 'Galah', 'Sulphur-crested cockatoo', 'Grey-headed flying-fox', 'Brushtail possum', 'Ringtail possum', 'Platypus', 'Echidna', 'Eastern grey kangaroo', 'Swamp wallaby', 'Common wombat', 'Koala', 'Sugar glider', 'Growling grass frog', 'Brown tree frog', 'Blue-tongue lizard', 'Eastern water dragon', 'Tiger snake', 'Golden sun moth', 'Bogong moth', 'Blue-banded bee', 'Common brown butterfly', 'Garden orb-weaver', 'Huntsman', 'Yabby', 'Murray cod', 'River blackfish', 'Short-finned eel', 'River red gum', 'Golden wattle', 'Coast banksia', 'Common heath', 'Bull kelp', 'Eelgrass', 'Coast saltbush', 'Mangrove'];
+  const kinName = k => (k == null ? '' : KIN[k % KIN.length]);
+  async function talk() {
+    const j = await (await api('talk')).json(), list = j.talk || [];
+    const row = t => { const tr = el('tr', { class: t.hidden ? 'soft' : '' }, el('td', { text: t.sec.toUpperCase() }), el('td', { class: 'mono', text: t.who }), el('td', { text: kinName(t.kin) }), el('td', { text: (t.re ? '↳ ' : '') + t.text }), el('td', { class: 'soft', text: when(t.at) }),
+      el('td', {}, el('button', { type: 'button', text: t.hidden ? 'SHOW' : 'HIDE', onclick: async () => { await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: t.hidden ? 'show' : 'hide' }) }); show('talk'); } }),
+        el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: async () => { if (!confirm('Delete this for good?')) return; await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('talk'); } }))); return tr; };
+    main.replaceChildren(...head('Talk'), list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['SECTION', 'CODE', 'KIN', 'SAID', 'WHEN', ''].map(h => el('th', { text: h })))), el('tbody', {}, ...list.map(row))) : el('p', { class: 'empty', text: 'NOTHING YET' }));
   }
 
   /* ───────── use: how far people get, step by step, and what is opened and what is not (counts only, never who) ───────── */
@@ -51,7 +62,7 @@
   const moonsAgo = t => { const k = Math.floor((Date.now() - NEW0) / LUNA) - Math.floor((t - NEW0) / LUNA); return k <= 0 ? 'THIS MOON' : k === 1 ? 'LAST MOON' : k + ' MOONS AGO'; };
   async function makers() {
     const j = await (await api('makers')).json(), list = j.makers || [];
-    const rows = list.map(m => el('tr', {}, el('td', { class: 'mono', text: m.who }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
+    const rows = list.map(m => el('tr', {}, el('td', { class: 'mono', text: m.who + (m.kin != null ? ' · ' + kinName(m.kin).toUpperCase() : '') }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
       el('td', { text: moonsAgo(m.last) + ' · ' + moonOf(m.last) }), el('td', { class: 'soft', text: when(m.last) }), el('td', { class: 'soft', text: moonsAgo(m.first) })));
     main.replaceChildren(...head('Makers'),
       list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['CODE', 'SENT', 'ON THE SITE', 'TAKEN DOWN', 'STAGE', 'LAST SEEN', 'DATE', 'FIRST SEEN'].map(h => el('th', { text: h })))), el('tbody', {}, ...rows)) : el('p', { class: 'empty', text: 'NO ONE YET' }));

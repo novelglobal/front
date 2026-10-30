@@ -42,7 +42,7 @@ function boardTools() {
 /* the board shows over the ground while SIGNALS is open */
 const boardW = host => host.clientWidth - (parseFloat(getComputedStyle(host).paddingRight) || 0);
 async function showBoard(on) {
-  const host = $('#board'); host.hidden = !on; if (!on) return null;
+  const host = $('#board'); host.hidden = !on; document.documentElement.classList.toggle('board-on', !!on); if (!on) return null;
   boardTools();
   const f = await loadFabric().catch(() => null); if (!f) return null;
   leanOnce($('#board-tools'), 'da.lean.board'); const W = boardW(host), H = host.clientHeight - 52 - 26;
@@ -79,6 +79,11 @@ function boardPanBind() {
   cv.on('mouse:move', e => { if (!bPan) return; const p = ptOf(e.e); const vt = cv.viewportTransform; vt[4] += p.x - bPan.x; vt[5] += p.y - bPan.y; bPan = p; cv.requestRenderAll(); });
   cv.on('mouse:up', () => { if (!bPan) return; bPan = null; cv.setViewportTransform(cv.viewportTransform); });
   cv.on('mouse:wheel', o => { const z = cv.getZoom() * Math.pow(0.999, o.e.deltaY); boardZoomTo(z, o.e.offsetX, o.e.offsetY); o.e.preventDefault(); o.e.stopPropagation(); });
+  /* two fingers: pinch to zoom round where they are, and move together to pan; one finger is left to the board as before */
+  const up = cv.upperCanvasEl; let pin = null; const two = e => { const r = up.getBoundingClientRect(), a2 = e.touches[0], b2 = e.touches[1]; return { d: Math.hypot(a2.clientX - b2.clientX, a2.clientY - b2.clientY), x: (a2.clientX + b2.clientX) / 2 - r.left, y: (a2.clientY + b2.clientY) / 2 - r.top }; };
+  up.addEventListener('touchstart', e => { if (e.touches.length === 2) { pin = { ...two(e), z: cv.getZoom() }; bPan = null; cv.discardActiveObject(); e.preventDefault(); } }, { passive: false });
+  up.addEventListener('touchmove', e => { if (!pin || e.touches.length !== 2) return; const n = two(e); boardZoomTo(pin.z * n.d / Math.max(1, pin.d), n.x, n.y); const vt = cv.viewportTransform; vt[4] += n.x - pin.x; vt[5] += n.y - pin.y; pin.x = n.x; pin.y = n.y; cv.requestRenderAll(); e.preventDefault(); }, { passive: false });
+  up.addEventListener('touchend', e => { if (pin && e.touches.length < 2) { pin = null; cv.setViewportTransform(cv.viewportTransform); } });
 }
 function exFrame(keepView) {
   if (!cv) return; const ex = boardId === 'b00', locked = exLocked() || bLock; $('#board').classList.toggle('locked', exLocked()); $('#board').classList.toggle('ex-edit', ex && !exLocked());
