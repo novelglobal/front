@@ -1998,7 +1998,7 @@ function boothClose() {
 }
 function beatK(k) { try { fetch('/api/beat?k=' + k, { keepalive: true }).catch(function () {}); } catch (e) { /* uncounted */ } }
 /* the booth opened on a photo already chosen (the eye in the middle): no second touch */
-function boothWith(file) { if (!BTH) { history.replaceState(null, '', location.pathname + location.search + '#booth'); boothOn(); } boothPic(file); }
+function boothWith(file) { if (!BTH) boothOn(); boothPic(file); }   // no #booth in the address: a reload (after a save, say) lands back on the site
 function boothOn(dest) {
   beatK('booth-open');
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
@@ -2015,7 +2015,7 @@ function boothStart(el) {
   el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
   clearTimeout(BTH.t);
   /* one touch: the eye. A phone then offers its camera or its photos; a computer, a file */
-  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo"><pre class="art" aria-hidden="true">' + (document.getElementById('aura') ? '' : esc(EYE_ASCII)) + '</pre><input type="file" accept="image/*" hidden></label>' +
+  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo"><pre class="art" aria-hidden="true">' + (/[?&]base/.test(location.search) ? esc(EYE_ASCII) : '') + '</pre><input type="file" accept="image/*" hidden></label>' +
     '<small class="cap">Tap the eye for a photo</small><nav class="bp" aria-label="Which printer"></nav>';
   $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
 }
@@ -2130,6 +2130,7 @@ function boothPhoto() {
 /* after a print or a save: the print is the pass (its code on the paper, never on the screen). The aura's eye takes it in, a while, then novel.global */
 function boothPass(el, s0) {
   if (!BTH) return;   // already gone back to novel.global
+  if (/^#booth/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
   var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; store.set('da.who.pass', 1); meUsed(); if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1);
   el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept"><i></i></div><small class="cap">your code is on the paper</small><i class="pt" style="animation-duration:' + t + 'ms"></i>';
   clearTimeout(BTH.home); BTH.home = setTimeout(boothClose, t);
