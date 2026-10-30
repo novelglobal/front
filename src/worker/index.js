@@ -60,6 +60,8 @@ function ready(db) {
     /* touch: the hash of a small touch screen's token; while set, that screen is where a held slip is printed or squashed */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN touch TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN touch_seen INTEGER').run(); } catch (e) { /* already there */ }
+    /* the Wi-Fi each is on and how strongly, as each last said (JSON: { n, rssi, at }); and a Wi-Fi setup asked for */
+    for (const col of ['net TEXT', 'touch_net TEXT', 'wifi INTEGER']) { try { await db.prepare(`ALTER TABLE printers ADD COLUMN ${col}`).run(); } catch (e) { /* already there */ } }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN refused TEXT').run(); } catch (e) { /* already there */ }
     /* every partner place has a print queue from the start; a printer joins it when its token is made on the approval page */
     if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)').bind(p.id, p.n, p.paper, now())));
@@ -197,12 +199,15 @@ async function partners(db) {
 async function printerAuth(db, req, id, can) {
   const p = await db.prepare('SELECT * FROM printers WHERE id = ?').bind(id).first(); const tok = bearer(req);
   if (!p || !p.token || !tok || !(await same(await sha256(tok), p.token))) return null;
-  await (can === undefined ? db.prepare('UPDATE printers SET seen = ? WHERE id = ?').bind(now(), id) : db.prepare('UPDATE printers SET seen = ?, can = ? WHERE id = ?').bind(now(), can, id)).run(); return p;
+  if (!p.seen || now() - p.seen > 60e3 || (can !== undefined && can !== p.can)) await (can === undefined ? db.prepare('UPDATE printers SET seen = ? WHERE id = ?').bind(now(), id) : db.prepare('UPDATE printers SET seen = ?, can = ? WHERE id = ?').bind(now(), can, id)).run(); return p;
 }
 async function next(db, req, id) {
   const can = (new URL(req.url).searchParams.get('can') || '').slice(0, 40);
   const p = await printerAuth(db, req, id, can); if (!p) return fail(401, 'token');
   const t = now();
+  { const pn = netOf(new URL(req.url)); if (pn) { const o = JSON.parse(pn), was = (() => { try { return JSON.parse(p.net || 'null'); } catch (e) { return null; } })(); if (!was || was.n !== o.n || Math.abs((was.rssi || 0) - (o.rssi || 0)) > 6 || o.at - was.at > 60e3) await db.prepare('UPDATE printers SET net = ? WHERE id = ?').bind(pn, id).run(); } }
+  /* CHANGE WI-FI, pressed on the approval page in the last two minutes: the receiver opens its setup Wi-Fi (only one that says it can) */
+  if (p.wifi) { await db.prepare('UPDATE printers SET wifi = NULL WHERE id = ?').bind(id).run(); if (t - p.wifi < 2 * 60e3 && /\bwifi\b/.test(can)) return json({ wifi: true }); }
   /* TURN OFF, pressed on the approval page in the last two minutes, comes before any slip. An older one is dropped, so a
      printer moved and switched on days later is never turned off by it; a receiver that cannot turn off is never sent it */
   if (p.off) { await db.prepare('UPDATE printers SET off = NULL WHERE id = ?').bind(id).run(); if (t - p.off < 2 * 60e3 && /\boff\b/.test(can)) return json({ off: true }); }
@@ -220,10 +225,12 @@ async function next(db, req, id) {
 async function touchAuth(db, req, id) {
   const p = await db.prepare('SELECT * FROM printers WHERE id = ?').bind(id).first(); const tok = bearer(req);
   if (!p || !p.touch || !tok || !(await same(await sha256(tok), p.touch))) return null;
-  await db.prepare('UPDATE printers SET touch_seen = ? WHERE id = ?').bind(now(), id).run(); return p;
+  if (!p.touch_seen || now() - p.touch_seen > 60e3) await db.prepare('UPDATE printers SET touch_seen = ? WHERE id = ?').bind(now(), id).run(); return p;
 }
+const netOf = url => { const n = (url.searchParams.get('net') || '').slice(0, 40), r = +url.searchParams.get('rssi'); return n ? JSON.stringify({ n, rssi: Number.isFinite(r) ? Math.max(-120, Math.min(0, Math.round(r))) : null, at: now() }) : null; };
 async function touchList(db, req, id) {
-  if (!(await touchAuth(db, req, id))) return fail(401, 'token');
+  const p0 = await touchAuth(db, req, id); if (!p0) return fail(401, 'token');
+  { const tn = netOf(new URL(req.url)); if (tn) { const o = JSON.parse(tn), was = (() => { try { return JSON.parse(p0.touch_net || 'null'); } catch (e) { return null; } })(); if (!was || was.n !== o.n || Math.abs((was.rssi || 0) - (o.rssi || 0)) > 6 || o.at - was.at > 60e3) await db.prepare('UPDATE printers SET touch_net = ? WHERE id = ?').bind(tn, id).run(); } }
   const { results } = await db.prepare(`SELECT j.id, j.code, j.created, j.escpos IS NOT NULL AS paper, s.body FROM jobs j LEFT JOIN stories s ON s.id = j.story WHERE j.printer = ? AND j.status = 'held' ORDER BY j.created LIMIT 5`).bind(id).all();
   const c = await db.prepare("SELECT sum(status = 'held') AS w, sum(status IN ('queued', 'printing')) AS q FROM jobs WHERE printer = ?").bind(id).first();
   return json({ waiting: (c && c.w) || 0, printing: (c && c.q) || 0, held: results.map(r => { let b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) { /* none */ }
@@ -293,7 +300,7 @@ async function admin(db, env, req, parts) {
   if (what === 'export' && req.method === 'GET') return exportAll(db);
   if (what === 'reset' && req.method === 'POST') return resetSite(db, req);
   if (what === 'printers' && !id) {
-    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off,
+    const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
@@ -309,6 +316,7 @@ async function admin(db, env, req, parts) {
     if (b.action === 'touch') { if (!b.on) { await db.prepare('UPDATE printers SET touch = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); } const tok = rid(24); await db.prepare('UPDATE printers SET touch = ?, auto = 0 WHERE id = ?').bind(await sha256(tok), id).run(); return json({ token: tok }); }
     if (b.action === 'unpair') { await db.prepare('UPDATE printers SET token = NULL, seen = NULL, can = NULL, off = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }
     /* TURN OFF: the receiver is handed it the next time it asks, if that is within two minutes */
+    if (b.action === 'wifi') { await db.prepare('UPDATE printers SET wifi = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'auto' || b.action === 'mesh' || b.action === 'live') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
     if (b.action === 'paper' && ['58', '80'].includes(String(b.paper))) { await db.prepare('UPDATE printers SET paper = ? WHERE id = ?').bind(String(b.paper), id).run(); return json({ ok: true }); }

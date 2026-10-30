@@ -189,6 +189,13 @@ try {
   check('published, it is listed with its category and cover, and only https links are kept', po1.json.posts.length === 1 && po1.json.posts[0].cat === 'WORK' && po1.json.posts[0].cover && po1one.json.post.links.join() === 'https://example.org/a' && cov.status === 200 && cov.type === 'image/jpeg', `${JSON.stringify(po1.json)} ${cov.status}`);
   await call(`/api/admin/posts/${pd.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } });
   check('deleted, it is gone', (await call('/api/posts')).json.posts.length === 0);
+  /* in the field: the Pi and its screen say which Wi-Fi they are on, for the approval page; CHANGE WI-FI reaches only a receiver that says it can */
+  const te = await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'token' } }); const TE = te.json.token;
+  await call('/api/printers/elsie/next?net=Cafe%20Wi-Fi&rssi=-52', { token: TE }); const TT2 = (await call('/api/admin/printers/kines', { method: 'POST', key: KEY, body: { action: 'touch', on: true } })).json.token; await call('/api/touch/kines?net=Cafe%20Wi-Fi&rssi=-71', { token: TT2 });
+  const pl = (await call('/api/admin/printers', { key: KEY })).json.printers, pe = pl.find(x => x.id === 'elsie'), pk = pl.find(x => x.id === 'kines');
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'wifi' } }); const wOld = await call('/api/printers/elsie/next', { token: TE });
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'wifi' } }); const wNew = await call('/api/printers/elsie/next?can=off%20wifi', { token: TE });
+  check('the Pi and its screen say which Wi-Fi they are on; CHANGE WI-FI reaches only a receiver that says it can', JSON.parse(pe.net).n === 'Cafe Wi-Fi' && JSON.parse(pe.net).rssi === -52 && JSON.parse(pk.touch_net).n === 'Cafe Wi-Fi' && !(wOld.json && wOld.json.wifi) && wNew.json && wNew.json.wifi === true, JSON.stringify({ net: pe.net, tnet: pk.touch_net, old: wOld.status, nw: wNew.json }));
   /* the approval page's overhaul: archived not lost, brought back; counts of things; everything as one file; places by the hundred; settings; back to base */
   const ar = await call('/api/stories', { method: 'POST', body: story('DA-ARC1'), ip: '10.7.7.7' });
   await call(`/api/admin/stories/${ar.json.id}`, { method: 'POST', key: KEY, body: { action: 'refuse' } }); const arP = await call(`/api/admin/photos/${ar.json.id}`, { key: KEY });

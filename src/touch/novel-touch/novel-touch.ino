@@ -3,7 +3,8 @@
    four tentacles of beads in the current. Its heading and code wait beside it. One press prints it: the slip feeds out of the
    bell as the printer prints it, then the jellyfish jets away. Hold it and it is squashed, slowly, until it pops; a current sweeps
    the pieces away and a fish eats them. Either way it stays away a while.
-   With nothing waiting the screen sleeps, and wakes every so often: the jellyfish swims behind novel.global's code, then sleeps again.
+   The screen stays awake: the jellyfish drifts continuously like a creature in a tiny underwater window. After Wi-Fi joins,
+   novel.global's code peeks in for ten seconds every thirty, then slips away again.
    One flat blue, chalk lines and dots smoothed at their edges, the site's own type: no shading, which a small screen only bands.
 
    Board: ESP32S3 Dev Module, USB CDC On Boot enabled, PSRAM OPI. Libraries: GFX Library for Arduino (moononournation),
@@ -29,7 +30,8 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "29 Oct · 7"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct · 8"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -55,17 +57,17 @@ Arduino_Canvas *g = new Arduino_Canvas(W, H, tft);
 
 /* ───────── what it knows: the Wi-Fis (up to five, kept), the site, the printer, the token ───────── */
 Preferences prefs;
-String host, printerId, token, nets[5], passes[5]; int nNets = 0;
+String host, printerId, token, nets[5], passes[5]; int nNets = 0, ways[5];
 bool real(const char *s) { return s && *s && strcmp(s, "your wi-fi") && strcmp(s, "printer id") && strcmp(s, "touch token"); }
 void loadCfg() {
   prefs.begin("ngtouch", false);
   host = prefs.getString("host", NG_HOST); printerId = prefs.getString("prn", real(NG_PRINTER) ? NG_PRINTER : ""); token = prefs.getString("tok", real(NG_TOKEN) ? NG_TOKEN : "");
   nNets = prefs.getInt("n", 0); if (nNets > 5) nNets = 5;
-  for (int i = 0; i < nNets; i++) { nets[i] = prefs.getString(("s" + String(i)).c_str(), ""); passes[i] = prefs.getString(("p" + String(i)).c_str(), ""); }
+  for (int i = 0; i < nNets; i++) { nets[i] = prefs.getString(("s" + String(i)).c_str(), ""); passes[i] = prefs.getString(("p" + String(i)).c_str(), ""); ways[i] = prefs.getInt(("w" + String(i)).c_str(), 0); }
   /* the sketch's own Wi-Fi only until any is set from a phone; then never again */
   if (real(WIFI_SSID) && nNets == 0) { bool have = false; for (int i = 0; i < nNets; i++) if (nets[i] == WIFI_SSID) have = true; if (!have) { nets[nNets] = WIFI_SSID; passes[nNets++] = WIFI_PASS; } }
 }
-void saveNets() { prefs.putInt("n", nNets); for (int i = 0; i < nNets; i++) { prefs.putString(("s" + String(i)).c_str(), nets[i]); prefs.putString(("p" + String(i)).c_str(), passes[i]); } }
+void saveNets() { prefs.putInt("n", nNets); for (int i = 0; i < nNets; i++) { prefs.putString(("s" + String(i)).c_str(), nets[i]); prefs.putString(("p" + String(i)).c_str(), passes[i]); prefs.putInt(("w" + String(i)).c_str(), 0); ways[i] = 0; } }
 
 /* ───────── touch: the CST816, read straight off the wire ─────────
    Kept awake and from resetting itself mid-hold (its own defaults: asleep after 2 s, reset after 5 s held),
@@ -84,8 +86,11 @@ struct Seen { Slip first; int waiting = 0, printing = 0; unsigned ver = 0; } see
 SemaphoreHandle_t lock;
 String askJob, askWhat; volatile bool setupOn = false; volatile int netErr = 1;   // 0 fine, 1 no Wi-Fi, 2 no answer, 3 token refused
 void poll() {
-  WiFiClientSecure c; c.setInsecure(); HTTPClient h; h.setTimeout(9000);
-  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId)) { netErr = 2; return; }
+  WiFiClientSecure c; c.setInsecure(); HTTPClient h;
+  h.setConnectTimeout(3000);  // fail quickly if the server cannot be reached
+  h.setTimeout(5000);         // bound a stalled status poll; the next poll can retry
+  String ss = WiFi.SSID(), q = ""; for (unsigned i = 0; i < ss.length() && i < 40; i++) { char ch = ss[i]; if (isalnum((unsigned char)ch)) q += ch; else { char b[4]; snprintf(b, 4, "%%%02X", (unsigned char)ch); q += b; } }
+  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "?net=" + q + "&rssi=" + WiFi.RSSI())) { netErr = 2; return; }
   h.addHeader("authorization", String("Bearer ") + token); int code = h.GET();
   if (code != 200) { h.end(); netErr = code == 401 ? 3 : 2; return; }
   String got = h.getString(); h.end(); JsonDocument d; if (deserializeJson(d, got)) { netErr = 2; return; }
@@ -94,40 +99,62 @@ void poll() {
     for (JsonVariant v : f["wish"].as<JsonArray>()) if (s.first.n < 4) s.first.wish[s.first.n++] = v.as<String>(); }
   xSemaphoreTake(lock, portMAX_DELAY); s.ver = net.ver + 1; net = s; xSemaphoreGive(lock); netErr = 0;
 }
-volatile int actCode = 0;   // what the site said to the last press or squash: 200 done; anything else, not
+volatile int actCode = 0;   // HTTP result for the last action: 200 accepted; anything else, not
+volatile bool actionPending = false, actionFinished = false;
 int act(const String &job, const String &what) {
-  WiFiClientSecure c; c.setInsecure(); HTTPClient h; h.setTimeout(9000);
+  WiFiClientSecure c; c.setInsecure(); HTTPClient h;
+  h.setConnectTimeout(5000);  // bound connection setup; preserve the existing 9 s response timeout
+  h.setTimeout(9000);
   if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "/" + job)) return -100;
   h.addHeader("authorization", String("Bearer ") + token); h.addHeader("content-type", "application/json");
   int code = h.POST(String("{\"action\":\"") + what + "\"}"); h.end(); return code;
 }
-/* joining: every Wi-Fi it knows that it can see, strongest first, each in turn, 25 s each (weak signal needs it), never
-   interrupted by another scan. Each failure is kept with its reason, for the screen to say */
+/* joining: every Wi-Fi it knows that it can see, strongest first, each in turn. A Wi-Fi that turns it away is asked again a
+   different way, not the same way harder. Most often it is "authentication expired" (reason 2), the router not finishing letting
+   it in. Four ways, in turn:
+     0  a plain join, as the first sketch did
+     1  the strongest transmitter of that name, by its own address and channel (a mesh or a building's many points can hand it a far one)
+     2  that, with a gentler transmit power (a dip in the supply as the radio peaks can cut the handshake short)
+     3  that, with WPA2 alone and no protected management frames (routers that also offer WPA3 can stall the handshake here)
+   The way that worked is kept for that Wi-Fi and tried first next time. Each failure is kept with its reason, for the screen to say */
 String trying, whyNot; int tryNext = 0, tryRssi = 0; volatile int lastReason = 0;
+uint8_t bss[5][6]; int chans[5];
+const char *WAYS[4] = {"plain", "strongest point", "gentle power", "WPA2 only"};
+bool joinWay(int k, int way, bool seenIt) {
+  WiFi.setAutoReconnect(false); WiFi.disconnect(false, true); vTaskDelay(pdMS_TO_TICKS(500));
+  WiFi.mode(WIFI_STA); WiFi.setSleep(false); WiFi.setTxPower(way >= 2 ? WIFI_POWER_15dBm : WIFI_POWER_19_5dBm);
+  lastReason = 0;
+  if (way >= 1 && seenIt) WiFi.begin(nets[k].c_str(), passes[k].c_str(), chans[k], bss[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  if (way >= 3) { wifi_config_t cf; if (esp_wifi_get_config(WIFI_IF_STA, &cf) == ESP_OK) { esp_wifi_disconnect(); cf.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; cf.sta.pmf_cfg.capable = false; cf.sta.pmf_cfg.required = false; esp_wifi_set_config(WIFI_IF_STA, &cf); esp_wifi_connect(); } }
+  /* up to 20 s for a weak signal; but once it has been turned away, 4 s more and the next way is tried */
+  unsigned long t0 = millis(), failAt = 0;
+  while (millis() - t0 < 20000 && WiFi.status() != WL_CONNECTED && !setupOn) { vTaskDelay(pdMS_TO_TICKS(250)); if (lastReason && !failAt) failAt = millis(); if (failAt && millis() - failAt > 4000) break; }
+  return WiFi.status() == WL_CONNECTED;
+}
+String reasonWords(int r) {
+  if (r == 15 || r == 202 || r == 204) return "wrong password?"; if (r == 201) return "not found";
+  if (r == 2) return "the router didn't finish letting it in (code 2)"; if (r == 203) return "the router refused it (full, or blocking?)";
+  if (r == 210 || r == 211) return "its security type isn't supported"; return String("no join (code ") + r + ")";
+}
 void join() {
-  /* the order: those it can see first, strongest first; then those it can't, in case the scan missed them. The scan only orders;
-     the join itself is the first sketch's, which worked: a plain begin, the chip's own retries on for this one Wi-Fi, 30 s */
+  /* the order: those it can see first, strongest first; then those it can't, in case the scan missed them */
   WiFi.setAutoReconnect(false); WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(400));
   int n = WiFi.scanNetworks(), rs[5], order[5]; bool vis[5];
   for (int tries = 0; n < 0 && tries < 3; tries++) { vTaskDelay(pdMS_TO_TICKS(1500)); n = WiFi.scanNetworks(); }
   for (int k = 0; k < nNets; k++) { vis[k] = false; rs[k] = -1000; order[k] = k;
-    for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); vis[k] = true; } }
+    for (int i = 0; i < n; i++) if (WiFi.SSID(i) == nets[k] && WiFi.RSSI(i) > rs[k]) { rs[k] = WiFi.RSSI(i); vis[k] = true; memcpy(bss[k], WiFi.BSSID(i), 6); chans[k] = WiFi.channel(i); } }
   if (n > 0) WiFi.scanDelete();
   for (int i = 0; i < nNets; i++) for (int j = i + 1; j < nNets; j++) { int a = order[i], b = order[j];
     if ((vis[b] && !vis[a]) || (vis[a] == vis[b] && rs[b] > rs[a])) { order[i] = b; order[j] = a; } }
   int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0;
-  /* first as the first sketch joined (the first transmitter of that name it finds); then, if that fails, the strongest of that name */
-  for (int pass = 0; pass < 2 && WiFi.status() != WL_CONNECTED && !setupOn; pass++) {
-    if (pass) { WiFi.setAutoReconnect(false); WiFi.disconnect(); vTaskDelay(pdMS_TO_TICKS(600)); }
-    WiFi.setScanMethod(pass ? WIFI_ALL_CHANNEL_SCAN : WIFI_FAST_SCAN); WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
-    WiFi.setAutoReconnect(true); lastReason = 0;
-    WiFi.begin(nets[k].c_str(), passes[k].c_str());
-    for (int w = 0; w < 36 && WiFi.status() != WL_CONNECTED && !setupOn; w++) vTaskDelay(pdMS_TO_TICKS(500));
-  }
-  if (WiFi.status() != WL_CONNECTED && !setupOn) {
-    int r = lastReason;
-    String why = nets[k] + ": " + ((r == 15 || r == 202 || r == 204) ? String("wrong password?") : (r == 201) ? String("not found (") + n + " seen)"
-      : (r == 210 || r == 211) ? String("its security type isn't supported") : String("no join (code ") + r + (vis[k] ? String(", ") + tryRssi + " dBm)" : String(", not in its scan of ") + n + ")"));
+  /* the way that worked last first, then each of the others; a password refused is not asked again three more ways */
+  int first = ways[k] % 4, r = 0;
+  for (int w = 0; w < 4 && !setupOn; w++) { int way = (first + w) % 4; if (way >= 1 && !vis[k]) continue;
+    xSemaphoreTake(lock, portMAX_DELAY); trying = way ? nets[k] + " · " + WAYS[way] : nets[k]; xSemaphoreGive(lock);
+    if (joinWay(k, way, vis[k])) { if (way != ways[k]) { ways[k] = way; prefs.putInt(("w" + String(k)).c_str(), way); } return; }
+    r = lastReason; if (r == 15 || r == 202 || r == 204 || r == 201) break; }
+  if (!setupOn) {
+    String why = nets[k] + ": " + reasonWords(r) + (vis[k] ? String(", ") + tryRssi + " dBm" : String(", not in its scan of ") + n) + (tryRssi && tryRssi < -78 ? " (too weak here)" : "");
     xSemaphoreTake(lock, portMAX_DELAY); whyNot = why; xSemaphoreGive(lock);
     WiFi.setAutoReconnect(false); WiFi.disconnect(); tryNext++;
   }
@@ -138,14 +165,14 @@ void netTask(void *) {
     if (setupOn) { vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) join(); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     String job, what; xSemaphoreTake(lock, portMAX_DELAY); job = askJob; what = askWhat; askJob = ""; xSemaphoreGive(lock);
-    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); } actCode = c; last = 0;   // three tries; the result shown
-      /* the site took it: forget that slip now, so a slow or failed poll can't bring it back */
-      if (c == 200) { xSemaphoreTake(lock, portMAX_DELAY); if (net.first.job == job) { net.first = Slip(); if (net.waiting > 0) net.waiting--; if (what == "print") net.printing++; net.ver++; } xSemaphoreGive(lock); } }
-    if (printerId.length() && millis() - last > 4000) { last = millis(); poll(); }
+    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); }
+      if (c == 200) { xSemaphoreTake(lock, portMAX_DELAY); if (net.first.job == job) { net.first = Slip(); if (net.waiting > 0) net.waiting--; if (what == "print") net.printing++; net.ver++; } xSemaphoreGive(lock); }
+      actCode = c; actionPending = false; actionFinished = true; last = 0; }   // three tries; the result is handled by the display loop
+    if (printerId.length() && millis() - last >= 2000) { last = millis(); poll(); }  // discover new jobs about four times faster
     vTaskDelay(pdMS_TO_TICKS(120));
   }
 }
-void ask(const String &job, const char *what) { actCode = 0; xSemaphoreTake(lock, portMAX_DELAY); askJob = job; askWhat = what; xSemaphoreGive(lock); }
+void ask(const String &job, const char *what) { actCode = 0; actionPending = true; actionFinished = false; xSemaphoreTake(lock, portMAX_DELAY); askJob = job; askWhat = what; xSemaphoreGive(lock); }
 
 /* ───────── drawing, straight into the frame: one flat blueprint blue, chalk lines and dots smoothed at their edges, nothing shaded ─────────
    A small screen bands every gradient and every glow; so light here is made of dots and thin lines, as on the site's paper */
@@ -196,10 +223,25 @@ int text(const Font &f, const char *s, int x, int y, uint16_t c, float a, int tr
 int para(const Font &f, const String &s, int x, int y, int w, int lh, int maxLines, uint16_t c, float a) {
   String rest = s; rest.trim(); int lines = 0;
   while (rest.length() && lines < maxLines) {
-    int cut = rest.length(), sp = -1; String ln = rest;
-    while (textW(f, ln.c_str(), 0) > w) { sp = ln.lastIndexOf(' '); if (sp <= 0) { ln = ln.substring(0, ln.length() - 1); cut = ln.length(); } else { ln = ln.substring(0, sp); cut = sp; } }
+    int fit = 0, lastSpace = -1, width = 0;
+    for (int i = 0; i < (int)rest.length(); i++) {
+      char ch = rest[i];
+      if (ch < 32 || ch > 126) break;
+      width += f.g[ch - 32].adv;
+      if (width > w) break;
+      fit = i + 1;
+      if (ch == ' ') lastSpace = i;
+    }
+    if (fit == 0) fit = 1;  // even an unusually wide first glyph must make progress
+    int cut = fit;
+    if (fit < (int)rest.length() && lastSpace >= 0) cut = lastSpace;
+    if (cut <= 0) cut = fit; // long words without spaces wrap at a character boundary
+    String ln = rest.substring(0, cut); ln.trim();
     rest = rest.substring(cut); rest.trim();
-    if (lines == maxLines - 1 && rest.length()) { while (ln.length() && textW(f, (ln + "...").c_str(), 0) > w) ln = ln.substring(0, ln.length() - 1); ln += "..."; }
+    if (lines == maxLines - 1 && rest.length()) {
+      while (ln.length() && textW(f, (ln + "...").c_str(), 0) > w) ln = ln.substring(0, ln.length() - 1);
+      ln += "...";
+    }
     text(f, ln.c_str(), x, y, c, a, 0); y += lh; lines++;
   }
   return y;
@@ -217,64 +259,110 @@ struct Jelly { float x = W / 2, y = 20, bw = 96, a = 0, sq = 0, jit = 0, len = 1
 float tX[4][44], tY[4][44]; const int NT = 44, NR = 48;
 float bellX[NR], bellY[NR], bTop, bBot, bW, eyeX, eyeY, pupR;
 float pulse(float t) { float p = fmodf(t, 3.6f) / 3.6f; return p < 0.28f ? sinf(p / 0.28f * PI / 2) : cosf((p - 0.28f) / 0.72f * PI / 2); }
+/* Rotate only the creature's own geometry; the sea, QR, copy and printer UI stay upright. */
+bool jellyRollEnabled = true;
+float jellyPX(float x, float y, float cx, float cy, float a) { float dx = x - cx, dy = y - cy; return PX(cx + dx * cosf(a) - dy * sinf(a)); }
+float jellyPY(float x, float y, float cx, float cy, float a) { float dx = x - cx, dy = y - cy; return PY(cy + dx * sinf(a) + dy * cosf(a)); }
 void drawJelly(float t) {
   if (J.a <= 0.02f) return;
   float z = cam.z, p = pulse(J.tp), sq = J.sq, bw = J.bw, bh = bw * 0.58f, A = J.a;
   float w = bw * (1 - 0.07f * p) / 2 * (1 + 0.55f * sq), h = bh * (1 + 0.045f * p) * (1 - 0.72f * sq);
-  float jx = J.jit * rnd1(), jy = J.jit * 0.6f * rnd1(), cx = J.x + jx, top = J.y + jy + (bh - h) * (0.3f + 0.7f * sq), bot = top + h;
+  /* Deterministic, continuous micro-motion: never randomise the body position frame-to-frame. */
+  float jx = J.jit * (sinf(t * 17.0f) * 0.34f + sinf(t * 9.3f) * 0.18f),
+        jy = J.jit * 0.6f * (sinf(t * 13.1f + 0.7f) * 0.28f + sinf(t * 6.7f) * 0.16f),
+        cx = J.x + jx, top = J.y + jy + (bh - h) * (0.3f + 0.7f * sq), bot = top + h;
+  /* A slow, continuous full turn: upright, upside-down, and back without a pose reset. */
+  float roll = jellyRollEnabled ? (2.0f * PI * (0.5f - 0.5f * cosf(t * 0.11f)) + 0.16f * sinf(t * 0.47f)) : 0.0f;
+  float rollCx = cx, rollCy = top + h * 0.42f;
   bTop = top; bBot = bot; bW = w;
   /* its light: not a glow but a scatter of fine dots round the bell, thinning outward and breathing with it, like the site's paper grain */
   for (int i = 0; i < 70; i++) { float u = hashf(i) * 2 * PI, rr = 0.62f + powf(hashf(i + 97), 0.7f) * 0.9f, k = 1 - (rr - 0.62f) / 0.9f;
     float tw = 0.5f + 0.5f * sinf(t * (0.6f + hashf(i + 7)) + i);
-    dotA(PX(cx + cosf(u) * bw * rr), PY(top + h * 0.5f + sinf(u) * bw * rr * 0.8f), 0.55f * z, INK, A * (0.07f + 0.16f * k) * (0.55f + 0.45f * tw) * (1 + 0.5f * p + J.glow * 0.6f)); }
+    dotA(jellyPX(cx + cosf(u) * bw * rr, top + h * 0.5f + sinf(u) * bw * rr * 0.8f, rollCx, rollCy, roll), jellyPY(cx + cosf(u) * bw * rr, top + h * 0.5f + sinf(u) * bw * rr * 0.8f, rollCx, rollCy, roll), 0.55f * z, INK, A * (0.07f + 0.16f * k) * (0.55f + 0.45f * tw) * (1 + 0.5f * p + J.glow * 0.6f)); }
   /* the tentacles: from the bell's foot, swaying in the current, beads of stinging cells along them; a light runs down them as it prints */
   float Lt = bw * 2.2f * J.len, writhe = 1 + 1.4f * fmaxf(0, sq);
   for (int i = 0; i < 4; i++) {
     float rx = cx + (i - 1.5f) / 1.5f * w * 0.82f, ry = bot - 1;
     for (int j = 0; j < NT; j++) { float s = j / (NT - 1.0f), env = fminf(1, s * 5) * sinf(PI * (0.15f + 0.85f * s));
-      tX[i][j] = rx + (i - 1.5f) * s * bw * 0.14f + env * (sinf(s * (11 + i * 1.5f) - t * 1.3f + i * 1.7f) * 2.4f * writhe + (sinf(t * 0.66f + i * 3.3f + s * 2.2f) * 0.6f + sinf(t * 0.5f + i + s * 3) * 0.4f) * 14 + J.look * s * 10);
-      tY[i][j] = ry + s * Lt + env * sinf(t * 0.54f + i * 7.1f + s * 3) * 4; }
-    for (int j = 1; j < NT; j++) { float s = j / (NT - 1.0f); seg(PX(tX[i][j - 1]), PY(tY[i][j - 1]), PX(tX[i][j]), PY(tY[i][j]), (1.1f - 0.6f * s) * z, INK, A * (0.62f - 0.3f * s), false); }
+      float drift = env * (sinf(s * (11 + i * 1.5f) - t * 1.3f + i * 1.7f) * 2.4f * writhe + (sinf(t * 0.66f + i * 3.3f + s * 2.2f) * 0.6f + sinf(t * 0.5f + i + s * 3) * 0.4f) * 14 + J.look * s * 10);
+      float naturalX = rx + (i - 1.5f) * s * bw * 0.14f + drift;
+      /* Outer tentacles curl to the bezel and lightly hold it; inner ones reach toward the corners. */
+      float gu = fmaxf(0.0f, fminf(1.0f, (s - 0.68f) / 0.32f));
+      float grip = gu * gu * (3.0f - 2.0f * gu);
+      /* Each strand has its own tide: grip, release, curl and reach are deliberately out of phase. */
+      float tide = 0.5f + 0.5f * sinf(t * (0.16f + i * 0.013f) + i * 2.2f);
+      float release = fmaxf(0.0f, sinf(t * 0.23f + i * 2.1f + 0.8f));
+      float edgeX = (i < 2) ? 4.0f + 13.0f * tide : (W - 4.0f - 13.0f * tide);
+      float edgeY = 12.0f + (i % 2) * 20.0f + sinf(t * 0.37f + i * 1.9f) * 9.0f;
+      float freeGrip = grip * (0.30f + 0.70f * tide) * (1.0f - 0.72f * release);
+      float curl = sinf(s * 10.0f + t * 0.9f + i * 2.7f) * s * s * 12.0f;
+      tX[i][j] = (naturalX + curl) * (1.0f - freeGrip) + edgeX * freeGrip;
+      tY[i][j] = (ry + s * Lt + env * sinf(t * 0.54f + i * 7.1f + s * 3) * 4) * (1.0f - freeGrip) + edgeY * freeGrip;
+      /* The distal tip lifts away from the bezel in a slow wave, then catches it again. */
+      tY[i][j] -= release * s * s * 24.0f;
+    }
+    for (int j = 1; j < NT; j++) { float s = j / (NT - 1.0f); seg(jellyPX(tX[i][j - 1], tY[i][j - 1], rollCx, rollCy, roll), jellyPY(tX[i][j - 1], tY[i][j - 1], rollCx, rollCy, roll), jellyPX(tX[i][j], tY[i][j], rollCx, rollCy, roll), jellyPY(tX[i][j], tY[i][j], rollCx, rollCy, roll), (1.1f - 0.6f * s) * z, INK, A * (0.62f - 0.3f * s), false); }
     for (int j = 4; j < NT - 1; j += 3) { float tw = 0.5f + 0.5f * sinf(t * 2.2f - j * 0.5f + i), run = J.run >= 0 ? fmaxf(0, 1 - fabsf(J.run - (float)j / NT) * 8) : 0;
-      dotA(PX(tX[i][j]), PY(tY[i][j]), ((j % 9 == 4) ? 1.5f : 0.9f) * z * (1 + run * 0.7f), INK, A * fminf(1, 0.32f + 0.22f * tw + run * 0.6f)); }
+      dotA(jellyPX(tX[i][j], tY[i][j], rollCx, rollCy, roll), jellyPY(tX[i][j], tY[i][j], rollCx, rollCy, roll), ((j % 9 == 4) ? 1.5f : 0.9f) * z * (1 + run * 0.7f), INK, A * fminf(1, 0.32f + 0.22f * tw + run * 0.6f)); }
   }
   /* the bell: a box with a soft dome, its foot drawn up a little; a faint second pass, as a hand would */
   for (int i = 0; i < NR; i++) { float u = (float)i / NR, X, Y;
     if (u < 0.8f) { float an = PI * (1 - u / 0.8f), ca = cosf(an), sa = fmaxf(0, sinf(an)); X = cx + powf(fabsf(ca), 0.55f) * (ca < 0 ? -1 : 1) * w; Y = bot - powf(sa, 0.42f) * h * (0.94f + 0.06f * sa); }
     else { float s2 = (u - 0.8f) / 0.2f; X = cx + w - 2 * w * s2; Y = bot - sinf(s2 * PI) * h * 0.09f; }
     bellX[i] = X; bellY[i] = Y; }
-  for (int i = 0; i < NR; i++) { int k = (i + 1) % NR; seg(PX(bellX[i]), PY(bellY[i]), PX(bellX[k]), PY(bellY[k]), 1.3f * z, INK, A * 0.95f, false); }
-  for (int i = 0; i < NR; i++) { int k = (i + 1) % NR; seg(PX(bellX[i] + 1.2f), PY(bellY[i] + 0.8f), PX(bellX[k] + 1.2f), PY(bellY[k] + 0.8f), 0.6f * z, INK, A * 0.22f, false); }
+  for (int i = 0; i < NR; i++) { int k = (i + 1) % NR; seg(jellyPX(bellX[i], bellY[i], rollCx, rollCy, roll), jellyPY(bellX[i], bellY[i], rollCx, rollCy, roll), jellyPX(bellX[k], bellY[k], rollCx, rollCy, roll), jellyPY(bellX[k], bellY[k], rollCx, rollCy, roll), 1.3f * z, INK, A * 0.95f, false); }
+  for (int i = 0; i < NR; i++) { int k = (i + 1) % NR; seg(jellyPX(bellX[i] + 1.2f, bellY[i] + 0.8f, rollCx, rollCy, roll), jellyPY(bellX[i] + 1.2f, bellY[i] + 0.8f, rollCx, rollCy, roll), jellyPX(bellX[k] + 1.2f, bellY[k] + 0.8f, rollCx, rollCy, roll), jellyPY(bellX[k] + 1.2f, bellY[k] + 0.8f, rollCx, rollCy, roll), 0.6f * z, INK, A * 0.22f, false); }
   /* the eye that notices, in dots; it blinks; squeezed it shuts tight; asleep it is a line */
   float bk = fminf(1, fabsf(fmodf(t + 2.2f, 7.3f) - 0.14f) / 0.14f), eh = (bot - top) * 0.27f * fmaxf(0.08f, bk), ew = w * 0.74f, ex = cx + J.look * ew * 0.16f, ey = top + (bot - top) * 0.5f;
   eyeX = ex; eyeY = ey; pupR = (bot - top) * 0.27f * 0.95f;
   if (J.eye == 1) {        // > <
     float a2 = ew * 0.42f, b = (bot - top) * 0.2f;
-    seg(PX(ex - a2 * 1.4f), PY(ey - b), PX(ex - a2 * 0.5f), PY(ey), 1.5f * z, INK, A, true); seg(PX(ex - a2 * 0.5f), PY(ey), PX(ex - a2 * 1.4f), PY(ey + b), 1.5f * z, INK, A, true);
-    seg(PX(ex + a2 * 1.4f), PY(ey - b), PX(ex + a2 * 0.5f), PY(ey), 1.5f * z, INK, A, true); seg(PX(ex + a2 * 0.5f), PY(ey), PX(ex + a2 * 1.4f), PY(ey + b), 1.5f * z, INK, A, true);
+    seg(jellyPX(ex - a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPY(ex - a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPX(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), 1.5f * z, INK, A, true); seg(jellyPX(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPX(ex - a2 * 1.4f, ey + b, rollCx, rollCy, roll), jellyPY(ex - a2 * 1.4f, ey + b, rollCx, rollCy, roll), 1.5f * z, INK, A, true);
+    seg(jellyPX(ex + a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPY(ex + a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPX(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), 1.5f * z, INK, A, true); seg(jellyPX(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPX(ex + a2 * 1.4f, ey + b, rollCx, rollCy, roll), jellyPY(ex + a2 * 1.4f, ey + b, rollCx, rollCy, roll), 1.5f * z, INK, A, true);
   } else if (J.eye == 2) {  // asleep: the lid's line, gently curved
-    for (int k = 0; k < 14; k++) { float u = k / 13.0f * 2 - 1; dotA(PX(ex + u * ew), PY(ey + (1 - u * u) * eh * 0.5f + 1), 0.8f * z, INK, 0.7f * A); }
+    for (int k = 0; k < 14; k++) { float u = k / 13.0f * 2 - 1; dotA(jellyPX(ex + u * ew, ey + (1 - u * u) * eh * 0.5f + 1, rollCx, rollCy, roll), jellyPY(ex + u * ew, ey + (1 - u * u) * eh * 0.5f + 1, rollCx, rollCy, roll), 0.8f * z, INK, 0.7f * A); }
   } else {
-    for (int j = 0; j < 30; j++) { float u = j / 30.0f * 2 * PI, cu = cosf(u), su = sinf(u); dotA(PX(ex + cu * ew), PY(ey + su * eh * (0.35f + 0.65f * fabsf(su))), 0.85f * z, INK, (0.62f + 0.18f * sinf(t * 1.75f)) * A); }
+    for (int j = 0; j < 30; j++) { float u = j / 30.0f * 2 * PI, cu = cosf(u), su = sinf(u); dotA(jellyPX(ex + cu * ew, ey + su * eh * (0.35f + 0.65f * fabsf(su)), rollCx, rollCy, roll), jellyPY(ex + cu * ew, ey + su * eh * (0.35f + 0.65f * fabsf(su)), rollCx, rollCy, roll), 0.85f * z, INK, (0.62f + 0.18f * sinf(t * 1.75f)) * A); }
     float pr = pupR * fmaxf(0.08f, bk) * (1 + 0.04f * sinf(t * 1.75f)) * (J.eye == 3 ? 1.25f : 1), px = ex + J.look * ew * 0.1f;
-    dotA(PX(px), PY(ey), pr * (0.42f + 0.1f * J.glow) * z, INK, 0.95f * A);
-    ring(PX(px), PY(ey), pr * z, 0.9f * z, INK, 0.85f * A);
-    if (J.glow > 0) ring(PX(px), PY(ey), pr * (1.35f + 0.25f * J.glow) * z, 0.7f, INK, 0.25f * J.glow * A);   // waiting: a second ring breathes round the pupil
+    dotA(jellyPX(px, ey, rollCx, rollCy, roll), jellyPY(px, ey, rollCx, rollCy, roll), pr * (0.42f + 0.1f * J.glow) * z, INK, 0.95f * A);
+    ring(jellyPX(px, ey, rollCx, rollCy, roll), jellyPY(px, ey, rollCx, rollCy, roll), pr * z, 0.9f * z, INK, 0.85f * A);
+    if (J.glow > 0) ring(jellyPX(px, ey, rollCx, rollCy, roll), jellyPY(px, ey, rollCx, rollCy, roll), pr * (1.35f + 0.25f * J.glow) * z, 0.7f, INK, 0.25f * J.glow * A);   // waiting: a second ring breathes round the pupil
   }
-  const float F[4] = {-0.62f, -0.22f, 0.22f, 0.62f}; for (int k = 0; k < 4; k++) dotA(PX(cx + F[k] * w), PY(bot - bh * 0.1f), 1.3f * z, INK, 0.85f * A);
+  const float F[4] = {-0.62f, -0.22f, 0.22f, 0.62f}; for (int k = 0; k < 4; k++) dotA(jellyPX(cx + F[k] * w, bot - bh * 0.1f, rollCx, rollCy, roll), jellyPY(cx + F[k] * w, bot - bh * 0.1f, rollCx, rollCy, roll), 1.3f * z, INK, 0.85f * A);
   /* waiting for a touch: now and then one thin ring goes out from it, and fades */
-  if (J.cue) { float rk = fmodf(t, 4.5f) / 2.2f; if (rk < 1) ring(PX(cx), PY(top + h * 0.6f), (bw * 0.75f + rk * bw * 0.55f) * z, 1, INK, 0.32f * (1 - rk) * (1 - rk)); }
+  if (J.cue) { float rk = fmodf(t, 4.5f) / 2.2f; if (rk < 1) ring(jellyPX(cx, top + h * 0.6f, rollCx, rollCy, roll), jellyPY(cx, top + h * 0.6f, rollCx, rollCy, roll), (bw * 0.75f + rk * bw * 0.55f) * z, 1, INK, 0.32f * (1 - rk) * (1 - rk)); }
 }
 
 /* ───────── the sea: flat; marine snow rising, some near, some far ───────── */
 struct Flake { float x, y, r, a, ph; } snow[30];
 float current = 0;
+unsigned long sceneStartMs = 0;
+bool isNightScene() { unsigned long cycle = (millis() - sceneStartMs) % 420000UL; return cycle >= 300000UL; }
 void drawSea(float t, float dt) {
-  for (int i = 0; i < W * H; i++) FB[i] = SEA;
+  bool night = isNightScene();
+  const uint16_t seaColor = night ? 0x0820 : SEA;  // deep ink-blue at night
+  for (int i = 0; i < W * H; i++) FB[i] = seaColor;
   for (int i = 0; i < 30; i++) { Flake &f = snow[i];
     f.y -= dt * (2 + f.r * 3); f.x += sinf(t * 0.2f + f.ph) * 0.08f + current * dt * (40 + f.r * 30);
     if (f.y < -4) { f.y = H + 4; f.x = random(W); } if (f.x > W + 4) f.x = -4; if (f.x < -4) f.x = W + 4;
-    dotA(f.x, f.y, f.r * (0.7f + 0.3f * cam.z), INK, f.a * (0.6f + 0.4f * sinf(t * 0.7f + f.ph))); }
+    dotA(f.x, f.y, f.r * (0.7f + 0.3f * cam.z), night ? 0x07E0 : INK, f.a * (0.6f + 0.4f * sinf(t * 0.7f + f.ph))); }
+  if (night) {
+    /* Bermuda fire-worms: independent, slow drifting chains of fluorescent goo that flare, bead and break apart. */
+    for (int w = 0; w < 5; w++) {
+      float phase = t * (0.10f + 0.018f * w) + w * 1.71f;
+      float headX = fmodf(phase * 36.0f + w * 71.0f, W + 90.0f) - 45.0f;
+      float headY = 18.0f + w * 29.0f + sinf(t * 0.31f + w * 2.4f) * 13.0f;
+      float flare = 0.35f + 0.65f * (0.5f + 0.5f * sinf(t * (1.3f + w * 0.11f) + w));
+      for (int n = 0; n < 10; n++) {
+        float u = n / 9.0f, wx = headX - u * (20.0f + 12.0f * sinf(phase * 1.4f)),
+              wy = headY + sinf(phase * 2.0f - u * 5.2f + n * 0.21f) * (2.0f + 5.0f * u);
+        dotA(wx, wy, (n == 0 ? 2.0f : 0.8f + 1.1f * (1.0f - u)), 0x07E0, flare * (0.20f + 0.72f * (1.0f - u)));
+        if (n) seg(wx, wy, wx + 2.0f, wy - 1.0f, 0.7f, 0x07E0, flare * 0.28f, true);
+      }
+      /* A few sparks peel away from each worm and dissolve like glowing gel. */
+      for (int q = 0; q < 3; q++) { float sx = headX - fmodf(t * (7.0f + q * 2.0f) + w * 11 + q * 13, 28.0f); float sy = headY + sinf(t * 0.9f + q * 2.0f + w) * 10.0f; dotA(sx, sy, 0.7f, 0x07E0, flare * 0.34f); }
+    }
+  }
 }
 
 /* ───────── what is left after a squash: pieces, swept by a current, and a fish ───────── */
@@ -410,7 +498,7 @@ Mode mode = CONNECTING;
 float modeAt = 0, springAt = -9, springFrom = 0, nextTick = 0; int awakeKind = 0;
 Slip slip; String printLines[12]; int nPrint = 0;
 void go(Mode m, float t) { mode = m; modeAt = t; if (m == ARRIVE) { slip = seen.first; buzz(15); } }
-const float HELD_X = 74, HELD_Y = 18, HELD_BW = 92, HOLD_FULL = 2.7f, COL = 152;
+const float HELD_X = 74, HELD_Y = 18, HELD_BW = 92, HOLD_FULL = 2.7f, COL = 126;
 void prepPrint() {   // the slip as it comes out: its heading wrapped to the paper, its lines, its code
   nPrint = 0; String all[6] = {slip.say, slip.wish[0], slip.wish[1], slip.wish[2], slip.wish[3], slip.code};
   for (int a = 0; a < 6 && nPrint < 12; a++) { String r = all[a]; r.trim(); while (r.length() && nPrint < 12) { int cut = (int)r.length() <= 12 ? (int)r.length() : r.lastIndexOf(' ', 12); if (cut <= 0) cut = min((int)r.length(), 12);
@@ -432,7 +520,7 @@ void setup() {
   tpWrite(0xFB, 0);      // no reset after a touch with no gesture
   tpWrite(0xFC, 0);      // nor after a long hold
   g->begin(); FB = g->getFramebuffer(); pinMode(PIN_BL, OUTPUT); analogWrite(PIN_BL, 255);
-  randomSeed(esp_random());
+  randomSeed(esp_random()); sceneStartMs = millis();
   for (int i = 0; i < 30; i++) snow[i] = {(float)random(W), (float)random(H), i % 4 ? 0.45f + random(40) / 100.0f : 0.9f + random(50) / 100.0f, 0.12f + random(100) / 400.0f, random(628) / 100.0f};
   loadCfg(); lock = xSemaphoreCreateMutex();
   /* the ESP32 keeps the last Wi-Fi it joined and quietly rejoins it at start, fighting the choice below: that memory is wiped,
@@ -449,18 +537,43 @@ void setup() {
 }
 
 unsigned long downAt = 0; bool down = false; float lastT = 0, bl = 255, bootAt = -1;
+bool printAwaiting = false;
+String autoPrintJob = ""; unsigned long jobSeenAt = 0; bool autoPrintFired = false;
+float fleeAt = -100.0f, fleeX = 0, fleeY = 0; bool qrWasVisible = false; unsigned long wifiReadyAt = 0;
 void loop() {
-  float t = millis() / 1000.0f, dt = fminf(0.1f, t - lastT); lastT = t; float k = t - modeAt;
+  float t = millis() / 1000.0f, dt = fminf(0.05f, fmaxf(0.001f, t - lastT)); lastT = t; float k = t - modeAt;
   if (setupOn) { dns.processNextRequest(); web.handleClient(); if (mode != SETUP) go(SETUP, t); }
 
   /* what the server last said */
   bool fresh = false; xSemaphoreTake(lock, portMAX_DELAY); if (net.ver != seen.ver) { seen = net; fresh = true; } xSemaphoreGive(lock);
   bool has = seen.first.job.length() > 0;
-  if (has && (mode == HELD || mode == ARRIVE) && (fresh || slip.job != seen.first.job)) slip = seen.first;
+  if (fresh && has) {
+    if (seen.first.job != autoPrintJob) { autoPrintJob = seen.first.job; jobSeenAt = millis(); autoPrintFired = false; }
+  } else if (!has) { autoPrintJob = ""; autoPrintFired = false; }
+  if (fresh && has && (mode == HELD || mode == ARRIVE)) slip = seen.first;
+
+  /* A print animation is only a confirmation after the site accepts the action.
+     If it fails, leave the job visible and allow the automatic attempt to retry. */
+  if (printAwaiting && actionFinished && !actionPending) {
+    actionFinished = false;
+    printAwaiting = false;
+    if (actCode == 200) {
+      prepPrint();
+      go(PRINTING, t);
+    } else {
+      autoPrintFired = false;
+      jobSeenAt = millis() - 20000UL; // retry after a short pause, not in a tight loop
+    }
+  }
 
   /* touch: the screen or the side button, both the same; a press, or a hold */
   bool now = touched() || digitalRead(KEY_A) == LOW, tap = false, press = false; float held = 0;
-  if (now && !down) { down = true; press = true; downAt = millis(); }
+  if (now && !down) {
+    down = true; press = true; downAt = millis(); fleeAt = t;
+    /* A little creature startled by a finger: dart away, then cautiously drift back. */
+    fleeX = (J.x < W * 0.5f ? -1.0f : 1.0f) * (42.0f + random(30));
+    fleeY = (J.y < H * 0.5f ? -1.0f : 1.0f) * (18.0f + random(22));
+  }
   if (down) held = (millis() - downAt) / 1000.0f;
   if (!now && down) { down = false; tap = held < 0.45f; }
   /* BOOT held: a ring fills; at three seconds, setup */
@@ -474,20 +587,67 @@ void loop() {
 
   switch (mode) {
     case CONNECTING:   // a small jellyfish, asleep, until the Wi-Fi is joined and the site answers
-      J.a = 1; J.x = W / 2; J.y = 52 + sinf(t) * 3; J.bw = 56; J.eye = 2; J.rate = 0.5f; camT = {W / 2, H / 2, 1};
-      if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has ? ARRIVE : AWAKE, t);   // it never opens setup by itself here: it keeps looking, and says what for
+      J.a = 0.86f + 0.08f * sinf(t * 0.8f); J.x = W / 2 + sinf(t * 0.27f) * 54; J.y = 58 + sinf(t * 0.61f) * 18; J.bw = 56 + 5 * sinf(t * 0.4f); J.eye = 2; J.rate = 0.6f; J.look = sinf(t * 0.33f); camT = {W / 2, H / 2, 1};
+      if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has && !autoPrintFired ? ARRIVE : AWAKE, t);   // it never opens setup by itself here: it keeps looking, and says what for
       break;
     case SETUP: J.a = 0; camT = {W / 2, H / 2, 1}; if (t - setupAt > 600) ESP.restart();
       { static bool let = false; if (digitalRead(KEY_BOOT) == HIGH) let = true; else if (let && t - setupAt > 1) { delay(50); ESP.restart(); } }   // BOOT let go, then pressed again: leave setup, nothing changed
       break;
-    case ASLEEP:       // nothing waiting: the screen dark half a minute; a touch wakes it
-      draw = false; blT = 0; J.a = 0; if (has) go(ARRIVE, t); else if (k > 30 || press) { awakeKind = (awakeKind + 1) % 3; go(AWAKE, t); } break;
-    case AWAKE: {      // ten seconds awake: the code to scan, the jellyfish behind it
-      if (has) { go(ARRIVE, t); break; }
-      J.a = fminf(1, k * 1.2f) * fminf(1, (10 - k) * 1.2f); J.bw = 70;
-      if (awakeKind == 0) { float u = k * 0.7f + 2.6f; J.x = 112 + cosf(u) * 84; J.y = 52 + sinf(u * 2) * 26; J.look = -cosf(u); camT = {W / 2, H / 2, 1}; }   // round the code's edge, behind it
-      else if (awakeKind == 1) { J.x = -40 + k * 34; J.y = 30; J.bw = 96; camT = {80, 70, 2.3f}; if (k > 7) camT = {W / 2, H / 2, 1}; }       // close, past the camera
-      else { J.x = 70; J.y = 200 - ease(k / 2.5f) * 170 + ease((k - 7.5f) / 2.5f) * 190; J.look = sinf(k * 1.4f); camT = {W / 2, H / 2, 1}; }  // up from below, a look, back down
+    case ASLEEP:       // continuous ambient swim: never switch the creature off
+      {
+        float ux = t * 0.34f, uy = t * 0.57f;
+        J.a = 0.82f + 0.10f * sinf(t * 0.71f);
+        J.x = W * 0.50f + sinf(ux) * 62 + sinf(t * 0.17f) * 17;
+        J.y = 72 + sinf(uy) * 28 + cosf(t * 0.23f) * 12;
+        J.bw = 52 + 12 * (0.5f + 0.5f * sinf(t * 0.42f));
+        J.eye = 0; J.rate = 0.62f; J.look = sinf(t * 0.31f) * 0.8f;
+        J.glow = 0.25f + 0.25f * sinf(t * 1.1f);
+        J.len = 0.86f + 0.16f * sinf(t * 0.38f);
+        /* Ambient performance: scale changes, a close inspection, a slow turn, a clean exit and re-entry. */
+        { float act = fmodf(t * 0.021f, 1.0f);
+          float baseX = J.x, baseY = J.y;
+          if (act > 0.15f && act < 0.23f) {
+            float q = sinf((act - 0.15f) / 0.08f * PI);
+            J.bw += 36.0f * q; J.y -= 13.0f * q; J.eye = 3;
+            camT = {baseX, baseY + 18.0f, 1.0f + 0.58f * q};
+          } else if (act > 0.31f && act < 0.40f) {
+            float q = sinf((act - 0.31f) / 0.09f * PI);
+            J.x += 48.0f * q; J.y -= 34.0f * q; J.len = 0.70f + 0.20f * q; J.look = q;
+          } else if (act > 0.43f && act < 0.57f) {
+            float q = sinf((act - 0.43f) / 0.14f * PI);
+            J.x += sinf(q * PI) * 28.0f; J.y += q * 8.0f; J.eye = q > 0.4f ? 3 : 0;
+          } else if (act > 0.62f && act < 0.68f) {
+            float q = ease((act - 0.62f) / 0.06f);
+            J.x = baseX + (W + 95.0f - baseX) * q;
+            J.y = baseY - 18.0f * sinf(q * PI);
+            J.a *= 1.0f - 0.94f * q; J.eye = 3;
+          } else if (act >= 0.68f && act < 0.75f) {
+            float q = ease((act - 0.68f) / 0.07f);
+            J.x = -75.0f + (baseX + 75.0f) * q;
+            J.y = baseY + sinf(q * PI) * 22.0f;
+            J.a = fmaxf(J.a, 0.18f + 0.72f * q); J.eye = 3;
+          } else if (act > 0.80f && act < 0.88f) {
+            float q = sinf((act - 0.80f) / 0.08f * PI);
+            J.bw *= 1.0f - 0.42f * q; J.y += 18.0f * q; J.len = 0.82f + 0.20f * q;
+          }
+          /* The creature's path always keeps moving, even while the camera settles. */
+          if (!(act > 0.15f && act < 0.23f)) camT = {W / 2 + sinf(t * 0.16f) * 7, H / 2 + sinf(t * 0.19f) * 4, 1.0f + 0.05f * sinf(t * 0.21f)};
+        }
+        if (has) go(ARRIVE, t);
+        else if (press) { awakeKind = (awakeKind + 1) % 3; go(AWAKE, t); }
+      }
+      break;
+    case AWAKE: {      // playful QR-time swim; the creature never blinks out between loops
+      if (has && !autoPrintFired) { go(ARRIVE, t); break; }
+      float u = t * 0.55f;
+      J.a = 0.88f + 0.08f * sinf(t * 0.9f);
+      J.bw = 58 + 14 * (0.5f + 0.5f * sinf(t * 0.5f));
+      if (awakeKind == 0) { J.x = 110 + cosf(u) * 78; J.y = 65 + sinf(u * 1.8f) * 30; camT = {W / 2, H / 2, 1}; }
+      else if (awakeKind == 1) { J.x = 40 + (sinf(u * 0.7f) + 1) * 105; J.y = 42 + sinf(u * 1.2f) * 20; camT = {W / 2, H / 2, 1}; }
+      else { J.x = 70 + sinf(u) * 35; J.y = 84 + sinf(u * 1.4f) * 58; camT = {W / 2, H / 2, 1}; }
+      J.look = sinf(u * 0.7f);
+      /* It startles, darts, and then floats back into the current. */
+      if (t - fleeAt < 1.5f) { float f = 1.0f - fmaxf(0, t - fleeAt) / 1.5f; J.x += fleeX * f; J.y += fleeY * f; J.jit = 1.2f * f; J.rate = 1.8f + f; J.eye = 3; }
       if (k > 10) go(ASLEEP, t);
       break; }
     case ARRIVE:       // something to print: it swims up, the camera goes close to its eye, then draws back
@@ -498,10 +658,14 @@ void loop() {
       break;
     case HELD: {
       if (!has) { go(ASLEEP, t); break; }
-      J.a = 1; J.x = HELD_X; J.y = HELD_Y; J.bw = HELD_BW; J.cue = true; J.glow = 0.5f + 0.5f * sinf(t * 2.4f); camT = {W / 2, H / 2, 1};
+      J.a = 1; J.x = HELD_X + sinf(t * 0.7f) * 4; J.y = HELD_Y + sinf(t * 1.1f) * 3; J.bw = HELD_BW + sinf(t * 0.9f) * 4; J.cue = true; J.glow = 0.5f + 0.5f * sinf(t * 2.4f); J.look = sinf(t * 0.8f); camT = {W / 2, H / 2, 1};
       float sk = t - springAt; J.sq = sk < 0.9f ? springFrom * expf(-5 * sk) * cosf(14 * sk) : 0;   // let go early: it springs back
-      if (down && held > 0.45f) { go(SQUISH, t); nextTick = 1 / 3.0f; nParts = 0; }
-      else if (tap) { buzz(30); ask(slip.job, "print"); prepPrint(); go(PRINTING, t); }
+      if (printAwaiting || actionPending) { /* wait for the site's response before changing the scene */ }
+      else if (down && held > 0.45f) { go(SQUISH, t); nextTick = 1 / 3.0f; nParts = 0; }
+      else if (tap) { autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); }
+      else if (NG_AUTOPRINT > 0 && !autoPrintFired && slip.job.length() && slip.job == autoPrintJob && millis() - jobSeenAt >= NG_AUTOPRINT * 1000UL) {
+        autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print");
+      }
       break; }
     case SQUISH: {     // held: squeezed slowly flatter, shaking harder, beads pressed out, eyes shut tight; full, it pops
       float q = fminf(1, (held - 0.45f) / HOLD_FULL); stepParts(0, dt);
@@ -512,7 +676,9 @@ void loop() {
       else if (q >= 1) { buzz(70); burstFrom(HELD_X, bTop + (bBot - bTop) * 0.5f); ask(slip.job, "squash"); go(BURST, t); }
       break; }
     case BURST:        // three seconds: the pop, the pieces, the current, the fish
-      J.a = 0; shake = k < 0.35f ? (1 - k / 0.35f) * 4 : 0; stepParts(k, dt);
+      J.a = k < 0.55f ? 0.15f * (1 - k / 0.55f) : 0.18f + 0.10f * sinf(t * 1.4f);
+      J.x = W + 25 - fminf(k, 1.4f) * 30; J.y = 24 + sinf(t * 1.7f) * 8; J.bw = 28; J.eye = 3; J.rate = 2.0f;
+      shake = k < 0.35f ? (1 - k / 0.35f) * 4 : 0; stepParts(k, dt);
       if (k > 3.4f) { nParts = 0; fish.on = false; current = 0; go(QUIET, t); }
       break;
     case PRINTING:     // the slip feeds out of the bell as the printer prints it, is torn off, and the jellyfish jets away with the light
@@ -520,11 +686,17 @@ void loop() {
       if (k > 4.1f) { float f = k - 4.1f; J.y = HELD_Y - f * f * 220 - f * 30; J.sq = -0.3f * fabsf(sinf(f * 9)); }
       if (k > 5.4f) go(QUIET, t);
       break;
-    case QUIET:        // fifteen seconds without it, after a print or a squash
-      J.a = 0; camT = {W / 2, H / 2, 1}; if (k > 15) go(has ? ARRIVE : ASLEEP, t);
+    case QUIET:        // drift back into view after the playful exit; never leave a dead screen
+      J.a = 0.76f + 0.10f * sinf(t * 0.8f); J.x = W / 2 + sinf(t * 0.29f) * 68; J.y = 76 + sinf(t * 0.61f) * 32;
+      J.bw = 48 + 10 * (0.5f + 0.5f * sinf(t * 0.4f)); J.eye = 0; J.rate = 0.68f; J.look = sinf(t * 0.4f); J.len = 0.9f + 0.1f * sinf(t * 0.3f);
+      camT = {W / 2 + sinf(t * 0.18f) * 5, H / 2 + sinf(t * 0.2f) * 4, 1};
+      if (has && !autoPrintFired) go(ARRIVE, t); else if (k > 3.0f) go(ASLEEP, t);
       break;
   }
 
+  if (mode != SETUP && t - fleeAt >= 0 && t - fleeAt < 1.35f && mode != HELD && mode != SQUISH && mode != PRINTING && mode != BURST) {
+    float f = 1.0f - (t - fleeAt) / 1.35f; J.x += fleeX * f; J.y += fleeY * f; J.jit += 1.8f * f; J.rate += 1.4f * f; J.eye = 3;
+  }
   if (bootAt >= 0) { blT = 255; draw = true; }
   bl += (blT - bl) * fminf(1, dt * 4); analogWrite(PIN_BL, (int)bl);
   if (!draw && bl < 2) { delay(60); return; }
@@ -532,19 +704,35 @@ void loop() {
   /* the frame */
   shx = shake ? rnd1() * shake : 0; shy = shake ? rnd1() * shake : 0; if (mode != BURST) shake = 0;
   drawSea(t, dt);
-  if (mode == AWAKE) {   // the code in front, the jellyfish behind it: nothing ever covers what is scanned
-    drawJelly(t); drawQR(QR_SITE, 25, 236, 80, 5);
-    text(MONO, "novel.global", 236 - textW(MONO, "novel.global", 1) / 2, 165, INK, 0.6f, 1);
-  } else if (mode != SETUP) drawJelly(t);
+  jellyRollEnabled = (mode == ASLEEP || mode == AWAKE || mode == CONNECTING || mode == QUIET);
+  if (mode != SETUP) drawJelly(t);
+  /* The public QR stays hidden until Wi-Fi is joined and the station is active.
+     Each 30-second cycle gives it a different gentle entrance; once in place it stays still for scanning. */
+  bool wifiReady = WiFi.status() == WL_CONNECTED && netErr != 1 && mode != CONNECTING && mode != SETUP;
+  if (!wifiReady) wifiReadyAt = 0; else if (!wifiReadyAt) wifiReadyAt = millis();
+  unsigned long qrCycleMs = wifiReadyAt ? (millis() - wifiReadyAt) % 30000UL : 30000UL;
+  bool qrVisible = wifiReady && !has && qrCycleMs < 10000UL;
+  if (qrVisible) {
+    float entrance = fminf(1.0f, qrCycleMs / 1200.0f);
+    float slide = 1.0f - ease(entrance);
+    unsigned long cycleNo = millis() / 30000UL;
+    int qx = 236 + (cycleNo % 3 == 0 ? 0 : cycleNo % 3 == 1 ? -7 : 7);
+    int qy = 82 + (cycleNo % 2 ? -5 : 5);
+    /* The QR is nudged by the passing current during entrance, then stays nearly still to scan. */
+    float qrNudge = qrCycleMs < 2200UL ? sinf(t * 2.2f) * 5.0f : sinf(t * 0.55f) * 1.5f;
+    qx += (int)(slide * 82.0f + qrNudge);
+    qy += (int)(qrCycleMs < 2200UL ? sinf(t * 1.7f) * 3.0f : sinf(t * 0.42f) * 1.0f);
+    drawQR(QR_SITE, 25, qx, qy, 4);
+    if (qrCycleMs > 1200UL) text(MONO, "novel.global", qx - textW(MONO, "novel.global", 1) / 2, qy + 66, INK, 0.6f, 1);
+  }
+  qrWasVisible = qrVisible;
   if (mode == BURST) { drawParts(k); if (k < 0.4f) { float r = k / 0.4f; ring(PX(HELD_X), PY(48), 24 + r * 80, 1.2f, INK, 0.55f * (1 - r)); } }
   if (mode == SQUISH) drawParts(0);
 
   /* what waits: its heading, its first line, its code; quiet type, a clear column */
   if (mode == HELD || mode == SQUISH || (mode == ARRIVE && k > 3.6f)) {
     float a = mode == ARRIVE ? fminf(1, (k - 3.6f) * 1.5f) : 1;
-    int y = para(HEAD, slip.say.length() ? slip.say : slip.code, COL, 44, W - COL - 10, 24, 3, INK, a) + 4;
-    if (slip.n) para(BODY, slip.wish[0], COL, y, W - COL - 10, 17, 2, INK, 0.6f * a);
-    if (!slip.paper) text(MONO, "to the radios", COL, H - 28, INK, 0.5f * a, 1);
+    para(HEAD, slip.say.length() ? slip.say : slip.code, COL, 32, W - COL - 8, 21, 5, INK, a);
     text(MONO, slip.code.c_str(), COL, H - 12, INK, 0.75f * a, 2);
   }
   if (mode == PRINTING && !slip.paper) {  // a line for the radios: no paper, its signal going out from the bell in thin rings
@@ -585,7 +773,7 @@ void loop() {
     text(MONO, "sketch " NG_VERSION, 8, H - 6, INK, 0.3f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
-  if ((mode == PRINTING || mode == BURST || mode == QUIET) && actCode) {   // did the site take it
+  if ((mode == HELD || mode == PRINTING || mode == BURST || mode == QUIET) && actCode) {   // did the site take it
     String r = actCode == 200 ? String("sent") : String("not sent (") + actCode + ")"; text(MONO, r.c_str(), W - 10 - textW(MONO, r.c_str(), 0), H - 6, INK, actCode == 200 ? 0.45f : 0.85f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
