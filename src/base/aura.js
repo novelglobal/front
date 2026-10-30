@@ -938,7 +938,7 @@
      playing lit; a press plays the list from there, round and round */
   function deskKept() { var ul = DESK.el && DESK.el.querySelector('.au-kept'); if (!ul) return;
     var len = function (code) { var sg = songOf(code); if (!sg) return ''; var s = Math.round(stepDur(sg) * STEPS_N * 2); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); };
-    ul.innerHTML = DESK.kept.map(function (k2, i) { var m = MOODS[+k2.code.charAt(2)], sc = SRCS[+k2.code.charAt(3)]; return '<li class="' + (DESK.list && DESK.play && DESK.li === i ? 'on' : '') + (k2.on ? ' lay' : '') + '"><button class="ly" data-kl="' + i + '" aria-pressed="' + !!k2.on + '" aria-label="Lay this track with the song"></button><button data-ks="' + i + '" aria-label="Play from here"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + esc(m ? m.k : '') + ' · ' + esc(sc ? sc[0] : '') + '</span><i>' + len(k2.code) + '</i></button><button class="sv" data-kv="' + i + '" aria-label="Save this track alone">' + svgI('save') + '</button><button class="x" data-kx="' + i + '" aria-label="Let it go">×</button></li>'; }).join('');
+    ul.innerHTML = DESK.kept.map(function (k2, i) { var m = MOODS[+k2.code.charAt(2)], sc = SRCS[+k2.code.charAt(3)]; return '<li class="' + (DESK.list && DESK.play && DESK.li === i ? 'on' : '') + (k2.on ? ' lay' : '') + '"><button class="ly" data-kl="' + i + '" aria-pressed="' + !!k2.on + '" aria-label="Lay this track with the song"></button><button data-ks="' + i + '" aria-label="Play from here"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + (k2.name ? esc(k2.name) : esc(m ? m.k : '') + ' · ' + esc(sc ? sc[0] : '')) + '</span><i>' + len(k2.code) + '</i></button><button class="sv" data-kv="' + i + '" aria-label="Save this track alone">' + svgI('save') + '</button><button class="x" data-kx="' + i + '" aria-label="Let it go">×</button></li>'; }).join('');
     [].forEach.call(ul.querySelectorAll('[data-kl]'), function (b) { b.addEventListener('click', function () { var q = DESK.kept[+b.dataset.kl]; q.on = !q.on; store.set('da.aura.songs', DESK.kept); deskKept(); bell(+b.dataset.kl % 4, 0.1); }); });
     [].forEach.call(ul.querySelectorAll('[data-kv]'), function (b) { b.addEventListener('click', function () { var sg = songOf(DESK.kept[+b.dataset.kv].code); if (!sg) return; b.classList.add('going'); songLoop(sg).then(function (r) { b.classList.remove('going'); if (r) saveWav(r.blob, 'novel-global-track-' + (+b.dataset.kv + 1) + '.wav'); }); }); });
     [].forEach.call(ul.querySelectorAll('[data-ks]'), function (b) { b.addEventListener('click', function () { DESK.li = +b.dataset.ks; songPlay(true, true); deskKept(); }); });
@@ -950,7 +950,7 @@
   /* which sources have anything in them, from what is here now */
   function deskAvail() { if (!DESK.el) return; [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('none', songEmpty(songMake(+b.dataset.src, DESK.mood))); }); }
   function deskOpen(given) {
-    closeDev();
+    closeDev(); DESK.kept = store.get('da.aura.songs', []) || DESK.kept;   // a device may have kept one since (a constellation's song)
     if (!DESK.el) {
       var k = function (cls, inner, attrs) { return '<button class="' + cls + '" ' + attrs + '>' + inner + '</button>'; };
       DESK.el = document.createElement('section'); DESK.el.className = 'au-desk'; DESK.el.setAttribute('role', 'dialog'); DESK.el.setAttribute('aria-label', 'Sound');
@@ -1434,7 +1434,7 @@
     if (store.get('da.aura.mesh', 0)) list.push('Mesh');
     return list;
   }
-  function todoCheck() { var k = $('#au-todo'); if (!k) return; var skipped = GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length; k.classList.toggle('gone', START.checklist === false || skipped || !todoItems().length); }
+  function todoCheck() { var k = $('#au-todo'); if (!k) return; var skipped = GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length; k.classList.toggle('gone', START.checklist !== true || skipped || !todoItems().length); }
   function todoFill() { var ol = $('#au-todol ol'); if (!ol) return; ol.innerHTML = todoItems().map(function (t) { return '<li class="done">' + esc(t) + '</li>'; }).join(''); }
   function todoShow() { todoCheck(); if ($('#au-todo').classList.contains('gone')) return; var l = $('#au-todol'); if (!l) return; todoFill(); l.hidden = false; root.classList.add('todo'); clearTimeout(S.todoT); S.todoT = setTimeout(function () { l.hidden = true; root.classList.remove('todo'); }, 10000); }
   $('#au-todo').addEventListener('click', function () { var l = $('#au-todol'), on = l.hidden; if (on) todoFill(); l.hidden = !on; this.setAttribute('aria-expanded', String(on)); root.classList.toggle('todo', on); bell(on ? 2 : 0, 0.12); });

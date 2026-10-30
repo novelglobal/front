@@ -312,7 +312,12 @@ const nodeMark = n => n.t === 'biz' ? `<i class="fm fm-${esc(n.fam || (ROLES[n.r
    or its star chart onto the poster as art */
 async function conUse(a) {
   const o = S.byId.get(S.sel); if (!o) return; const name = strings.nameFor(o, strings.fig) || 'A constellation';
-  if (a === 'keepSong') { const m = mixNow(); m.where.place = name; LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); made('song', name); snd.tick(1900); toast('✓'); return; }
+  if (a === 'keepSong') { const m = mixNow(); m.where.place = name; LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop();
+    /* and a track on the aura's SOUND desk: each word of what it ties together a note, four tracks, played with the rest */
+    const words = [name, ...strings.reach().filter(x => x.tied).map(x => strings.labelOf(x.key) || x.n || '')], rows = [0, 1, 2, 3].map(() => Array(32).fill('.'));
+    words.forEach((n, i) => String(n).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 1).forEach((w, j) => { let h = 2166136261; for (const ch of w + i) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; const k = (i + j) % 4; let at = h % 32; at -= at % [1, 2, 4, 2][k]; if (rows[k][at] === '.') rows[k][at] = String(k === 3 ? h % 5 : h % 10); }));
+    const code = 'v103' + rows.map(r => r.join('')).join('-'), kept = store.get('da.aura.songs', []) || []; if (!kept.some(q => q.code === code)) { kept.unshift({ code, at: Date.now(), name }); kept.splice(12); store.set('da.aura.songs', kept); }
+    made('song', name); snd.tick(1900); toast('✓'); return; }
   if (a === 'asIntel') {
     const tied = strings.reach().filter(x => x.tied).slice(0, 14), W = 600, H = 120 + tied.length * 34, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
     x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#111'; x.font = '600 28px Poppins, sans-serif'; x.fillText(name.slice(0, 30), 24, 48); x.font = '500 13px "IBM Plex Mono", monospace'; x.fillText(`${tied.length} TIED · ${nameOf(o).toUpperCase().slice(0, 30)}`, 24, 76);
