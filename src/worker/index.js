@@ -214,7 +214,9 @@ async function send(db, env, req) {
   let job = null;
   if (P && (b.escpos || b.mesh)) {
     const { q } = await db.prepare("SELECT count(*) AS q FROM jobs WHERE printer = ? AND status IN ('held', 'queued', 'printing')").bind(dest).first(); if (q >= LIMIT.perPrinter) return refuse(503, 'its queue is full');
-    job = { id: rid(), status: P.auto ? 'queued' : 'held' };
+    /* held for the touch screen only while it is there: a screen not heard from for two and a half minutes is passed by */
+    const screenGone = P.touch && (!P.touch_seen || t - P.touch_seen > 150e3);
+    job = { id: rid(), status: P.auto || screenGone ? 'queued' : 'held' };
     const thumb = typeof b.thumb === 'string' && /^\d{1,3},\d{1,3},[A-Za-z0-9+/=]{1,2400}$/.test(b.thumb) ? b.thumb : null;
     ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created, thumb) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(job.id, dest, id, b.code, b.escpos || null, P.mesh ? (b.mesh || null) : null, job.status, t, thumb));
   }
@@ -271,6 +273,7 @@ async function next(db, req, id) {
   if (p.off) { await db.prepare('UPDATE printers SET off = NULL WHERE id = ?').bind(id).run(); if (t - p.off < 2 * 60e3 && /\boff\b/.test(can)) return json({ off: true }); }
   /* the oldest job waiting, or one whose printer went quiet while printing it: taken for a minute. Paper always first: a line for the
      mesh alone waits until no print does, since the radio can take most of a minute to answer and a print should never wait on it */
+  if (p.touch && (!p.touch_seen || t - p.touch_seen > 150e3)) await db.prepare("UPDATE jobs SET status = 'queued' WHERE printer = ? AND status = 'held' AND created < ?").bind(id, t - 20e3).run();
   const j = await db.prepare("SELECT * FROM jobs WHERE printer = ? AND (status = 'queued' OR (status = 'printing' AND lease < ?)) ORDER BY (escpos IS NULL), created LIMIT 1").bind(id, t).first();
   if (!j) return new Response(null, { status: 204, headers: TEXT_H });
   if (j.tries >= 5) { await db.prepare("UPDATE jobs SET status = 'failed', error = 'tried five times', done = ? WHERE id = ?").bind(t, j.id).run(); return new Response(null, { status: 204, headers: TEXT_H }); }

@@ -899,3 +899,15 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 
 #aura .au-keyin input { width: 4.6em !important; max-width: 4.6em; border: 0 !important; border-bottom: 1.5px solid var(--ink) !important; background: rgba(10, 30, 60, .7) !important; padding: 6px 4px !important; }
 #aura #au-yours[hidden] { display: none !important; }
+
+/* today's brief at the head of the intel: one line, read like a headline */
+#aura .au-brief { margin: 4px 0 12px; font: italic 17px/1.35 Georgia, serif; opacity: .85; max-width: 34ch; }
+
+/* the longer words: kept back, shown only to a hand that rests on the step a while */
+#aura #au-panel .au-hint:not(.au-ask):not(.au-empty) { opacity: 0 !important; transition: opacity .4s ease 0s !important; }
+#aura #au-panel:hover .au-hint:not(.au-ask):not(.au-empty) { opacity: .7 !important; transition: opacity .6s ease 1.6s !important; }
+
+/* the device keys along the top of a device's window: in the frame's own ink, dark by day and light by night, never cream on cream */
+#aura .au-win header nav .au-i { stroke: currentColor !important; }
+#aura .au-win header nav .au-i .f { fill: currentColor; }
+#aura.dark .au-win header nav button { color: #E9F2E4; }

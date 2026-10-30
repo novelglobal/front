@@ -673,6 +673,12 @@
   }
   /* the step that would come next, once this one has something: a light runs down its tentacle to the tip */
   var nextStep = function () { return S.deep || S.stage >= 3 || !ready() ? -1 : S.stage + 1; };
+  /* the squirt of ink: when something opens or the step changes, a restrained cloud leaves the bell, drifts, and is gone */
+  function inkSquirt(t, b, a) {
+    if (!S.ink || still) return; var k = (t - S.ink) / 2.6; if (k >= 1 || k < 0) { if (k >= 1) S.ink = 0; return; } var col = DARK ? '244,241,232' : '6,24,52', e = 1 - Math.pow(1 - k, 3);
+    for (var i = 0; i < 54; i++) { var an = Math.PI * (0.15 + 0.7 * ((i * 0.618) % 1)), sp = 0.35 + ((i * 37) % 13) / 13, r = (24 + 210 * sp) * e, dx = Math.cos(an) * r * (i % 2 ? 1 : -1) * 0.8 + noise(i * 1.3, t * 0.5, 4) * 22 * k, dy = Math.sin(an) * r * 0.75;
+      x.fillStyle = 'rgba(' + col + ',' + (0.3 * (1 - k) * a * (0.5 + 0.5 * sp)).toFixed(3) + ')'; x.beginPath(); x.arc(L.bx + dx, b.bot + dy, (1.5 + (i % 6) * 0.9) * (1 - 0.5 * k), 0, 7); x.fill(); }
+  }
   function drawIruk(t, a) {
     readForm(); var T = irukTargets(t), b = T.bell, k0 = a, nx = nextStep(), work = FORM.key !== 'hang' && FORM.key !== 'line'; LAST = T.tents;
     /* the aura: a slow light round the bell, breathing with it */
@@ -705,7 +711,7 @@
     /* every piece on the wall is a bead on the bell's crown: what has been made stays with it */
     var nb = Math.min(24, FOLIO.length); for (var bi = 0; bi < nb; bi++) { var bq = b.pts[Math.round(NR * 0.8 * (0.12 + 0.76 * (nb > 1 ? bi / (nb - 1) : 0.5)))]; dot(bq[0], bq[1] - 5, 1.6, (0.55 + 0.45 * Math.sin(t * 1.3 + bi)) * a); }
     if (S.round && t - S.round < 2.6) { var rk = (t - S.round) / 2.6, fl2 = Math.max(0, Math.sin(Math.min(1, (rk - 0.55) / 0.45) * Math.PI)); if (fl2 > 0) { var g3 = x.createRadialGradient(L.bx, b.top + L.bh * 0.5, 2, L.bx, b.top + L.bh * 0.5, L.bw * 2.2); g3.addColorStop(0, 'rgba(244,241,232,' + 0.35 * fl2 + ')'); g3.addColorStop(1, 'rgba(244,241,232,0)'); x.fillStyle = g3; x.fillRect(L.bx - L.bw * 2.4, b.top - L.bw * 1.2, L.bw * 4.8, L.bw * 3.6); } }
-    slipDraw(T, t, a);
+    slipDraw(T, t, a); inkSquirt(t, b, a);
     return T;
   }
   /* the receipt being made, small and narrow as the 80 mm paper, carried by the tentacles: hanging from the step that is open, passed
@@ -1016,7 +1022,7 @@
     orbs.forEach(function (o, i) { if (in_(ORB_LV[i])) fresh.push(o); }); tabs.forEach(function (b, i) { if (in_(TAB_LV[i])) fresh.push(b); }); devK.forEach(function (b, i) { if (in_(DEV_LV[i])) fresh.push(b); });
     if (in_(1)) fresh.push($('#au-snd'));
     fresh.forEach(function (e) { if (!e) return; e.classList.add('fresh'); setTimeout(function () { e.classList.remove('fresh'); }, 7000); var w = e.querySelector('.au-ow'); if (w) { w.classList.add('say'); setTimeout(function () { w.classList.remove('say'); }, 4000); } });
-    flashWords(400); harp([0, 4, 7]); todoShow();
+    S.ink = performance.now() / 1000; flashWords(400); harp([0, 4, 7]); todoShow();
   }
   var DEV_K = ['radio', 'wish', 'design', 'folio'];
   var devK = [], devOpen = function (i) { return earned(DEV_K[i]); };
@@ -1156,16 +1162,17 @@
   /* the deep engine, the studio, as three devices: each opened in a window over the aura, the aura one touch away. One is earned with each
      poster printed, and rides the ring under the eye with the catch; all three are in the intel */
   var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'RESEARCH BOARD', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
-  var STEPS = [['notice', 'eyet'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
+  var STEPS = [['notice', 'navmap'], ['story', 'pencil'], ['make', 'wave'], ['print', 'poster']];
   var ICON = {
     /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */
     eyet: '<g class="lid"><path d="M4 12.5c3.5-4.6 7.5-6.7 12-6.7s8.5 2.1 12 6.7c-3.5 4.6-7.5 6.7-12 6.7s-8.5-2.1-12-6.7z"/><circle cx="16" cy="12.5" r="3.6"/><circle cx="16" cy="12.5" r="1.3" class="f pu"/></g><path d="M10.5 18.5v8M14 19.2v9.5M18 19.2v9.5M21.5 18.5v8" class="d"/>',
     radio: '<circle cx="16" cy="19" r="2.2" class="f"/><path d="M16 21.5v8.5M12.4 15.2a5.2 5.2 0 0 1 7.2 0M9.3 12.1a9.6 9.6 0 0 1 13.4 0M6.2 9a14 14 0 0 1 19.6 0" class="d"/>',
     wish: '<path d="M9 13.5C9 8 12 5 16 5s7 3 7 8.5v1.2H9z"/><path d="M10.5 15v13M14 15v14M18 15v14M21.5 15v13" class="t"/>',
     art: '<path d="M5 26c6-3 4-10 11-12s9-8 11-9"/><circle cx="9" cy="9" r="3"/><path d="M20 22l6 4M22 18h6" class="d"/>',
-    navmap: '<path d="M4 8.5l7.5-3 9 3 7.5-3v18l-7.5 3-9-3-7.5 3z"/><path d="M11.5 5.5v18M20.5 8.5v18" class="d"/><circle cx="16" cy="14" r="1.6"/>',
-    wave: '<path d="M3 16c2.2-7 4.3-7 6.5 0s4.3 7 6.5 0 4.3-7 6.5 0 4.3 7 6.5 0"/><path d="M8 7.5c1.3-1.6 2.7-1.6 4 0M20 24.5c1.3 1.6 2.7 1.6 4 0" class="d"/>',
-    pencil: '<path d="M22 4.5l5.5 5.5L12 25.5l-7 1.5 1.5-7z"/><path d="M19 7.5l5.5 5.5M6.5 20l5.5 5.5" class="d"/>',
+    navmap: '<path d="M5 9.5l7-2.6 8 2.6 7-2.6v16l-7 2.6-8-2.6-7 2.6z"/><path d="M12 6.9v16M20 9.5v16" class="d"/><circle cx="16" cy="15.5" r="5.8" class="d"/><circle cx="16" cy="15.5" r="1.4" class="f"/>',
+    poster: '<path d="M9 4.5h14v20.2l-2.3 1.6-2.4-1.6-2.3 1.6-2.3-1.6-2.4 1.6L9 24.7z"/><circle cx="16" cy="11.8" r="3.6" class="f"/><path d="M12.4 18.4h7.2M12.4 21.2h4.4" class="d"/>',
+    wave: '<path d="M3 17c2.4-5.4 4.6-5.4 7 0s4.6 5.4 7 0 4.6-5.4 7 0 3.4 4 5 2.2"/><path d="M6 10.5c1.4-1.4 2.8-1.4 4.2 0" class="d"/><circle cx="24.5" cy="9" r="1.4" class="f"/><circle cx="27.4" cy="12.4" r=".8" class="f"/>',
+    pencil: '<path d="M21.5 5.5l4.8 4.8L12.6 24l-6 1.4 1.4-6z"/><path d="M18.6 8.4l4.8 4.8" class="d"/><path d="M4.5 28.5c3-1.2 5.2-.4 7.4.6s4.6 1.4 7.6-.4" class="d"/><circle cx="25.6" cy="27.4" r="1.3" class="f"/>',
     print: '<path d="M9 3h14v24l-2.3-1.6-2.3 1.6-2.4-1.6-2.4 1.6-2.3-1.6L9 27z"/><path d="M12 9h8M12 13h8M12 17h5"/>',
     /* the catch: one bundle, four things in it (the ground, a leaf, the readings, the sun over the water) */
     catch: '<circle cx="16" cy="16" r="13.5" class="d"/><path d="M8 13l3-1.5 3 1.5 3-1.5v7l-3 1.5-3-1.5-3 1.5z"/><path d="M18.5 11c2-2.8 5-3.6 7-3-.4 2.8-3 5-7 3z"/><circle cx="21.5" cy="21" r="2.2"/><path d="M17 26c1.4-1 2.6-1 4 0s2.6 1 4 0" /><circle cx="11" cy="23" r="1" class="f"/><circle cx="13.5" cy="21.5" r="1" class="f"/>',
@@ -1193,19 +1200,19 @@
     pin: '<path d="M16 28s-8-8.5-8-14a8 8 0 0 1 16 0c0 5.5-8 14-8 14z"/><circle cx="16" cy="14" r="2.8" class="f"/>',
     more: '<circle cx="16" cy="16" r="11.5"/><path d="M16 14.5v8"/><circle cx="16" cy="10.4" r="1.3" class="f"/>',
     /* the devices as hand-drawn glyphs, for the ring round the irukandji: a little off true, as drawn */
-    hradio: '<path d="M5.6 13.4c6.9-.7 14-.5 20.9.3l-.5 12c-7 .5-13.8.4-20.4-.2z"/><path d="M8.8 13.1 22.6 5.3"/><circle cx="23" cy="5.1" r="1.1" class="f"/><circle cx="11.3" cy="19.6" r="3.1"/><path d="M11.3 17.9v1.8"/><path d="M17.9 17.4h5.7M18.1 19.9h5.2M18 22.5h4.1" class="d"/>',
-    hboard: '<path d="M6.1 6.6c6.9-.5 13.4-.4 19.9.1l-.4 14.2c-6.5.4-13.1.4-19.5-.1z"/><path d="M10.3 21 7.6 27.2M21.8 21l2.7 6.1"/><path d="M9.6 10.2h4.6v3.7H9.7zM17.6 10.4h5v5.1h-4.9z" class="f"/><path d="M14.3 12.2l3.2 1.4M10.4 16.6h5.4" class="d"/>',
+    hradio: '<circle cx="9.5" cy="22" r="2.4" class="f"/><path d="M14 18a6 6 0 0 1 0 8M17.6 14.4a11 11 0 0 1 0 15.2M21.4 10.6a16.4 16.4 0 0 1 0 22.6" class="d"/><path d="M9.5 19.6V6.5l6.5-2" />',
+    hboard: '<path d="M7 9.5l8.5 8 7.5-11.5M15.5 17.5l10 6.5M15.5 17.5L8 25.5" class="d"/><circle cx="7" cy="9.5" r="1.7" class="f"/><circle cx="23" cy="6" r="1.7" class="f"/><circle cx="15.5" cy="17.5" r="2.6"/><circle cx="25.5" cy="24" r="1.7" class="f"/><circle cx="8" cy="25.5" r="1.7" class="f"/>',
     /* the design device: play and imagination, a palette with a brush in it and a spark over it, not a printer */
-    hshop: '<path d="M16.2 6.4c-6.3-.2-11 4.3-10.8 9.8.2 5.3 4.6 9.3 9.6 9.4 2.2 0 3-1.2 2.6-2.6-.5-1.6.4-2.9 2.1-2.9h3.4c2.6 0 4.1-1.6 4.1-4.1-.3-5.3-5-9.5-11-9.6z"/><circle cx="10.6" cy="15.4" r="1.5" class="f"/><circle cx="13.4" cy="10.8" r="1.5" class="f"/><circle cx="19" cy="10.6" r="1.5" class="f"/><path d="M27.6 21.2 21.4 27.2c-.9.8-2.2.5-2.3-.6"/><path d="M25.4 3.4v3.2M23.8 5h3.2" class="d"/>',
+    hshop: '<path d="M15.6 16.4c0-2 2.5-2.6 3.6-1.1s.4 4.5-2.6 5-6.1-1.6-5.6-5.6 4.1-7 8.2-6.5 7.6 4.1 7.1 8.6-4.6 7.6-9.1 7.1"/><circle cx="25.4" cy="7.4" r="1.5" class="f"/><circle cx="6.6" cy="25.6" r="1" class="f"/><circle cx="27.6" cy="21.4" r=".8" class="f"/><circle cx="5.6" cy="9.6" r=".7" class="f"/>',
     list: '<path d="M6 9h14M6 16h14M6 23h9"/><path d="M23 19l5 3.5-5 3.5z" class="f"/>',
     qrc: '<path d="M6 6h8v8H6zM18 6h8v8h-8zM6 18h8v8H6z"/><path d="M9 9h2v2H9zM21 9h2v2h-2zM9 21h2v2H9z" class="f"/><path d="M18 18h3v3h-3zM23 23h3v3h-3zM23 18h3M18 26h3" class="d"/>',
     cons: '<path d="M6 22l7-9 6 5 7-10"/><circle cx="6" cy="22" r="1.8" class="f"/><circle cx="13" cy="13" r="1.8" class="f"/><circle cx="19" cy="18" r="1.8" class="f"/><circle cx="26" cy="8" r="1.8" class="f"/><path d="M19 18l3 7" class="d"/>',
-    dradio: '<path d="M6 12h20v14H6z"/><path d="M9 16h6v6H9z" class="f"/><path d="M18 16h5M18 19h5M18 22h3" class="d"/><path d="M10 12L22 6"/>',
-    dboard: '<path d="M5 7h22v18H5z"/><path d="M9 11h5v4H9zM18 11h5v6h-5zM9 19h6v3H9z" class="f"/><path d="M14 13l4 1M12 15v4" class="d"/>',
+    dradio: '<circle cx="9.5" cy="22" r="2.4" class="f"/><path d="M14 18a6 6 0 0 1 0 8M17.6 14.4a11 11 0 0 1 0 15.2" class="d"/><path d="M9.5 19.6V6.5l6.5-2" />',
+    dboard: '<path d="M7 9.5l8.5 8 7.5-11.5M15.5 17.5l10 6.5" class="d"/><circle cx="7" cy="9.5" r="1.6" class="f"/><circle cx="23" cy="6" r="1.6" class="f"/><circle cx="15.5" cy="17.5" r="2.4"/><circle cx="25.5" cy="24" r="1.6" class="f"/>',
     /* the portfolio: a picture hung on a line, the printer's paper under it */
-    hfolio: '<path d="M4.5 7.5c7.6-1.2 15.4-1.2 23 0"/><path d="M9 7.9l1.2 3.4M23 7.9l-1.2 3.4" class="d"/><path d="M8 11.2c5.4-.5 10.8-.5 16 0l-.4 10.7c-5.1.4-10.2.4-15.2 0z"/><path d="M11.4 18.6l3.2-3.4 2.6 2.4 2-1.8 2.6 2.8" class="d"/><path d="M12.4 25.4h7.2M14 28h4" class="d"/>',
-    dfolio: '<path d="M6 10.5c6.7-.6 13.3-.6 20 0l-.5 12.5c-6.3.5-12.7.5-19 0z"/><path d="M10 19.6l4-4.2 3.2 3 2.4-2.2 3.2 3.4" class="d"/>',
-    dshop: '<path d="M16 6c-6 0-10.5 4.3-10.5 9.6S9.8 25.4 15 25.4c2 0 2.8-1.1 2.4-2.4-.5-1.5.4-2.7 2-2.7h3.3c2.5 0 3.9-1.5 3.9-3.9C26.3 10.3 21.7 6 16 6z"/><circle cx="10.8" cy="15.2" r="1.4" class="f"/><circle cx="13.5" cy="10.8" r="1.4" class="f"/><circle cx="18.8" cy="10.6" r="1.4" class="f"/>',
+    hfolio: '<path d="M4.5 6.5c7.6-1 15.4-1 23 0" class="d"/><path d="M9.5 6.8v2.6M22.5 6.8v2.6" class="d"/><path d="M8.5 9.6h15v17h-15z"/><circle cx="16" cy="16" r="3.4" class="f"/><path d="M12 22.4h8" class="d"/>',
+    dfolio: '<path d="M8.5 7h15v18h-15z"/><circle cx="16" cy="14" r="3.4" class="f"/><path d="M12 20.6h8" class="d"/>',
+    dshop: '<path d="M15.6 16.4c0-2 2.5-2.6 3.6-1.1s.4 4.5-2.6 5-6.1-1.6-5.6-5.6 4.1-7 8.2-6.5 7.6 4.1 7.1 8.6-4.6 7.6-9.1 7.1"/><circle cx="25.4" cy="7.4" r="1.4" class="f"/>',
     hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
     key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
     mark: '<path d="M4 11h10v10H4z" class="f"/><circle cx="23" cy="16" r="5.6" class="f" style="opacity:.55"/>',
@@ -1387,7 +1394,7 @@
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
     setMode('bang'); store.set('da.aura.seen', 1);
   }
-  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); if (!canStep(stage)) stage = 0; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.wline = FORM.from = LAST = null; S.stage = stage; S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
+  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); if (!canStep(stage)) stage = 0; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.wline = FORM.from = LAST = null; S.stage = stage; if (stage === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); } S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
   /* a printed piece is finished: the round is over. Going on (to any step but print, to the eye or to the catch) begins the next piece, clear;
      the finished one stays on the wall, to be brought back */
@@ -1403,7 +1410,8 @@
     hintsQuiet();
     if (i !== 3 && done()) fresh();
     var from = S.stage; if (i === S.stage && !S.deep) { paint(); keys(); return; }
-    beat('step-' + i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
+    if (i === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); changed(); }
+    S.ink = performance.now() / 1000; beat('step-' + i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
     S.pass = { from: from, to: i, t0: performance.now() / 1000 }; if (L.tips) ripple(L.tips[i][0], L.tips[i][1] - 10);
   }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('#au-say, .au-wish textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
@@ -1466,7 +1474,7 @@
   /* the print dark or light: as chosen, else as the paper is */
   var START = store.get('da.aura.start', null) || {};
   var printNight = function () { if (P && P.pnight != null) return !!P.pnight; if (START.printNight === 'day') return false; if (START.printNight === 'night') return true; return !!(P && P.paper !== 'white'); };
-  var KEEP = ['who', 'pnight', 'len', 'id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx', 'wtop', 'blank', 'wallOnly', 'wm'];
+  var KEEP = ['briefed', 'who', 'pnight', 'len', 'id', 'at', 'photo', 'thumb', 'say', 'wSay', 'tags', 'lat', 'lng', 'src', 'art', 'lines', 'catch', 'pos', 'adds', 'tf', 'paper', 'ptone', 'spPhoto', 'spCredit', 'sent', 'folioId', 'revealed', 'wx', 'wtop', 'blank', 'wallOnly', 'wm'];
   function pack(p) { var o = {}; KEEP.forEach(function (k) { if (p[k] !== undefined) o[k] = p[k]; }); o.noteId = p.note ? p.note.id : ''; return JSON.parse(JSON.stringify(o)); }
   function unpack(o) {
     var p = newPiece(); KEEP.forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; }); p.mine = true; p.catch = p.catch || { map: false, life: '', data: [], nino: false }; p.adds = p.adds || []; p.pos = p.pos || {}; p.tf = p.tf || {};
@@ -2108,7 +2116,7 @@
   var MAPV = { z: 16, lat: 0, lng: 0, draw: null };
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
-    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' +
+    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' + (NG.brief ? '<p class="au-brief">' + esc(NG.brief(1)) + '</p>' : '') +
       '<div class="au-c">' + (CITIES.length ? '<nav class="au-cities">' + '<button data-city="-1" data-fw="here" aria-label="Where I am">' + svgI('pin') + '</button>' + CITIES.map(function (c, i) { return '<button data-city="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</nav>' : '') + '<nav class="au-devs">' + DEVS.map(function (d, i) { return devOpen(i) ? '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>' : ''; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul><ul class="au-spots" id="au-spots"></ul>' +

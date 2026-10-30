@@ -958,6 +958,41 @@ function moon(t) {
 }
 /* how long ago, in moons: "this moon", "last moon", "3 moons ago" */
 function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon' : k === 1 ? 'last moon' : k + ' moons ago'; }
+/* the briefs: short, for a world that keeps arriving. What heat, fire, flood and a changing planet ask of us here, said plainly,
+   one at a time, turning with the days (heat and fire first in an El Niño, flood in a La Niña). On the booth's slip, in the
+   intel, and on a new poster, where it can be deleted */
+var BRIEFS = [
+  ['heat', 'Heat is the quiet disaster: no smoke, no sirens, and more deaths in Australia than any other.'],
+  ['heat', 'Knock on the door beside yours. Heat finds the people who live alone first.'],
+  ['heat', 'Under a tree the footpath can be ten degrees kinder. Shade is infrastructure.'],
+  ['heat', 'Above 42°, flying-foxes fall from the trees. Call wildlife rescue; never touch one.'],
+  ['heat', 'Drink before you are thirsty. Rest before you are tired. Check before you are worried.'],
+  ['heat', 'A heat plan fits on a fridge: who to call, where is cool, when to go.'],
+  ['heat', 'Fill a shallow dish and put it in the shade. The birds will find it before you do.'],
+  ['fire', 'A dry winter is the first page of a fire summer.'],
+  ['fire', 'Leaving early is not advice. It is the plan.'],
+  ['fire', 'Catastrophic is a forecast, not a feeling. Read the rating; believe it.'],
+  ['fire', 'Drought does not light fires. It builds them, one dry week at a time.'],
+  ['fire', 'Smoke travels further than flame. Keep a P2 mask where you keep your keys.'],
+  ['fire', 'Clear the gutters in spring. An ember in January will not ask.'],
+  ['flood', 'If it is flooded, forget it. Most flood deaths begin with a car.'],
+  ['flood', 'Fifteen centimetres of moving water can take you off your feet; thirty can float a car.'],
+  ['flood', 'Water remembers the old creek. Look up your flood map before the rain does.'],
+  ['flood', 'La Niña fills the rivers and El Niño drains them. Both are coming back.'],
+  ['shift', 'Every El Niño now begins on a warmer ocean than the last.'],
+  ['shift', 'Normal is a rear-view mirror.'],
+  ['shift', 'The planet is not broken. It is arriving, faster than our habits.'],
+  ['shift', 'The reef is not dying all at once. It is bleaching in instalments.'],
+  ['shift', 'The flowering calendar has moved. Notice what opens early, and write it down.'],
+  ['shift', 'Stay in the uncertainty long enough to act well. Keats called it negative capability.'],
+  ['shift', 'Make one cool room, know one neighbour, keep one plan. That is a refuge.'],
+  ['shift', 'Notice first. Every good plan is built on something someone saw.']];
+/* one brief, the same for everyone on a given day (and step), leaning to heat and fire in an El Niño, to flood in a La Niña */
+function brief(step) {
+  var d = Math.floor(Date.now() / 864e5) + (step || 0) * 7, o = window.NG && NG.outlookNow ? NG.outlookNow() : null, ph = o && o.phase ? String(o.phase) : '';
+  var pool = /ni[nñ]o/i.test(ph) && !/la/i.test(ph) ? BRIEFS.filter(function (b) { return b[0] !== 'flood'; }) : /la ni/i.test(ph) ? BRIEFS.filter(function (b) { return b[0] !== 'fire'; }) : BRIEFS;
+  return pool[d % pool.length][1];
+}
 /* each maker's kin: a species of here, and a mark, handed out by the site in turn (the first 64 makers a species each) */
 var KIN = ['Irukandji', 'Blue-ringed octopus', 'Weedy seadragon', 'Port Jackson shark', 'Little penguin', 'Australian fur seal', 'Southern right whale', 'Burrunan dolphin',
   'Bluebottle', 'Biscuit star', 'Giant cuttlefish', 'Blue groper', 'Old wife', 'Sea hare', 'Spider crab', 'Pied oystercatcher', 'Crested tern', 'Hooded plover',
@@ -2098,13 +2133,15 @@ function boothSlip(D, code, real) {
   return qrLib().then(function (Q) {
     var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
     q = null; var qs = 0;   // the slip carries one code: the access code
-    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0), foot = Math.max(qs, Math.round(104 * u)) + pad * 2;
+    x.font = 'italic ' + Math.round(17 * u) + 'px Georgia, serif'; var bl = wrapText(x, brief(), W - pad * 2).slice(0, 3);
+    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(24 * u) + (bl.length ? Math.round(14 * u) : 0), foot = Math.max(qs, Math.round(104 * u)) + pad * 2;
     c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
     x.fillRect(pad, Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
     x.font = '700 ' + Math.round(17 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(38 * u), Math.round(8 * u)); x.font = Math.round(15 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
     BTH.lay = { head: head, ph: p.height };
     x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
     var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
+    if (bl.length) { y += Math.round(6 * u); x.font = 'italic ' + Math.round(17 * u) + 'px Georgia, serif'; bl.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(24 * u); }); }
     /* the key: a drawn key and the three characters large (this phone's own, on paper only), "your key" under them; the slip's own code small */
     y = c.height - foot + pad; var kx = pad, ky = y + Math.round(4 * u), kr = Math.round(11 * u); x.lineWidth = Math.max(2, Math.round(3 * u)); x.strokeStyle = '#000'; x.beginPath(); x.arc(kx + kr, ky + kr, kr, 0, 7); x.stroke();
     x.fillRect(kx + kr * 2, ky + kr - Math.round(1.5 * u), Math.round(26 * u), Math.round(3 * u)); x.fillRect(kx + kr * 2 + Math.round(16 * u), ky + kr, Math.round(3 * u), Math.round(8 * u)); x.fillRect(kx + kr * 2 + Math.round(23 * u), ky + kr, Math.round(3 * u), Math.round(6 * u));
@@ -2300,7 +2337,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();
