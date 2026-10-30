@@ -65,9 +65,9 @@ html.aura-on body { background: var(--blue, #17457F); }
 #au-bell { position: absolute; left: 0; top: 0; border-radius: 50% 50% 18% 18%; cursor: pointer; }
 #au-bell:hover { box-shadow: inset 0 0 30px rgba(244, 241, 232, .12); }
 /* back up the line to the surface: the globe */
-#au-up { position: absolute; left: 14px; top: 0; width: 34px; height: 66px; }
-#au-up i { position: absolute; left: 16px; top: 0; height: 40px; border-left: 1.5px dotted var(--faint); }
-#au-up i::after { content: ''; position: absolute; left: -6px; top: 38px; width: 10px; height: 10px; border-radius: 50%; border: 1.4px solid var(--ink); }
+#au-up { position: absolute; left: 14px; top: 0; width: 34px; height: calc(66px + var(--sat)); }
+#au-up i { position: absolute; left: 14.5px; top: 0; width: 4px; height: calc(40px + var(--sat)); background: radial-gradient(circle, var(--faint) 1px, transparent 1.45px) 50% 100% / 4px 5px repeat-y; }
+#au-up i::after { content: ''; position: absolute; left: -3px; top: calc(38px + var(--sat)); width: 10px; height: 10px; border-radius: 50%; border: 1.4px solid var(--ink); }
 #au-up:hover i::after { box-shadow: 0 0 8px rgba(244, 241, 232, .7); }
 @media (max-width: 759px) { #au-up { left: 2px; } }
 .au-tab { position: absolute; left: 0; top: 0; width: 56px; height: 52px; margin: -22px 0 0 -28px; will-change: transform; }
@@ -879,3 +879,37 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 #aura .au-morek b { font: 700 16px/1 "Departure Mono", ui-monospace, monospace; letter-spacing: .05em; }
 /* the print preview is the sheet itself: crisp dots on white */
 #aura .au-eslide.now canvas.sheet { image-rendering: pixelated; background: #fff; }
+
+/* the board: its key on the journey, low on the left; its page over the step, the four sections as the steps' own icons */
+#au-talk { display: none; position: absolute; left: 14px; bottom: calc(18px + var(--sab)); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(244, 241, 232, .1); color: var(--ink); z-index: 6; cursor: pointer; }
+#au-talk svg { width: 22px; height: 22px; }
+#aura.m-iruk #au-talk, #aura.m-globe #au-talk { display: grid; place-items: center; }
+#aura #au-talk[hidden] { display: none !important; }
+.au-talkp { position: fixed; left: 50%; bottom: calc(66px + var(--sab)); transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); max-height: min(70vh, 560px); z-index: 32; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(12, 32, 62, .96); box-shadow: 0 10px 40px rgba(0, 0, 0, .4); color: #F4F1E8; font-family: "Architects Daughter", "Comic Sans MS", cursive; }
+html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
+.au-talkp[hidden] { display: none; }
+.au-talkp nav { display: flex; gap: 6px; align-items: center; }
+.au-talkp nav button { width: 36px; height: 36px; border-radius: 50%; border: 0; background: none; color: inherit; opacity: .5; cursor: pointer; display: grid; place-items: center; }
+.au-talkp nav button.on { opacity: 1; background: rgba(244, 241, 232, .12); }
+.au-talkp nav button svg { width: 22px; height: 22px; }
+.au-talkp nav .x { margin-left: auto; font-size: 20px; opacity: .7; }
+.au-talkp ol { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 8px; }
+.au-talkp li { display: grid; grid-template-columns: 26px 1fr auto; column-gap: 8px; align-items: baseline; padding: 6px 4px; border-radius: 8px; cursor: pointer; }
+.au-talkp li.sub { margin-left: 26px; opacity: .9; }
+.au-talkp li.re { background: rgba(244, 241, 232, .1); }
+.au-talkp li.none { display: block; text-align: center; opacity: .4; cursor: default; }
+.au-talkp li .kin { grid-row: span 2; align-self: start; }
+.au-talkp li .kin svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.au-talkp li b { font: 600 11px "Departure Mono", ui-monospace, monospace; letter-spacing: .05em; opacity: .7; }
+.au-talkp li small { font-size: 11px; opacity: .45; }
+.au-talkp li span { grid-column: 2 / 4; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
+.au-talkp form { display: flex; gap: 8px; }
+.au-talkp input { flex: 1; min-width: 0; font: 17px "Architects Daughter", "Comic Sans MS", cursive; color: inherit; background: transparent; border: 0; border-bottom: 1.5px dashed rgba(244, 241, 232, .6); padding: 6px 2px; outline: 0; }
+.au-talkp form button { width: 38px; border-radius: 50%; border: 0; background: #F4F1E8; color: #17457F; font-size: 18px; cursor: pointer; }
+#au-yours b svg { width: 14px; height: 14px; vertical-align: -2px; margin-left: 4px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+
+/* the phone's own bars and the page past its ends: the colour of the sky, day or night */
+html.aura-on { background: #17457F; }
+html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
+/* art with nothing begun: one small key, nothing said */
+#aura .au-begin .au-blankk { width: 46px; height: 46px; }

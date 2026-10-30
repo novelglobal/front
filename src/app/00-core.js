@@ -104,7 +104,14 @@ const savePrefs = () => store.set('da.prefs', prefs);
    A device that has been here before has done it */
 const IN_AURA = window.parent !== window && /[?&]from=aura\b/.test(location.search);
 /* the one device the aura opened this window for: its page, and no other */
-const AURA_ONLY = IN_AURA ? ({ radio: 0, wish: 1, print: 2 })[new URLSearchParams(location.search).get('only')] : undefined;
+const AURA_ONLY = IN_AURA ? ({ radio: 0, wish: 1, print: 2, portfolio: 3 })[new URLSearchParams(location.search).get('only')] : undefined;
+if (AURA_ONLY != null) document.documentElement.classList.add('only-' + ['radio', 'wish', 'print', 'portfolio'][AURA_ONLY]);   // one device in the aura's window: laid out for it alone
+/* the research board alone, on a phone: while the board is up, the W.I.S.H. device rests at the foot with only its top edge showing; a touch on it brings it up, a touch on the board puts it back */
+const wishFold = on => { const p = document.querySelector('#panel'), v = document.querySelector('#view'); if (!p || !v) return; p.style.transition = 'transform .35s ease'; if (!on) { p.style.removeProperty('transform'); document.body.classList.add('wish-up'); return; } p.style.removeProperty('transform'); const r = v.getBoundingClientRect(); p.style.setProperty('transform', `translateY(${Math.max(0, innerHeight - r.top - 72)}px)`, 'important'); document.body.classList.remove('wish-up'); };
+if (AURA_ONLY === 1) {
+  document.addEventListener('click', e => { if (innerWidth > 760 || !document.documentElement.classList.contains('board-on')) return; if (e.target.closest('#board')) { if (document.body.classList.contains('wish-up')) wishFold(true); return; } if (e.target.closest('#panel') && !document.body.classList.contains('wish-up')) { wishFold(false); e.preventDefault(); e.stopPropagation(); } }, true);
+  let wasOn = false; new MutationObserver(() => { const on = document.documentElement.classList.contains('board-on') && innerWidth <= 760; if (on === wasOn) return; wasOn = on; setTimeout(() => wishFold(on), on ? 400 : 0); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+}
 if (IN_AURA) { document.documentElement.classList.add('in-aura'); const nq = new URLSearchParams(location.search).get('night'); if (nq != null) prefs.night = nq === '1'; }
 /* a picture made here handed to the aura, which puts it on the poster in hand; crisp keeps it line work on the receipt (a code, a score) */
 /* iNaturalist through novel.global (stage 4), with a way round: iNaturalist limits the shared addresses Cloudflare asks from, so when

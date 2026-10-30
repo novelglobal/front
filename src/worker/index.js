@@ -32,6 +32,9 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS stories_code ON stories(code)`,
   /* a maker by their three characters: when first and last seen, how many sent, the stage they were at (for the approval page only) */
   `CREATE TABLE IF NOT EXISTS makers (who TEXT PRIMARY KEY, first INTEGER NOT NULL, last INTEGER NOT NULL, posts INTEGER NOT NULL DEFAULT 0, stage TEXT)`,
+  /* the board: a few words by a maker (shown by their kin, never their code), in one of the journey's four sections, or a reply to one */
+  `CREATE TABLE IF NOT EXISTS talk (id TEXT PRIMARY KEY, sec TEXT NOT NULL, who TEXT NOT NULL, text TEXT NOT NULL, re TEXT, at INTEGER NOT NULL, hidden INTEGER)`,
+  `CREATE INDEX IF NOT EXISTS talk_sec ON talk(sec, at)`,
   `CREATE TABLE IF NOT EXISTS printers (id TEXT PRIMARY KEY, name TEXT, paper TEXT, mesh INTEGER DEFAULT 0, auto INTEGER DEFAULT 0, token TEXT, seen INTEGER, created INTEGER)`,
   `CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, printer TEXT NOT NULL, story TEXT, code TEXT, escpos TEXT, mesh TEXT, status TEXT NOT NULL,
      lease INTEGER, tries INTEGER DEFAULT 0, error TEXT, created INTEGER NOT NULL, done INTEGER)`,
@@ -67,6 +70,8 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE stories ADD COLUMN origin TEXT').run(); } catch (e) { /* already there */ }
     /* lv: the furthest a maker's journey has reached (0 to 4), so a code typed on another phone brings it back */
     try { await db.prepare('ALTER TABLE makers ADD COLUMN lv INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
+    /* kin: each maker's own species and mark, handed out in turn so no two share one (0, 1, 2 ...) */
+    try { await db.prepare('ALTER TABLE makers ADD COLUMN kin INTEGER').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN off INTEGER').run(); } catch (e) { /* already there */ }
@@ -146,14 +151,36 @@ async function photo(db, id, any) {
 }
 /* a maker's own, by their three characters: what they sent (the words only of what is on the site), and taking one down.
    Taken down is off the site only: the approval page keeps it as it was. Asked too often from one place, it waits */
+/* a maker's kin, given if they have none yet (makers from before kin, or one only known by a code typed) */
+async function kinOf(db, who) {
+  let mk = await db.prepare('SELECT lv, kin FROM makers WHERE who = ?').bind(who).first(); if (!mk) return null;
+  if (mk.kin == null) { await db.prepare('UPDATE makers SET kin = (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers) WHERE who = ? AND kin IS NULL').bind(who).run(); mk = await db.prepare('SELECT lv, kin FROM makers WHERE who = ?').bind(who).first(); }
+  return mk;
+}
+/* the board: the latest of a section (or all), each by its maker's kin; written only with a code a print gave (a maker the site knows) */
+const SECS = ['notice', 'story', 'make', 'print'];
+async function talkList(db, url) {
+  const s = url.searchParams.get('s'); const sec = SECS.includes(s) ? s : null;
+  const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
+  return json({ talk: results });
+}
+async function talkSay(db, env, req) {
+  const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
+  if (!WHO.test(who) || !text || !SECS.includes(b.s)) return fail(400, 'talk');
+  const mk = await kinOf(db, who); if (!mk) return fail(403, 'key');   // a code no print has given
+  if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
+  const re = typeof b.re === 'string' && /^[a-z0-9]{6,24}$/.test(b.re) ? b.re : null, id = rid(), t = now();
+  await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, b.s, who, text, re, t), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
+  return json({ id, kin: mk.kin, at: t }, 201);
+}
 async function mine(db, env, req, who, id) {
   if (!WHO.test(who || '')) return fail(400, 'who');
   if (await tooMany(db, env, req, 'mine', 60, 10 * 60e3)) return fail(429, 'too many');
   await db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(now(), who).run();
   if (id) { const r = await db.prepare('UPDATE stories SET gone = ? WHERE id = ? AND who = ? AND gone IS NULL').bind(now(), id, who).run(); return r.meta && r.meta.changes ? json({ ok: true }) : fail(404, 'not found'); }
   const { results } = await db.prepare(`SELECT id, code, kind, status, body, created, decided, photo IS NOT NULL AS has_photo FROM stories WHERE who = ? AND gone IS NULL AND kind NOT IN ('example', 'message') ORDER BY created DESC LIMIT 100`).bind(who).all();
-  const mk = await db.prepare('SELECT lv FROM makers WHERE who = ?').bind(who).first();
-  return json({ lv: (mk && mk.lv) || 0, mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
+  const mk = await kinOf(db, who);
+  return json({ lv: (mk && mk.lv) || 0, kin: mk ? mk.kin : null, mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
 }
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
@@ -198,7 +225,7 @@ async function send(db, env, req) {
       ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)').bind(jb.id, r.id, id, b.code, b.mesh, jb.status, t)); }
   }
   const lv = Math.max(0, Math.min(4, Math.round(+b.lv || 0)));
-  if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv) VALUES (?, ?, ?, 1, ?, ?) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage), lv = max(COALESCE(lv, 0), excluded.lv)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null, lv));
+  if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv, kin) VALUES (?, ?, ?, 1, ?, ?, (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers)) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage), lv = max(COALESCE(lv, 0), excluded.lv)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null, lv));
   await db.batch(ops);
   return json({ id, status: 'waiting', job }, 201);
 }
@@ -317,9 +344,9 @@ async function admin(db, env, req, parts) {
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
-  /* the counts, day by day, for the last thirty days: what is used and what is not */
-  if (what === 'traffic' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT day, k, n FROM traffic WHERE day >= ? ORDER BY day').bind(new Date(now() - 30 * DAY).toISOString().slice(0, 10)).all(); return json({ traffic: results }); }
-  if (what === 'makers' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT m.who, m.first, m.last, m.posts, m.stage, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.status = 'shown' AND s.gone IS NULL) AS shown, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.gone IS NOT NULL) AS gone FROM makers m ORDER BY m.last DESC LIMIT 500`).all(); return json({ makers: results }); }
+  if (what === 'talk' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT t.*, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who ORDER BY t.at DESC LIMIT 300').all(); return json({ talk: results }); }
+  if (what === 'talk' && id && req.method === 'POST') { const b = await body(req); if (b.action === 'hide' || b.action === 'show') { await db.prepare('UPDATE talk SET hidden = ? WHERE id = ?').bind(b.action === 'hide' ? now() : null, id).run(); return json({ ok: true }); } if (b.action === 'delete') { await db.prepare('DELETE FROM talk WHERE id = ?').bind(id).run(); return json({ ok: true }); } return fail(400, 'action'); }
+  if (what === 'makers' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT m.who, m.first, m.last, m.posts, m.stage, m.kin, m.lv, (SELECT count(*) FROM talk t WHERE t.who = m.who) AS said, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.status = 'shown' AND s.gone IS NULL) AS shown, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.gone IS NOT NULL) AS gone FROM makers m ORDER BY m.last DESC LIMIT 500`).all(); return json({ makers: results }); }
   /* the portfolio's posts: every one, drafts too; one to edit; saved; deleted */
   if (what === 'posts' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT ${POST_COLS} FROM posts ORDER BY day DESC, created DESC LIMIT 500`).all(); return json({ posts: results.map(postOut) }); }
   if (what === 'posts' && !id && req.method === 'POST') return savePost(db, req);
@@ -481,6 +508,7 @@ async function overview(db) {
 async function exportAll(db) {
   const q = async s => (await db.prepare(s).all()).results;
   const out = { site: 'novel.global', build: BUILD, at: new Date().toISOString(),
+    talk: await q('SELECT * FROM talk ORDER BY at DESC'), makers: await q('SELECT * FROM makers ORDER BY first'),
     stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, who, gone, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
     places: await q(`SELECT ${PLACE_COLS} FROM places ORDER BY created DESC`), posts: await q('SELECT id, slug, title, summary, body, cat, links, day, status, created, updated FROM posts ORDER BY created DESC'),
     printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
@@ -563,6 +591,8 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'stories' && !p[1] && m === 'POST') return send(db, env, req);
   if (p[0] === 'stories' && p[1] && m === 'GET') return CODE.test(p[1]) ? oneStory(db, p[1]) : fail(400, 'code');
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
+  if (p[0] === 'talk' && !p[1] && m === 'GET') return talkList(db, url);
+  if (p[0] === 'talk' && !p[1] && m === 'POST') return talkSay(db, env, req);
   if (p[0] === 'mine' && p[1] && !p[3] && (m === 'GET' && !p[2] || m === 'POST' && p[2])) return mine(db, env, req, p[1], p[2]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);

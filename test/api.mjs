@@ -255,6 +255,15 @@ try {
     wl.json.mine.length === 1 && wl.json.mine[0].code === 'DA-3WHY' && wo.json.mine.length === 0 && wbad.status === 400 && wpub.json.stories.some(x => x.code === 'DA-3WHY' && !('who' in x)) && wnot.status === 404 &&
     wdrop.status === 200 && !wpub2.json.stories.some(x => x.code === 'DA-3WHY') && wone.status === 404 && wl2.json.mine.length === 0 && kept.who === 'K7Q' && !!kept.gone && wpub3.json.stories.some(x => x.code === 'DA-3WHY'),
     JSON.stringify({ wl: wl.json, wo: wo.json, wbad: wbad.status, wnot: wnot.status, wdrop: wdrop.status, wone: wone.status, kept: { who: kept.who, gone: kept.gone } }));
+  /* the board: written only with a code a print gave, read by anyone by kin (never the code), a reply under what it answers, hidden from the approval page */
+  const kNo = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'ZZ8', text: 'hello' } });
+  const kA = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'a lorikeet by the creek' } });
+  const kB = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'and its parents', re: kA.json.id } });
+  const kL = await call('/api/talk?s=notice'), kS = await call('/api/talk?s=story');
+  await call(`/api/admin/talk/${kB.json.id}`, { method: 'POST', key: KEY, body: { action: 'hide' } }); const kL2 = await call('/api/talk?s=notice'), kAd = await call('/api/admin/talk', { key: KEY });
+  check('the board: a code no print gave cannot write; a maker can, shown by their kin and never their code; a reply sits under what it answers; hidden, it leaves the board but stays on the approval page',
+    kNo.status === 403 && kA.status === 201 && kB.status === 201 && Number.isInteger(kA.json.kin) && kL.json.talk.length === 2 && kL.json.talk.every(t => !('who' in t) && t.kin === kA.json.kin) && kL.json.talk.some(t => t.re === kA.json.id) && kS.json.talk.length === 0 && kL2.json.talk.length === 1 && kAd.json.talk.length === 2 && kAd.json.talk.some(t => t.hidden && t.who === 'K7Q'),
+    JSON.stringify({ no: kNo.status, a: kA.json, l: kL.json, ad: (kAd.json.talk || []).length }));
   let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }

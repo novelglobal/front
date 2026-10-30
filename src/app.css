@@ -3279,3 +3279,8 @@ body.simple .band.dev.radio .hp-keep small{display:none}
 
 /* one key, typed once on novel.global: no name asked again here */
 label.sig:has(#ix-sign), .sl-sign{display:none!important}
+
+/* the research board alone in the aura's window: the whole window, no map under it; the W.I.S.H. device folds to its edge until wanted */
+html.only-wish #board{right:0!important;bottom:0!important}
+/* inside the aura's window the studio's tab bar is gone, so nothing keeps room for it */
+html.in-aura{--dock:0px!important}

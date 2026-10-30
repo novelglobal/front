@@ -743,7 +743,7 @@
     if (!catchK || !L.hrx) return; if (dt && !S.hHalo && !S.deep && !still) S.halo = (S.halo || 1.2) + dt * 2 * Math.PI / 54; var a2 = S.halo || 1.2, front = Math.sin(a2);
     var px = L.bx + Math.cos(a2) * L.hrx, py = L.gy + front * L.hry, tr = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px) scale(' + (0.86 + 0.14 * (front + 1) / 2).toFixed(3) + ')';
     catchK.style.setProperty('--at', tr); catchK.style.transform = tr; catchK.style.zIndex = front > 0 ? 3 : 1; catchK.style.opacity = (S.fade * (0.72 + 0.28 * (front + 1) / 2)).toFixed(2);
-    var want = S.deep ? -1 : [0, 1, 2, -1][S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
+    var want = S.deep ? -1 : [0, 1, 2, 3][S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
       b.style.transform = 'translate(' + (L.bx + Math.cos(an) * L.hrx).toFixed(1) + 'px,' + (L.gy + fr * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (fr + 1) / 2).toFixed(3) + ')'; b.style.zIndex = fr > 0 ? 3 : 1; b.style.opacity = (S.fade * (0.6 + 0.4 * (fr + 1) / 2)).toFixed(2); });
   }
   /* ───────── the sound desk: everything musical, behind the sound key. Its own irukandji, whose four tentacles are the four tracks and
@@ -1002,12 +1002,12 @@
      the research board), art and print. 4: a poster with art printed: the wave's ring (design and the print shop). What is not reached
      yet is not there at all */
   var LVN = +store.get('da.lv', 0) || 0;
-  var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 4; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
-  var NEED = { music: 1, intention: 1, radio: 2, print: 3, wish: 3, design: 4, desk: 4 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [2, 3, 4];
+  var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 5; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
+  var NEED = { music: 1, intention: 1, radio: 2, print: 3, wish: 3, design: 4, desk: 4, folio: 5 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [2, 3, 4, 5];
   var earned = function (k) { if (ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
   function lvUp(n) { var was = LV(); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); }
   /* the booth (on the same page, or another visit) says a photo was taken: level one */
-  function lvSync() { LVN = Math.max(LVN, +store.get('da.lv', 0) || 0); if (store.get('da.who.pass', 0) || store.get('da.aura.printed', 0)) lvUp(1); else applyGates(); }
+  function lvSync() { LVN = Math.max(LVN, +store.get('da.lv', 0) || 0); if (ROUNDS >= 2) lvUp(5); if (store.get('da.who.pass', 0) || store.get('da.aura.printed', 0)) lvUp(1); else applyGates(); }
   addEventListener('ng-level', function () { lvSync(); });
   /* something new: it comes in where it lives, glowing a while, its word said once; what was done shows, then tucks itself away */
   function unlocked(from, to) {
@@ -1017,7 +1017,7 @@
     fresh.forEach(function (e) { if (!e) return; e.classList.add('fresh'); setTimeout(function () { e.classList.remove('fresh'); }, 7000); var w = e.querySelector('.au-ow'); if (w) { w.classList.add('say'); setTimeout(function () { w.classList.remove('say'); }, 4000); } });
     flashWords(400); harp([0, 4, 7]); todoShow();
   }
-  var DEV_K = ['radio', 'wish', 'design'];
+  var DEV_K = ['radio', 'wish', 'design', 'folio'];
   var devK = [], devOpen = function (i) { return earned(DEV_K[i]); };
   /* the steps and keys of what is not earned are not there at all */
   function applyGates() { var lv = LV(); keyName(); orbs.forEach(function (o, i) { o.classList.toggle('gated', lv < ORB_LV[i]); }); tabs.forEach(function (b, i) { b.classList.toggle('gated', lv < TAB_LV[i]); });
@@ -1048,8 +1048,8 @@
   /* let go for good: the desk's song is the one music now */
   function devLetGo() { if (!WIN || !WIN.classList.contains('away')) return; WIN.querySelector('iframe').setAttribute('src', 'about:blank'); WIN.classList.remove('away'); WIN.hidden = true; }
   /* made, in a device or here: a light leaves where it was made and goes up to the key of one's own, which takes it in */
-  function made(kind, label) {
-    var l = store.get('da.made', []) || []; if (label !== false) { l.unshift({ k: kind, label: String(label || '').slice(0, 48), at: Date.now() }); l.splice(80); store.set('da.made', l); }
+  function made(kind, label, keep) {
+    var l = store.get('da.made', []) || []; if (label !== false && keep !== false) { l.unshift({ k: kind, label: String(label || '').slice(0, 48), at: Date.now() }); l.splice(80); store.set('da.made', l); }
     var k = $('#au-yours'); if (!k || still) return; var r = k.getBoundingClientRect(), f = document.createElement('i'); f.className = 'au-fly';
     f.style.left = (innerWidth / 2) + 'px'; f.style.top = (innerHeight * 0.55) + 'px'; root.appendChild(f);
     requestAnimationFrame(function () { f.style.transform = 'translate(' + (r.left + r.width / 2 - innerWidth / 2) + 'px,' + (r.top + r.height / 2 - innerHeight * 0.55) + 'px) scale(.4)'; f.style.opacity = '.2'; });
@@ -1155,7 +1155,7 @@
      the one thing held. No words on hover: the names are for those who listen for them (aria) ───────── */
   /* the deep engine, the studio, as three devices: each opened in a window over the aura, the aura one touch away. One is earned with each
      poster printed, and rides the ring under the eye with the catch; all three are in the intel */
-  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'RESEARCH BOARD', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop']];
+  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'RESEARCH BOARD', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
   var STEPS = [['notice', 'eyet'], ['W.I.S.H.', 'wish'], ['art', 'art'], ['print', 'print']];
   var ICON = {
     /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */
@@ -1202,6 +1202,9 @@
     cons: '<path d="M6 22l7-9 6 5 7-10"/><circle cx="6" cy="22" r="1.8" class="f"/><circle cx="13" cy="13" r="1.8" class="f"/><circle cx="19" cy="18" r="1.8" class="f"/><circle cx="26" cy="8" r="1.8" class="f"/><path d="M19 18l3 7" class="d"/>',
     dradio: '<path d="M6 12h20v14H6z"/><path d="M9 16h6v6H9z" class="f"/><path d="M18 16h5M18 19h5M18 22h3" class="d"/><path d="M10 12L22 6"/>',
     dboard: '<path d="M5 7h22v18H5z"/><path d="M9 11h5v4H9zM18 11h5v6h-5zM9 19h6v3H9z" class="f"/><path d="M14 13l4 1M12 15v4" class="d"/>',
+    /* the portfolio: a picture hung on a line, the printer's paper under it */
+    hfolio: '<path d="M4.5 7.5c7.6-1.2 15.4-1.2 23 0"/><path d="M9 7.9l1.2 3.4M23 7.9l-1.2 3.4" class="d"/><path d="M8 11.2c5.4-.5 10.8-.5 16 0l-.4 10.7c-5.1.4-10.2.4-15.2 0z"/><path d="M11.4 18.6l3.2-3.4 2.6 2.4 2-1.8 2.6 2.8" class="d"/><path d="M12.4 25.4h7.2M14 28h4" class="d"/>',
+    dfolio: '<path d="M6 10.5c6.7-.6 13.3-.6 20 0l-.5 12.5c-6.3.5-12.7.5-19 0z"/><path d="M10 19.6l4-4.2 3.2 3 2.4-2.2 3.2 3.4" class="d"/>',
     dshop: '<path d="M16 6c-6 0-10.5 4.3-10.5 9.6S9.8 25.4 15 25.4c2 0 2.8-1.1 2.4-2.4-.5-1.5.4-2.7 2-2.7h3.3c2.5 0 3.9-1.5 3.9-3.9C26.3 10.3 21.7 6 16 6z"/><circle cx="10.8" cy="15.2" r="1.4" class="f"/><circle cx="13.5" cy="10.8" r="1.4" class="f"/><circle cx="18.8" cy="10.6" r="1.4" class="f"/>',
     hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
     key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
@@ -1301,7 +1304,7 @@
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
     [[0, 'go', 'notice', svgI('navmap')], [1, 'wish', 'story', svgI('pencil')], [2, 'art', 'make', svgI('wave')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
-    '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
+    '<button id="au-talk" aria-label="Talk" hidden>' + svgI('sig') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><nav></nav><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -1418,7 +1421,7 @@
   $('#au-up').addEventListener('click', toGlobe);
   function barColour() { var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', DARK ? '#18191C' : '#17457F'); }
   function setDark(on) { DARK = !!on; setTimeout(barColour, 0); store.set('da.aura.dark', DARK); root.classList.toggle('dark', DARK); document.documentElement.classList.toggle('aura-dark', DARK); var b = $('#au-theme'); if (b) b.setAttribute('aria-pressed', String(DARK)); WORMS.length = 0; S.wormAt = 0; }
-  document.documentElement.classList.toggle('aura-dark', DARK);
+  document.documentElement.classList.toggle('aura-dark', DARK); setTimeout(barColour, 0);
   /* the checklist: what there is to do here, in plain words; done ones ticked, the next ones only dots until near, with a hint.
      It follows the approval page's settings for the devices */
   /* each thing as a word or two; ones not yet open show only how near they are; the mesh is a secret until done. "Print" is a print
@@ -1567,7 +1570,7 @@
           '<figure class="au-poster au-drag"><canvas></canvas><div class="au-sel" hidden><textarea id="au-tx" rows="1" maxlength="90" aria-label="The words" hidden></textarea><nav class="au-tools">' +
           hand('', svgI('turn'), 'data-t="r" aria-label="Turn"') + hand('', '−', 'data-t="s-" aria-label="Smaller"') + hand('', '+', 'data-t="s+" aria-label="Larger"') + hand('', svgI('tone'), 'data-t="tone" aria-label="Tone"') + hand('', svgI('frame'), 'data-t="b" aria-label="Framed or not"') +
           hand('au-rm', '×', 'data-t="x" aria-label="Take it off"') + '</nav></div></figure>' + hint(SAY.art) + goKey(2); }
-      else h = '<div class="au-press au-begin">' + hand('au-big', svgI('paper'), 'id="au-blank" data-fw="blank receipt" aria-label="Begin a blank receipt"') + '</div>' + '<p class="au-hint au-empty" data-on="3" data-rest="60" data-first="10">' + esc(SAY.artEmpty) + '</p>';
+      else h = '<div class="au-press au-begin">' + hand('au-sm au-blankk', svgI('paper'), 'id="au-blank" aria-label="Begin a blank receipt"') + '</div>';
     } else {
       /* print is the showcase: the piece being made hangs in front on the same line as everything printed, its press under it;
          swiped along, each printed one can be printed again, saved, brought back or taken down */
@@ -1940,7 +1943,7 @@
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
         if (NG.meUsed) NG.meUsed(); made('poster', titleOf(P));
-        if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); applyGates(); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
+        if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); if (ROUNDS >= 2) lvUp(5); applyGates(); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
         S.round = performance.now() / 1000; S.sting = S.round;
         btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Begin a new piece');
         var hero = panel.querySelector('.au-hero'); if (hero) hero.classList.add('kept');
@@ -2005,7 +2008,32 @@
   }
   /* one's own three characters: printed on what one prints (never on what the site shows), typed on another phone to carry on there;
      what was sent with them, each taken down from the site here (it is all still kept on the approval page) */
-  function keyName() { var b = $('#au-yours b'); if (b) b.textContent = store.get('da.who.pass', 0) && NG.me ? NG.me() : ''; }
+  /* the board: a few words in the section of the step one is on (notice, story, make, print), each by its maker's kin; a reply under
+     what it answers. Written only with a code a print gave; read by anyone */
+  var TK = { sec: 0, re: null };
+  var TSECS = ['notice', 'story', 'make', 'print'];
+  function talkOpen(i) {
+    var p = $('#au-talkp'); TK.sec = i != null ? i : S.mode === 'iruk' ? S.stage : 0; TK.re = null; p.hidden = false; root.classList.add('talking');
+    p.querySelector('nav').innerHTML = TSECS.map(function (q, j) { return '<button data-ts="' + j + '" class="' + (j === TK.sec ? 'on' : '') + '" aria-label="' + q + '">' + svgI(STEPS[j][1]) + '</button>'; }).join('') + '<button class="x" aria-label="Close">×</button>';
+    [].forEach.call(p.querySelectorAll('[data-ts]'), function (b) { b.addEventListener('click', function () { talkOpen(+b.dataset.ts); }); });
+    p.querySelector('.x').addEventListener('click', talkClose);
+    var ol = p.querySelector('ol'), cached = store.get('da.talk.' + TSECS[TK.sec], []) || []; talkFill(ol, cached);
+    fetch('/api/talk?s=' + TSECS[TK.sec]).then(function (r) { return r.json(); }).then(function (j) { var l = (j && j.talk) || []; store.set('da.talk.' + TSECS[TK.sec], l.slice(0, 40)); if (!p.hidden) talkFill(ol, l); }).catch(function () {});
+  }
+  function talkClose() { $('#au-talkp').hidden = true; root.classList.remove('talking'); }
+  function talkFill(ol, l) {
+    var top = l.filter(function (t) { return !t.re; }), kids = function (id) { return l.filter(function (t) { return t.re === id; }).reverse(); };
+    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><span>' + esc(t.text) + '</span><small>' + esc(NG.moonsAgo(t.at)) + '</small></li>'; };
+    ol.innerHTML = top.length ? top.map(function (t) { return li(t) + kids(t.id).map(function (c) { return li(c, 1); }).join(''); }).join('') : '<li class="none">·</li>';
+    [].forEach.call(ol.querySelectorAll('li[data-id]:not(.sub)'), function (e) { e.addEventListener('click', function () { TK.re = TK.re === e.dataset.id ? null : e.dataset.id; [].forEach.call(ol.querySelectorAll('li'), function (q) { q.classList.toggle('re', q.dataset.id === TK.re); }); var i = $('#au-talkp input'); i.placeholder = TK.re ? '↳' : '…'; i.focus(); }); });
+  }
+  $('#au-talk').addEventListener('click', function () { if ($('#au-talkp').hidden) talkOpen(); else talkClose(); bell(3, 0.1); });
+  $('#au-talkp form').addEventListener('submit', function (e) { e.preventDefault(); var i = this.querySelector('input'), t = i.value.trim(); if (!t) return;
+    i.disabled = true; fetch('/api/talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: TSECS[TK.sec], who: NG.me(), text: t, re: TK.re }) })
+      .then(function (r) { i.disabled = false; if (r.status === 201) { i.value = ''; TK.re = null; i.placeholder = '…'; return r.json().then(function (j) { if (j.kin != null) { store.set('da.kin', j.kin); keyName(); } made('talk', t, false); talkOpen(TK.sec); }); }
+        var k = $('#au-yours'); if (k) { k.classList.remove('took'); void k.offsetWidth; k.classList.add('took'); } bell(1, 0.1); })
+      .catch(function () { i.disabled = false; }); });
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var tk = $('#au-talk'); if (tk) tk.hidden = !on; }
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
     i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); harp([0, 4, 7]); }); });
