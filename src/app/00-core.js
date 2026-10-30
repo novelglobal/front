@@ -166,6 +166,8 @@ const buzz = ms => { try {
       iosSw.click();
     }
   } } catch (e) { /* no haptics */ } };
+/* an old phone or tablet: the aura's own reading when inside it, else the same test (few cores, little memory, no audio worklets) */
+const LITE = (() => { try { const ng = IN_AURA && window.parent.NG; if (ng && typeof ng.lite === 'boolean') return ng.lite; return (navigator.hardwareConcurrency || 2) <= 4 || (navigator.deviceMemory || 4) <= 2 || !window.AudioWorkletNode; } catch (e) { return false; } })();
 const snd = (() => {
   let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
@@ -193,7 +195,7 @@ const snd = (() => {
     try {
       if (ctx && (sick || ctx.state === 'closed')) rebuild();
       if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)(); bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
+        const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ latencyHint: LITE ? 'playback' : 'balanced' }); } catch (e) { ctx = new AC(); } bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
         /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
         heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2;
@@ -207,7 +209,7 @@ const snd = (() => {
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
         wet.connect(d1); wet.connect(d2); d1.connect(lp); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(bus);
         /* and a long, dark hall behind it: every sound that goes into the room also drifts into it */
-        hall = ctx.createConvolver(); hall.buffer = hallBuffer(3.8); const hg = ctx.createGain(); hg.gain.value = 0.6; wet.connect(hall); hall.connect(hg); hg.connect(bus);
+        hall = ctx.createConvolver(); hall.buffer = hallBuffer(LITE ? 1.6 : 3.8); const hg = ctx.createGain(); hg.gain.value = 0.6; wet.connect(hall); hall.connect(hg); hg.connect(bus);
         /* the Moog ladder (ladder.js), once it has loaded; a plain low-pass until then */
         try { if (ctx.audioWorklet) ctx.audioWorklet.addModule('ladder.js').then(() => { hasLadder = true; }).catch(() => {}); } catch (e) { /* a plain low-pass */ }
       }
@@ -227,7 +229,7 @@ const snd = (() => {
   const qf = f => { let x = f; while (x > 440) x /= 2; while (x < 55) x *= 2; return qn(x); };
   const SIX = 0.125; const SLOTS = new Map();
   const onGrid = t => Math.ceil((t - 0.004) / SIX) * SIX;
-  function room(t, force) { const k = Math.round(t / SIX); const n = SLOTS.get(k) || 0; if (n >= 2 && !force) return false; SLOTS.set(k, n + 1); if (SLOTS.size > 48) for (const key of [...SLOTS.keys()]) if (key < k - 16) SLOTS.delete(key); return true; }
+  function room(t, force) { const k = Math.round(t / SIX); const n = SLOTS.get(k) || 0; if (n >= (LITE ? 1 : 2) && !force) return false; SLOTS.set(k, n + 1); if (SLOTS.size > 48) for (const key of [...SLOTS.keys()]) if (key < k - 16) SLOTS.delete(key); return true; }
   /* the hall's tail: noise falling away over a few seconds, darker as it goes */
   function hallBuffer(sec) {
     const sr = ctx.sampleRate, n = Math.floor(sr * sec), b = ctx.createBuffer(2, n, sr); const r = seeded('hall');
@@ -460,6 +462,7 @@ const snd = (() => {
   return {
     describe,
     /* woken inside a touch itself, as phones require: true once sound can play */
+    lite: LITE,
     wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
     /* El Niño: the same tempo, more heat: the mix opened and driven harder */
     heat(on) { if (ctx && mixLP) heatSet(!!on); },

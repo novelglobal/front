@@ -637,3 +637,6 @@ html.aura-on #booth .eye { position: relative !important; left: auto !important;
 html.aura-on #booth .eye + .cap { position: static !important; margin-top: 10px !important; }
 html.aura-on #booth .eye ~ .bp { position: static !important; margin-top: 18px !important; }
 html.aura-on #booth pre.art { display: none; }
+
+/* the bot check: unseen, unless Cloudflare asks for a tap */
+.ng-human { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; }

@@ -140,7 +140,7 @@ function markConnect() {
 function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
-  S.radio = on; if (!on && LOOP.on) setLoop(false);
+  S.radio = on; if (!on && LOOP.on) setLoop(false); try { if (IN_AURA) window.parent.postMessage({ ng: 'radio', on: !!on }, location.origin); } catch (e) { /* alone */ }
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } nudgeWishSoon(); }
   syncTracks(); if (on) life.replay();
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });
@@ -176,6 +176,8 @@ $('#view').addEventListener('input', e => {
 $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-loop]')) { setLoop(!LOOP.on); return; }
   const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
+  const fk = e.target.closest('[data-t4k]'); if (fk) { toggleTrack(fk.dataset.t4k); return; }
+  const fx = e.target.closest('[data-t4x]'); if (fx) { const id = fx.dataset.t4x; LOOP.ms = LOOP.ms.filter(t => t.m.id !== id); const j = LOOPS.findIndex(l => l.id === id); if (j >= 0) LOOPS.splice(j, 1); store.set('da.loops.v1', LOOPS); loopSync(false); refreshFour(); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); return; }
@@ -225,17 +227,21 @@ function playMix(id) { const m = MIXES.find(x => x.id === id) || LOOPS.find(x =>
 /* ───────── the loop: the radio as it sounds now, kept on this device (da.loops.v1) and played round and round from where it
    was made. The radar can move on: it is quiet while the loop plays, and a dashed ring stays where the loop was grounded ───────── */
 const LOOPS = store.get('da.loops.v1', []);
-const LOOP = { on: false, m: null, t0: 0, last: 0, timer: 0 };
+const LOOP = { on: false, m: null, t0: 0, last: 0, timer: 0, ms: [] };   // ms: the tracks going round, { m, t0, last, live }
 const loopDur = m => Math.max(2, +((m && m.loop) || CONFIG.SCAN.turn || 8)) * 1000 / ((life.tempo && life.tempo()) || 1);
 const loopBearing = () => (LOOP.m ? ((performance.now() - LOOP.t0) % loopDur(LOOP.m)) / loopDur(LOOP.m) * 360 : 0);
 function loopTick() {
-  const now = performance.now(); if (!LOOP.on || !LOOP.m || document.hidden) { LOOP.last = now; return; }
-  const D = loopDur(LOOP.m); const a = ((LOOP.last - LOOP.t0) % D) / D * 360, b = ((now - LOOP.t0) % D) / D * 360; LOOP.last = now;
-  if (!prefs.sound || !S.radio) return;
+  const now = performance.now(), hold = !LOOP.on || document.hidden || !prefs.sound || !S.radio;
+  for (const tr of LOOP.ms) { const last = tr.last; tr.last = now; if (!hold) loopOne(tr, last, now); }
+}
+function loopOne(tr, last, now) {
+  const D = loopDur(tr.m); const a = ((last - tr.t0) % D) / D * 360, b = ((now - tr.t0) % D) / D * 360;
   const crossed = deg => (a <= b ? deg > a && deg <= b : deg > a || deg <= b);
-  /* each cell sounded exactly as the radar sounds it, so a loop kept is the radio as it was */
-  for (const [k, L] of Object.entries(LOOP.m.layers || {})) {
-    const lvl = lvlOf(k); if (!trackOn(k) || lvl < 0.02) continue; const mood = moodOfLayer(k);
+  /* each cell sounded exactly as the radar sounds it, so a loop kept is the radio as it was: the live loop with the layer keys as
+     they are now, a kept track with its own, and quieter the more tracks go round together */
+  const share = 1 / Math.sqrt(LOOP.ms.length || 1);
+  for (const [k, L] of Object.entries(tr.m.layers || {})) {
+    const lvl = (tr.live ? lvlOf(k) : (L.lvl == null ? 0.7 : +L.lvl)) * share; if (!(tr.live ? trackOn(k) : L.on) || lvl < 0.02) continue; const mood = tr.live ? moodOfLayer(k) : L.mood || moodOfLayer(k);
     for (const c of L.cells || []) {
       if (!crossed(c.b)) continue; const pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
       if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life') }); }
@@ -244,20 +250,48 @@ function loopTick() {
       if (ok) flashLayer(k);
     }
   }
-  for (const f of LOOP.m.figs || []) if (f.b != null && crossed(f.b)) strings.playFig(f.id);
+  for (const f of tr.m.figs || []) if (f.b != null && crossed(f.b)) strings.playFig(f.id);
 }
-function setLoop(on, kept) {
-  if (on && !kept && !placed()) { toast('WHERE ARE YOU?'); return; }
-  if (on) {
-    const m = kept || mixNow(); LOOP.m = m; LOOP.t0 = performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m); LOOP.last = performance.now(); LOOP.on = true;
-    if (!kept) { LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); }
-    clearInterval(LOOP.timer); LOOP.timer = setInterval(loopTick, 40); if (!S.radio) setRadio(true);
-  } else { LOOP.on = false; clearInterval(LOOP.timer); }
-  $$('[data-loop]').forEach(b => { b.setAttribute('aria-pressed', String(LOOP.on)); b.classList.toggle('on', LOOP.on); });
+/* where the radar is: placed where the map is looking, if it has not been yet (the radio opened in the aura's window) */
+const here = () => { if (!placed()) startRadio(false); return placed() && !!S.scan && Number.isFinite(+S.scan.lat); };
+/* a song kept: newest first, eight at most, smaller and smaller until this phone has room for it */
+function keepLoop(m) {
+  LOOPS.unshift(m); LOOPS.splice(8);
+  if (!store.set('da.loops.v1', LOOPS)) for (const l of LOOPS) for (const L of Object.values(l.layers || {})) if ((L.cells || []).length > 24) L.cells = L.cells.filter((c, i) => i % 2 === 0);
+  while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop();
+  return LOOPS[0] === m;
+}
+const trackOf = m => ({ m, t0: performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m), last: performance.now(), live: false });
+/* the tracks going round, said to the keys, the ring on the map and the timer */
+function loopSync(on) {
+  LOOP.on = LOOP.ms.length > 0; LOOP.m = LOOP.on ? LOOP.ms[0].m : null; LOOP.t0 = LOOP.on ? LOOP.ms[0].t0 : 0;
+  clearInterval(LOOP.timer); if (LOOP.on) { LOOP.timer = setInterval(loopTick, snd.lite ? 80 : 40); if (!S.radio) setRadio(true); }
+  $$('[data-loop]').forEach(b => { const live = LOOP.ms.some(t => t.live); b.setAttribute('aria-pressed', String(live)); b.classList.toggle('on', live); });
+  $$('[data-t4k]').forEach(b => { const o = LOOP.ms.some(t => t.m.id === b.dataset.t4k); b.setAttribute('aria-pressed', String(o)); b.classList.toggle('on', o); });
   document.body.classList.toggle('looping', LOOP.on); snd.tick(on ? 1900 : 1100); buzz(on ? [6, 30, 6] : 5); life.redraw();
 }
-/* a loop kept, played again exactly as it was made, from where it was made */
-function playLoop(id) { const m = LOOPS.find(l => l.id === id); if (!m) return; tuneMix(m, false); setLoop(true, m); }
+/* LOOP: the radio as it sounds now, kept and going round (or every track stopped) */
+function setLoop(on, kept) {
+  if (on && !kept && !here()) { toast('WHERE ARE YOU?'); return; }
+  if (on) { const m = kept || mixNow(); if (!kept) keepLoop(m); LOOP.ms = [{ ...trackOf(m), live: !kept }]; if (!kept) refreshFour(); }
+  else LOOP.ms = [];
+  loopSync(on);
+}
+/* one of the four tracks in or out; a fifth lets the first go */
+function toggleTrack(id) {
+  const i = LOOP.ms.findIndex(t => t.m.id === id), m = LOOPS.find(l => l.id === id); if (!m && i < 0) return;
+  if (i >= 0) LOOP.ms.splice(i, 1); else { LOOP.ms.push(trackOf(m)); while (LOOP.ms.length > 4) LOOP.ms.shift(); }
+  loopSync(i < 0);
+}
+/* a kept song played again exactly as it was made: a track going round with the others */
+function playLoop(id) { toggleTrack(id); }
+/* the four-track on the radio: the four songs kept last, each a key that goes round with the others; × lets one go */
+function fourHTML() {
+  return `<ol class="four" role="group" aria-label="Four-track">${[0, 1, 2, 3].map(i => { const l = LOOPS[i]; if (!l) return `<li><span class="f4 none mono" aria-hidden="true">${i + 1}</span></li>`;
+    const on = LOOP.ms.some(t => t.m.id === l.id), nm = esc((l.where || {}).place || 'RADIO');
+    return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}</ol>`;
+}
+function refreshFour() { const f = $('#view .four'); if (f) f.outerHTML = fourHTML(); }
 /* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
 const LART = new Map();
 const loopArt = l => { if (!LART.has(l.id)) { LART.set(l.id, mixArt(l, mixURL(l))); if (LART.size > 16) LART.delete(LART.keys().next().value); } return LART.get(l.id); };
@@ -271,7 +305,7 @@ const songsHTML = () => `<section class="sec songs" id="sec-songs"><div class="l
     : '<p class="al-none mono">NO SONGS KEPT YET · + KEEPS THE RADAR\'S SONG</p>') + '</section>';
 async function fillSongs() { for (const im of $$('#view img[data-song-card]')) { const l = LOOPS[+im.dataset.songCard]; if (!l) continue; try { const c = await cardArt(songCard(l, +im.dataset.songCard), +im.dataset.songCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 $('#view').addEventListener('click', async e => {
-  if (e.target.closest('[data-song-keep]')) { if (!placed()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); snd.tick(1900); toast('✓'); refreshPanel(); return; }
+  if (e.target.closest('[data-song-keep]')) { if (!here()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); const ok = keepLoop(m); snd.tick(ok ? 1900 : 700); toast(ok ? '✓ TRACK 1' : 'NO ROOM ON THIS PHONE'); if (ok) made('song', (m.where || {}).place || 'RADIO'); refreshFour(); if (S.view !== 0) refreshPanel(); return; }
   /* a kept track onto the poster: its card, in the aura's poster or on the strip */
   const sp = e.target.closest('[data-song-poster]'); if (sp) { const l = LOOPS.find(x => x.id === sp.dataset.songPoster); if (!l) return; const art = mixArt(l, mixURL(l)); if (IN_AURA) toAura(art, true); else { setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); } snd.tick(1900); return; }
   const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (!l) return; const url = mixURL(l);

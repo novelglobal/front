@@ -920,13 +920,25 @@ function stepS(n, boardArt, art) {
       var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: sel.value, s: s }; saveNotes(); st.innerHTML = pips(s); follow(n, st); after();
     }).catch(function (e) {
       if (e.status) { st.innerHTML = pips('failed'); btn.disabled = false; return; }
-      OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); st.innerHTML = pips('outbox'); after();
+      delete payload.full; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); st.innerHTML = pips('outbox'); after();
     });
   });
   draw();
 }
 /* a noticing printed from anywhere: its record and its receipt, sent; offline it waits in the outbox. Resolves to its status */
-function sendNote(n, cv, dest, wishOn, mesh) {
+/* is a person here (Cloudflare Turnstile)? Only once the site has a key; it asks for a tap only when it is unsure. Resolves to a token, or '' */
+var SITE = null;
+function siteOf() { return SITE || (SITE = fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })); }
+function human() {
+  return siteOf().then(function (s) { var k = s && s.cfsite; if (!k) return '';
+    return new Promise(function (ok) {
+      var go = function () { var d = document.createElement('div'), id = null, done = function (t) { ok(t || ''); setTimeout(function () { try { window.turnstile.remove(id); } catch (e) { /* gone */ } d.remove(); }, 0); };
+        d.className = 'ng-human'; document.body.appendChild(d);
+        try { id = window.turnstile.render(d, { sitekey: k, appearance: 'interaction-only', callback: done, 'error-callback': function () { done(''); }, 'timeout-callback': function () { done(''); } }); } catch (e) { done(''); } };
+      if (window.turnstile) return go(); var sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true; sc.onload = go; sc.onerror = function () { ok(''); }; document.head.appendChild(sc);
+    }); });
+}
+function sendNote(n, cv, dest, wishOn, mesh, full) {
   var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
   var body = { type: 'noticed', lat: +n.lat.toFixed(4), lng: +n.lng.toFixed(4), text: n.say || '' };
   if (n.cn) { body.tx = { n: n.sci, cn: n.cn }; body.g = n.g; }
@@ -935,8 +947,8 @@ function sendNote(n, cv, dest, wishOn, mesh) {
   var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
   if (cv) { payload.escpos = raster(cv); payload.thumb = thumbOf(cv); } if (mesh) payload.mesh = String(mesh).slice(0, 200);
   if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
-  var tries = 0, go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
-  return go().then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
+  var tries = 0, ask = full && cv ? siteOf().then(function (s) { if (s && s.media) payload.full = full; }) : Promise.resolve(), go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
+  return ask.then(go).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
     if (e.status) { n.sent = { s: 'failed', why: e.status + ' ' + (e.message || '') }; saveNotes(); return 'failed'; } OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
   });
 }
@@ -1379,7 +1391,10 @@ function fit(list) {
 /* ───────── the sound, after the Akira soundtrack's gamelan, jegog, chant and kecak: five voices made in the browser, tuned to pelog
    or slendro, through a dark room ───────── */
 var AC = null;
-function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); return AC; }
+/* an old phone or tablet (few cores, little memory, or no audio worklets): the sound made lighter everywhere, so it does not stutter */
+var LITE = (function () { try { var n = navigator.hardwareConcurrency || 2, m = navigator.deviceMemory || 4; return n <= 4 || m <= 2 || !window.AudioWorkletNode; } catch (e) { return false; } })();
+function newAC() { var A = window.AudioContext || window.webkitAudioContext; try { return new A({ latencyHint: LITE ? 'playback' : 'balanced' }); } catch (e) { return new A(); } }
+function ac() { if (!AC) AC = newAC(); if (AC.state === 'suspended') AC.resume(); return AC; }
 var SCALES = { pelog: [0, 1, 3, 7, 8], slendro: [0, 2.4, 4.8, 7.2, 9.6] };
 function noiseBuf(c) { if (c.__nb) return c.__nb; var b = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate), d = b.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; c.__nb = b; return b; }
 function env(c, g, t, peak, a, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
@@ -2339,7 +2354,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

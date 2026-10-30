@@ -761,6 +761,8 @@
     if (!catchK || !L.hrx) return; if (dt && !S.hHalo && !S.deep && !still) S.halo = (S.halo || 1.2) + dt * 2 * Math.PI / 54; var a2 = S.halo || 1.2, front = Math.sin(a2);
     var px = L.bx + Math.cos(a2) * L.hrx, py = L.gy + front * L.hry, tr = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px) scale(' + (0.86 + 0.14 * (front + 1) / 2).toFixed(3) + ')';
     catchK.style.setProperty('--at', tr); catchK.style.transform = tr; catchK.style.zIndex = front > 0 ? 3 : 1; catchK.style.opacity = (S.fade * (0.72 + 0.28 * (front + 1) / 2)).toFixed(2);
+    var tk = $('#au-chat'); if (tk) { var ton = S.mode === 'iruk' && !S.deep && earned('talk') && !!store.get('da.who.pass', 0); tk.hidden = !ton;
+      if (ton) { var at2 = a2 + Math.PI * 0.5, ft = Math.sin(at2); tk.style.transform = 'translate(' + (L.bx + Math.cos(at2) * L.hrx).toFixed(1) + 'px,' + (L.gy + ft * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (ft + 1) / 2).toFixed(3) + ')'; tk.style.zIndex = ft > 0 ? 3 : 1; tk.style.opacity = (S.fade * (0.6 + 0.4 * (ft + 1) / 2)).toFixed(2); } }
     var want = S.deep ? -1 : [0, 1, 2, 3][S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
       b.style.transform = 'translate(' + (L.bx + Math.cos(an) * L.hrx).toFixed(1) + 'px,' + (L.gy + fr * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (fr + 1) / 2).toFixed(3) + ')'; b.style.zIndex = fr > 0 ? 3 : 1; b.style.opacity = (S.fade * (0.6 + 0.4 * (fr + 1) / 2)).toFixed(2); });
   }
@@ -1020,12 +1022,12 @@
      the research board), art and print. 4: a poster with art printed: the wave's ring (design and the print shop). What is not reached
      yet is not there at all */
   var LVN = +store.get('da.lv', 0) || 0;
-  var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 5; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
-  var NEED = { music: 1, intention: 1, radio: 2, print: 3, wish: 3, design: 4, desk: 4, folio: 5 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [2, 3, 4, 5];
+  var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 6; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
+  var NEED = { music: 1, intention: 1, radio: 2, print: 3, wish: 3, design: 4, desk: 4, folio: 5, talk: 6 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [2, 3, 4, 5];
   var earned = function (k) { if (ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
   function lvUp(n) { var was = LV(); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); }
   /* the booth (on the same page, or another visit) says a photo was taken: level one */
-  function lvSync() { var was = LV(), n = Math.max(+store.get('da.lv', 0) || 0, store.get('da.who.pass', 0) || store.get('da.aura.printed', 0) ? 1 : 0, ROUNDS >= 2 ? 5 : 0); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); else applyGates(); keyName(); }
+  function lvSync() { var was = LV(), n = Math.max(+store.get('da.lv', 0) || 0, store.get('da.who.pass', 0) || store.get('da.aura.printed', 0) ? 1 : 0, ROUNDS >= 3 ? 6 : ROUNDS >= 2 ? 5 : 0); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); else applyGates(); keyName(); }
   addEventListener('ng-level', function () { lvSync(); });
   /* something new: it comes in where it lives, glowing a while, its word said once; what was done shows, then tucks itself away */
   function unlocked(from, to) {
@@ -1074,6 +1076,7 @@
   }
   window.addEventListener('message', function (e) {
     if (e.origin === location.origin && e.data && e.data.ng === 'made') { made(e.data.kind, false); return; }
+    if (e.origin === location.origin && e.data && e.data.ng === 'radio') { if (NG.lite) humSet(!e.data.on); return; }   // an old device: one sound at a time
     if (e.origin !== location.origin || !e.data || e.data.ng !== 'piece' || typeof e.data.url !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/.test(e.data.url)) return;
     closeDev(); var p = piece(); p.blank = 1; var crisp = !!e.data.crisp;
     NG.loadImg(e.data.url).then(function (im) { var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; addPiece({ k: 'im', src: crisp ? e.data.url : NG.shrink(im, 2400, 0.94), ar: h / Math.max(1, w), r: 0, b: false, crisp: crisp ? 1 : 0, wd: crisp ? 300 : h > w * 1.4 ? 360 : 460, x: 0.12, y: 0.08 }); bubbles(4); }).catch(function () {});
@@ -1108,7 +1111,7 @@
   var hum = null, mute = store.get('da.aura.mute', false), HZ = [110, 164.81, 220];
   function humStart() {
     if (hum || mute || !(window.AudioContext || window.webkitAudioContext)) return; var c = NG.ac(), out = c.createGain(); out.gain.value = 0; out.connect(NG.bus(c));
-    hum = { out: out, v: HZ.map(function (f0) { var o = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), p = c.createStereoPanner ? c.createStereoPanner() : null;
+    hum = { out: out, v: HZ.map(function (f0) { var o = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(), p = !NG.lite && c.createStereoPanner ? c.createStereoPanner() : null;
       o.type = 'sine'; o2.type = 'triangle'; o.frequency.value = f0; o2.frequency.value = f0 * 2.004; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0.012;
       o.connect(f); o2.connect(f); f.connect(g); if (p) { g.connect(p); p.connect(out); } else g.connect(out); o.start(); o2.start(); return { f: f, g: g, p: p, o: o, o2: o2 }; }) };
     /* the drone grows with the piece, a little at each step and never loud: W.I.S.H. brings a fifth above, art a high shimmer that
@@ -1231,6 +1234,8 @@
     xshop: '<path d="M3 8h26v16H3z" class="d"/><path d="M19 8v16M19 18h10M23 18v6M19 20h4" class="d"/><path d="M3 24A16 16 0 0 1 19 8a10 10 0 0 1 10 10 6 6 0 0 1-6 6 4 4 0 0 1-4-4"/><circle cx="21.2" cy="20.6" r="1.1" class="f"/>',
     /* the portfolio: a poster hung on its line, the sheets kept behind it */
     xfolio: '<path d="M3.5 6c8.2-1.2 16.8-1.2 25 0" class="d"/><path d="M8.2 11.6v15.4h12" class="d"/><path d="M11.5 8.8h12.5v16H11.5z"/><circle cx="17.7" cy="14.6" r="3" class="f"/><path d="M14.4 20.6h6.6" class="d"/>',
+    /* talk: a ring of voices, three dots in a bubble with a tail */
+    xtalk: '<path d="M6 8.5h20v13H14l-5 4.5v-4.5H6z" class="d"/><circle cx="11" cy="15" r="1.6" class="f"/><circle cx="16" cy="15" r="1.6" class="f"/><circle cx="21" cy="15" r="1.6" class="f"/>',
     dshop: '<path d="M15.6 16.4c0-2 2.5-2.6 3.6-1.1s.4 4.5-2.6 5-6.1-1.6-5.6-5.6 4.1-7 8.2-6.5 7.6 4.1 7.1 8.6-4.6 7.6-9.1 7.1"/><circle cx="25.4" cy="7.4" r="1.4" class="f"/>',
     hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
     key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
@@ -1330,7 +1335,7 @@
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
     [[0, 'go', 'notice', svgI('hradio')], [1, 'wish', 'story', svgI('hboard')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
-    '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
+    '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -1341,7 +1346,7 @@
     '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
     '<section id="au-panel" aria-live="polite"></section><section id="au-deep" hidden></section>' +
     '';
-  devK = [].slice.call(ui.querySelectorAll('.au-dev')); setTimeout(lvSync, 0);
+  devK = [].slice.call(ui.querySelectorAll('.au-dev:not(.au-chatk)')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
   function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : ''); }
@@ -1966,7 +1971,7 @@
     (toWall ? Promise.resolve('kept') : NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null); });
+      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, P.photo || ''); });
     })).then(function (s) {
       st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going');
       if (!toWall && s !== 'failed') { squirt(); lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
@@ -1974,7 +1979,7 @@
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
         if (NG.meUsed) NG.meUsed(); made('poster', titleOf(P));
-        if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); if (ROUNDS >= 2) lvUp(5); applyGates(); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
+        if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); if (ROUNDS >= 2) lvUp(ROUNDS >= 3 ? 6 : 5); applyGates(); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
         S.round = performance.now() / 1000; S.sting = S.round;
         btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Begin a new piece');
         var hero = panel.querySelector('.au-hero'); if (hero) hero.classList.add('kept');
@@ -2039,6 +2044,24 @@
   }
   /* one's own three characters: printed on what one prints (never on what the site shows), typed on another phone to carry on there;
      what was sent with them, each taken down from the site here (it is all still kept on the approval page) */
+  /* each step's talk: only that step's, read and written with a code from a print; a reply under what it answers */
+  var TK = { re: null }, TSECS = ['notice', 'story', 'make', 'print'];
+  function talkOpen() {
+    var p = $('#au-talkp'), sec = TSECS[S.stage] || 'notice'; TK.re = null; p.hidden = false; p.querySelector('header b').textContent = STEPS[S.stage] ? STEPS[S.stage][0] : sec;
+    var ol = p.querySelector('ol'); talkFill(ol, store.get('da.talk.' + sec, []) || []);
+    fetch('/api/talk?s=' + sec + '&who=' + encodeURIComponent(NG.me())).then(function (r) { return r.json(); }).then(function (j) { var l = (j && j.talk) || []; store.set('da.talk.' + sec, l.slice(0, 40)); if (!p.hidden) talkFill(ol, l); }).catch(function () {});
+  }
+  function talkFill(ol, l) {
+    var top = l.filter(function (t) { return !t.re; }), kids = function (id) { return l.filter(function (t) { return t.re === id; }).reverse(); };
+    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + esc(NG.moonsAgo(t.at)) + '</small><span>' + esc(t.text) + '</span></li>'; };
+    ol.innerHTML = top.length ? top.map(function (t) { return li(t) + kids(t.id).map(function (c) { return li(c, 1); }).join(''); }).join('') : '<li class="none">·</li>';
+    [].forEach.call(ol.querySelectorAll('li[data-id]:not(.sub)'), function (e) { e.addEventListener('click', function () { TK.re = TK.re === e.dataset.id ? null : e.dataset.id; [].forEach.call(ol.querySelectorAll('li'), function (q) { q.classList.toggle('re', q.dataset.id === TK.re); }); var i = $('#au-talkp input'); i.placeholder = TK.re ? '↳' : '…'; i.focus(); }); });
+  }
+  $('#au-chat').addEventListener('click', function () { beat('talk'); if ($('#au-talkp').hidden) talkOpen(); else $('#au-talkp').hidden = true; bell(3, 0.1); });
+  $('#au-talkp .x').addEventListener('click', function () { $('#au-talkp').hidden = true; });
+  $('#au-talkp form').addEventListener('submit', function (e) { e.preventDefault(); var i = this.querySelector('input'), t = i.value.trim(); if (!t) return; i.disabled = true;
+    (NG.human ? NG.human() : Promise.resolve('')).then(function (cf) { return fetch('/api/talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: TSECS[S.stage] || 'notice', who: NG.me(), text: t, re: TK.re, cf: cf }) }); })
+      .then(function (r) { i.disabled = false; if (r.status === 201) { i.value = ''; TK.re = null; i.placeholder = '…'; made('talk', t); talkOpen(); } else bell(1, 0.1); }).catch(function () { i.disabled = false; }); });
   function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = !!on && !root.classList.contains('keyon'); }
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;

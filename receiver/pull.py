@@ -33,6 +33,7 @@ from datetime import datetime
 SERVER = os.environ.get('DA_SERVER', 'https://novel.global').rstrip('/')
 PRINTER = os.environ.get('DA_PRINTER', '')
 TOKEN = os.environ.get('DA_TOKEN', '')
+VERSION = 'bridge 31 Oct'   # said to the site beside its Wi-Fi, for the approval page
 PRINTD = os.environ.get('PRINTD_URL', 'http://127.0.0.1:8080').rstrip('/')
 PRINTD_KEY = os.environ.get('PRINTD_API_KEY', '')
 MESH = os.environ.get('DA_MESH', '')        # '' for none; 'auto' (plugged in); a serial device such as /dev/ttyUSB0; tcp:auto (found
@@ -160,6 +161,7 @@ def here():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('1.1.1.1', 53))   # nothing is sent: this only asks which address the way out uses
         q['ip'] = s.getsockname()[0]
+        q['v'] = VERSION
         s.close()
     except OSError:
         pass

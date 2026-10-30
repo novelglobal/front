@@ -31,7 +31,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct · 12"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct 13"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
@@ -96,8 +96,8 @@ void poll() {
   WiFiClientSecure &c = site(); HTTPClient h; h.setReuse(true);
   h.setConnectTimeout(6000);
   h.setTimeout(6000);         // bound a stalled status poll; the next poll can retry
-  String ss = WiFi.SSID(), q = ""; for (unsigned i = 0; i < ss.length() && i < 40; i++) { char ch = ss[i]; if (isalnum((unsigned char)ch)) q += ch; else { char b[4]; snprintf(b, 4, "%%%02X", (unsigned char)ch); q += b; } }
-  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "?net=" + q + "&rssi=" + WiFi.RSSI())) { netErr = 2; return; }
+  String ss = WiFi.SSID(), q = "", vq = "", vs = NG_VERSION; for (unsigned i = 0; i < vs.length(); i++) { char ch = vs[i]; if (isalnum((unsigned char)ch) || ch == ' ') vq += ch == ' ' ? '+' : ch; } for (unsigned i = 0; i < ss.length() && i < 40; i++) { char ch = ss[i]; if (isalnum((unsigned char)ch)) q += ch; else { char b[4]; snprintf(b, 4, "%%%02X", (unsigned char)ch); q += b; } }
+  if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "?net=" + q + "&rssi=" + WiFi.RSSI() + "&v=" + vq)) { netErr = 2; return; }
   h.addHeader("authorization", String("Bearer ") + token); int code = h.GET();
   if (code != 200) { h.end(); netErr = code == 401 ? 3 : 2; return; }
   String got = h.getString(); h.end(); JsonDocument d; if (deserializeJson(d, got)) { netErr = 2; return; }

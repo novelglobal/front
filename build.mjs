@@ -134,8 +134,9 @@ fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'inde
 const inline = fs.readdirSync(out).filter(f => f.endsWith('.html')).flatMap(f => [...read(path.join(out, f)).matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`));
 const DATA = ['https://api.inaturalist.org', 'https://overpass-api.de', 'https://overpass.kumi.systems', 'https://api.open-meteo.com', 'https://ensemble-api.open-meteo.com', 'https://data.melbourne.vic.gov.au', 'https://server.arcgisonline.com', 'https://s3.amazonaws.com'];
 const INAT_MEDIA = ['https://inaturalist-open-data.s3.amazonaws.com', 'https://static.inaturalist.org'];
-const CSP = [`default-src 'self'`, `script-src 'self' ${[...new Set(inline)].join(' ')}`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: ${[...DATA, ...INAT_MEDIA].join(' ')}`,
-  `media-src 'self' data: blob: ${INAT_MEDIA.join(' ')}`, `connect-src 'self' data: blob: ${[...DATA, ...INAT_MEDIA].join(' ')}`, `font-src 'self' data:`, `worker-src 'self' blob:`, `frame-src 'self'`,
+const HUMAN = 'https://challenges.cloudflare.com';   // Cloudflare Turnstile, the bot check, once the site has a key
+const CSP = [`default-src 'self'`, `script-src 'self' ${HUMAN} ${[...new Set(inline)].join(' ')}`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: ${[...DATA, ...INAT_MEDIA].join(' ')}`,
+  `media-src 'self' data: blob: ${INAT_MEDIA.join(' ')}`, `connect-src 'self' data: blob: ${HUMAN} ${[...DATA, ...INAT_MEDIA].join(' ')}`, `font-src 'self' data:`, `worker-src 'self' blob:`, `frame-src 'self' ${HUMAN}`,
   `frame-ancestors 'self'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`].join('; ');
 fs.appendFileSync(path.join(out, '_headers'), `
 # every page: the security policy, written by build.mjs

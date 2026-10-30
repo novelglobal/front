@@ -260,17 +260,17 @@ try {
   const kNo = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'ZZ8', text: 'hello' } });
   const kA = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'a lorikeet by the creek' } });
   const kB = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'and its parents', re: kA.json.id } });
-  const kL = await call('/api/talk?s=notice'), kS = await call('/api/talk?s=story');
-  await call(`/api/admin/talk/${kB.json.id}`, { method: 'POST', key: KEY, body: { action: 'hide' } }); const kL2 = await call('/api/talk?s=notice'), kAd = await call('/api/admin/talk', { key: KEY });
+  const kL = await call('/api/talk?s=notice&who=K7Q'), kS = await call('/api/talk?s=story&who=K7Q'), kAnon = await call('/api/talk?s=notice'), kGuess = await call('/api/talk?s=notice&who=ZZ8');
+  await call(`/api/admin/talk/${kB.json.id}`, { method: 'POST', key: KEY, body: { action: 'hide' } }); const kL2 = await call('/api/talk?s=notice&who=K7Q'), kAd = await call('/api/admin/talk', { key: KEY });
   check('the board: a code no print gave cannot write; a maker can, shown by their kin and never their code; a reply sits under what it answers; hidden, it leaves the board but stays on the approval page',
-    kNo.status === 403 && kA.status === 201 && kB.status === 201 && Number.isInteger(kA.json.kin) && kL.json.talk.length === 2 && kL.json.talk.every(t => !('who' in t) && t.kin === kA.json.kin) && kL.json.talk.some(t => t.re === kA.json.id) && kS.json.talk.length === 0 && kL2.json.talk.length === 1 && kAd.json.talk.length === 2 && kAd.json.talk.some(t => t.hidden && t.who === 'K7Q'),
+    kNo.status === 403 && kAnon.status === 400 && kGuess.status === 403 && kA.status === 201 && kB.status === 201 && Number.isInteger(kA.json.kin) && kL.json.talk.length === 2 && kL.json.talk.every(t => !('who' in t) && t.kin === kA.json.kin) && kL.json.talk.some(t => t.re === kA.json.id) && kS.json.talk.length === 0 && kL2.json.talk.length === 1 && kAd.json.talk.length === 2 && kAd.json.talk.some(t => t.hidden && t.who === 'K7Q'),
     JSON.stringify({ no: kNo.status, a: kA.json, l: kL.json, ad: (kAd.json.talk || []).length }));
   /* a maker on the approval page: everything they did; deleted, their stories go to the archive and their posts and record go */
   const qA = await call('/api/stories', { method: 'POST', ip: '198.51.100.21', body: story('DA-4QXA', { who: 'Q4X' }) });
   await call('/api/talk', { method: 'POST', ip: '198.51.100.21', body: { s: 'make', who: 'Q4X', text: 'a kelp forest of paper' } });
   const qM = await call('/api/admin/makers/Q4X', { key: KEY }), qMx = await call('/api/admin/makers/Q4X');
   const qD = await call('/api/admin/makers/Q4X', { method: 'POST', key: KEY, body: { action: 'delete' } });
-  const qM2 = await call('/api/admin/makers/Q4X', { key: KEY }), qT = await call('/api/talk?s=make'), qAr = await call('/api/admin/stories?status=deleted', { key: KEY });
+  const qM2 = await call('/api/admin/makers/Q4X', { key: KEY }), qT = await call('/api/talk?s=make&who=K7Q'), qAr = await call('/api/admin/stories?status=deleted', { key: KEY });
   check('a maker on the approval page: what they sent and said, for the approval page only; deleted, their stories are archived and their posts and record are gone',
     qA.status === 201 && qM.status === 200 && qM.json.stories.length === 1 && qM.json.talk.length === 1 && (qMx.status === 401 || qMx.status === 429) && qD.status === 200 && qM2.status === 404 && !qT.json.talk.some(t => t.text === 'a kelp forest of paper') && qAr.json.stories.some(x => x.code === 'DA-4QXA'),
     JSON.stringify({ m: qM.status, x: qMx.status, d: qD.status, m2: qM2.status }));

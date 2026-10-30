@@ -3309,3 +3309,13 @@ html.in-aura #sec-set{display:none!important}
 /* the songs' keys: each icon in the middle of its key */
 .al-k .ib{display:inline-grid;place-items:center;padding:0}
 .al-k .ib svg{display:block;margin:auto}
+
+/* the four-track: the four songs kept last, under the radio's keys; lit while it goes round */
+.four{list-style:none;margin:10px auto 8px;padding:0;display:grid;grid-template-columns:repeat(4,52px);gap:10px;justify-content:center}
+.four li{position:relative}
+.four .f4{position:relative;display:block;width:52px;height:52px;padding:0;border:0;border-radius:10px;overflow:hidden;background:var(--paper-k);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-k) 40%,transparent);cursor:pointer}
+.four .f4 img{width:100%;height:100%;object-fit:cover;object-position:50% 40%;opacity:.55;filter:grayscale(1)}
+.four .f4 small{position:absolute;left:5px;bottom:4px;font:600 9px/1 var(--mono);color:var(--navy)}
+.four .f4.on{box-shadow:0 0 0 2px #0E8F84}.four .f4.on img{opacity:1;filter:none}
+.four .f4.none{display:grid;place-items:center;font-size:10px;opacity:.3;cursor:default}
+.four .f4x{position:absolute;top:-7px;right:-7px;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:var(--paper-k);color:var(--ink-k);font-size:13px;line-height:1;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink-k) 40%,transparent);cursor:pointer;opacity:.7}
