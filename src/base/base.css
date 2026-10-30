@@ -616,10 +616,18 @@ html.aura-on body:not(.booth) #booth { display: none !important; }
 /* the booth's stamps on light tiles (ink on paper, as they print); undo beside them; a stamp dragged on the photo */
 html.aura-on #booth .am.sm button.px { background: #F4F1E8 !important; }
 html.aura-on #booth .am.sm #bt-undo { width: 44px; height: 52px; font: 22px/1 ui-monospace, Menlo, monospace; background: none !important; color: #F4F1E8; }
-#booth .pv canvas { touch-action: none; }
+#booth .pv canvas { touch-action: pan-y pinch-zoom; }
 /* print and save: the same size, side by side */
 html.aura-on #booth .go2 { align-items: center; }
 html.aura-on #booth .go2 button { height: 54px; padding: 0 !important; line-height: 54px; border: 0; border-radius: 27px; box-shadow: inset 0 0 0 1.5px #F4F1E8 !important; background: none; color: #F4F1E8; }
 html.aura-on #booth .go2 .go { background: #F4F1E8 !important; color: #17457F !important; }
 /* the kept screen: its word under the ring, not over the sky's lines */
 html.aura-on #booth .kept + .cap { margin-top: 10px; background: rgba(8, 24, 50, .6); padding: 4px 10px; border-radius: 999px; }
+
+/* the booth on a phone, in one even column: the stamps a single row of equal tiles with undo first, the words under them, print and save level */
+html.aura-on #booth #bt-st { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: min(100%, 380px); margin: 4px 0 0; }
+html.aura-on #booth #bt-st button { width: 100% !important; height: auto !important; aspect-ratio: 1; margin: 0; padding: 5px !important; border-radius: 10px; }
+html.aura-on #booth #bt-st #bt-undo { box-shadow: inset 0 0 0 1.5px rgba(244, 241, 232, .5); font-size: 20px; line-height: 1; }
+html.aura-on #booth .bw { width: min(100%, 380px); margin: 2px 0 0; padding: 8px 0; }
+html.aura-on #booth .go2 { width: min(100%, 380px); align-items: stretch; margin: 6px 0 0; }
+html.aura-on #booth .go2 > button { margin: 0 !important; transform: none !important; height: 54px !important; display: grid; place-items: center; line-height: 1 !important; box-sizing: border-box; }

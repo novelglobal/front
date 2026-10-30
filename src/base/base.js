@@ -2070,8 +2070,11 @@ function boothEdit() {
   var crisp = function () { var dpr = window.devicePixelRatio || 1, room = Math.min(el.clientWidth - 32, 420) * dpr, k = Math.max(1, Math.floor(room / cv.width)); cv.style.width = Math.min(cv.width * k / dpr, el.clientWidth - 32) + 'px'; };
   /* a stamp is taken by a finger and put where it is let go (the nearest one to the touch, else the last placed) */
   var at = function (e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, ((e.clientY - r.top) / r.height * cv.height - BTH.lay.head) / BTH.lay.ph]; }, held = null;
-  cv.addEventListener('pointerdown', function (e) { if (!BTH.st.length || !BTH.lay) return; var p = at(e); if (p[1] < -0.1 || p[1] > 1.1) return; var best = null, bd = 0.2;
-    BTH.st.forEach(function (s3) { var d = Math.hypot(s3.x - p[0], s3.y - p[1]); if (d < bd) { bd = d; best = s3; } }); held = best || BTH.st[BTH.st.length - 1]; held.x = p[0]; held.y = Math.max(0, Math.min(1, p[1])); try { cv.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } paint(); e.preventDefault(); });
+  /* a touch on a stamp takes it (the page holds still for it); anywhere else the page scrolls as ever */
+  var near = function (p) { var best = null, bd = 0.16; BTH.st.forEach(function (s3) { var d = Math.hypot(s3.x - p[0], (s3.y - p[1]) * BTH.lay.ph / cv.width); if (d < bd) { bd = d; best = s3; } }); return best; };
+  cv.addEventListener('touchstart', function (e) { if (!BTH.st.length || !BTH.lay) return; var t = e.touches[0], p = at(t); if (near(p)) e.preventDefault(); }, { passive: false });
+  cv.addEventListener('pointerdown', function (e) { if (!BTH.st.length || !BTH.lay) return; var p = at(e); if (p[1] < -0.1 || p[1] > 1.1) return;
+    var best = near(p); if (!best && e.pointerType === 'touch') return; held = best || BTH.st[BTH.st.length - 1]; held.x = p[0]; held.y = Math.max(0, Math.min(1, p[1])); try { cv.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } paint(); e.preventDefault(); });
   cv.addEventListener('pointermove', function (e) { if (!held) return; var p = at(e); held.x = Math.max(0, Math.min(1, p[0])); held.y = Math.max(0, Math.min(1, p[1])); paint(); });
   cv.addEventListener('pointerup', function () { held = null; });
   $('#bt-undo').addEventListener('click', function () { if (BTH.st.length) { BTH.st.pop(); paint(); } });
