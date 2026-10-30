@@ -1223,6 +1223,14 @@
     /* the portfolio: a picture hung on a line, the printer's paper under it */
     hfolio: '<path d="M4.5 6.5c7.6-1 15.4-1 23 0" class="d"/><path d="M9.5 6.8v2.6M22.5 6.8v2.6" class="d"/><path d="M8.5 9.6h15v17h-15z"/><circle cx="16" cy="16" r="3.4" class="f"/><path d="M12 22.4h8" class="d"/>',
     dfolio: '<path d="M8.5 7h15v18h-15z"/><circle cx="16" cy="14" r="3.4" class="f"/><path d="M12 20.6h8" class="d"/>',
+    /* the radio: a radar, its sweep, a knot sounding at the centre, two lives found */
+    xradio: '<circle cx="16" cy="16" r="11.5" class="d"/><circle cx="16" cy="16" r="6.5" class="d"/><path d="M16 16l8.4-8"/><path d="M16 16l8.4-8a11.5 11.5 0 0 1 3 7.4z" class="f" opacity=".22"/><circle cx="16" cy="16" r="2.1" class="f"/><circle cx="9.6" cy="11" r="1.1" class="f"/><circle cx="20.6" cy="22.4" r=".9" class="f"/>',
+    /* the research board: the constellation pinned in its frame, one knot held larger */
+    xboard: '<path d="M4.5 5.5h23v21h-23z" class="d"/><path d="M9 11l7 6.2 6-8.2M16 17.2l5.6 5M16 17.2l-6.2 4.4"/><circle cx="9" cy="11" r="1.6" class="f"/><circle cx="22" cy="9" r="1.6" class="f"/><circle cx="16" cy="17.2" r="2.6"/><circle cx="21.6" cy="22.2" r="1.4" class="f"/><circle cx="9.8" cy="21.6" r="1.4" class="f"/><path d="M14.4 3.6v3.4M17.6 3.6v3.4"/>',
+    /* design: the golden spiral over the squares that make it, a drop of ink where it ends */
+    xshop: '<path d="M3 8h26v16H3z" class="d"/><path d="M19 8v16M19 18h10M23 18v6M19 20h4" class="d"/><path d="M3 24A16 16 0 0 1 19 8a10 10 0 0 1 10 10 6 6 0 0 1-6 6 4 4 0 0 1-4-4"/><circle cx="21.2" cy="20.6" r="1.1" class="f"/>',
+    /* the portfolio: a poster hung on its line, the sheets kept behind it */
+    xfolio: '<path d="M3.5 6c8.2-1.2 16.8-1.2 25 0" class="d"/><path d="M8.2 11.6v15.4h12" class="d"/><path d="M11.5 8.8h12.5v16H11.5z"/><circle cx="17.7" cy="14.6" r="3" class="f"/><path d="M14.4 20.6h6.6" class="d"/>',
     dshop: '<path d="M15.6 16.4c0-2 2.5-2.6 3.6-1.1s.4 4.5-2.6 5-6.1-1.6-5.6-5.6 4.1-7 8.2-6.5 7.6 4.1 7.1 8.6-4.6 7.6-9.1 7.1"/><circle cx="25.4" cy="7.4" r="1.4" class="f"/>',
     hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
     key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
@@ -1327,7 +1335,7 @@
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
     STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + ['notice', 'story', 'make', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
-    DEVS.map(function (d, i) { return '<button class="au-dev" data-dev="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '" hidden>' + svgI('h' + d[0]) + '<i class="led"></i></button>'; }).join('') +
+    DEVS.map(function (d, i) { return '<button class="au-dev" data-dev="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '" hidden>' + svgI('x' + d[0]) + '<i class="led"></i></button>'; }).join('') +
     '<svg class="au-defs" width="0" height="0" aria-hidden="true"><filter id="au-hand" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="1.8"/></filter></svg>' +
     '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
     '<button id="au-snd" aria-label="Sound"><i></i><svg viewBox="0 0 24 12" aria-hidden="true"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg></button>' +
