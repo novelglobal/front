@@ -3305,3 +3305,7 @@ html.in-aura #sec-set{display:none!important}
 .st-use button{display:grid;justify-items:center;gap:4px;padding:10px 4px;border-radius:12px;border:1px solid var(--edge,rgba(0,0,0,.14));background:var(--white,#fff);color:inherit;cursor:pointer}
 .st-use button svg{width:22px;height:22px}
 .st-use button small{font:600 10px var(--mono,ui-monospace);letter-spacing:.1em;text-transform:uppercase}
+
+/* the songs' keys: each icon in the middle of its key */
+.al-k .ib{display:inline-grid;place-items:center;padding:0}
+.al-k .ib svg{display:block;margin:auto}

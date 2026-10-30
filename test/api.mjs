@@ -145,6 +145,7 @@ try {
   /* a touch screen beside a printer: its own token, shown once; every slip waits for it; a press prints, a long press squashes */
   const tc = await call('/api/admin/printers/kines', { method: 'POST', key: KEY, body: { action: 'touch', on: true } }); const TT = tc.json && tc.json.token;
   const tcx = await call('/api/admin/printers/kines', { method: 'POST', body: { action: 'touch', on: true } });
+  await call('/api/touch/kines', { token: TT });   // the screen checks in (it asks every two seconds); a screen not heard from is passed by
   const WISH = { type: 'noticed', lat: -37.77, lng: 144.96, text: 'to keep the creek cool', wish: ['One', 'Two', 'Three', 'Four'], tx: { n: 'Manorina melanocephala', cn: 'Noisy Miner' } };
   const tA = await call('/api/stories', { method: 'POST', ip: '10.0.0.8', body: { kind: 'record', code: 'DA-T0CA', body: JSON.stringify(WISH), lat: -37.77, lng: 144.96, dest: 'kines', escpos: 'G0A=' } });
   const tB = await call('/api/stories', { method: 'POST', ip: '10.0.0.8', body: { kind: 'record', code: 'DA-T0CB', body: JSON.stringify(WISH), lat: -37.77, lng: 144.96, dest: 'kines', escpos: 'G0A=' } });

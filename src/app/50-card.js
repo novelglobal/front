@@ -83,10 +83,12 @@ function paintFace(f, wipe) {
 /* ───────── opening ───────── */
 /* opt.sig: a story, opened on its slip; its strings stand on the ground until the cell has a figure of its own.
    opt.cell: a story's cell opened on its card, not its slip */
+/* the radio in the aura's window is for tying: a touch opens a thing's card and its strings (the constellation, its song), never only the intention */
+const tieHere = () => IN_AURA && AURA_ONLY === 0;
 function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
   /* a first visit: a life touched is what was noticed, and W.I.S.H. holds it (43-journey.js) */
-  if (!opt.sig && !opt.cell && (simple() ? prefs.journey >= 1 : wishOverMap())) { const it = life.items.find(x => x.o === o); if (!o.isTribe && !o.isEvent && jPick(jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
+  if (!opt.sig && !opt.cell && !tieHere() && (simple() ? prefs.journey >= 1 : wishOverMap())) { const it = life.items.find(x => x.o === o); if (!o.isTribe && !o.isEvent && jPick(jSelLife(o), it ? [it.x + (it.dx || 0), it.y + (it.dy || 0)] : null)) return; }
   if (o.story && !opt.sig && !opt.cell) { openSignal(o.story); return; }
   const was = S.sel; if (S.mode) closeRecord('switch'); S.sel = id; S.mode = 'ping'; S.place = null; S.tribeSel = null; S.sig = opt.sig ? opt.sig.key : null; S.issued = opt.sig || null;
   strings.open(o, opt.sig); openRecord(); if (!opt.sig) tie(0);
@@ -108,7 +110,7 @@ function refreshRecord() {
 /* a group already caring for a patch of ground */
 function selectTribe(id) {
   const t = S.byId.get(id); if (!t || !t.isTribe) return;
-  if ((simple() || wishOverMap()) && jPick(jSelGroup(t))) return;
+  if (!tieHere() && (simple() || wishOverMap()) && jPick(jSelGroup(t))) return;
   if (S.mode) closeRecord('switch');
   S.tribeSel = id; S.sel = null; S.mode = 'tribe'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -120,7 +122,7 @@ function selectTribe(id) {
 /* ───────── a partner place: its W.I.S.H. printer, whether it is listening, and the stories sent there ───────── */
 function selectPartner(id) {
   const p = partnerOf(id); if (!p) return;
-  if ((simple() || wishOverMap()) && jPick(jSelPrinter(p), p._x != null ? [p._x, p._y] : null)) return;
+  if (!tieHere() && (simple() || wishOverMap()) && jPick(jSelPrinter(p), p._x != null ? [p._x, p._y] : null)) return;
   if (S.mode) closeRecord('switch');
   S.partnerSel = id; S.sel = null; S.tribeSel = null; S.mode = 'partner'; S.place = null; S.sig = null; strings.close();
   openRecord();
@@ -732,7 +734,7 @@ const holdRing = $('#hold'); let pressT = 0, pressAt = null, held = false;
 /* the click that ends a hold is part of the hold, not a tap on the marker it made */
 function consumeHold() { const h = held; held = false; return h; }
 const ringOff = () => holdRing.classList.remove('on');
-const arm = e => { if (S.mode || simple()) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; held = true; life.offer(null); startPlace(e.lngLat); } }, 650); };
+const arm = e => { if (S.mode || (simple() && !tieHere())) return; pressAt = e.point; clearTimeout(pressT); holdRing.style.left = `${e.point.x}px`; holdRing.style.top = `${e.point.y}px`; holdRing.classList.remove('on'); void holdRing.offsetWidth; holdRing.classList.add('on'); pressT = setTimeout(() => { ringOff(); if (pressAt) { pressAt = null; held = true; life.offer(null); startPlace(e.lngLat); } }, 650); };
 map.on('mousedown', e => { if (e.originalEvent.button === 0 && !life.hit(e.point.x, e.point.y, true)) arm(e); });
 map.on('touchstart', e => { if (e.points && e.points.length > 1) { clearTimeout(pressT); pressAt = null; ringOff(); return; } if (!life.hit(e.point.x, e.point.y, true)) arm(e); });
 const disarm = e => { if (!pressAt) return; if (!e || !e.point || Math.hypot(e.point.x - pressAt.x, e.point.y - pressAt.y) > 6) { clearTimeout(pressT); pressAt = null; ringOff(); } };
