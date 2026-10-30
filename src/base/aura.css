@@ -922,3 +922,6 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 #aura.keyon #au-yours b { display: block; }
 /* done, ticked */
 .au-todo li.done::before { content: '✓'; margin-right: 8px; opacity: .8; }
+
+#aura .au-keyin input { width: 4.6em !important; max-width: 4.6em; border: 0 !important; border-bottom: 1.5px solid var(--ink) !important; background: rgba(10, 30, 60, .7) !important; padding: 6px 4px !important; }
+#aura #au-yours[hidden] { display: none !important; }

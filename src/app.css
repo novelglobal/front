@@ -3299,3 +3299,9 @@ html.in-aura #sec-set{display:none!important}
 .talk-sec .ts{display:flex;gap:4px;margin:0 0 6px}
 .talk-sec .ts button{font:600 10px var(--mono,ui-monospace);letter-spacing:.08em;padding:4px 8px;border-radius:999px;border:1px solid currentColor;background:none;color:inherit;opacity:.5}
 .talk-sec .ts button.on{opacity:1}
+
+/* a constellation's three uses, under it: music, art, intel */
+.st-use{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 4px}
+.st-use button{display:grid;justify-items:center;gap:4px;padding:10px 4px;border-radius:12px;border:1px solid var(--edge,rgba(0,0,0,.14));background:var(--white,#fff);color:inherit;cursor:pointer}
+.st-use button svg{width:22px;height:22px}
+.st-use button small{font:600 10px var(--mono,ui-monospace);letter-spacing:.1em;text-transform:uppercase}
