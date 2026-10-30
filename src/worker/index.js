@@ -21,6 +21,8 @@ const LIMIT = { example: 700e3, body: 2.4e6, sig: 9000, record: 20e3, cells: 60e
 const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
 const CODE = /^DA-[0-9A-HJKMNP-TV-Z]{4}$/;
+/* a maker's own three characters (no I, O, 0 or 1), printed on what they make: with it they find and take down their own things */
+const WHO = /^[A-HJ-NP-Z2-9]{3}$/;
 
 /* ───────── the database: made on first use, the same in a preview's database and the live one ───────── */
 const SCHEMA = [
@@ -54,6 +56,9 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE printers ADD COLUMN live INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* star: a story the approval page holds up, first on the board */
     try { await db.prepare('ALTER TABLE stories ADD COLUMN star INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
+    /* who: the maker's three characters; gone: when its maker took it down (off the site, still all here on the approval page) */
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN who TEXT').run(); } catch (e) { /* already there */ }
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN gone INTEGER').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN off INTEGER').run(); } catch (e) { /* already there */ }
@@ -113,7 +118,7 @@ const PUBLIC_COLS = "id, code, kind, body, dest, created, decided, photo IS NOT 
 
 async function listStories(db, url) {
   const since = Math.max(0, +(url.searchParams.get('since') || 0));
-  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind NOT IN ('example', 'message') AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
+  const { results } = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND gone IS NULL AND kind NOT IN ('example', 'message') AND decided > ? ORDER BY decided DESC LIMIT 200`).bind(since).all();
   return json({ stories: results.map(storyOut), at: now() });
 }
 /* the example board everyone sees: the latest one approved, or none (then the example built into the site stands) */
@@ -123,13 +128,22 @@ async function exampleBoard(db) {
   return json({ board, at: r ? r.decided : 0 });
 }
 async function oneStory(db, code) {
-  const r = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND kind != 'message' AND code = ? ORDER BY decided DESC LIMIT 1`).bind(code).first();
+  const r = await db.prepare(`SELECT ${PUBLIC_COLS} FROM stories WHERE status = 'shown' AND gone IS NULL AND kind != 'message' AND code = ? ORDER BY decided DESC LIMIT 1`).bind(code).first();
   return r ? json({ story: storyOut(r) }) : fail(404, 'not found');
 }
 async function photo(db, id, any) {
-  const r = await db.prepare(`SELECT photo, status, kind FROM stories WHERE id = ?`).bind(id).first();
-  if (!r || !r.photo || (!any && (r.status !== 'shown' || r.kind === 'message'))) return fail(404, 'not found');
+  const r = await db.prepare(`SELECT photo, status, kind, gone FROM stories WHERE id = ?`).bind(id).first();
+  if (!r || !r.photo || (!any && (r.status !== 'shown' || r.gone || r.kind === 'message'))) return fail(404, 'not found');
   return new Response(new Uint8Array(r.photo), { headers: { 'content-type': 'image/jpeg', 'cache-control': any ? 'no-store' : 'public, max-age=3600', 'x-content-type-options': 'nosniff' } });
+}
+/* a maker's own, by their three characters: what they sent (the words only of what is on the site), and taking one down.
+   Taken down is off the site only: the approval page keeps it as it was. Asked too often from one place, it waits */
+async function mine(db, env, req, who, id) {
+  if (!WHO.test(who || '')) return fail(400, 'who');
+  if (await tooMany(db, env, req, 'mine', 60, 10 * 60e3)) return fail(429, 'too many');
+  if (id) { const r = await db.prepare('UPDATE stories SET gone = ? WHERE id = ? AND who = ? AND gone IS NULL').bind(now(), id, who).run(); return r.meta && r.meta.changes ? json({ ok: true }) : fail(404, 'not found'); }
+  const { results } = await db.prepare(`SELECT id, code, kind, status, body, created, decided, photo IS NOT NULL AS has_photo FROM stories WHERE who = ? AND gone IS NULL AND kind NOT IN ('example', 'message') ORDER BY created DESC LIMIT 100`).bind(who).all();
+  return json({ mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
 }
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
@@ -156,7 +170,8 @@ async function send(db, env, req) {
   if (dest && b.escpos != null && !b64ok(b.escpos, LIMIT.escpos)) return refuse(400, 'the print is too long');
   if (b.mesh != null && (typeof b.mesh !== 'string' || enc.encode(b.mesh).length > LIMIT.mesh)) return fail(400, 'mesh');
   const { n } = await db.prepare("SELECT count(*) AS n FROM stories WHERE status = 'waiting'").first(); if (n >= LIMIT.waiting) return refuse(503, 'too many stories waiting for approval');
-  const id = rid(); const t = now(); const ops = [db.prepare('INSERT INTO stories (id, code, kind, status, body, photo, lat, lng, dest, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, b.code, kind, 'waiting', b.body, pic, lat, lng, dest || null, t)];
+  const who = typeof b.who === 'string' && WHO.test(b.who) ? b.who : null;
+  const id = rid(); const t = now(); const ops = [db.prepare('INSERT INTO stories (id, code, kind, status, body, photo, lat, lng, dest, created, who) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(id, b.code, kind, 'waiting', b.body, pic, lat, lng, dest || null, t, who)];
   let job = null;
   if (P && (b.escpos || b.mesh)) {
     const { q } = await db.prepare("SELECT count(*) AS q FROM jobs WHERE printer = ? AND status IN ('held', 'queued', 'printing')").bind(dest).first(); if (q >= LIMIT.perPrinter) return refuse(503, 'its queue is full');
@@ -185,7 +200,7 @@ const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false };
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
    curations: the portfolio's twelve groups (JSON: [{ k, name, about }]) */
-/* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothWait [min, max] minutes) */
+/* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
 const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600 };
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
@@ -240,6 +255,8 @@ async function touchList(db, req, id) {
 async function touchAct(db, req, id, job) {
   if (!(await touchAuth(db, req, id))) return fail(401, 'token');
   const b = await body(req);
+  /* the screen's hidden menu: the printer's Pi asked to turn off, as TURN OFF on the approval page does */
+  if (job === 'off' && b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
   if (b.action === 'print') { await db.batch([db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id), db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job)]); return json({ ok: true }); }
   if (b.action === 'squash') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id)]); return json({ ok: true }); }
   return fail(400, 'action');
@@ -263,7 +280,7 @@ async function admin(db, env, req, parts) {
   const [what, id] = parts;
   if (what === 'stories' && !id && req.method === 'GET') {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
-    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star,
+    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star, s.who, s.gone,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 200`).bind(st).all();
     return json({ stories: results.map(r => ({ ...r, photo: !!r.has_photo, has_photo: undefined })) });
   }
@@ -275,6 +292,7 @@ async function admin(db, env, req, parts) {
     const b = await body(req); const t = now();
     if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id)]); return json({ ok: true }); }
     if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
+    if (b.action === 'ungone') { await db.prepare('UPDATE stories SET gone = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }   // taken down by its maker, put back
     if (b.action === 'star' || b.action === 'unstar') { await db.prepare('UPDATE stories SET star = ? WHERE id = ?').bind(b.action === 'star' ? 1 : 0, id).run(); return json({ ok: true }); }
     /* deleted is archived: off the site and out of every queue, still here on the approval page, and brought back as waiting */
     if (b.action === 'delete') { await db.batch([db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE id = ?").bind(t, id)]); return json({ ok: true }); }
@@ -444,7 +462,7 @@ async function overview(db) {
 async function exportAll(db) {
   const q = async s => (await db.prepare(s).all()).results;
   const out = { site: 'novel.global', build: BUILD, at: new Date().toISOString(),
-    stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
+    stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, who, gone, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
     places: await q(`SELECT ${PLACE_COLS} FROM places ORDER BY created DESC`), posts: await q('SELECT id, slug, title, summary, body, cat, links, day, status, created, updated FROM posts ORDER BY created DESC'),
     printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
   return new Response(JSON.stringify(out, null, 1), { headers: { ...JSON_H, 'content-disposition': `attachment; filename="novel-global-${out.at.slice(0, 10)}.json"` } });
@@ -524,6 +542,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'stories' && !p[1] && m === 'POST') return send(db, env, req);
   if (p[0] === 'stories' && p[1] && m === 'GET') return CODE.test(p[1]) ? oneStory(db, p[1]) : fail(400, 'code');
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
+  if (p[0] === 'mine' && p[1] && !p[3] && (m === 'GET' && !p[2] || m === 'POST' && p[2])) return mine(db, env, req, p[1], p[2]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
   if (p[0] === 'osm' && !p[1] && m === 'GET') return osmThrough(db, env, req, url);

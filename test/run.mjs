@@ -1596,7 +1596,7 @@ if (run('base')) try {
   const picked = await page.evaluate(() => document.querySelector('#w-new [data-l="1"]').value);
   await page.fill('#w-new [data-l="2"]', 'A sign on the gate, and water out'); await tap(page, '#w-post');
   await page.waitForFunction(() => document.querySelectorAll('.reply').length === 2, null, { timeout: 8000 }); await sleep(800);
-  const wr = (((await admin('stories?status=waiting')).stories) || []).map(s => JSON.parse(s.body)).find(b => b.type === 'wish');
+  const wr = (((await admin('stories?status=waiting')).stories) || []).map(s => { try { return JSON.parse(s.body); } catch (e) { return {}; } }).find(b => b.type === 'wish');
   check('a W.I.S.H. answered: a line picked from the list, a line written, kept in the thread at once and sent as a reply to its poster', !!picked && !!wr && wr.re === rec.code && wr.lines[1] === picked && wr.lines[2] === 'A sign on the gate, and water out', JSON.stringify(wr) + picked);
   await shot(page, 'b03b-thread.png');
   /* RADIO: a 4-track played from the map's own cells, and the web of noticing */
@@ -1836,16 +1836,16 @@ if (run('base')) try {
   const pc0 = await page.evaluate(async () => { const c = await window.__base.poster('novelglobal', 512); return { url: c.toDataURL('image/png'), w: c.width, said: [...new Set(window.__said)] }; });
   const onPoster = await qrIn(pc0.url);
   check('SHOP prints the poster on the 80 mm printer: PRINT FREE in big ASCII letters on two lines, its only words beside novel.global, its code drawn in terminal cells and still read by a camera', !!pw && pw.dest === 'novelglobal' && pc0.w === 512 && pc0.said.includes('| _ \\| _ \\|_ _|| \\| ||_   _|') && pc0.said.includes('|_|  |_|_\\|___||___|') && !pc0.said.some(t => /PRINT|FREE/.test(t)) && onPoster === 'https://oan.test/#booth', JSON.stringify({ said: pc0.said.slice(0, 12), onPoster, dest: pw && pw.dest }));
-  await page.goto('https://oan.test/?base'); await page.goto('https://oan.test/?base#booth'); await page.waitForSelector('#booth .am');
+  await page.goto('https://oan.test/?base'); await page.goto('https://oan.test/?base#booth'); await page.waitForSelector('#booth .eye');
   const b0 = await page.evaluate(() => ({ keys: [...document.querySelectorAll('#booth label, #booth button, #booth a')].map(k => k.textContent.trim()), cams: [...document.querySelectorAll('#booth input[type=file]')].map(i => i.hasAttribute('capture')), shown: [...document.body.children].filter(e => !/^(SVG|svg|SCRIPT)$/.test(e.tagName) && getComputedStyle(e).display !== 'none').map(e => e.id || e.tagName) }));
   await shot(page, 'b06-booth.png');
-  check('the booth: nothing but take or upload a photograph, as small ASCII keys; nothing else of the site shows', b0.keys.join() === '[ (o) ],[ ^ ]' && b0.cams.join() === 'true,false' && b0.shown.join() === 'booth', JSON.stringify(b0));
+  check('the booth: the mark, and the eye the one thing to touch for a photo (a phone offers its camera or its photos); nothing else of the site shows', b0.keys.length === 1 && b0.cams.join() === 'false' && b0.shown.join() === 'booth', JSON.stringify(b0));
   await page.setInputFiles('#booth input:not([capture])', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() });
   await page.waitForFunction(() => { const c = document.querySelector('#bt-pv canvas'); return c && c.width > 100; }, null, { timeout: 10000 }); await sleep(300);
   const ed = await page.evaluate(() => { const c = document.querySelector('#bt-pv canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, Math.round(c.height * 0.6)).data; let mid = 0, ink = 0; for (let i = 0; i < d.length; i += 4) { if (d[i] > 20 && d[i] < 235) mid++; if (d[i] < 20) ink++; } return { w: c.width, mid, ink: +(ink / (d.length / 4)).toFixed(2), keys: [...document.querySelectorAll('#booth button')].map(b => b.textContent) }; });
-  check('then stickers and words in an ASCII menu, the photograph shown as it will print: dithered to one bit at the printer\'s 512 dots (CanvasDither)', ed.w === 512 && ed.mid === 0 && ed.ink > 0.1 && ed.ink < 0.9 && ed.keys.includes('[ <3 ]') && ed.keys.includes('[ Aa ]') && ed.keys.includes('[ >> ]'), JSON.stringify(ed));
+  check('then the whole receipt as it will print, every dot black or white at the printer 512 dots (the photo dithered by CanvasDither), stickers, words, print and save', ed.w === 512 && ed.mid === 0 && ed.ink > 0.1 && ed.ink < 0.9 && ed.keys.includes('<3') && ed.keys.includes('print') && ed.keys.includes('save'), JSON.stringify(ed));
   await page.click('#bt-st [data-k="1"]'); const bx = await page.locator('#bt-pv canvas').boundingBox(); await page.mouse.click(bx.x + bx.width * 0.3, bx.y + bx.height * 0.3); await sleep(200);
-  await page.click('#bt-aa'); await page.fill('#bt-w', 'hello from carlton'); await shot(page, 'b06b-booth-edit.png'); await page.click('#bt-go');
+  await page.fill('#bt-w', 'hello from carlton'); await sleep(400); await shot(page, 'b06b-booth-edit.png'); await page.click('#bt-go');
   await page.waitForSelector('#bt-again', { timeout: 10000, state: 'attached' }); await page.waitForFunction(() => /●/.test(document.querySelector('#bt-pip').textContent), null, { timeout: 10000 });
   const out = await page.evaluate(() => ({ url: document.querySelector('.pv.slip canvas').toDataURL('image/png'), w: document.querySelector('.pv.slip canvas').width, keys: [...document.querySelectorAll('#bt-on > *')].map(k => k.textContent.trim() + '>' + (k.getAttribute('href') || '')), st: window.__base.notes()[0].st }));
   const hid = await page.evaluate(() => document.querySelector('#bt-again').hidden);
@@ -1854,14 +1854,19 @@ if (run('base')) try {
   const onSlip = await qrIn(out.url);
   check('⎙ prints it: sent to the printer with its colour photograph for the gallery, its words, and the receipt\'s small code opens its page on the site', !!bw && bw.photo && bw.dest === 'novelglobal' && bb.type === 'booth' && bb.text === 'hello from carlton' && out.w === 512 && onSlip === 'https://oan.test/#n=' + bw.code, JSON.stringify({ bb, onSlip, code: bw && bw.code }));
   await sleep(600); await shot(page, 'b06c-booth-sent.png');
-  check('once sent, three ways on: again (hidden through an unseen wait of two to five minutes, against printing on repeat), save it, or novel.global (where it goes by itself after a while)', out.keys.join() === '[ ↺ ]>,[ ↓ ]>,[ novel.global ]>https://oan.test/' && hid, JSON.stringify(out.keys) + hid);
-  await page.evaluate(() => { const a = document.querySelector('#bt-site'); if (a) a.click(); });   // it may already have gone home by itself await page.waitForFunction(() => !document.body.classList.contains('booth') && (document.querySelector('#aura') ? !document.querySelector('#aura').hidden : getComputedStyle(document.querySelector('#home')).display !== 'none'), null, { timeout: 8000 });
+  check('once sent, three ways on: again (hidden for the ten minutes until this phone can print again), save it, or novel.global (where it goes by itself after a while)', out.keys.join() === '[ ↺ ]>,[ ↓ ]>,[ novel.global ]>https://oan.test/' && hid, JSON.stringify(out.keys) + hid);
+  /* then the pass: the phone's three characters as a card to keep, and novel.global */
+  await page.waitForSelector('#bt-pass', { timeout: 8000 }); await sleep(400); await shot(page, 'b06d-booth-pass.png');
+  const pass = await page.evaluate(() => ({ card: !!document.querySelector('#booth .pass canvas'), me: localStorage.getItem('da.me'), site: !!document.querySelector('#bt-site') }));
+  check('then the pass: this phone\'s own three characters as a card to save, with novel.global beside it', pass.card && pass.site && /^"?[A-HJ-NP-Z2-9]{3}"?$/.test(pass.me), JSON.stringify(pass));
+  await Promise.all([page.waitForNavigation({ timeout: 8000 }).catch(() => {}), page.click('#bt-site')]);
+  await page.waitForFunction(() => !document.body.classList.contains('booth') && window.__base, null, { timeout: 8000 });
   check('novel.global opens the full site, and the booth photograph is kept as one\'s own, out of the W.I.S.H. thread', await page.evaluate(() => window.__base.notes()[0].booth === true && !location.hash));
   const wait = await page.evaluate(() => (+localStorage.getItem('da.booth.next')) - Date.now());
-  await page.goto('https://oan.test/?base#booth'); await page.waitForSelector('#booth .art'); await sleep(300);
-  const locked = await page.evaluate(() => document.querySelectorAll('#booth label, #booth button').length + '|' + [...document.querySelectorAll('#booth a')].map(a => a.textContent.trim()).join());
-  await page.evaluate(() => localStorage.setItem('da.booth.next', '0')); await page.reload(); await page.waitForSelector('#booth .am');
-  check('the wait holds through a reload: only novel.global until it is over, then the two again', wait > 110e3 && wait < 301e3 && locked === '0|[ novel.global ]', JSON.stringify({ wait, locked }));
+  await page.goto('https://oan.test/?base#booth'); await page.waitForSelector('#booth .eye'); await sleep(300);
+  const locked = await page.evaluate(() => document.querySelectorAll('#booth .eye input').length);
+  check('the next print from this phone is ten minutes on, through a reload; the booth stays open meanwhile (print counts down, save works)', wait > 590e3 && wait < 601e3 && locked === 1, JSON.stringify({ wait, locked }));
+  await page.evaluate(() => localStorage.setItem('da.booth.next', '0'));
   await ctx.close();
   /* on a phone: nothing wider than the screen */
   const pc = await newCtx({ viewport: { width: 375, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }); await wire(pc); const pp = await pc.newPage(); watch(pp, 'base-phone');

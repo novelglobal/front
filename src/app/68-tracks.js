@@ -268,13 +268,12 @@ const songCard = (l, i) => ({ id: 's:' + l.id, img: loopArt(l), kind: 'song', na
 const songsHTML = () => `<section class="sec songs" id="sec-songs"><div class="lab-row">${labI('sound', 'Songs', LOOPS.length)}<button type="button" class="pill sq" data-song-keep aria-label="Keep the radar's song as it is now" data-tip="Keep the radar's song">${icon('plus', 'sm')}</button></div>`
   + (LOOPS.length ? `<ol class="albums">${LOOPS.map((l, i) => `<li class="album"><button type="button" class="al-sleeve" data-loop-play="${esc(l.id)}" aria-label="Play ${esc((l.where || {}).place || 'this song')}"><img class="al-art" src="${loopArt(l)}" alt=""><img class="al-card" data-song-card="${i}" alt=""></button>`
     + `<span class="al-t"><b>${esc((l.where || {}).place || 'RADIO')}</b><small class="mono">${Math.round((l.where || {}).r || 0)} M · ${fmtStamp(l.at).split(' ')[0]}</small></span>`
-    + `<span class="al-k"><button type="button" class="ib" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon('play', 'sm')}</button><button type="button" class="ib" data-song-share="${esc(l.id)}" aria-label="Share as a link" data-tip="Share as a link">${icon('share', 'sm')}</button></span></li>`).join('')}</ol>`
+    + `<span class="al-k"><button type="button" class="ib" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon('play', 'sm')}</button><button type="button" class="ib" data-song-share="${esc(l.id)}" aria-label="Copy its link" data-tip="Copy its link">${icon('share', 'sm')}</button></span></li>`).join('')}</ol>`
     : '<p class="al-none mono">NO SONGS KEPT YET · + KEEPS THE RADAR\'S SONG</p>') + '</section>';
 async function fillSongs() { for (const im of $$('#view img[data-song-card]')) { const l = LOOPS[+im.dataset.songCard]; if (!l) continue; try { const c = await cardArt(songCard(l, +im.dataset.songCard), +im.dataset.songCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 $('#view').addEventListener('click', async e => {
   if (e.target.closest('[data-song-keep]')) { if (!placed()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); snd.tick(1900); refreshPanel(); return; }
   const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (!l) return; const url = mixURL(l);
-    if (navigator.share && coarse()) { try { await navigator.share({ title: 'novel.global', url }); return; } catch (err) { /* copied instead */ } }
     const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60)); }
 });
 /* ───────── the radio as a link: the place, its reach, and each layer's on, volume and mood, short enough for a code on a

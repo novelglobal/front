@@ -72,6 +72,15 @@ S.mo = nowK();
 derive(); buildTribes(); buildHeroes(); headBar(); syncDock(); renderView(); flags(); loadEvents();
 /* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
 if (!IN_AURA) fetch('/api/beat?k=open-studio', { keepalive: true }).catch(() => {});
+/* opened from the aura's "make a song": the radar put down at random within 300 m of here, and the radio on */
+if (IN_AURA && new URLSearchParams(location.search).get('auto') === 'song') {
+  const songGo = () => { if (!S.mapReady) { setTimeout(songGo, 300); return; }
+    const c = S.scan && Number.isFinite(S.scan.lat) && prefs.placed ? { lat: S.scan.lat, lng: S.scan.lng } : map.getCenter();
+    const a = Math.random() * 2 * Math.PI, d = Math.sqrt(Math.random()) * 300, lat = c.lat + d * Math.cos(a) / 110574, lng = c.lng + d * Math.sin(a) / (111320 * Math.cos(c.lat * Math.PI / 180));
+    prefs.placed = true; S.started = true; savePrefs(); life.setScan(lat, lng, 300, true); map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15.5), duration: reduced() ? 0 : 1200 });
+    snd.wake(); setRadio(true); };
+  songGo();
+}
 applyShared(); loadShared(); loadExample(); flushOutbox(); checkSent(); loadPartners().then(() => { if (S.open && !S.mode && (S.view === 0 || S.view === 2)) refreshPanel(); }); loadSettings(); loadPlaces();
 /* a first visit (43-journey.js): only what it has reached shows; a link someone was sent skips the bare map */
 jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true);
