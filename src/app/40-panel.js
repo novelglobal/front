@@ -689,13 +689,27 @@ function wallFill() {
       ol.innerHTML = all.slice(0, 24).map(f => `<li><button type="button" class="wall-k" aria-label="${esc(f.cap || f.code || 'A poster')}" data-tip="${esc([f.code, f.cap].filter(Boolean).join(' · '))}"><img src="${f.src}" alt="" loading="lazy"></button></li>`).join(''); }; } catch (e) { /* none yet */ } };
 }
 $('#view').addEventListener('click', e => { const k = e.target.closest('.wall-k'); if (!k) return; const on = !k.classList.contains('big'); $$('#wall-g .wall-k.big').forEach(x => x.classList.remove('big')); k.classList.toggle('big', on); tick(on ? 1500 : 1100); });
+/* the board, in the portfolio: everyone's few words in the journey's four sections, by kin; written with the code from a print */
+const TALK = { s: 'notice' };
+const talkSection = () => IN_AURA ? `<section class="sec talk-sec" id="sec-talk">${labI('stories', 'Talk')}<div class="ts">${['notice', 'story', 'make', 'print'].map(k => `<button type="button" data-tks="${k}" class="${k === TALK.s ? 'on' : ''}">${k.toUpperCase()}</button>`).join('')}</div><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button type="submit" class="pill sq" aria-label="Send">↑</button></form></section>` : '';
+async function talkFill() {
+  const sec = $('#sec-talk'); if (!sec) return; const NGp = (() => { try { return window.parent.NG; } catch (e) { return null; } })(); const kinN = k => (NGp && NGp.kin && NGp.kin(k) ? NGp.kin(k).n : '');
+  let l = []; try { l = ((await apiJSON('/talk?s=' + TALK.s)) || {}).talk || []; } catch (e) { l = []; }
+  const top = l.filter(t => !t.re), kids = id => l.filter(t => t.re === id).reverse(), li = (t, sub) => `<li class="${sub ? 'sub' : ''}"><b>${esc(kinN(t.kin))}</b><small>${esc(NGp && NGp.moonsAgo ? NGp.moonsAgo(t.at) : '')}</small><span>${esc(t.text)}</span></li>`;
+  sec.querySelector('ol').innerHTML = top.length ? top.map(t => li(t) + kids(t.id).map(c => li(c, 1)).join('')).join('') : '<li><span>·</span></li>';
+  sec.querySelectorAll('[data-tks]').forEach(b => { b.onclick = () => { TALK.s = b.dataset.tks; sec.querySelectorAll('[data-tks]').forEach(q => q.classList.toggle('on', q === b)); talkFill(); }; });
+  sec.querySelector('form').onsubmit = async e => { e.preventDefault(); const i = sec.querySelector('input'), t = i.value.trim(), who = store.get('da.who', ''); if (!t) return;
+    if (!/^[A-HJ-NP-Z2-9]{3}$/.test(who)) { toast('🗝'); return; }
+    try { await apiJSON('/talk', { method: 'POST', body: JSON.stringify({ s: TALK.s, who, text: t }) }); i.value = ''; talkFill(); } catch (er) { toast(er && er.status === 403 ? '🗝' : '·'); } };
+}
 function viewPortfolio() {
   loadPosts();
   const det = ['iNaturalist', 'Field list: sources in field.html', ...OUT.src.map(x => x[0]), 'Canopy: council urban forest strategies; cooling near 40% (Ziter et al., PNAS 2019)', 'City of Melbourne open data', `${IMG.attribution} · AWS Terrain Tiles`, 'OpenStreetMap', 'MapLibre · Poppins · IBM Plex Mono', CONFIG.COUNTRY];
   const sigs = S.signals;
   /* the W.I.S.H.es made here are among the stories, marked as one's own: one module, not two */
   setTimeout(wallFill, 30);
-  return printerTop() + quickHTML() + wallSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
+  if (IN_AURA) setTimeout(talkFill, 60);
+  return printerTop() + quickHTML() + wallSection() + talkSection() + postsSection() + `<section class="sec board" id="sec-board"><div class="lab-row">${labI('stories', 'Stories', sigs.length)}<button type="button" class="pill sq" id="rx-open" aria-expanded="false" aria-label="Receive" data-tip="A code from a slip, or a link">${icon('receive', 'sm')}</button></div>`
       + `<form class="rx" id="rx" hidden><textarea id="rx-t" rows="2" aria-label="A code from a slip, or a link" placeholder="DA-····" spellcheck="false" autocapitalize="characters"></textarea><button type="submit" class="ib" aria-label="Receive">${icon('check')}</button></form>`
       /* eight as cards; the rest as a list, a photograph and a headline each */
       + (() => { const all = boardOrder(sigs); const more = all.slice(8); askKindPhotos(all); return `<ol class="sigs cards big">${all.slice(0, 8).map(sigRow).join('')}</ol>` + (more.length ? `<ol class="sigs list">${more.map(sigLine).join('')}</ol>` : ''); })()

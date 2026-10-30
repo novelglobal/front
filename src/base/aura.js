@@ -720,6 +720,7 @@
     if (S.round && t - S.round < 2.6) { k = Math.min(1, (t - S.round) / 1.6); pos = slipAt(T, 3, 0.92 - 0.88 * k); if (k >= 1) return; }
     else if (S.stage >= 2 && !S.deep && !(S.pass && t - S.pass.t0 < 1.1)) return;
     else if (S.pass && t - S.pass.t0 < 1.1) { k = (t - S.pass.t0) / 1.1; pos = k < 0.5 ? slipAt(T, on(S.pass.from), held - (held - 0.08) * k * 2) : slipAt(T, on(S.pass.to), 0.08 + (held - 0.08) * (k - 0.5) * 2); }
+    else if (L.mob && S.stage === 0) return;
     else pos = slipAt(T, on(S.stage), held);
     var m = MINI.c, w = 22, h = m ? m.height / m.width * w : 40;
     x.save(); x.translate(pos[0], pos[1]); x.rotate((pos[2] - Math.PI / 2) * 0.25 + Math.sin(t * 0.9) * 0.05); x.globalAlpha = 0.95 * a;
@@ -1318,7 +1319,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : ''); }
+  function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : ''); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
 
@@ -1432,9 +1433,9 @@
     if (store.get('da.aura.mesh', 0)) list.push('Mesh');
     return list;
   }
-  function todoCheck() { var k = $('#au-todo'); if (!k) return; k.classList.toggle('gone', START.checklist === false || !todoItems().length); }
+  function todoCheck() { var k = $('#au-todo'); if (!k) return; var skipped = GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length; k.classList.toggle('gone', START.checklist === false || skipped || !todoItems().length); }
   function todoFill() { var ol = $('#au-todol ol'); if (!ol) return; ol.innerHTML = todoItems().map(function (t) { return '<li class="done">' + esc(t) + '</li>'; }).join(''); }
-  function todoShow() { todoCheck(); if (START.checklist === false) return; var l = $('#au-todol'); if (!l) return; todoFill(); l.hidden = false; root.classList.add('todo'); clearTimeout(S.todoT); S.todoT = setTimeout(function () { l.hidden = true; root.classList.remove('todo'); }, 10000); }
+  function todoShow() { todoCheck(); if ($('#au-todo').classList.contains('gone')) return; var l = $('#au-todol'); if (!l) return; todoFill(); l.hidden = false; root.classList.add('todo'); clearTimeout(S.todoT); S.todoT = setTimeout(function () { l.hidden = true; root.classList.remove('todo'); }, 10000); }
   $('#au-todo').addEventListener('click', function () { var l = $('#au-todol'), on = l.hidden; if (on) todoFill(); l.hidden = !on; this.setAttribute('aria-expanded', String(on)); root.classList.toggle('todo', on); bell(on ? 2 : 0, 0.12); });
   $('#au-theme').addEventListener('click', function () { setDark(!DARK); bell(DARK ? 0 : 4, 0.18); subSwell(); });
   /* open everything: every device on the ring and every mark, as if every poster were already made; asked once more first */
@@ -2034,9 +2035,9 @@
         var k = $('#au-yours'); if (k) { k.classList.remove('took'); void k.offsetWidth; k.classList.add('took'); } bell(1, 0.1); })
       .catch(function () { i.disabled = false; }); });
   function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var tk = $('#au-talk'); if (tk) tk.hidden = !on; }
-  $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
+  $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
-    i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); harp([0, 4, 7]); }); });
+    i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); }, 4000); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
   var making = function () { return !!P && !P.sent && filled(); };

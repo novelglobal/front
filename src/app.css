@@ -3284,3 +3284,18 @@ label.sig:has(#ix-sign), .sl-sign{display:none!important}
 html.only-wish #board{right:0!important;bottom:0!important}
 /* inside the aura's window the studio's tab bar is gone, so nothing keeps room for it */
 html.in-aura{--dock:0px!important}
+
+/* the portfolio inside the aura: its settings are the aura's (day and night, sound), so its own are not shown */
+html.in-aura #sec-set{display:none!important}
+/* the board in the portfolio */
+.talk-sec ol{list-style:none;margin:8px 0;padding:0;display:grid;gap:8px}
+.talk-sec li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:6px 0;border-top:1px solid var(--edge,rgba(0,0,0,.12))}
+.talk-sec li b{font:600 10px var(--mono,ui-monospace);letter-spacing:.06em;opacity:.7}
+.talk-sec li small{font-size:10px;opacity:.5}
+.talk-sec li span{grid-column:1/3;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.talk-sec li.sub{margin-left:18px}
+.talk-sec form{display:flex;gap:6px;align-items:center}
+.talk-sec form input{flex:1;min-width:0;padding:8px;font:inherit;border:0;border-bottom:1.5px dashed currentColor;background:transparent;color:inherit}
+.talk-sec .ts{display:flex;gap:4px;margin:0 0 6px}
+.talk-sec .ts button{font:600 10px var(--mono,ui-monospace);letter-spacing:.08em;padding:4px 8px;border-radius:999px;border:1px solid currentColor;background:none;color:inherit;opacity:.5}
+.talk-sec .ts button.on{opacity:1}
