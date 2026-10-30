@@ -581,7 +581,7 @@ html.aura-on body { background: var(--blue, #17457F); }
    The studio's pages are small digital things: smoked glass, a pixel icon, a green light, against the chalk and stars of the irukandji.
    Earned one a poster, they ride the ring under the eye with the catch; all three wait in the intel. Opened, a window over the aura */
 .au-dev { display: none; position: absolute; left: 0; top: 0; width: 34px; height: 30px; margin: -15px 0 0 -17px; place-items: center; border-radius: 5px; background: rgba(16, 18, 22, .86); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 3px 10px rgba(6, 24, 52, .4); color: #E9F2E4; will-change: transform; }
-#aura.m-iruk:not(.st3) .au-dev:not([hidden]) { display: grid; }
+#aura.m-iruk .au-dev:not([hidden]) { display: grid; }
 .au-dev .au-i, .au-devs .au-i { width: 20px; height: 20px; stroke: #E9F2E4; }
 .au-dev .led, .au-devs .led, .au-win .led { position: absolute; right: 4px; top: 4px; width: 4px; height: 4px; border-radius: 50%; background: #5CE07A; box-shadow: 0 0 5px #5CE07A; }
 .au-dev:hover, .au-devs button:hover { background: rgba(26, 29, 34, .95); }
@@ -913,3 +913,12 @@ html.aura-on { background: #17457F; }
 html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 /* art with nothing begun: one small key, nothing said */
 #aura .au-begin .au-blankk { width: 46px; height: 46px; }
+
+/* the list first (its page opens under it), the key after it; the key's code and mark only while it is open */
+#aura #au-todo { left: 52px; }
+#aura #au-yours { left: 86px; }
+.au-keyin { left: 84px; }
+#au-yours b { display: none; }
+#aura.keyon #au-yours b { display: block; }
+/* done, ticked */
+.au-todo li.done::before { content: '✓'; margin-right: 8px; opacity: .8; }
