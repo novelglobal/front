@@ -971,9 +971,11 @@ function me() {
 }
 function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.who', c); store.set('da.who.pass', 1); meUsed(); return true; }
 function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { return (j && j.mine) || []; }); }
+/* a code typed from a print: this phone carries on as it, as far as it had got (asked of the site; offline, from where it is) */
+function useCode(c) { if (!setMe(c)) return Promise.resolve(false); return api('/mine/' + me()).then(function (j) { var lv = Math.max(+store.get('da.lv', 0) || 0, (j && j.lv) || 0, 1); store.set('da.lv', lv); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }).catch(function () { if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } return true; }); }
 function dropMine(id) { return api('/mine/' + me() + '/' + encodeURIComponent(id), { method: 'POST', body: '{}' }); }
 /* sent with the code, and where its maker is (the page sets NG.stageOf): for the approval page, never the public */
-function send(payload) { payload.who = payload.who || me(); meUsed(); if (!payload.from) payload.from = BTH ? 'booth' : document.getElementById('aura') ? 'novel.global' : 'base'; if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
+function send(payload) { payload.who = payload.who || me(); meUsed(); payload.lv = +store.get('da.lv', 0) || 0; if (!payload.from) payload.from = BTH ? 'booth' : document.getElementById('aura') ? 'novel.global' : 'base'; if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* where a print is now: asked again every few seconds while it is in view, and kept on the noticing */
 function follow(n, el, k) {
   k = k || 0; if (k > 100 || !n.sent || !n.sent.id) return;
@@ -1986,6 +1988,8 @@ function boothClose() {
   history.replaceState(null, '', location.pathname + location.search); window.scrollTo(0, 0);
 }
 function beatK(k) { try { fetch('/api/beat?k=' + k, { keepalive: true }).catch(function () {}); } catch (e) { /* uncounted */ } }
+/* the booth opened on a photo already chosen (the eye in the middle): no second touch */
+function boothWith(file) { if (!BTH) { history.replaceState(null, '', location.pathname + location.search + '#booth'); boothOn(); } boothPic(file); }
 function boothOn(dest) {
   beatK('booth-open');
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
@@ -2035,6 +2039,7 @@ function forPrint(src, W, D) {
 }
 function drawStickers(x, W, H, ink) {
   BTH.st.forEach(function (s) {
+    if (s.img) { var z = Math.round(W * 0.26), sm = x.imageSmoothingEnabled; x.imageSmoothingEnabled = false; x.drawImage(s.img, Math.round(s.x * W - z / 2), Math.round(s.y * H - z / 2), z, z); x.imageSmoothingEnabled = sm; return; }
     var f = Math.round(W * 0.1); x.font = 'bold ' + f + 'px ui-monospace, Menlo, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
     x.lineWidth = Math.max(3, f * 0.22); x.strokeStyle = '#fff'; x.strokeText(s.t, s.x * W, s.y * H); x.fillStyle = ink; x.fillText(s.t, s.x * W, s.y * H);
   });
@@ -2043,12 +2048,14 @@ function drawStickers(x, W, H, ink) {
 function boothEdit() {
   var el = $('#booth'); BTH.code = code('b' + Date.now().toString(36) + '|' + Date.now());
   /* the whole receipt as it will print, at the printer's own dots; a sticker tapped lands on the photo, the photo tapped moves it there */
-  el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div><small class="cap">tap the photo to move a sticker</small>' +
-    '<div class="am sm" id="bt-st">' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div><small class="cap">stickers</small>' +
-    '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="your words">' +
-    '<div class="am go2"><span><button id="bt-go" class="go" aria-label="Print">print</button><small class="cap">on paper</small></span><span><button id="bt-dl" aria-label="Save">save</button><small class="cap">to your phone</small></span></div>';
+  var px = window.AURA && AURA.pix ? AURA.pixSubs : null; BTH.art = px ? px.map(function (q) { return AURA.pix(q); }) : null;
+  el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div>' +
+    '<div class="am sm" id="bt-st">' + (px ? px.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '</div>' +
+    '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…">' +
+    '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button><button id="bt-dl" aria-label="Save">save</button></div>';
+  if (px) $$('#bt-st [data-k]').forEach(function (b, i) { var c = BTH.art[i], im = new Image(); im.alt = ''; im.src = c.toDataURL(); b.appendChild(im); });
   var cv = $('#bt-pv canvas'), pending = 0, paint = function () {
-    clearTimeout(pending); pending = setTimeout(function () { ditherLib().then(function (D) { return boothSlip(D, BTH.code); }).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); }); }, 120);
+    clearTimeout(pending); pending = setTimeout(function () { ditherLib().then(function (D) { return boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); return boothSlip(D, BTH.code, true); }); }).then(function (r) { if (r && BTH) r.toBlob(function (b) { if (BTH) BTH.blob = b; }, 'image/png'); }); }, 120);
   };
   /* shown at a whole number of screen dots to each printer dot, so it reads as sharp as it prints */
   var crisp = function () { var dpr = window.devicePixelRatio || 1, room = Math.min(el.clientWidth - 32, 420) * dpr, k = Math.max(1, Math.floor(room / cv.width)); cv.style.width = Math.min(cv.width * k / dpr, el.clientWidth - 32) + 'px'; };
@@ -2056,14 +2063,16 @@ function boothEdit() {
     if (!BTH.st.length || !BTH.lay) return; var r = cv.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = ((e.clientY - r.top) / r.height * cv.height - BTH.lay.head) / BTH.lay.ph;
     if (py < 0 || py > 1) return; var s2 = BTH.st[BTH.st.length - 1]; s2.x = px; s2.y = py; paint();
   });
-  $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { BTH.pick = +b.dataset.k; BTH.st.push({ t: STICKERS[BTH.pick], x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 }); paint(); }); });
+  $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { BTH.pick = +b.dataset.k; BTH.st.push(BTH.art ? { img: BTH.art[BTH.pick], x: 0.25 + Math.random() * 0.5, y: 0.25 + Math.random() * 0.5 } : { t: STICKERS[BTH.pick], x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 }); paint(); }); });
   var w = $('#bt-w'); w.value = BTH.words; w.addEventListener('input', function () { BTH.words = w.value; paint(); });
   $('#bt-go').addEventListener('click', function () { if (boothLeft() <= 0) boothPrint(); });
   /* printed a little while ago from this phone: print counts down to when it can again; save works all the while */
-  var gb = $('#bt-go'), gc = gb.nextElementSibling, tick = function () { var l = boothLeft(); if (!$('#bt-go')) return; gb.disabled = l > 0; var sec = Math.ceil(l / 1000); gc.textContent = l > 0 ? 'in ' + Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) : 'on paper'; if (l > 0) BTH.t = setTimeout(tick, 1000); };
+  var gb = $('#bt-go'), tick = function () { var l = boothLeft(); if (!$('#bt-go')) return; gb.disabled = l > 0; var sec = Math.ceil(l / 1000); gb.textContent = l > 0 ? Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) : 'print'; if (l > 0) BTH.t = setTimeout(tick, 1000); };
   clearTimeout(BTH.t); tick();
   /* saved, not printed: the slip as it would print, to keep or share; then back to novel.global */
-  $('#bt-dl').addEventListener('click', function () { ditherLib().then(function (D) { return boothSlip(D, BTH.code, true); }).then(function (c2) { if (!c2) return; download(c2, 'novel-global-photo.png'); beatK('booth-save'); boothPass(el, 15); }); });
+  $('#bt-dl').addEventListener('click', function () { var done = function () { beatK('booth-save'); boothPass(el, 15); };
+    if (BTH.blob) { saveBlob(BTH.blob, 'novel-global-photo.png'); done(); return; }
+    ditherLib().then(function (D) { return boothSlip(D, BTH.code, true); }).then(function (c2) { if (!c2) return; download(c2, 'novel-global-photo.png'); done(); }); });
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
@@ -2074,14 +2083,19 @@ function boothSlip(D, code, real) {
   return qrLib().then(function (Q) {
     var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
     var mod = Math.max(3, Math.round(4 * u)), qs = q ? q.getModuleCount() * mod : 0;
-    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0), foot = Math.max(qs, Math.round(40 * u)) + pad * 2;
+    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0), foot = Math.max(qs, Math.round(104 * u)) + pad * 2;
     c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
     x.fillRect(pad, Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
     x.font = '700 ' + Math.round(17 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(38 * u), Math.round(8 * u)); x.font = Math.round(15 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
     BTH.lay = { head: head, ph: p.height };
     x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
     var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
-    y = c.height - foot + pad; x.font = Math.round(14 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(EYE_ASCII.split('\n')[1].trim(), pad, y); x.fillText(code, pad, y + Math.round(22 * u)); x.fillText('by ' + (real ? me() : '· · ·'), pad, y + Math.round(44 * u));
+    /* the key: a drawn key and the three characters large (this phone's own, on paper only), "your key" under them; the slip's own code small */
+    y = c.height - foot + pad; var kx = pad, ky = y + Math.round(4 * u), kr = Math.round(11 * u); x.lineWidth = Math.max(2, Math.round(3 * u)); x.strokeStyle = '#000'; x.beginPath(); x.arc(kx + kr, ky + kr, kr, 0, 7); x.stroke();
+    x.fillRect(kx + kr * 2, ky + kr - Math.round(1.5 * u), Math.round(26 * u), Math.round(3 * u)); x.fillRect(kx + kr * 2 + Math.round(16 * u), ky + kr, Math.round(3 * u), Math.round(8 * u)); x.fillRect(kx + kr * 2 + Math.round(23 * u), ky + kr, Math.round(3 * u), Math.round(6 * u));
+    x.font = '700 ' + Math.round(52 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(real ? me() : '· · ·', kx + Math.round(60 * u), y - Math.round(4 * u));
+    x.font = '700 ' + Math.round(15 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('your key to novel.global', pad, y + Math.round(56 * u));
+    x.font = Math.round(13 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(code, pad, y + Math.round(80 * u));
     if (q) { var n = q.getModuleCount(), ox = W - pad - qs; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, y + i * mod, mod, mod); }
     /* every dot black or white, as the printer lays it down: what is seen is what prints */
     var im2 = x.getImageData(0, 0, W, c.height), d2 = im2.data; for (var k2 = 0; k2 < d2.length; k2 += 4) { var v2 = d2[k2] * 0.299 + d2[k2 + 1] * 0.587 + d2[k2 + 2] * 0.114 < 128 ? 0 : 255; d2[k2] = d2[k2 + 1] = d2[k2 + 2] = v2; d2[k2 + 3] = 255; } x.putImageData(im2, 0, 0);
@@ -2105,6 +2119,7 @@ function boothPass(el, s0) {
   el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept"><i></i></div><small class="cap">your code is on the paper</small><i class="pt" style="animation-duration:' + t + 'ms"></i>';
   clearTimeout(BTH.home); BTH.home = setTimeout(boothClose, t);
 }
+function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
 function boothLeft() { return Math.max(0, (+store.get('da.booth.next', 0) || 0) - Date.now()); }
 function boothPrint() {
@@ -2269,7 +2284,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

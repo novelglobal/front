@@ -603,3 +603,12 @@ html.aura-on #booth .bp button { color: #F4F1E8; }
 #booth .kept i { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#F4F1E8 var(--k, 0%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 57px, #000 58px); mask: radial-gradient(circle, transparent 57px, #000 58px); animation: bt-kept 1.4s ease-out forwards; }
 @property --k { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
 @keyframes bt-kept { to { --k: 100%; } }
+/* the booth closed: nothing of it left over the page */
+html.aura-on body:not(.booth) #booth { display: none !important; }
+
+/* the booth's editor, in the aura's way: the pixel art as small tiles, the words written straight on, two keys the same size */
+#booth .am.sm button.px { width: 52px; height: 52px; padding: 6px; border-radius: 10px; background: rgba(244, 241, 232, .9); }
+#booth .am.sm button.px img { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+#booth .go2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 320px); }
+#booth .go2 button { width: 100%; padding: 14px 0 !important; font: 18px "Architects Daughter", "Comic Sans MS", cursive !important; border-radius: 999px; }
+#booth .bw { font: 22px "Architects Daughter", "Comic Sans MS", cursive !important; border-bottom-style: dashed !important; }
