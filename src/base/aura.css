@@ -925,3 +925,5 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 
 #aura .au-keyin input { width: 4.6em !important; max-width: 4.6em; border: 0 !important; border-bottom: 1.5px solid var(--ink) !important; background: rgba(10, 30, 60, .7) !important; padding: 6px 4px !important; }
 #aura #au-yours[hidden] { display: none !important; }
+/* the board lives in the portfolio device; no key for it on the journey */
+#aura #au-talk, #aura #au-talk:not([hidden]) { display: none !important; }
