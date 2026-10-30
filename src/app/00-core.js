@@ -123,7 +123,7 @@ if (IN_AURA) { document.documentElement.classList.add('in-aura'); const nq = new
   window.fetch = (u, o) => { const s = typeof u === 'string' ? u : ''; if (!s.startsWith('/api/inat/')) return fetch0(u, o); const direct = () => fetch0(DIRECT + s.slice(10), o);
     return fetch0(s, { ...(o || {}), ...(AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {}) }).then(r => (r.ok ? r : direct())).catch(direct); }; }
 /* made: kept in one's own list (shared with the aura, newest first), and said to the aura so its light follows it home */
-const made = (kind, label, lat, lng) => { const l = store.get('da.made', []) || []; l.unshift({ k: kind, label: String(label || '').slice(0, 48), lat, lng, at: Date.now() }); l.splice(80); store.set('da.made', l); try { if (IN_AURA) window.parent.postMessage({ ng: 'made', kind, label: String(label || '').slice(0, 48) }, location.origin); } catch (e) { /* alone */ } };
+const made = (kind, label, lat, lng) => { try { if (IN_AURA) window.parent.postMessage({ ng: 'made', kind, label: String(label || '').slice(0, 48) }, location.origin); } catch (e) { /* alone */ } };
 const toAura = (url, crisp) => { try { window.parent.postMessage({ ng: 'piece', url, crisp: !!crisp }, location.origin); return true; } catch (e) { return false; } };
 if (!Number.isFinite(prefs.journey) || (IN_AURA && prefs.journey < 4)) { prefs.journey = NEW_HERE && !IN_AURA ? 0 : 4; savePrefs(); }
 const simple = () => prefs.journey < 4;

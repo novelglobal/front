@@ -175,7 +175,6 @@ $('#view').addEventListener('input', e => {
 });
 $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-loop]')) { setLoop(!LOOP.on); return; }
-  if (e.target.closest('[data-link]')) { openRadioLink(); return; }
   const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
@@ -324,21 +323,6 @@ function mixArt(m, url) {
   x.font = '500 12.5px "IBM Plex Mono", monospace'; on.forEach((t, i) => x.fillText(t, 36, 700 + i * 19));
   const qr = qrOf(url, 'M'); if (qr) { const n = qr.getModuleCount(), S2 = 176, mm = S2 / n, ox = W - 36 - S2, oy = 612; for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (qr.isDark(r, k)) x.fillRect(Math.floor(ox + k * mm), Math.floor(oy + r * mm), Math.ceil(mm), Math.ceil(mm)); }
   return c.toDataURL('image/png');
-}
-function openRadioLink() {
-  if (!placed()) { toast('WHERE ARE YOU?'); return; }
-  const m = LOOP.on && LOOP.m ? LOOP.m : mixNow(); const url = mixURL(m); const art = mixArt(m, url);
-  $$('.card-view').forEach(e => e.remove()); snd.jelly(0);
-  const el = document.createElement('div'); el.className = 'card-view link-view'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'This sound as a link');
-  el.innerHTML = `<div class="tv-in"><img class="lv-art" src="${art}" alt=""><div class="tv-acts">${[['copy', 'share', 'copy link', 'to send or keep'], ['strip', IN_AURA ? 'stories' : 'receipt', IN_AURA ? 'onto my poster' : 'onto the strip', IN_AURA ? '' : 'to print'], ['png', 'download', 'save', 'the picture'], ['x', 'close', 'close', '']].map(([k, ic, w, sm]) => `<button type="button" class="tv-k" data-lk="${k}">${icon(ic)}<b>${w}</b>${sm ? `<small>${sm}</small>` : ''}</button>`).join('')}</div></div>`;
-  document.body.appendChild(el);
-  const close = () => { el.remove(); removeEventListener('keydown', escK); }; const escK = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', escK);
-  el.addEventListener('click', async e => { const b = e.target.closest('[data-lk]');
-    if (b && b.dataset.lk === 'copy') { const ok = await copyText(url); toast(ok ? '✓' : url.slice(0, 60)); return; }
-    if (b && b.dataset.lk === 'strip' && IN_AURA) { close(); toAura(art, true); return; }
-    if (b && b.dataset.lk === 'strip') { close(); setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); return; }
-    if (b && b.dataset.lk === 'png') { const a = document.createElement('a'); a.href = art; a.download = `novel-global-radio-${isoDay(new Date())}.png`; a.click(); tick(1800); return; }
-    if (b || e.target === el) close(); });
 }
 /* an earlier build kept a track of one's own here; its store goes */
 try { indexedDB.deleteDatabase('da.tracks'); } catch (e) { /* none */ }
