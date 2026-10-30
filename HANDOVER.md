@@ -24,6 +24,9 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 | Print queue | Built on D1, not a Durable Object. Jobs wait for approval (unless a printer is set to print without it), a day at most |
 | Pi receiver | `receiver/pull.py` (standard library; printd for the printer, Meshtastic for a radio), `da-pull.service`, and step-by-step setup in `receiver/README.md`. Tested end to end against the Worker; the hardware at Pickles, Kines and Coffee Bar Elsie is still to be set up. A job with no bytes (sent to the local mesh) goes out by radio and is not printed |
 | Live data behind the Worker | Not built. This is stage 4. Each browser still calls iNaturalist, Overpass and Open-Meteo directly |
+| Storage, bot check, backups | Full-size photographs go to R2 (`MEDIA`, bucket `front-media`) once R2 is switched on and the line in `wrangler.jsonc` is uncommented. Turnstile guards the talk once `TURNSTILE_SITE` and `TURNSTILE_SECRET` are set. **DATA → BACKUP AND REBUILD** on the approval page zips everything kept, links the code zip, and brings a backup back. See `docs/rebuild.md` |
+| Talk | Each step has its own talk, opened by a third key circling the jellyfish at the last level (a third poster printed), read and written only with a code from a print |
+| Sound on old devices | A slow device (four cores or fewer, little memory, or no audio worklets) gets a longer audio buffer, a shorter hall, one sound a sixteenth, and the aura drone waits while the radio plays. The radio's FOUR-TRACK layers up to four kept songs |
 | Prototype deadline | One receiver and one printer, with a repeatable end-to-end demo, by 16 October 2026 |
 
 ## What is built and working

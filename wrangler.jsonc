@@ -13,4 +13,7 @@
     { "binding": "DB", "database_name": "front-db", "database_id": "228fc077-ec35-4425-868e-4f9b142f0949" },
     { "binding": "DB_PREVIEW", "database_name": "front-db-preview", "database_id": "172d5df4-1185-457d-b015-e3a3ffc733d9" }
   ]
+  // the full-size photographs, for the approval page only (free up to 10 GB). Switch R2 on in the Cloudflare dashboard first, then
+  // take the // off the next line: the bucket is made by itself on the next deploy (docs/rebuild.md)
+  // , "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "front-media" }]
 }

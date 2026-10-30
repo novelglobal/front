@@ -130,7 +130,8 @@
       x.status !== 'shown' && x.status !== 'deleted' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => act(x.id, 'delete', card) }),
-      x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
+      x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null,
+      x.full ? el('button', { type: 'button', text: 'FULL SIZE ↓', onclick: async () => { const r = await api('full/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}-full.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img); const tc = thumbCanvas(x.thumb);
     /* its mesh line and where it came from, each on a line of its own */
     let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { o = {}; }
@@ -178,7 +179,7 @@
         return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${ref}${hint ? '  —  ' + hint : ''}` }); })(),
       /* the Wi-Fi each is on, as each last said: the same, or not; and how strong */
       (() => { const J = v => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const a = J(p.net), b = J(p.touch_net); if (!a && !b) return null;
-        const bars = r => (r == null ? '' : r > -60 ? ' STRONG' : r > -70 ? ' GOOD' : r > -78 ? ' WEAK' : ' TOO WEAK'); const one = (who, x) => (x ? `${who} ON ${x.n} (${x.rssi} dBm${bars(x.rssi)})${x.ip ? ' AT ' + x.ip : ''} ${when(x.at)}` : `${who} HAS NOT SAID`);
+        const bars = r => (r == null ? '' : r > -60 ? ' STRONG' : r > -70 ? ' GOOD' : r > -78 ? ' WEAK' : ' TOO WEAK'); const one = (who, x) => (x ? `${who} ON ${x.n} (${x.rssi} dBm${bars(x.rssi)})${x.ip ? ' AT ' + x.ip : ''}${x.v ? ' · ' + String(x.v).toUpperCase() : ' · OLDER VERSION'} ${when(x.at)}` : `${who} HAS NOT SAID`);
         const same = a && b ? (a.n === b.n ? '✓ THE SAME WI-FI' : '✗ NOT THE SAME WI-FI: SET THE SCREEN (HOLD BOOT 3 S) OR THE PI (CHANGE WI-FI) TO ONE BOTH REACH') : '';
         return el('div', { class: 'note', text: [one('PI', a), p.touch ? one('SCREEN', b) : '', same].filter(Boolean).join('  ·  ') }); })(),
       el('div', { class: 'acts' },
@@ -429,6 +430,38 @@
   const csv = (rows, cols) => [cols.join(','), ...rows.map(r => cols.map(c => { const v = r[c] == null ? '' : String(r[c]); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','))].join('\n');
   const PCOLS = ['n', 'cat', 'role', 'what', 'addr', 'sub', 'url', 'lat', 'lng'];
   const parseCSV = t => { const rows = []; let row = [], v = '', q = false; for (let i = 0; i < t.length; i++) { const ch = t[i]; if (q) { if (ch === '"' && t[i + 1] === '"') { v += '"'; i++; } else if (ch === '"') q = false; else v += ch; } else if (ch === '"') q = true; else if (ch === ',') { row.push(v); v = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(v); rows.push(row); row = []; v = ''; } else v += ch; } if (v || row.length) { row.push(v); rows.push(row); } return rows.filter(r => r.some(x => x.trim())); };
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = ~0; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return ~c >>> 0; };
+  function zip(files) {
+    const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+    for (const f of files) { const nm = enc.encode(f.name), c = crc32(f.data), n = f.data.length, h = new DataView(new ArrayBuffer(30)), d = new DataView(new ArrayBuffer(46));
+      [[0, 0x04034b50, 4], [4, 20], [6, 0x0800], [12, 0x21], [14, c, 4], [18, n, 4], [22, n, 4], [26, nm.length]].forEach(([o, v, w]) => (w ? h.setUint32(o, v, true) : h.setUint16(o, v, true)));
+      [[0, 0x02014b50, 4], [4, 20], [6, 20], [8, 0x0800], [14, 0x21], [16, c, 4], [20, n, 4], [24, n, 4], [28, nm.length], [42, off, 4]].forEach(([o, v, w]) => (w ? d.setUint32(o, v, true) : d.setUint16(o, v, true)));
+      parts.push(h, nm, f.data); cen.push(d, nm); off += 30 + nm.length + n; }
+    const size = cen.reduce((n, p) => n + p.byteLength, 0), e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, size, true); e.setUint32(16, off, true);
+    return new Blob([...parts, ...cen, e], { type: 'application/zip' });
+  }
+  /* the links to rebuild from: the code of everything (the site, the Pi's bridge, the touch screen's sketch) and how */
+  const GH = 'https://github.com/novelglobal/front';
+  function rebuild() {
+    const out = el('span', { class: 'note' }), file = el('input', { type: 'file', accept: '.json,application/json' }), ln = (text, href) => el('a', { href, target: '_blank', rel: 'noopener', class: 'note', text });
+    const zipAll = async () => { const j = await all0(); const files = [{ name: 'novel-global.json', data: new TextEncoder().encode(JSON.stringify(j, null, 1)) }];
+      const pics = j.stories.filter(s => s.has_photo || s.full); let i = 0;
+      for (const s of pics) { i++; out.textContent = `PHOTOGRAPHS ${i} OF ${pics.length}…`;
+        for (const [k, p] of [['photos', s.has_photo], ['full', s.full]]) if (p) { try { files.push({ name: `${k}/${s.code}-${s.id}.jpg`, data: new Uint8Array(await (await api(`${k}/${s.id}`)).arrayBuffer()) }); } catch (e) { /* gone */ } } }
+      const a = el('a', { href: URL.createObjectURL(zip(files)), download: `novel-global-backup-${j.at.slice(0, 10)}.zip` }); document.body.append(a); a.click(); a.remove(); out.textContent = `SAVED · ${files.length} FILES`; };
+    const back = async () => { const f = file.files[0]; if (!f) { out.textContent = 'CHOOSE THE BACKUP (.JSON) FIRST'; return; } if (!confirm('BRING THIS BACKUP BACK? WHAT IS MISSING IS PUT BACK AND THE SETTINGS ARE SET AS THEY WERE. NOTHING ELSE IS CHANGED.')) return;
+      try { const r = await (await api('restore', { method: 'POST', body: await f.text() })).json(); out.textContent = `BACK · ${['stories', 'places', 'posts', 'makers', 'talk'].map(k => `${r[k] || 0} ${k.toUpperCase()}`).join(' · ')}`; badges(); } catch (e) { out.textContent = 'NOT A BACKUP FROM HERE'; } };
+    return el('section', { class: 'ed' }, el('h3', { text: 'BACKUP AND REBUILD' }),
+      el('p', { class: 'note', text: 'ONE ZIP OF EVERYTHING KEPT HERE (THE DATA FILE, EVERY PHOTOGRAPH AND FULL-SIZE PICTURE), AND ONE ZIP OF THE CODE THAT RUNS THE SITE, THE PI AND THE TOUCH SCREEN. WITH BOTH, ALL OF IT CAN BE BUILT AGAIN FROM NOTHING: THE GUIDE SAYS HOW. KEEP A COPY SOMEWHERE ELSE TOO.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'EVERYTHING KEPT (.ZIP)', onclick: () => zipAll().catch(() => { out.textContent = 'NO ANSWER · TRY AGAIN'; }) }),
+        el('a', { href: GH + '/archive/refs/heads/main.zip', class: 'note', text: 'THE CODE (.ZIP) ↓' }), ln('THE REBUILD GUIDE ↗', GH + '/blob/main/docs/rebuild.md'), ln('TOUCH SCREEN SKETCH ↗', GH + '/blob/main/src/touch/novel-touch/novel-touch.ino'), ln('DEVICES GUIDE ↗', GH + '/blob/main/docs/devices.md')),
+      el('p', { class: 'note', text: 'THE PI, BUILT AGAIN OR UPDATED (ON THE PI, OVER SSH): curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/setup/install.sh | sh' }),
+      el('h3', { text: 'BRING A BACKUP BACK' }), el('p', { class: 'note', text: 'THE .JSON FROM A BACKUP (OR EVERYTHING .JSON). PRINTERS ARE PAIRED AGAIN BY HAND; PHOTOGRAPHS STAY IN THE ZIP.' }), file,
+      el('div', { class: 'acts' }, el('button', { type: 'button', text: 'BRING IT BACK', onclick: back }), out));
+  }
+  const all0 = async () => (await api('export')).json();
   async function data() {
     const all = async () => (await api('export')).json();
     const dl = el('section', { class: 'ed' }, el('h3', { text: 'DOWNLOAD' }), el('p', { class: 'note', text: 'EVERYTHING AS ONE FILE (STORIES, PLACES, POSTS, PRINTERS WITHOUT THEIR TOKENS, SETTINGS, COUNTS), OR THE PLACES AND STORIES AS SHEETS FOR A SPREADSHEET. PHOTOGRAPHS DOWNLOAD ONE AT A TIME FROM EACH STORY (PHOTO ↓).' }),
@@ -444,7 +477,7 @@
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'BRING THEM IN', onclick: async () => { const t = ta.value.trim(); if (!t) return; let list;
         try { if (/^[\[{]/.test(t)) { const j = JSON.parse(t); list = Array.isArray(j) ? j : j.places || []; } else { const [hd, ...rs] = parseCSV(t); const h = hd.map(x => x.trim().toLowerCase()); list = rs.map(r => Object.fromEntries(h.map((k, i) => [k, (r[i] || '').trim()]))); } } catch (e) { out.textContent = 'COULD NOT READ IT: ' + e.message; return; }
         const r = await (await api('places/import', { method: 'POST', body: JSON.stringify({ places: list }) })).json(); out.textContent = `${r.added} ADDED${r.bad ? `, ${r.bad} LEFT OUT (NO NAME, OR NO PLACE)` : ''}`; badges(); } }), out));
-    main.replaceChildren(...head('Data'), dl, imp);
+    main.replaceChildren(...head('Data'), rebuild(), dl, imp);
   }
 
   /* ───────── the guide: how each part works, the stack, and where things are ───────── */

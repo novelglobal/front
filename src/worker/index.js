@@ -16,7 +16,7 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const fail = (status, error) => json({ error }, status);
 const now = () => Date.now();
 const H = 3600e3, DAY = 24 * H;
-const LIMIT = { example: 700e3, body: 2.4e6, sig: 9000, record: 20e3, cells: 60e3, cellsN: 200, photo: 420e3, escpos: 900e3, mesh: 240, waiting: 2000, perPrinter: 20, sends: 20 };
+const LIMIT = { example: 700e3, body: 4.2e6, sig: 9000, record: 20e3, cells: 60e3, cellsN: 200, photo: 420e3, full: 1.6e6, escpos: 900e3, mesh: 240, waiting: 2000, perPrinter: 20, sends: 20 };
 /* a pack of cells: up to 200, each with a place on the ground and a short name */
 const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
@@ -68,6 +68,8 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE jobs ADD COLUMN thumb TEXT').run(); } catch (e) { /* already there */ }
     /* origin: where a story came from, for the approval page only: the page, the city and country Cloudflare saw (never the address), phone or computer, the stage, its mesh line */
     try { await db.prepare('ALTER TABLE stories ADD COLUMN origin TEXT').run(); } catch (e) { /* already there */ }
+    /* full: its full-size photograph is kept in Cloudflare's storage (R2, bound as MEDIA), for the approval page only */
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN full INTEGER').run(); } catch (e) { /* already there */ }
     /* lv: the furthest a maker's journey has reached (0 to 4), so a code typed on another phone brings it back */
     try { await db.prepare('ALTER TABLE makers ADD COLUMN lv INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* kin: each maker's own species and mark, handed out in turn so no two share one (0, 1, 2 ...) */
@@ -96,7 +98,7 @@ const rid = (n = 16) => { const a = crypto.getRandomValues(new Uint8Array(n)); r
 async function same(a, b) { const [x, y] = await Promise.all([sha256(String(a)), sha256(String(b))]); return crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(enc.encode(x), enc.encode(y)) : x === y; }
 const bearer = req => (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 const b64ok = (s, max) => typeof s === 'string' && s.length <= max && /^[A-Za-z0-9+/=_-]*$/.test(s);
-function dataURL(s) { const m = typeof s === 'string' && s.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/); if (!m || m[1].length > LIMIT.photo) return null; const bin = atob(m[1]); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out[0] === 0xFF && out[1] === 0xD8 ? out : null; }
+function dataURL(s, max = LIMIT.photo) { const m = typeof s === 'string' && s.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/); if (!m || m[1].length > max) return null; const bin = atob(m[1]); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out[0] === 0xFF && out[1] === 0xD8 ? out : null; }
 async function body(req) {
   const n = +(req.headers.get('content-length') || 0); if (n > LIMIT.body) throw Object.assign(new Error('too large'), { status: 413 });
   const t = await req.text(); if (t.length > LIMIT.body) throw Object.assign(new Error('too large'), { status: 413 });
@@ -159,16 +161,27 @@ async function kinOf(db, who) {
 }
 /* the board: the latest of a section (or all), each by its maker's kin; written only with a code a print gave (a maker the site knows) */
 const SECS = ['notice', 'story', 'make', 'print'];
-async function talkList(db, url) {
-  const s = url.searchParams.get('s'); const sec = SECS.includes(s) ? s : null;
+async function talkList(db, env, req, url) {
+  const s = url.searchParams.get('s'), who = url.searchParams.get('who') || ''; const sec = SECS.includes(s) ? s : null; if (!sec || !WHO.test(who)) return fail(400, 'talk');
+  if (await tooMany(db, env, req, 'talkr', 120, 10 * 60e3)) return fail(429, 'too many');
+  if (!(await db.prepare('SELECT 1 AS k FROM makers WHERE who = ?').bind(who).first())) return fail(403, 'key');   // only for those a print has made
   const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
   return json({ talk: results });
 }
+/* bot protection (Cloudflare Turnstile, free): a person's token checked once the TURNSTILE_SECRET secret is set; until then everyone passes */
+async function human(env, req, tok) {
+  if (!env.TURNSTILE_SECRET) return true; if (typeof tok !== 'string' || !tok || tok.length > 2048) return false;
+  const f = new FormData(); f.append('secret', env.TURNSTILE_SECRET); f.append('response', tok); const ip = req.headers.get('cf-connecting-ip'); if (ip) f.append('remoteip', ip);
+  try { const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: f }); return !!(await r.json()).success; } catch (e) { return false; }
+}
+/* where a story's full photograph is kept in R2; a preview build keeps its own apart */
+const mediaKey = id => `${PREVIEW ? 'preview/' : ''}full/${id}.jpg`;
 async function talkSay(db, env, req) {
   const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
   if (!WHO.test(who) || !text || !SECS.includes(b.s)) return fail(400, 'talk');
   const mk = await kinOf(db, who); if (!mk) return fail(403, 'key');   // a code no print has given
   if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
+  if (!(await human(env, req, b.cf))) return fail(403, 'human');
   const re = typeof b.re === 'string' && /^[a-z0-9]{6,24}$/.test(b.re) ? b.re : null, id = rid(), t = now();
   await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, b.s, who, text, re, t), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
   return json({ id, kin: mk.kin, at: t }, 201);
@@ -229,6 +242,9 @@ async function send(db, env, req) {
   const lv = Math.max(0, Math.min(4, Math.round(+b.lv || 0)));
   if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv, kin) VALUES (?, ?, ?, 1, ?, ?, (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers)) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage), lv = max(COALESCE(lv, 0), excluded.lv)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null, lv));
   await db.batch(ops);
+  /* the full photograph, kept in R2 when it is bound; the print and the site never need it */
+  const full = env.MEDIA && b.full ? dataURL(b.full, LIMIT.full) : null;
+  if (full) { try { await env.MEDIA.put(mediaKey(id), full, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET full = 1 WHERE id = ?').bind(id).run(); } catch (e) { /* the story is kept without it */ } }
   return json({ id, status: 'waiting', job }, 201);
 }
 /* the sender's receipt: where their story is, and where its print is in the queue */
@@ -288,7 +304,7 @@ async function touchAuth(db, req, id) {
   if (!p || !p.touch || !tok || !(await same(await sha256(tok), p.touch))) return null;
   if (!p.touch_seen || now() - p.touch_seen > 60e3) await db.prepare('UPDATE printers SET touch_seen = ? WHERE id = ?').bind(now(), id).run(); return p;
 }
-const netOf = url => { const n = (url.searchParams.get('net') || '').slice(0, 40), r = +url.searchParams.get('rssi'), ip = url.searchParams.get('ip') || ''; return n ? JSON.stringify({ n, rssi: Number.isFinite(r) ? Math.max(-120, Math.min(0, Math.round(r))) : null, ...(/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? { ip } : {}), at: now() }) : null; };
+const netOf = url => { const n = (url.searchParams.get('net') || '').slice(0, 40), r = +url.searchParams.get('rssi'), ip = url.searchParams.get('ip') || ''; return n ? JSON.stringify({ n, rssi: Number.isFinite(r) ? Math.max(-120, Math.min(0, Math.round(r))) : null, ...(/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? { ip } : {}), ...(/^[\w .·:-]{1,24}$/.test(url.searchParams.get('v') || '') ? { v: url.searchParams.get('v') } : {}), at: now() }) : null; };
 async function touchList(db, req, id) {
   const p0 = await touchAuth(db, req, id); if (!p0) return fail(401, 'token');
   { const tn = netOf(new URL(req.url)); if (tn) { const o = JSON.parse(tn), was = (() => { try { return JSON.parse(p0.touch_net || 'null'); } catch (e) { return null; } })(); if (!was || was.n !== o.n || Math.abs((was.rssi || 0) - (o.rssi || 0)) > 6 || o.at - was.at > 60e3) await db.prepare('UPDATE printers SET touch_net = ? WHERE id = ?').bind(tn, id).run(); } }
@@ -325,7 +341,7 @@ async function admin(db, env, req, parts) {
   const [what, id] = parts;
   if (what === 'stories' && !id && req.method === 'GET') {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
-    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.star, s.who, s.gone, s.origin,
+    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.full, s.star, s.who, s.gone, s.origin,
         (SELECT j.printer || ' ' || j.status || COALESCE(' ' || j.error, '') FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS jobat,
         (SELECT j.thumb FROM jobs j WHERE j.story = s.id AND j.thumb IS NOT NULL LIMIT 1) AS thumb,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 1000`).bind(st).all();
@@ -344,10 +360,11 @@ async function admin(db, env, req, parts) {
     /* deleted is archived: off the site and out of every queue, still here on the approval page, and brought back as waiting */
     if (b.action === 'delete') { await db.batch([db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE id = ?").bind(t, id)]); return json({ ok: true }); }
     if (b.action === 'restore') { await db.prepare("UPDATE stories SET status = 'waiting', decided = NULL WHERE id = ?").bind(id).run(); return json({ ok: true }); }
-    if (b.action === 'purge') { await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare("DELETE FROM stories WHERE id = ? AND status = 'deleted'").bind(id)]); return json({ ok: true }); }
+    if (b.action === 'purge') { if (env.MEDIA) await env.MEDIA.delete(mediaKey(id)).catch(() => {}); await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare("DELETE FROM stories WHERE id = ? AND status = 'deleted'").bind(id)]); return json({ ok: true }); }
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
+  if (what === 'full' && id) { const o = env.MEDIA ? await env.MEDIA.get(mediaKey(id)) : null; if (!o) return fail(404, 'not found'); return new Response(o.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
   if (what === 'talk' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT t.*, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who ORDER BY t.at DESC LIMIT 300').all(); return json({ talk: results }); }
   if (what === 'talk' && id && req.method === 'POST') { const b = await body(req); if (b.action === 'hide' || b.action === 'show') { await db.prepare('UPDATE talk SET hidden = ? WHERE id = ?').bind(b.action === 'hide' ? now() : null, id).run(); return json({ ok: true }); } if (b.action === 'delete') { await db.prepare('DELETE FROM talk WHERE id = ?').bind(id).run(); return json({ ok: true }); } return fail(400, 'action'); }
   /* one maker: everything they did (what they sent, in every state, and what they said on the board), and deleting them:
@@ -378,6 +395,7 @@ async function admin(db, env, req, parts) {
   if (what === 'overview' && req.method === 'GET') return overview(db);
   if (what === 'traffic' && req.method === 'GET') { const { results } = await db.prepare('SELECT day, k, n FROM traffic WHERE day >= ? ORDER BY day DESC, k').bind(new Date(now() - 60 * DAY).toISOString().slice(0, 10)).all(); return json({ traffic: results }); }
   if (what === 'export' && req.method === 'GET') return exportAll(db);
+  if (what === 'restore' && req.method === 'POST') return restoreAll(db, req);
   if (what === 'reset' && req.method === 'POST') return resetSite(db, req);
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
@@ -524,10 +542,28 @@ async function exportAll(db) {
   const q = async s => (await db.prepare(s).all()).results;
   const out = { site: 'novel.global', build: BUILD, at: new Date().toISOString(),
     talk: await q('SELECT * FROM talk ORDER BY at DESC'), makers: await q('SELECT * FROM makers ORDER BY first'),
-    stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, who, gone, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
+    stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, who, gone, origin, full, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
     places: await q(`SELECT ${PLACE_COLS} FROM places ORDER BY created DESC`), posts: await q('SELECT id, slug, title, summary, body, cat, links, day, status, created, updated FROM posts ORDER BY created DESC'),
     printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
   return new Response(JSON.stringify(out, null, 1), { headers: { ...JSON_H, 'content-disposition': `attachment; filename="novel-global-${out.at.slice(0, 10)}.json"` } });
+}
+/* a backup brought back (the file DATA downloads): settings set as they were; places, posts, makers, the talk and the stories put back
+   where they are missing, nothing here overwritten. Photographs stay in the backup's zip; printers are paired again, by hand */
+async function restoreAll(db, req) {
+  const t = await req.text(); if (t.length > 60e6) return fail(413, 'too large'); let j; try { j = JSON.parse(t); } catch (e) { return fail(400, 'not json'); }
+  if (!j || j.site !== 'novel.global') return fail(400, 'not a backup');
+  const v = x => (typeof x === 'string' || typeof x === 'number' ? x : x === true ? 1 : x === false ? 0 : null), ops = [], n = {};
+  const put = (tab, cols, rows) => { const ok = (Array.isArray(rows) ? rows : []).filter(r => r && typeof r === 'object' && v(r[cols[0]]) != null).slice(0, 20000); n[tab] = ok.length;
+    for (const r of ok) ops.push(db.prepare(`INSERT OR IGNORE INTO ${tab} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).bind(...cols.map(c => v(r[c])))); };
+  const set = (k, x) => ops.push(db.prepare('INSERT INTO settings (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v').bind(k, x));
+  for (const [k, x] of Object.entries(j.settings || {})) { if (k in SETTINGS && typeof x === 'boolean') set(k, x ? '1' : '0'); else if (k in TEXTS && typeof x === 'string') set(k, x.slice(0, TEXTS[k])); }
+  put('places', PLACE_COLS.split(', '), j.places);
+  put('posts', ['id', 'slug', 'title', 'summary', 'body', 'cat', 'links', 'day', 'status', 'created', 'updated'], j.posts);
+  put('makers', ['who', 'first', 'last', 'posts', 'stage', 'lv', 'kin'], j.makers);
+  put('talk', ['id', 'sec', 'who', 'text', 're', 'at', 'hidden'], j.talk);
+  put('stories', ['id', 'code', 'kind', 'status', 'body', 'lat', 'lng', 'dest', 'created', 'decided', 'star', 'who', 'gone', 'origin'], j.stories);
+  for (let i = 0; i < ops.length; i += 50) await db.batch(ops.slice(i, i + 50));
+  return json({ ok: true, ...n });
 }
 async function importPlaces(db, req) {
   const b = await body(req); const list = Array.isArray(b.places) ? b.places.slice(0, 2000) : []; const t = now(); const ops = []; let bad = 0;
@@ -550,7 +586,7 @@ async function resetSite(db, req) {
 /* traffic: a day's count of each kind of thing, added after the answer has gone */
 const BEATS = ['open-aura', 'open-studio', 'open-portfolio', 'begin', 'print', 'wall', 'song', 'device'];
 /* the journey, counted step by step (never who): levels reached, discs and the eye pressed, steps opened, devices, the booth, the desk */
-const JOURNEY = /^(lv[1-4]|disc-[0-2]|eye|step-[0-3]|dev-[0-2]|booth-(open|print|save)|desk-(open|play|keep)|yours)$/;
+const JOURNEY = /^(lv[1-6]|disc-[0-2]|eye|step-[0-3]|dev-[0-3]|booth-(open|print|save)|desk-(open|play|keep)|yours|talk)$/;
 function trafficKey(url, m) {
   const p = url.pathname.replace(/^\/api\//, '').split('/')[0];
   if (p === 'beat') { const k = url.searchParams.get('k'); return BEATS.includes(k) || JOURNEY.test(k || '') ? k : null; }
@@ -606,7 +642,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'stories' && !p[1] && m === 'POST') return send(db, env, req);
   if (p[0] === 'stories' && p[1] && m === 'GET') return CODE.test(p[1]) ? oneStory(db, p[1]) : fail(400, 'code');
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
-  if (p[0] === 'talk' && !p[1] && m === 'GET') return talkList(db, url);
+  if (p[0] === 'talk' && !p[1] && m === 'GET') return talkList(db, env, req, url);
   if (p[0] === 'talk' && !p[1] && m === 'POST') return talkSay(db, env, req);
   if (p[0] === 'mine' && p[1] && !p[3] && (m === 'GET' && !p[2] || m === 'POST' && p[2])) return mine(db, env, req, p[1], p[2]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, p[1], false);
@@ -617,7 +653,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'posts' && !p[1] && m === 'GET') return listPosts(db);
   if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
-  if (p[0] === 'settings' && m === 'GET') return json(await settingsOf(db));
+  if (p[0] === 'settings' && m === 'GET') return json({ ...(await settingsOf(db)), cfsite: env.TURNSTILE_SITE || '', media: !!env.MEDIA });
   if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
