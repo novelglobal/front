@@ -100,6 +100,20 @@ def scan():
     return sorted(((n, s, locked) for n, (s, locked) in best.items()), key=lambda x: -x[1])[:20]
 
 
+def saved():
+    """every Wi-Fi this Pi keeps and joins by itself (never its own setup Wi-Fi)"""
+    _, out = nm('-t', '-f', 'NAME,TYPE', 'connection', 'show', timeout=15)
+    return [f[0] for f in map(fields, out.splitlines()) if len(f) >= 2 and f[1] == '802-11-wireless' and f[0] != CON]
+
+
+def forget(names):
+    """a Wi-Fi forgotten: taken out of NetworkManager, so it is never joined again by itself"""
+    keep = set(saved())
+    for n in names:
+        if n in keep:
+            nm('connection', 'delete', n, timeout=20); log('forgot', n)
+
+
 def make_setup():
     """the setup Wi-Fi as NetworkManager keeps it: WPA2 with its password, its own address, never started by itself"""
     nm('connection', 'delete', CON, timeout=20)
@@ -228,9 +242,13 @@ def choose_page(nets, error):
     rows = ''.join(f'<label class="n"><input type="radio" name="net" value="{html.escape(n, True)}"{" checked" if i == 0 else ""}>'
                    f'<span>{html.escape(n)}</span><i>{"" if locked else "OPEN "}{"WEAK " if s < WEAK else ""}{bars(s)}</i></label>' for i, (n, s, locked) in enumerate(nets))
     tip = '<p>PICK A STRONG ONE: THE SCREEN NEEDS TO REACH IT TOO.</p>' if any(s < WEAK for _, s, _ in nets) else ''
+    known = saved()
+    gone = (f'<form method="post" action="/forget"><label class="f">SAVED · TICK TO FORGET</label>' + ''.join(
+        f'<label class="n"><input type="checkbox" name="f" value="{html.escape(n, True)}"><span>{html.escape(n[len(MINE):] if n.startswith(MINE) else n)}</span></label>' for n in known)
+        + '<button>FORGET TICKED</button></form>') if known else ''
     return page((f'<p class="e">{html.escape(error)}</p>' if error else '') + tip + f'<form method="post" action="/join">{rows}'
                 '<label class="f">OTHER<input type="text" name="other" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'
-                '<label class="f">PASSWORD<input type="password" name="pw" autocomplete="off"></label><button>JOIN</button></form>')
+                '<label class="f">PASSWORD<input type="password" name="pw" autocomplete="off"></label><button>JOIN</button></form>' + gone)
 
 
 def joining_page(name):
@@ -262,6 +280,9 @@ class Page(BaseHTTPRequestHandler):
 
     def do_POST(self):
         q = urllib.parse.parse_qs(self.rfile.read(min(int(self.headers.get('content-length') or 0), 4096)).decode('utf-8', 'replace'))
+        if self.path.split('?')[0] == '/forget':
+            forget(q.get('f') or []); Page.note = 'FORGOTTEN.' if q.get('f') else 'TICK ONE TO FORGET.'
+            return self.reply(303, where='/')
         other, net, pw = (q.get('other') or [''])[0].strip(), (q.get('net') or [''])[0], (q.get('pw') or [''])[0]
         name = other or net
         if not name or len(name.encode()) > 32:

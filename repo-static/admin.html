@@ -72,6 +72,7 @@
   .ed .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .ed .check { display: flex; gap: 8px; align-items: center; font: 500 12px var(--sans); letter-spacing: 0; color: var(--ink); }
   .ed .check input { width: auto; }
+  table.makers { width: 100%; border-collapse: collapse; background: var(--sheet); font: 12.5px var(--sans); } table.makers th { text-align: left; font: 600 10px var(--mono); letter-spacing: .1em; color: var(--grey); padding: 10px; border-bottom: 1px solid var(--line); } table.makers td { padding: 9px 10px; border-bottom: 1px solid var(--line); } table.makers .mono { font: 600 14px var(--mono); letter-spacing: .12em; } table.makers .soft { color: var(--soft); }
   .ed .hint { display: block; font: 400 12.5px/1.55 var(--sans); letter-spacing: 0; color: var(--grey); text-transform: none; margin: -2px 0 6px; max-width: 72ch; }
   /* the overview: tiles of what is waiting and how it is going */
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 0 0 18px; }
@@ -125,7 +126,7 @@
 <div class="shell">
 <nav id="tabs" hidden aria-label="Sections">
   <span class="grp">AT A GLANCE</span><button type="button" data-tab="overview">OVERVIEW</button>
-  <span class="grp">WHAT WAS SENT</span><button type="button" data-tab="waiting">WAITING <i class="n" id="n-waiting"></i></button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="deleted">ARCHIVE</button>
+  <span class="grp">WHAT WAS SENT</span><button type="button" data-tab="waiting">WAITING <i class="n" id="n-waiting"></i></button><button type="button" data-tab="shown">SHOWN</button><button type="button" data-tab="refused">REFUSED</button><button type="button" data-tab="makers">MAKERS</button><button type="button" data-tab="deleted">ARCHIVE</button>
   <span class="grp">THE SITE</span><button type="button" data-tab="places">PLACES <i class="n" id="n-places"></i></button><button type="button" data-tab="printers">PRINTERS</button><button type="button" data-tab="stations">WORDS AND BOARDS</button><button type="button" data-tab="posts">PORTFOLIO</button><button type="button" data-tab="site">SETTINGS</button>
   <span class="grp">KEEPING IT</span><button type="button" data-tab="data">DATA</button><button type="button" data-tab="guide">GUIDE</button>
 </nav>

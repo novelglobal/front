@@ -30,7 +30,19 @@
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+  }
+
+  /* ───────── makers: each by their three characters, newest first; when seen by the moon, the date after ───────── */
+  const LUNA = 29.530588853 * 864e5, NEW0 = Date.UTC(2000, 0, 6, 18, 14), MOONS = ['NEW', 'WAXING CRESCENT', 'FIRST QUARTER', 'WAXING GIBBOUS', 'FULL', 'WANING GIBBOUS', 'LAST QUARTER', 'WANING CRESCENT'];
+  const moonOf = t => { const x = (t - NEW0) / LUNA, f = x - Math.floor(x); return MOONS[Math.floor(f * 8 + 0.5) % 8] + ' MOON'; };
+  const moonsAgo = t => { const k = Math.floor((Date.now() - NEW0) / LUNA) - Math.floor((t - NEW0) / LUNA); return k <= 0 ? 'THIS MOON' : k === 1 ? 'LAST MOON' : k + ' MOONS AGO'; };
+  async function makers() {
+    const j = await (await api('makers')).json(), list = j.makers || [];
+    const rows = list.map(m => el('tr', {}, el('td', { class: 'mono', text: m.who }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
+      el('td', { text: moonsAgo(m.last) + ' · ' + moonOf(m.last) }), el('td', { class: 'soft', text: when(m.last) }), el('td', { class: 'soft', text: moonsAgo(m.first) })));
+    main.replaceChildren(...head('Makers', 'Everyone who has sent something, by the three characters on their prints. Their stage is where they were when they last sent. A phone keeps its code for one moon from its last use; then it makes a new one, unless its maker scans their pass.'),
+      list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['CODE', 'SENT', 'ON THE SITE', 'TAKEN DOWN', 'STAGE', 'LAST SEEN', 'DATE', 'FIRST SEEN'].map(h => el('th', { text: h })))), el('tbody', {}, ...rows)) : el('p', { class: 'empty', text: 'NO ONE YET' }));
   }
 
   /* ───────── stories: what each one says, its photograph, where it was sent ───────── */

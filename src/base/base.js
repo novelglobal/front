@@ -938,16 +938,32 @@ function sendMesh(n, text) {
     .then(function (j) { return j.job ? j.job.status : j.status || 'sent'; }).catch(function (e) { return e && e.status ? 'failed' : 'offline'; });
 }
 function download(cv, name) { var a = document.createElement('a'); a.download = name; a.href = cv.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
+/* the moon as the clock. Its phase from where the sun and the moon are (the Almanac's short formulas: within a few hours), its
+   lunation counted from the new moon of 6 January 2000. What this phone keeps is kept by moons; the date comes second */
+var LUNA = 29.530588853 * 864e5, NEW0 = Date.UTC(2000, 0, 6, 18, 14), MOONS = ['new moon', 'waxing crescent', 'first quarter', 'waxing gibbous', 'full moon', 'waning gibbous', 'last quarter', 'waning crescent'];
+function moon(t) {
+  t = t || Date.now(); var D = (t - Date.UTC(2000, 0, 1, 12)) / 864e5, r = Math.PI / 180;
+  var lm = 218.316 + 13.176396 * D + 6.289 * Math.sin((134.963 + 13.064993 * D) * r), g = 357.529 + 0.98560028 * D, ls = 280.459 + 0.98564736 * D + 1.915 * Math.sin(g * r) + 0.020 * Math.sin(2 * g * r);
+  var f = (((lm - ls) % 360) + 360) % 360 / 360, n = Math.round((t - NEW0) / LUNA - f), i = Math.floor(f * 8 + 0.5) % 8;
+  return { n: n, f: f, age: f * 29.530588853, name: MOONS[i], i: i, lit: (1 - Math.cos(f * 2 * Math.PI)) / 2 };
+}
+/* how long ago, in moons: "this moon", "last moon", "3 moons ago" */
+function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon' : k === 1 ? 'last moon' : k + ' moons ago'; }
 /* this phone's three characters, made once: printed on what it makes, sent with it, and typed on another phone to carry on there */
 var WHO_CH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', WHO_RE = /^[A-HJ-NP-Z2-9]{3}$/;
+/* kept for one moon from its last use (a send, a print, a poster, a code typed or scanned); unused for longer, this phone lets it go
+   and makes a new one. The pass brings an old one back */
+function meUsed() { store.set('da.me.at', Date.now()); }
 function me() {
-  var c = store.get('da.me', ''); if (WHO_RE.test(c)) return c; var r = new Uint8Array(3); try { crypto.getRandomValues(r); } catch (e) { for (var i = 0; i < 3; i++) r[i] = Math.random() * 256 | 0; }
-  c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.me', c); return c;
+  var c = store.get('da.me', ''), at = +store.get('da.me.at', 0) || 0; if (WHO_RE.test(c) && at && Date.now() - at > LUNA) { store.set('da.me', ''); store.set('da.me.pass', 0); c = ''; }
+  if (WHO_RE.test(c)) { if (!at) meUsed(); return c; } var r = new Uint8Array(3); try { crypto.getRandomValues(r); } catch (e) { for (var i = 0; i < 3; i++) r[i] = Math.random() * 256 | 0; }
+  c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.me', c); meUsed(); return c;
 }
-function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.me', c); return true; }
-function mine() { return api('/mine/' + me()).then(function (j) { return (j && j.mine) || []; }); }
+function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.me', c); meUsed(); return true; }
+function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { return (j && j.mine) || []; }); }
 function dropMine(id) { return api('/mine/' + me() + '/' + encodeURIComponent(id), { method: 'POST', body: '{}' }); }
-function send(payload) { payload.who = payload.who || me(); return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
+/* sent with the code, and where its maker is (the page sets NG.stageOf): for the approval page, never the public */
+function send(payload) { payload.who = payload.who || me(); meUsed(); if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* where a print is now: asked again every few seconds while it is in view, and kept on the noticing */
 function follow(n, el, k) {
   k = k || 0; if (k > 100 || !n.sent || !n.sent.id) return;
@@ -1951,7 +1967,14 @@ var STICKERS = ['*', '<3', '<(o)>', '~~~', ':)', '\\o/', '+'];
 /* novel.global's mark, small, at the booth's head: a square and a circle */
 var BHEAD = null;   // the booth's head: the mark and its name, set below
 var MARK_SVG = '<svg class="mk" viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" fill="currentColor"/><circle cx="178.3" cy="56.5" r="48.8" fill="#E25C40"/></svg>';
-BHEAD = '<p class="bm" role="button" tabindex="0" aria-label="Start again">' + MARK_SVG + '<b>novel.global</b></p>';
+BHEAD = '<a class="bm" href="./" aria-label="Back to novel.global">' + MARK_SVG + '<b>novel.global</b></a>';
+/* the booth let go of: back to novel.global where it was, the sky and the sound never stopped (on the base alone, the page again) */
+function boothClose() {
+  clearTimeout(BTH && BTH.home); clearTimeout(BTH && BTH.t); var el = $('#booth');
+  if (!document.getElementById('aura')) { document.body.classList.remove('booth'); location.href = siteURL(); return; }
+  BTH = null; document.body.classList.remove('booth'); if (el) { el.classList.remove('done'); el.innerHTML = ''; }
+  history.replaceState(null, '', location.pathname + location.search); window.scrollTo(0, 0);
+}
 function boothOn(dest) {
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
   document.body.classList.add('booth'); sheet.hidden = true;
@@ -1964,10 +1987,10 @@ function boothOn(dest) {
   boothStart(el);
 }
 function boothStart(el) {
-  el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm') && !el.classList.contains('done')) boothStart(el); }); } BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
+  el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
   clearTimeout(BTH.t);
   /* one touch: the eye. A phone then offers its camera or its photos; a computer, a file */
-  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo"><pre class="art" aria-hidden="true">' + esc(EYE_ASCII) + '</pre><input type="file" accept="image/*" hidden></label>' +
+  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo"><pre class="art" aria-hidden="true">' + (document.getElementById('aura') ? '' : esc(EYE_ASCII)) + '</pre><input type="file" accept="image/*" hidden></label>' +
     '<small class="cap">Tap the eye for a photo</small><nav class="bp" aria-label="Which printer"></nav>';
   $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
 }
@@ -2074,17 +2097,20 @@ function passCard() {
   x.fillStyle = '#F4F1E8'; pts.forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 6, 0, 7); x.fill(); });
   x.textBaseline = 'alphabetic'; x.font = '700 64px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillRect(80, 92, 40, 40); x.beginPath(); x.arc(152, 112, 21, 0, 7); x.fill(); x.fillText('novel.global', 196, 134);
   x.font = '700 300px ui-monospace, Menlo, monospace'; var cw = x.measureText(who).width; x.fillText(who, (W - cw) / 2, H * 0.66);
-  x.font = '500 34px ui-monospace, Menlo, monospace'; x.globalAlpha = 0.7; x.fillText('your pass · ' + when(Date.now()).slice(0, 6), 80, H * 0.66 + 70); x.globalAlpha = 1;
+  x.font = '500 34px ui-monospace, Menlo, monospace'; x.globalAlpha = 0.7; var mo = moon(); x.fillText('your pass · ' + mo.name + ' · ' + when(Date.now()).slice(0, 6), 80, H * 0.66 + 70);
+  /* the moon as it is tonight, lit as it is */
+  var mx = W - 150, my = 150, mr = 46; x.globalAlpha = 0.18; x.beginPath(); x.arc(mx, my, mr, 0, 7); x.fill(); x.globalAlpha = 1; x.save(); x.beginPath(); x.arc(mx, my, mr, 0, 7); x.clip();
+  var wax = mo.f < 0.5, k = Math.cos(mo.f * 2 * Math.PI); x.beginPath(); x.arc(mx, my, mr, -Math.PI / 2, Math.PI / 2, !wax); x.ellipse(mx, my, Math.abs(k) * mr, mr, 0, Math.PI / 2, -Math.PI / 2, (k > 0) === wax); x.fill(); x.restore(); x.globalAlpha = 1;
   return qrLib().then(function (Q) { if (!Q) return c; try { var q = Q(0, 'M'); q.addData(siteURL('me=' + who)); q.make(); var n = q.getModuleCount(), cell = Math.floor(260 / n), qs = cell * n, qx = W - 80 - qs, qy = H - 80 - qs;
     x.fillStyle = '#F4F1E8'; x.fillRect(qx - 18, qy - 18, qs + 36, qs + 36); x.fillStyle = '#0E2547'; for (var a = 0; a < n; a++) for (var b = 0; b < n; b++) if (q.isDark(a, b)) x.fillRect(qx + b * cell, qy + a * cell, cell, cell); } catch (e) { /* the card without */ } return c; });
 }
 /* after a print or a save: the pass, to keep, for a few seconds; then novel.global */
 function boothPass(el, s0) {
+  if (!BTH) return;   // already gone back to novel.global
   var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; store.set('da.me.pass', 1);
-  var home = function () { clearTimeout(BTH.home); document.body.classList.remove('booth'); location.href = siteURL(); };
+  var home = boothClose;
   el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="pass"><canvas></canvas></div><div class="am go2"><span><button id="bt-pass" class="go" aria-label="Save your pass">save your pass</button><small class="cap">to use all of novel.global</small></span><span><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">novel.global</a><small class="cap">now</small></span></div><i class="pt" style="animation-duration:' + t + 'ms"></i>';
-  passCard().then(function (c) { var w = $('.pass', el); if (!w) return; w.replaceChildren(c); $('#bt-pass').addEventListener('click', function () { download(c, 'novel-global-pass-' + me() + '.png'); clearTimeout(BTH.home); BTH.home = setTimeout(home, 4000); }); });
-  $('#bt-site').addEventListener('click', function (e) { e.preventDefault(); home(); });
+  passCard().then(function (c) { var w = $('.pass', el); if (!w) return; w.replaceChildren(c); $('#bt-pass').addEventListener('click', function () { download(c, 'novel-global-pass-' + me() + '.png'); if (!BTH) return; clearTimeout(BTH.home); BTH.home = setTimeout(home, 4000); }); });
   clearTimeout(BTH.home); BTH.home = setTimeout(home, t);
 }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
@@ -2099,16 +2125,15 @@ function boothPrint() {
     var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
     if (photo) PHOTOS[id] = photo; NOTES.unshift(n); saveNotes();
     var body = { type: 'booth', lat: +lat.toFixed(4), lng: +lng.toFixed(4), text: words };
-    var payload = { kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv) }; if (photo) payload.photo = photo;
+    var payload = { stage: 'booth', kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv) }; if (photo) payload.photo = photo;
     var pip = $('#bt-pip');
     /* done: once the printer has it (or it waits safely for a signal), a moment to see it, then straight back to novel.global */
-    var home = function () { clearTimeout(BTH.home); document.body.classList.remove('booth'); location.href = siteURL(); };
-    var soon = function () { clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(function () { boothPass(el, 10); }, 1600); };
+    var home = boothClose;
+    var soon = function () { if (!BTH) return; clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(function () { boothPass(el, 10); }, 1600); };
     send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); if (s !== 'failed') store.set('da.aura.printed', 1); soon(); })
       .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); soon(); } });
     /* the next print from this phone after a while (ten minutes unless set otherwise), so the printer stays free for everyone */
     var next = Date.now() + boothGap() * 60e3; store.set('da.booth.next', next);
-    $('#bt-site').addEventListener('click', function (e) { e.preventDefault(); home(); });
     var ag = $('#bt-again'); ag.addEventListener('click', function () { clearTimeout(BTH.home); boothStart(); }); clearTimeout(BTH.t); BTH.t = setTimeout(function () { ag.hidden = false; }, next - Date.now());
   });
 }
@@ -2252,7 +2277,7 @@ window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: t
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, me: me, setMe: setMe, mine: mine, dropMine: dropMine, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

@@ -136,6 +136,8 @@ curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/
 - **The plug**: plug it in, and within a minute unplug it and plug it in again. A start cut short is noticed at the next one; no clock or screen is needed.
 - `sudo python3 /opt/wifi-setup/wifi.py --now`, over ssh (`ssh novel@da-novelglobal.local` finds it on any Wi-Fi by its name).
 
+**Forgetting a Wi-Fi.** The same page lists every Wi-Fi the Pi keeps under **SAVED · TICK TO FORGET**: tick one and press **FORGET TICKED**, and the Pi never joins it by itself again. (The touch screen has its own list, ticked the same way on its own setup page; a forgotten one stays forgotten there too, even after a restart.)
+
 Its page marks a Wi-Fi too **WEAK** for the touch screen, which has a smaller radio: pick a strong one. The **ON WI-FI** slip carries a code a phone's camera reads to join the same Wi-Fi, so the screen can be set to match (`WIFI_SHARE=0` in `/etc/wifi-setup.env` leaves it off). The approval page's printer card shows which Wi-Fi the Pi and the screen are each on, how strongly, the Pi's address, and whether they share one.
 
 **Turning it off**, so its card is never cut off mid-write:
