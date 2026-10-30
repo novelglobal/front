@@ -863,3 +863,19 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 .au-fly { position: fixed; z-index: 60; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #F4F1E8; box-shadow: 0 0 14px rgba(244, 241, 232, .9); transition: transform 1.05s cubic-bezier(.5, 0, .2, 1), opacity 1.05s ease-in; pointer-events: none; }
 .au-sig.float { position: fixed; left: 50%; bottom: calc(18px + var(--sab)); transform: translateX(-50%); width: min(360px, calc(100vw - 32px)); z-index: 30; }
 .au-me .au-made li small { flex: none; }
+
+/* the key beside day and night: its name beside it once a print's code is in; tapped, a small place to type the three */
+#aura #au-yours { display: block; left: 52px; }
+#aura.m-seed #au-yours, #aura.m-globe #au-yours, #aura.m-iruk #au-yours, #aura.m-bang #au-yours { display: block; }
+#au-yours b { position: absolute; left: 30px; top: calc(31px + var(--sat)); font: 600 13px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .14em; white-space: nowrap; }
+#aura #au-todo { left: 120px; }
+.au-keyin { position: absolute; left: 50px; top: calc(60px + var(--sat)); z-index: 31; }
+.au-keyin[hidden] { display: none; }
+.au-keyin input { width: 5.2em; padding: 6px 4px; text-align: center; font: 600 20px "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .25em; text-transform: uppercase; color: var(--ink); background: rgba(10, 30, 60, .55); border: 0; border-bottom: 1.5px solid var(--ink); border-radius: 4px 4px 0 0; outline: 0; }
+
+/* the print row: three keys, the rest folded behind the dots */
+#aura .au-more[hidden] { display: none; }
+#aura .au-more { display: contents; }
+#aura .au-morek b { font: 700 16px/1 "Departure Mono", ui-monospace, monospace; letter-spacing: .05em; }
+/* the print preview is the sheet itself: crisp dots on white */
+#aura .au-eslide.now canvas.sheet { image-rendering: pixelated; background: #fff; }

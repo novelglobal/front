@@ -1020,7 +1020,7 @@
   var DEV_K = ['radio', 'wish', 'design'];
   var devK = [], devOpen = function (i) { return earned(DEV_K[i]); };
   /* the steps and keys of what is not earned are not there at all */
-  function applyGates() { var lv = LV(); var yk = $('#au-yours'); if (yk) yk.hidden = lv < 1; orbs.forEach(function (o, i) { o.classList.toggle('gated', lv < ORB_LV[i]); }); tabs.forEach(function (b, i) { b.classList.toggle('gated', lv < TAB_LV[i]); });
+  function applyGates() { var lv = LV(); keyName(); orbs.forEach(function (o, i) { o.classList.toggle('gated', lv < ORB_LV[i]); }); tabs.forEach(function (b, i) { b.classList.toggle('gated', lv < TAB_LV[i]); });
     var sk = $('#au-snd'); if (sk) sk.hidden = !earned('music'); if (DESK.el) DESK.el.classList.toggle('simple', !earned('desk')); var rk = DESK.el && DESK.el.querySelector('#sd-radio'); if (rk) rk.hidden = !earned('radio'); }
   /* a device opened: the studio's page in a window of its own over the aura, smoked glass and a green light; the eye on its bar brings one
      straight back. One window for all three (another device turns the same studio to its page); kept while the visit lasts */
@@ -1298,10 +1298,10 @@
     /* the three discs, each moving its ring its own way: the eye (to share what you noticed: the ring seen only near it), the wave (to
        make a song: the ring shaken where it passes), the pencil (to make a poster: the ring drawn behind it, a gap ahead). The eye in
        the middle, the irukandji's own, watches them pass, and opens the photo booth. Each says so once, plainly, then goes quiet */
-    '<button id="au-eyec" aria-label="Print a photo"><small class="au-ow" aria-hidden="true">Print a photo</small></button>' +
-    [[0, 'go', 'Notice what is around', svgI('navmap')], [1, 'wish', 'Write a W.I.S.H.', svgI('pencil')], [2, 'art', 'Design and print', svgI('wave')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
+    '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
+    [[0, 'go', 'notice', svgI('navmap')], [1, 'wish', 'story', svgI('pencil')], [2, 'art', 'make', svgI('wave')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
-    '<button id="au-yours" aria-label="Yours"><i></i>' + svgI('key') + '</button>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
+    '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -1409,7 +1409,9 @@
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); var go = o.dataset.go;
     beat('disc-' + o.dataset.s); toIruk(+o.dataset.s); }); });
   /* the eye in the middle: the photo booth, one tap */
-  $('#au-eyec').addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); bell(3, 0.18); beat('eye'); S.blink = performance.now() / 1000; location.hash = 'booth'; });
+  /* one touch: the eye asks the phone for a photo straight away, and the booth opens on it */
+  $('#au-eyec').addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); bell(3, 0.18); beat('eye'); S.blink = performance.now() / 1000; });
+  $('#au-eyec input').addEventListener('change', function () { var f = this.files && this.files[0], inp = this; if (f && NG.boothWith) NG.boothWith(f); setTimeout(function () { inp.value = ''; }, 1500); });
   /* the discs' words, one after another when the globe first shows, then gone; again on a hover */
   var owSaid = false;
   function orbWords() { if (owSaid || START.discWords === false) return; owSaid = true; orbs.concat([$('#au-eyec')]).forEach(function (o, i) { var w = o && o.querySelector('.au-ow'); if (!w) return; setTimeout(function () { w.classList.add('say'); setTimeout(function () { w.classList.remove('say'); }, 3200); }, 900 + i * 2600); }); }
@@ -1759,9 +1761,12 @@
   }
   function redraw() {
     if (!P) return; var sel = S.stage === 2 ? '.au-drag canvas' : '.au-eslide.now canvas', f = panel.querySelector(sel); if (!f) return;
-    var go2 = function () { fontReady().then(function () { var g = panel.querySelector(sel); if (!g || !P) return; var o = posterNow(P); lastBoxes = o.boxes; g.width = o.c.width; g.height = o.c.height; g.getContext('2d').drawImage(o.c, 0, 0); selBox(); if (S.stage === 3) saveSoon(o.c, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); }); };
+    var go2 = function () { fontReady().then(function () { var g = panel.querySelector(sel); if (!g || !P) return; var o = posterNow(P); lastBoxes = o.boxes; g.width = o.c.width; g.height = o.c.height; g.getContext('2d').drawImage(o.c, 0, 0); selBox(); if (S.stage === 3) { saveSoon(o.c, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); printPreview(); } }); };
     if (P.photo && !P.img) NG.loadImg(P.photo).then(function (im) { P.img = im; P._base = null; go2(); }).catch(go2); else go2();
   }
+  /* at print, the piece shown as the paper will have it: the very sheet the printer is sent, dots and all */
+  var PV = 0;
+  function printPreview() { var my = ++PV; posterPrint(512).then(function (sh) { if (my !== PV || !sh || S.stage !== 3) return; var g = panel.querySelector('.au-eslide.now canvas'); if (!g) return; g.width = sh.width; g.height = sh.height; var x2 = g.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(sh, 0, 0); g.classList.add('sheet'); }); }
   api.redraw = function () { redraw(); };
   /* saving a poster to the phone. An iPhone opens a data link and then does nothing with it, so the poster is made into a file ahead of
      time and the tap hands it straight to the share sheet (Save Image). Elsewhere it downloads as a file */
@@ -2000,31 +2005,18 @@
   }
   /* one's own three characters: printed on what one prints (never on what the site shows), typed on another phone to carry on there;
      what was sent with them, each taken down from the site here (it is all still kept on the approval page) */
-  $('#au-yours').addEventListener('click', function () { beat('yours'); if ($('#au-sig.au-me')) closeSig(); else openMe(); });
-  function openMe() {
-    closeSig(); var el = document.createElement('div'); el.className = 'au-sig au-me'; el.id = 'au-sig';
-    el.innerHTML = '<button class="au-back" id="au-sigx" aria-label="Close"><i></i></button><b class="au-mec" aria-label="Your code is on your print">· · ·</b>' +
-      '<label class="au-mei"><input id="au-mein" maxlength="3" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Another code" placeholder="from a print"><button class="au-k au-sm" id="au-meok" aria-label="Use this code">' + svgI('key') + '</button></label>' +
-      '<ul class="au-mel" id="au-mel"><li>' + NG.pips('sending') + '</li></ul>';
-    var here = S.mode === 'iruk' ? panel : root; if (here === root) el.classList.add('float'); here.appendChild(el); bubbles(3);
-    $('#au-sigx').addEventListener('click', closeSig);
-    /* what was made here, newest first, by moons: the posters, the songs, the sightings and W.I.S.H.es from the devices */
-    var ml = (store.get('da.made', []) || []).slice(0, 14); if (ml.length) el.insertAdjacentHTML('beforeend', '<ul class="au-mel au-made">' + ml.map(function (m) { return '<li><span>' + esc(m.label || m.k) + '</span><small>' + esc(m.k) + ' · ' + esc(NG.moonsAgo(m.at)) + '</small></li>'; }).join('') + '</ul>');
-    $('#au-meok').addEventListener('click', function () { if (NG.setMe($('#au-mein').value)) { paint(); openMe(); bell(5, 0.18); } else { $('#au-mein').value = ''; bell(1, 0.1); } });
-    var list = function () { NG.mine().then(function (l) { var ul = $('#au-mel'); if (!ul) return;
-      ul.innerHTML = l.length ? l.map(function (s2) { return '<li><span>' + esc(s2.code) + '</span><small>' + (s2.shown ? 'on the site' : 'waiting') + ' · ' + esc(NG.moonsAgo(s2.at)) + '</small>' + hand('au-sm au-del', svgI('bin'), 'data-mid="' + esc(s2.id) + '" aria-label="Delete it from the site"') + '</li>'; }).join('') : '<li><small>nothing sent yet</small></li>';
-      [].forEach.call(ul.querySelectorAll('[data-mid]'), function (b) { NG.sureTap(b, function () { NG.dropMine(b.dataset.mid).then(list, list); bell(1, 0.16); }); });
-    }).catch(function () { var ul = $('#au-mel'); if (ul) ul.innerHTML = '<li><small>offline</small></li>'; }); };
-    list();
-  }
+  function keyName() { var b = $('#au-yours b'); if (b) b.textContent = store.get('da.who.pass', 0) && NG.me ? NG.me() : ''; }
+  $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
+  $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
+    i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
   var making = function () { return !!P && !P.sent && filled(); };
   var showList = function () { return (making() ? [{ id: 'now', now: 1 }] : []).concat(slides()); };
   function wallHTML() {
-    var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button><div class="au-press">' + hand('au-sm', svgI('in'), 'id="au-sigk0" aria-label="Take in a line"') + (ROUNDS > 0 || store.get('da.who.pass', 0) ? hand('au-sm au-mek', svgI('key'), 'id="au-me" data-fw="yours" aria-label="Yours"') : '') + '</div>';
+    var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button><div class="au-press">' + hand('au-sm', svgI('in'), 'id="au-sigk0" aria-label="Take in a line"') + '</div>';
     WALL = Math.max(0, Math.min(WALL, all.length - 1));
-    return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i><b class="au-st' + (f.now ? ' mk' : f.wall ? '' : ' pr') + '">' + (f.now ? 'in the making' : f.wall ? 'on the wall' : 'sent to print') + '</b>' + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
+    return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i><b class="au-st' + (f.now ? ' mk' : f.wall ? '' : ' pr') + '">' + (f.now ? 'draft' : f.wall ? 'only here' : 'shared') + '</b>' + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
       (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '') +
       '<div class="au-press" id="au-wpress"></div>';
   }
@@ -2034,14 +2026,16 @@
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
     var pm = pmode();
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : 'Print') + '"') +
-      hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
-      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '<span class="au-pips" id="au-pips"></span>' + nav(1);
+      hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
+      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + nav(1);
     else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
-      (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + (ROUNDS > 0 || store.get('da.who.pass', 0) ? hand('au-sm au-mek', svgI('key'), 'id="au-me" data-fw="yours" aria-label="Yours"') : '') + nav(1);
+      (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
+      /* the rest, folded: signal, paper, day or night, delete */
+      $('#au-more').addEventListener('click', function () { var m = pr.querySelector('.au-more'), on = m.hidden; m.hidden = !on; this.setAttribute('aria-expanded', String(on)); bell(on ? 3 : 1, 0.08); });
       $('#au-mode').addEventListener('click', function () { var i = PMODES.indexOf(pmode()); S.pmode = PMODES[(i + 1) % PMODES.length][0]; store.set('da.aura.pmode', S.pmode); wallPress(); bell(4 + i, 0.14); flashWords(0); });
       $('#au-save').addEventListener('click', function () { saveImg(SAVE.file, function () { return poster(P); }, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); });
       $('#au-pnight').addEventListener('click', function () { P.pnight = !printNight(); changed(); paint(); bell(P.pnight ? 2 : 5, 0.16); });
@@ -2057,12 +2051,11 @@
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { dropSlide(f).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
     }
     var sk = $('#au-sigk'); if (sk) sk.addEventListener('click', function () { openSig(f.now ? null : f); });
-    var mk2 = $('#au-me'); if (mk2) mk2.addEventListener('click', openMe);
     [].forEach.call(panel.querySelectorAll('.au-wdots i'), function (d, i) { d.classList.toggle('on', i === WALL); });
     [].forEach.call(panel.querySelectorAll('.au-eslide'), function (e2, i) { e2.classList.toggle('on', i === WALL); });
   }
   function wallWire() {
-    var all = showList(), vp = panel.querySelector('.au-wall'); if (EMB) { try { EMB.destroy(); } catch (e) { /* gone */ } EMB = null; } var k0 = $('#au-sigk0'); if (k0) k0.addEventListener('click', function () { openSig(null); }); var m0 = $('#au-me'); if (m0) m0.addEventListener('click', openMe); if (!all.length || !vp) return;
+    var all = showList(), vp = panel.querySelector('.au-wall'); if (EMB) { try { EMB.destroy(); } catch (e) { /* gone */ } EMB = null; } var k0 = $('#au-sigk0'); if (k0) k0.addEventListener('click', function () { openSig(null); }); if (!all.length || !vp) return;
     wallPress(); if (making()) redraw();
     var srcs = function () { return all.map(function (f) { if (!f.now) return f; var c = panel.querySelector('.au-eslide.now canvas'); return { src: c && c.width > 10 ? c.toDataURL('image/jpeg', 0.9) : '' }; }).filter(function (q) { return q.src; }); };
     [].forEach.call(vp.querySelectorAll('.au-eslide'), function (fg) { fg.addEventListener('click', function () { var n2 = +fg.dataset.n; if (n2 !== WALL && EMB) { EMB.scrollTo(n2); return; } show(srcs(), making() ? n2 : n2); }); });
@@ -2359,6 +2352,8 @@
   api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, lat: P.lat, lng: P.lng, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
   /* the last receipt as it went to the printer, for a look at it */
   /* the receipt as it would print, drawn without sending it (for checking it against the poster) */
+  api.pixSubs = ['jelly', 'coral', 'trash', 'st0', 'st1', 'st3'];
+  api.pix = function (sub) { usePaper(true); var c = pixArt(sub, 24, 0, 'ink', null, 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
   api.receipt = function (w) { return P ? posterPrint(w || 512).then(function (c) { return c ? c.toDataURL('image/png') : null; }) : Promise.resolve(null); };
   /* a piece added, moved to a place on the poster (fractions of its width and height), for checking the print against the poster */
   api.move = function (i, x, y) { var a = P && P.adds[i]; if (!a) return false; a.x = x; a.y = y; delete a.band; changed(); redraw(); return true; };

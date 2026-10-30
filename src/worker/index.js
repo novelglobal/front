@@ -65,6 +65,8 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE jobs ADD COLUMN thumb TEXT').run(); } catch (e) { /* already there */ }
     /* origin: where a story came from, for the approval page only: the page, the city and country Cloudflare saw (never the address), phone or computer, the stage, its mesh line */
     try { await db.prepare('ALTER TABLE stories ADD COLUMN origin TEXT').run(); } catch (e) { /* already there */ }
+    /* lv: the furthest a maker's journey has reached (0 to 4), so a code typed on another phone brings it back */
+    try { await db.prepare('ALTER TABLE makers ADD COLUMN lv INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN off INTEGER').run(); } catch (e) { /* already there */ }
@@ -150,7 +152,8 @@ async function mine(db, env, req, who, id) {
   await db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(now(), who).run();
   if (id) { const r = await db.prepare('UPDATE stories SET gone = ? WHERE id = ? AND who = ? AND gone IS NULL').bind(now(), id, who).run(); return r.meta && r.meta.changes ? json({ ok: true }) : fail(404, 'not found'); }
   const { results } = await db.prepare(`SELECT id, code, kind, status, body, created, decided, photo IS NOT NULL AS has_photo FROM stories WHERE who = ? AND gone IS NULL AND kind NOT IN ('example', 'message') ORDER BY created DESC LIMIT 100`).bind(who).all();
-  return json({ mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
+  const mk = await db.prepare('SELECT lv FROM makers WHERE who = ?').bind(who).first();
+  return json({ lv: (mk && mk.lv) || 0, mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
 }
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
@@ -194,7 +197,8 @@ async function send(db, env, req) {
     for (const r of radios) { if (r.q >= LIMIT.perPrinter) continue; const jb = { id: rid(), status: 'queued' }; job = job || jb;
       ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)').bind(jb.id, r.id, id, b.code, b.mesh, jb.status, t)); }
   }
-  if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage) VALUES (?, ?, ?, 1, ?) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null));
+  const lv = Math.max(0, Math.min(4, Math.round(+b.lv || 0)));
+  if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv) VALUES (?, ?, ?, 1, ?, ?) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage), lv = max(COALESCE(lv, 0), excluded.lv)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null, lv));
   await db.batch(ops);
   return json({ id, status: 'waiting', job }, 201);
 }

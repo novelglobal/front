@@ -3276,3 +3276,6 @@ html.in-aura #rail{display:none!important}
 /* the simple radio: its keep is a small key laid over the speaker */
 body.simple .band.dev.radio .hp-keep{position:absolute;z-index:4;top:8px;right:36px;padding:2px}
 body.simple .band.dev.radio .hp-keep small{display:none}
+
+/* one key, typed once on novel.global: no name asked again here */
+label.sig:has(#ix-sign), .sl-sign{display:none!important}
