@@ -3272,3 +3272,7 @@ html.in-aura [data-pout="print"], html.in-aura [data-pout="escpos"], html.in-aur
 
 /* the studio as one device in the aura's window: its page alone, no rail of pages */
 html.in-aura #rail{display:none!important}
+
+/* the simple radio: its keep is a small key laid over the speaker */
+body.simple .band.dev.radio .hp-keep{position:absolute;z-index:4;top:8px;right:36px;padding:2px}
+body.simple .band.dev.radio .hp-keep small{display:none}

@@ -831,6 +831,15 @@ function netArt(x, n, r, ox, oy, w, h) {
   x.fillStyle = '#000'; pts.forEach(function (p, i) { x.beginPath(); x.arc(p[0], p[1], i ? 7 : 11, 0, 7); x.fill(); });
   x.font = 'bold 16px "Courier New", monospace'; items.forEach(function (o, i) { var p = pts[i + 1]; var t = o.label.toUpperCase().slice(0, 18); var tw = x.measureText(t).width; x.fillStyle = '#fff'; var tx = Math.min(ox + w - tw, Math.max(ox, p[0] - tw / 2)); x.fillRect(tx - 3, p[1] + 14, tw + 6, 18); x.fillStyle = '#000'; x.fillText(t, tx, p[1] + 16); });
 }
+/* the print, small, for the touch screen: 72 dots wide, at most 150 tall (its top), one bit a dot, rows packed high bit first, as "w,h,base64" */
+function thumbOf(cv) {
+  try { var w = 72, h = Math.min(150, Math.round(cv.height * w / cv.width)), c = document.createElement('canvas'); c.width = w; c.height = h; var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.imageSmoothingQuality = 'high'; x.drawImage(cv, 0, 0, cv.width, h * cv.width / w, 0, 0, w, h);
+    var d = x.getImageData(0, 0, w, h).data, rb = Math.ceil(w / 8), out = new Uint8Array(rb * h);
+    for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) { var i = (yy * w + xx) * 4; if (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114 < 140) out[yy * rb + (xx >> 3)] |= 0x80 >> (xx & 7); }
+    var bin = ''; for (var k = 0; k < out.length; k++) bin += String.fromCharCode(out[k]); return w + ',' + h + ',' + btoa(bin);
+  } catch (e) { return ''; }
+}
 function raster(cv) {
   var W = cv.width, H = cv.height, bw = W >> 3, d = cv.getContext('2d').getImageData(0, 0, W, H).data, out = [0x1B, 0x40];
   for (var y0 = 0; y0 < H; y0 += 255) {
@@ -924,7 +933,7 @@ function sendNote(n, cv, dest, wishOn, mesh) {
   if (n.tags && n.tags.length) body.tags = n.tags; if (n.issue) body.issue = n.issue; if (n.data && n.data.length) body.data = n.data;
   if (wishOn) body.wish = wishLines(n, r).map(function (l) { return l[1]; });
   var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
-  if (cv) payload.escpos = raster(cv); if (mesh) payload.mesh = String(mesh).slice(0, 200);
+  if (cv) { payload.escpos = raster(cv); payload.thumb = thumbOf(cv); } if (mesh) payload.mesh = String(mesh).slice(0, 200);
   if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
   var tries = 0, go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
   return go().then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
@@ -953,17 +962,18 @@ function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon'
 var WHO_CH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', WHO_RE = /^[A-HJ-NP-Z2-9]{3}$/;
 /* kept for one moon from its last use (a send, a print, a poster, a code typed or scanned); unused for longer, this phone lets it go
    and makes a new one. The pass brings an old one back */
-function meUsed() { store.set('da.me.at', Date.now()); }
+(function () { var old = store.get('da.me', ''); if (typeof old === 'string' && WHO_RE.test(old) && !store.get('da.who', '')) { store.set('da.who', old); store.set('da.who.at', +store.get('da.me.at', 0) || Date.now()); } })();
+function meUsed() { store.set('da.who.at', Date.now()); }
 function me() {
-  var c = store.get('da.me', ''), at = +store.get('da.me.at', 0) || 0; if (WHO_RE.test(c) && at && Date.now() - at > LUNA) { store.set('da.me', ''); store.set('da.me.pass', 0); c = ''; }
+  var c = store.get('da.who', ''), at = +store.get('da.who.at', 0) || 0; if (WHO_RE.test(c) && at && Date.now() - at > LUNA) { store.set('da.who', ''); store.set('da.who.pass', 0); c = ''; }
   if (WHO_RE.test(c)) { if (!at) meUsed(); return c; } var r = new Uint8Array(3); try { crypto.getRandomValues(r); } catch (e) { for (var i = 0; i < 3; i++) r[i] = Math.random() * 256 | 0; }
-  c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.me', c); meUsed(); return c;
+  c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.who', c); meUsed(); return c;
 }
-function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.me', c); meUsed(); return true; }
+function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.who', c); store.set('da.who.pass', 1); meUsed(); return true; }
 function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { return (j && j.mine) || []; }); }
 function dropMine(id) { return api('/mine/' + me() + '/' + encodeURIComponent(id), { method: 'POST', body: '{}' }); }
 /* sent with the code, and where its maker is (the page sets NG.stageOf): for the approval page, never the public */
-function send(payload) { payload.who = payload.who || me(); meUsed(); if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
+function send(payload) { payload.who = payload.who || me(); meUsed(); if (!payload.from) payload.from = BTH ? 'booth' : document.getElementById('aura') ? 'novel.global' : 'base'; if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* where a print is now: asked again every few seconds while it is in view, and kept on the noticing */
 function follow(n, el, k) {
   k = k || 0; if (k > 100 || !n.sent || !n.sent.id) return;
@@ -1972,10 +1982,12 @@ BHEAD = '<a class="bm" href="./" aria-label="Back to novel.global">' + MARK_SVG 
 function boothClose() {
   clearTimeout(BTH && BTH.home); clearTimeout(BTH && BTH.t); var el = $('#booth');
   if (!document.getElementById('aura')) { document.body.classList.remove('booth'); location.href = siteURL(); return; }
-  BTH = null; document.body.classList.remove('booth'); if (el) { el.classList.remove('done'); el.innerHTML = ''; }
+  BTH = null; document.body.classList.remove('booth'); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } if (el) { el.classList.remove('done'); el.innerHTML = ''; }
   history.replaceState(null, '', location.pathname + location.search); window.scrollTo(0, 0);
 }
+function beatK(k) { try { fetch('/api/beat?k=' + k, { keepalive: true }).catch(function () {}); } catch (e) { /* uncounted */ } }
 function boothOn(dest) {
+  beatK('booth-open');
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
   document.body.classList.add('booth'); sheet.hidden = true;
   var el = $('#booth') || document.body.appendChild(Object.assign(document.createElement('main'), { id: 'booth' }));
@@ -2051,11 +2063,11 @@ function boothEdit() {
   var gb = $('#bt-go'), gc = gb.nextElementSibling, tick = function () { var l = boothLeft(); if (!$('#bt-go')) return; gb.disabled = l > 0; var sec = Math.ceil(l / 1000); gc.textContent = l > 0 ? 'in ' + Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) : 'on paper'; if (l > 0) BTH.t = setTimeout(tick, 1000); };
   clearTimeout(BTH.t); tick();
   /* saved, not printed: the slip as it would print, to keep or share; then back to novel.global */
-  $('#bt-dl').addEventListener('click', function () { ditherLib().then(function (D) { return boothSlip(D, BTH.code); }).then(function (c2) { if (!c2) return; download(c2, 'novel-global-photo.png'); boothPass(el, 10); }); });
+  $('#bt-dl').addEventListener('click', function () { ditherLib().then(function (D) { return boothSlip(D, BTH.code, true); }).then(function (c2) { if (!c2) return; download(c2, 'novel-global-photo.png'); beatK('booth-save'); boothPass(el, 15); }); });
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
-function boothSlip(D, code) {
+function boothSlip(D, code, real) {
   var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D);
   var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace';
   var lines = words ? wrapText(x, words, W - pad * 2) : [];
@@ -2069,7 +2081,7 @@ function boothSlip(D, code) {
     BTH.lay = { head: head, ph: p.height };
     x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
     var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
-    y = c.height - foot + pad; x.font = Math.round(14 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(EYE_ASCII.split('\n')[1].trim(), pad, y); x.fillText(code, pad, y + Math.round(22 * u)); x.fillText('by ' + me(), pad, y + Math.round(44 * u));
+    y = c.height - foot + pad; x.font = Math.round(14 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(EYE_ASCII.split('\n')[1].trim(), pad, y); x.fillText(code, pad, y + Math.round(22 * u)); x.fillText('by ' + (real ? me() : '· · ·'), pad, y + Math.round(44 * u));
     if (q) { var n = q.getModuleCount(), ox = W - pad - qs; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, y + i * mod, mod, mod); }
     /* every dot black or white, as the printer lays it down: what is seen is what prints */
     var im2 = x.getImageData(0, 0, W, c.height), d2 = im2.data; for (var k2 = 0; k2 < d2.length; k2 += 4) { var v2 = d2[k2] * 0.299 + d2[k2 + 1] * 0.587 + d2[k2 + 2] * 0.114 < 128 ? 0 : 255; d2[k2] = d2[k2 + 1] = d2[k2 + 2] = v2; d2[k2 + 3] = 255; } x.putImageData(im2, 0, 0);
@@ -2086,38 +2098,18 @@ function boothPhoto() {
   }
   return out.length < 400e3 ? out : '';
 }
-/* the pass: this phone's three characters as a card to keep, its code opening novel.global as them on any phone */
-function passCard() {
-  var who = me(), W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
-  x.fillStyle = '#0E2547'; x.fillRect(0, 0, W, H); var g = x.createRadialGradient(W * 0.7, H * 0.2, 40, W * 0.7, H * 0.2, W); g.addColorStop(0, 'rgba(127,227,211,.22)'); g.addColorStop(1, 'rgba(127,227,211,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
-  var seed = 0; for (var i = 0; i < who.length; i++) seed = seed * 31 + who.charCodeAt(i); var rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  /* its own sky: the stars fall where its three characters put them, so no two passes look alike */
-  for (var k = 0; k < 140; k++) { x.globalAlpha = 0.25 + rnd() * 0.6; x.fillStyle = '#F4F1E8'; var r = rnd() < 0.08 ? 3 : 1.4; x.beginPath(); x.arc(rnd() * W, rnd() * H * 0.62, r, 0, 7); x.fill(); } x.globalAlpha = 1;
-  var pts = []; for (var j = 0; j < 6; j++) pts.push([120 + rnd() * (W - 240), 120 + rnd() * (H * 0.45)]); x.strokeStyle = 'rgba(244,241,232,.45)'; x.lineWidth = 2; x.beginPath(); pts.forEach(function (p, i2) { if (i2) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }); x.stroke();
-  x.fillStyle = '#F4F1E8'; pts.forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 6, 0, 7); x.fill(); });
-  x.textBaseline = 'alphabetic'; x.font = '700 64px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillRect(80, 92, 40, 40); x.beginPath(); x.arc(152, 112, 21, 0, 7); x.fill(); x.fillText('novel.global', 196, 134);
-  x.font = '700 300px ui-monospace, Menlo, monospace'; var cw = x.measureText(who).width; x.fillText(who, (W - cw) / 2, H * 0.66);
-  x.font = '500 34px ui-monospace, Menlo, monospace'; x.globalAlpha = 0.7; var mo = moon(); x.fillText('your pass · ' + mo.name + ' · ' + when(Date.now()).slice(0, 6), 80, H * 0.66 + 70);
-  /* the moon as it is tonight, lit as it is */
-  var mx = W - 150, my = 150, mr = 46; x.globalAlpha = 0.18; x.beginPath(); x.arc(mx, my, mr, 0, 7); x.fill(); x.globalAlpha = 1; x.save(); x.beginPath(); x.arc(mx, my, mr, 0, 7); x.clip();
-  var wax = mo.f < 0.5, k = Math.cos(mo.f * 2 * Math.PI); x.beginPath(); x.arc(mx, my, mr, -Math.PI / 2, Math.PI / 2, !wax); x.ellipse(mx, my, Math.abs(k) * mr, mr, 0, Math.PI / 2, -Math.PI / 2, (k > 0) === wax); x.fill(); x.restore(); x.globalAlpha = 1;
-  return qrLib().then(function (Q) { if (!Q) return c; try { var q = Q(0, 'M'); q.addData(siteURL('me=' + who)); q.make(); var n = q.getModuleCount(), cell = Math.floor(260 / n), qs = cell * n, qx = W - 80 - qs, qy = H - 80 - qs;
-    x.fillStyle = '#F4F1E8'; x.fillRect(qx - 18, qy - 18, qs + 36, qs + 36); x.fillStyle = '#0E2547'; for (var a = 0; a < n; a++) for (var b = 0; b < n; b++) if (q.isDark(a, b)) x.fillRect(qx + b * cell, qy + a * cell, cell, cell); } catch (e) { /* the card without */ } return c; });
-}
-/* after a print or a save: the pass, to keep, for a few seconds; then novel.global */
+/* after a print or a save: the print is the pass (its code on the paper, never on the screen). The aura's eye takes it in, a while, then novel.global */
 function boothPass(el, s0) {
   if (!BTH) return;   // already gone back to novel.global
-  var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; store.set('da.me.pass', 1);
-  var home = boothClose;
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="pass"><canvas></canvas></div><div class="am go2"><span><button id="bt-pass" class="go" aria-label="Save your pass">save your pass</button><small class="cap">to use all of novel.global</small></span><span><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">novel.global</a><small class="cap">now</small></span></div><i class="pt" style="animation-duration:' + t + 'ms"></i>';
-  passCard().then(function (c) { var w = $('.pass', el); if (!w) return; w.replaceChildren(c); $('#bt-pass').addEventListener('click', function () { download(c, 'novel-global-pass-' + me() + '.png'); if (!BTH) return; clearTimeout(BTH.home); BTH.home = setTimeout(home, 4000); }); });
-  clearTimeout(BTH.home); BTH.home = setTimeout(home, t);
+  var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; store.set('da.who.pass', 1); meUsed(); if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1);
+  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept"><i></i></div><small class="cap">your code is on the paper</small><i class="pt" style="animation-duration:' + t + 'ms"></i>';
+  clearTimeout(BTH.home); BTH.home = setTimeout(boothClose, t);
 }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
 function boothLeft() { return Math.max(0, (+store.get('da.booth.next', 0) || 0) - Date.now()); }
 function boothPrint() {
   var el = $('#booth'), id = 'b' + Date.now().toString(36), cd = BTH.code || code(id + '|' + Date.now());
-  ditherLib().then(function (D) { return boothSlip(D, cd); }).then(function (slipCv) {
+  ditherLib().then(function (D) { return boothSlip(D, cd, true); }).then(function (slipCv) {
     var lat = map.lat, lng = map.lng, words = BTH.words.trim(), photo = boothPhoto();
     el.innerHTML = BHEAD + '<div class="pv slip"></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
       '<div class="am" id="bt-on"><button id="bt-again" aria-label="Again" title="Again" hidden>[ ↺ ]</button><button id="bt-save" aria-label="Save it" title="Save it">[ ↓ ]</button><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">[ novel.global ]</a></div>';
@@ -2125,11 +2117,11 @@ function boothPrint() {
     var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
     if (photo) PHOTOS[id] = photo; NOTES.unshift(n); saveNotes();
     var body = { type: 'booth', lat: +lat.toFixed(4), lng: +lng.toFixed(4), text: words };
-    var payload = { stage: 'booth', kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv) }; if (photo) payload.photo = photo;
+    beatK('booth-print'); var payload = { stage: 'booth', kind: 'record', code: cd, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: BTH.dest, escpos: raster(slipCv), thumb: thumbOf(slipCv) }; if (photo) payload.photo = photo;
     var pip = $('#bt-pip');
     /* done: once the printer has it (or it waits safely for a signal), a moment to see it, then straight back to novel.global */
     var home = boothClose;
-    var soon = function () { if (!BTH) return; clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(function () { boothPass(el, 10); }, 1600); };
+    var soon = function () { if (!BTH) return; clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(function () { boothPass(el, 15); }, 1600); };
     send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); if (s !== 'failed') store.set('da.aura.printed', 1); soon(); })
       .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); soon(); } });
     /* the next print from this phone after a while (ten minutes unless set otherwise), so the printer stays free for everyone */
@@ -2239,7 +2231,7 @@ var ORB = (function () {
 })();
 function route() {
   var h = decodeURIComponent(location.hash.slice(1));
-  if (/^me=/i.test(h)) { if (setMe(h.slice(3))) { store.set('da.me.pass', 1); toast(me()); } history.replaceState(null, '', location.pathname + location.search); return; }
+  if (/^me=/i.test(h)) { setMe(h.slice(3)); history.replaceState(null, '', location.pathname + location.search); return; }
   if (/^songs?=/i.test(h)) return;   // a song's link: the aura's own (aura.js)
   if (!/^(radio|wish|shop|print|showcase|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
   if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }

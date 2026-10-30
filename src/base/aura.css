@@ -82,10 +82,10 @@ html.aura-on body { background: var(--blue, #17457F); }
 #au-catch .au-i { width: 74%; height: 74%; }
 #au-catch b { position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); font-size: 10px; letter-spacing: 2px; line-height: 1; font-weight: 400; white-space: nowrap; }
 #au-catch:hover, #au-catch.on { background: rgba(244, 241, 232, .14); box-shadow: 0 0 0 1.6px var(--ink), 0 0 22px rgba(244, 241, 232, .4); }
-#au-snd { position: absolute; right: 14px; top: 0; width: 34px; height: 66px; }
-#au-snd i { position: absolute; left: 16px; top: 0; height: 40px; border-left: 1.5px dotted var(--faint); }
-#au-snd i::after { content: ''; position: absolute; left: -5px; top: 38px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
-#au-snd svg { position: absolute; left: 5px; top: 52px; width: 24px; height: 12px; }
+#au-snd { position: absolute; right: 14px; top: 0; width: 34px; height: calc(66px + var(--sat)); }
+#au-snd i { position: absolute; left: 14.5px; top: 0; width: 4px; height: calc(40px + var(--sat)); background: radial-gradient(circle, var(--faint) 1px, transparent 1.45px) 50% 100% / 4px 5px repeat-y; }
+#au-snd i::after { content: ''; position: absolute; left: -2px; top: calc(38px + var(--sat)); width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+#au-snd svg { position: absolute; left: 5px; top: calc(52px + var(--sat)); width: 24px; height: 12px; }
 #au-snd.off i::after { background: none; border: 1.4px solid var(--ink); }
 #au-snd.off svg { opacity: .3; }
 @media (max-width: 759px) { #au-snd { right: 2px; } }
@@ -733,7 +733,7 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 /* a step not yet earned is not there */
 #aura .au-tab.gated, #aura .au-orb.gated { display: none !important; }
 /* the desk before the four-track is earned: a simple radio, sources, moods and play alone */
-.au-desk.simple .sd-layers, .au-desk.simple #sd-keep, .au-desk.simple #sd-list, .au-desk.simple #sd-new, .au-desk.simple #sd-loop, .au-desk.simple #sd-card, .au-desk.simple #sd-lcard, .au-desk.simple #sd-link, .au-desk.simple .au-kept { display: none !important; }
+.au-desk.simple .sd-layers, .au-desk.simple #sd-list, .au-desk.simple #sd-new, .au-desk.simple #sd-loop, .au-desk.simple #sd-card, .au-desk.simple #sd-lcard, .au-desk.simple #sd-link, .au-desk.simple .au-kept { display: none !important; }
 /* the desk's words only on a hover or a focus, never all at once */
 .au-desk .sd-k[data-fw]::after { opacity: 0 !important; transition: opacity .2s; }
 .au-desk .sd-k[data-fw]:hover::after, .au-desk .sd-k[data-fw]:focus-visible::after { opacity: .95 !important; }
@@ -836,3 +836,30 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 .au-desk .au-kept li .sv svg { width: 15px; height: 15px; }
 .au-desk .au-kept li .sv.going { animation: au-going .6s steps(2) infinite; }
 @keyframes au-going { 50% { opacity: .15; } }
+
+/* the journey: the sound key on the journey only (on the start it is the drone); something newly there glows a while */
+#aura.m-globe #au-snd, #aura.m-seed #au-snd, #aura.m-bang #au-snd { display: none !important; }
+#aura .fresh { animation: au-fresh 1.8s ease-in-out 4; }
+@keyframes au-fresh { 50% { filter: drop-shadow(0 0 9px rgba(244, 241, 232, .95)) drop-shadow(0 0 18px rgba(244, 241, 232, .5)); } }
+@media (prefers-reduced-motion: reduce) { #aura .fresh { animation: none; filter: drop-shadow(0 0 6px rgba(244, 241, 232, .8)); } }
+/* what was caught, as the start of an intention */
+#aura .au-built { margin: 6px 0 0; min-height: 1.2em; font: 15px/1.4 "Architects Daughter", "Comic Sans MS", cursive; opacity: .85; }
+#aura .au-built span { animation: au-in .5s ease both; }
+#aura .au-built i { font-style: normal; opacity: .5; margin: 0 6px; }
+/* done things, a word each */
+.au-todo li.done { text-decoration: none; }
+
+/* the discs' words: small, close under their icon, no line under them */
+#aura .au-orb .au-ow, #au-eyec .au-ow { top: calc(100% - 2px); font-size: 12px; letter-spacing: .02em; text-decoration: none; border: 0; box-shadow: none; background: none; }
+#aura .au-orb .au-ow::after, #aura .au-orb .au-ow::before, #au-eyec .au-ow::after { display: none !important; }
+
+/* the key of one's own, hanging at the top beside the list of what was done */
+#au-yours { position: absolute; left: 86px; top: 0; width: 30px; height: calc(66px + var(--sat)); display: none; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); }
+#aura.m-globe #au-yours, #aura.m-iruk #au-yours { display: block; }
+#aura #au-yours[hidden] { display: none !important; }
+#au-yours i { position: absolute; left: 12.5px; top: 0; width: 4px; height: calc(28px + var(--sat)); background: radial-gradient(circle, var(--faint) 1px, transparent 1.45px) 50% 100% / 4px 5px repeat-y; }
+#au-yours svg { position: absolute; left: 4px; top: calc(28px + var(--sat)); width: 22px; height: 22px; }
+#au-yours.took { animation: au-fresh 1.2s ease-in-out 2; }
+.au-fly { position: fixed; z-index: 60; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #F4F1E8; box-shadow: 0 0 14px rgba(244, 241, 232, .9); transition: transform 1.05s cubic-bezier(.5, 0, .2, 1), opacity 1.05s ease-in; pointer-events: none; }
+.au-sig.float { position: fixed; left: 50%; bottom: calc(18px + var(--sab)); transform: translateX(-50%); width: min(360px, calc(100vw - 32px)); z-index: 30; }
+.au-me .au-made li small { flex: none; }

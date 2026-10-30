@@ -26,11 +26,23 @@
   /* how many wait, beside their names in the rail */
   async function badges() { try { const o = await (await api('overview')).json(); $('#n-waiting').textContent = o.stories.waiting || ''; $('#n-places').textContent = o.places.waiting || ''; } catch (e) { /* later */ } }
   /* a page's own heading, and a line on what it is for */
-  const head = (t, lede) => [el('h2', { text: t }), lede ? el('p', { class: 'lede', text: lede }) : null];
+  const head = t => [el('h2', { text: t })];
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else if (t === 'use') await use(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+  }
+
+  /* ───────── use: how far people get, step by step, and what is opened and what is not (counts only, never who) ───────── */
+  async function use() {
+    const j = await (await api('traffic')).json(), rows = j.traffic || [], wk = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), sum = (k, from) => rows.filter(r => r.k === k && (!from || r.day >= from)).reduce((n, r) => n + r.n, 0);
+    const PATH = [['open-aura', 'OPENED'], ['eye', 'EYE PRESSED'], ['booth-open', 'BOOTH OPENED'], ['booth-print', 'BOOTH PRINTED'], ['booth-save', 'BOOTH SAVED'], ['lv1', 'LEVEL 1 · PHOTO'], ['disc-0', 'MAP DISC'], ['step-0', 'INTENTION'], ['lv2', 'LEVEL 2 · INTENTION'], ['step-1', 'W.I.S.H.'], ['lv3', 'LEVEL 3 · MADE'], ['step-2', 'ART'], ['step-3', 'PRINT STEP'], ['print', 'PRINT PRESSED'], ['lv4', 'LEVEL 4 · POSTER']];
+    const top = Math.max(1, ...PATH.map(([k]) => sum(k, wk)));
+    const path = el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['STEP', '7 DAYS', '30 DAYS', 'OF THE STEP BEFORE', ''].map(h => el('th', { text: h })))), el('tbody', {}, ...PATH.map(([k, w], i) => { const n = sum(k, wk), p = i ? sum(PATH[i - 1][0], wk) : 0;
+      return el('tr', {}, el('td', { text: w }), el('td', { class: 'mono', text: String(n) }), el('td', { text: String(sum(k)) }), el('td', { class: 'soft', text: i && p ? Math.round(100 * n / p) + '%' : '' }), el('td', {}, el('i', { class: 'bar', style: `display:block;height:6px;background:var(--teal);width:${Math.round(100 * n / top)}%` }))); })));
+    const keys = [...new Set(rows.map(r => r.k))].sort((x, y) => sum(y, wk) - sum(x, wk));
+    const all = el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['WHAT', 'TODAY', '7 DAYS', '30 DAYS'].map(h => el('th', { text: h })))), el('tbody', {}, ...keys.map(k => el('tr', {}, el('td', { text: (TRAFFIC[k] || k).toUpperCase() }), el('td', { text: String(sum(k, new Date().toISOString().slice(0, 10))) }), el('td', { text: String(sum(k, wk)) }), el('td', { text: String(sum(k)) })))));
+    main.replaceChildren(...head('Use'), el('h3', { text: 'THE JOURNEY' }), path, el('h3', { text: 'EVERYTHING COUNTED' }), all);
   }
 
   /* ───────── makers: each by their three characters, newest first; when seen by the moon, the date after ───────── */
@@ -41,7 +53,7 @@
     const j = await (await api('makers')).json(), list = j.makers || [];
     const rows = list.map(m => el('tr', {}, el('td', { class: 'mono', text: m.who }), el('td', { text: String(m.posts) }), el('td', { text: String(m.shown || 0) }), el('td', { text: m.gone ? String(m.gone) : '' }), el('td', { text: (m.stage || '').toUpperCase() }),
       el('td', { text: moonsAgo(m.last) + ' · ' + moonOf(m.last) }), el('td', { class: 'soft', text: when(m.last) }), el('td', { class: 'soft', text: moonsAgo(m.first) })));
-    main.replaceChildren(...head('Makers', 'Everyone who has sent something, by the three characters on their prints. Their stage is where they were when they last sent. A phone keeps its code for one moon from its last use; then it makes a new one, unless its maker scans their pass.'),
+    main.replaceChildren(...head('Makers'),
       list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['CODE', 'SENT', 'ON THE SITE', 'TAKEN DOWN', 'STAGE', 'LAST SEEN', 'DATE', 'FIRST SEEN'].map(h => el('th', { text: h })))), el('tbody', {}, ...rows)) : el('p', { class: 'empty', text: 'NO ONE YET' }));
   }
 
@@ -55,7 +67,7 @@
   }
   function storyCard(x) {
     const card = el('article', { class: 'card' + (x.kind !== 'story' && x.kind !== 'message' ? ' rec' : '') });
-    const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}${x.who ? ` · BY ${x.who}` : ''}${x.gone ? ` · TAKEN DOWN BY ITS MAKER ${when(x.gone)} (OFF THE SITE, KEPT HERE)` : ''}`;
+    const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}${x.who ? ` · BY ${x.who}` : ''}${(() => { let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { /* none */ } return [o.from ? ' · FROM ' + o.from.toUpperCase() : '', o.city || o.country ? ' · ' + [o.city, o.region, o.country].filter(Boolean).join(', ').toUpperCase() : '', o.dev ? ' · ' + o.dev.toUpperCase() : '', o.stage ? ' · STAGE ' + o.stage.toUpperCase() : '', o.mesh ? ' · MESH: ' + o.mesh : '', x.jobat ? ' · PRINTER ' + x.jobat.toUpperCase() : '', x.kind === 'message' ? ' · DIRECT TO THE PRINTER' : ''].join(''); })()}${x.gone ? ` · TAKEN DOWN BY ITS MAKER ${when(x.gone)} (OFF THE SITE, KEPT HERE)` : ''}`;
     let body;
     if (x.kind === 'story' || x.kind === 'message') {
       const j = unpack(x.body) || {}; const p = j.p || []; const lines = (j.l || []).filter(Boolean);
@@ -157,7 +169,7 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(...head('Words and boards', 'The living layer, BOARD 00 and the first board, the words on INTENTION and W.I.S.H., and the cities to make in.'), card, ex, tp, wordsCard(st), citiesCard(st));
+    main.replaceChildren(...head('Words and boards'), card, ex, tp, wordsCard(st), citiesCard(st));
   }
   /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
      or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
@@ -184,7 +196,7 @@
           el('button', { type: 'button', text: 'CHANGE', onclick: () => { ed.hidden = !ed.hidden; } }),
           el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => post('places/' + p.id, { action: 'delete' }) })), ed);
       ed.append(placeForm(p, o => post('places/' + p.id, { action: 'edit', ...o }))); return c; };
-    main.replaceChildren(...head('Places', 'The places of the human ecology beyond those written into the site: suggested by visitors, or added here. Shown ones are on the map, in search and on the radar for everyone.'), el('h3', { class: 'lbl', text: `SUGGESTED, WAITING · ${wait.length}` }), ...(wait.length ? wait.map(p => card(p, true)) : [el('p', { class: 'empty', text: 'NONE WAITING' })]),
+    main.replaceChildren(...head('Places'), el('h3', { class: 'lbl', text: `SUGGESTED, WAITING · ${wait.length}` }), ...(wait.length ? wait.map(p => card(p, true)) : [el('p', { class: 'empty', text: 'NONE WAITING' })]),
       add, el('h3', { class: 'lbl', text: `SHOWN · ${shown.length}` }), ...shown.map(p => card(p, false)));
   }
   /* INTENTION and W.I.S.H. on the aura (/): every heading, line and hover, and the one quick word shown first. Each field holds the site's
@@ -214,7 +226,7 @@
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for INTENTION and W.I.S.H.?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ words: '' }) }); show('stations'); } })));
     return sec;
   }
-  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers', 'Each partner place and novel.global itself: paired with a token shown once, printing with or without approval, its touch screen and its radio.'), ...list.map(printerCard)); }
+  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers'), ...list.map(printerCard)); }
 
   /* ───────── the portfolio: posts written here, kept as drafts until published; a cover, a category, links ───────── */
   async function coverOf(id, img) { try { const r = await api(`posts/${id}/cover`); img.src = URL.createObjectURL(await r.blob()); } catch (e) { /* none */ } }
@@ -223,7 +235,7 @@
     const rows = list.map(x => { const img = x.cover ? el('img', { alt: '' }) : el('span', { class: 'ph' }); if (x.cover) coverOf(x.id, img);
       return el('div', { class: 'post-row' }, img, el('div', {}, el('b', { text: x.title }), el('span', { class: 'note', text: `${{ published: 'PUBLISHED', deleted: 'ARCHIVED' }[x.status] || 'DRAFT'} · ${x.cat || 'WORK'} · ${x.day || ''} · /portfolio.html#${x.slug}` })),
         el('button', { type: 'button', text: 'EDIT', onclick: () => editor(x.id) })); });
-    main.replaceChildren(...head('Portfolio', 'Posts for novel.global/portfolio.html, kept as drafts until published, each in one of the twelve curations named in SETTINGS.'), el('div', { class: 'acts', style: 'margin:0 0 12px' }, el('button', { type: 'button', class: 'on', text: 'NEW POST', onclick: () => editor(null) }), el('a', { href: 'portfolio.html', target: '_blank', rel: 'noopener', class: 'note', text: 'THE PORTFOLIO ↗' })),
+    main.replaceChildren(...head('Portfolio'), el('div', { class: 'acts', style: 'margin:0 0 12px' }, el('button', { type: 'button', class: 'on', text: 'NEW POST', onclick: () => editor(null) }), el('a', { href: 'portfolio.html', target: '_blank', rel: 'noopener', class: 'note', text: 'THE PORTFOLIO ↗' })),
       ...(rows.length ? rows : [el('p', { class: 'empty', text: 'NO POSTS YET' })]));
   }
   /* a cover chosen on this device: made smaller and re-encoded here, which also drops its location and camera details */
@@ -306,7 +318,7 @@
         el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'UNITS' }), ...o.printers.map(p => el('div', { class: 'unit' + (fresh(p.seen) ? ' live' : '') }, el('i', { class: 'led' }), el('b', { text: (p.name || p.id).toUpperCase() }),
           el('span', { text: [p.paired ? 'PAIRED' : 'UNPAIRED', p.seen ? (fresh(p.seen) ? 'LISTENING' : 'LAST ' + when(p.seen)) : 'NEVER HEARD', p.mesh ? 'MESH' : '', p.touch ? 'SCREEN' : ''].filter(Boolean).join(' · ') })))),
         el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'ACTIVITY · TODAY / 7 DAYS' }), ...(keys.length ? keys.map(k => el('div', { class: 'act' }, el('span', { text: TRAFFIC[k].toUpperCase() }), el('i', { class: 'bar', style: `width:${Math.round(100 * (o.week[k] || 0) / top)}%` }), el('b', { text: `${o.today[k] || 0} / ${o.week[k] || 0}` }))) : [el('span', { class: 'cap', text: 'NOTHING COUNTED YET' })]))));
-    main.replaceChildren(...head('Overview', 'Counts of things, never of people.'), hud);
+    main.replaceChildren(...head('Overview'), hud);
     ovT = setTimeout(() => { if (tab === 'overview') overview().catch(() => {}); }, 30000);
   }
 
@@ -339,8 +351,7 @@
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ fx: fx.value, phreak: $('#phreak').checked }) })));
     /* the twelve curations of the portfolio */
     const curs = await curationsOf(); const rows = curs.map((c, i) => { const n = el('input', { type: 'text', maxlength: 40, placeholder: `CURATION ${String(i + 1).padStart(2, '0')}` }), a = el('input', { type: 'text', maxlength: 200, placeholder: 'A LINE ABOUT IT (OPTIONAL)' }); n.value = c.name || ''; a.value = c.about || ''; return [n, a]; });
-    const cur = el('section', { class: 'ed' }, el('h3', { text: 'PORTFOLIO · THE TWELVE CURATIONS' }), el('p', { class: 'note', text: 'TWELVE THEMES OR CURATIONS, EACH A TAB ON THE PORTFOLIO. A POST JOINS ONE BY ITS CURATION (CHOSEN WHEN IT IS WRITTEN). ONLY NAMED ONES SHOW.' }),
-      hint('NAME: up to 40 characters, the tab\'s title on the portfolio. ABOUT: up to 200 characters, one line under it (leave empty for none). A tab with no name is hidden. Renaming keeps the posts in it. Saved, the portfolio shows it straight away.'),
+    const cur = el('section', { class: 'ed' }, el('h3', { text: 'PORTFOLIO · THE TWELVE CURATIONS' }), hint('NAME: up to 40 characters, the tab\'s title on the portfolio. ABOUT: up to 200 characters, one line under it (leave empty for none). A tab with no name is hidden. Renaming keeps the posts in it. Saved, the portfolio shows it straight away.'),
       ...rows.map(([n, a], i) => el('div', { class: 'two' }, el('label', {}, String(i + 1).padStart(2, '0'), n), el('label', {}, 'ABOUT', a))),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ curations: JSON.stringify(rows.map(([n, a]) => ({ name: n.value.trim(), about: a.value.trim() }))) }) })));
     /* back to base: archived (so it can come back), never the printers, their tokens or the password */
@@ -363,7 +374,7 @@
       el('div', { class: 'three' }, el('label', {}, 'BOOTH: THE PASS SHOWS FOR (SECONDS)', bh, hint('After a booth print or save, the pass (the visitor\'s three-character code, with Save your pass) shows this long, then the phone goes to novel.global. 1 to 60, halves allowed. As built: 10.')),
         el('label', {}, 'BOOTH: MINUTES BETWEEN PRINTS FROM ONE PHONE', bg, hint('After printing, the same phone can print again after this many minutes. Until then the print button counts down; save still works. Whole minutes, 0 to 240; 0 means no wait. As built: 10. Counted on each phone, so another phone can print straight away.'))),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 10)), boothGap: Math.max(0, Math.min(240, Math.round(+bg.value || 0))) }) }) })));
-    main.replaceChildren(...head('Settings', 'How novel.global behaves for everyone. Saved settings reach visitors the next time they open the site.'), gates, start, motion, cur, reset);
+    main.replaceChildren(...head('Settings'), gates, start, motion, cur, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */
@@ -386,7 +397,7 @@
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'BRING THEM IN', onclick: async () => { const t = ta.value.trim(); if (!t) return; let list;
         try { if (/^[\[{]/.test(t)) { const j = JSON.parse(t); list = Array.isArray(j) ? j : j.places || []; } else { const [hd, ...rs] = parseCSV(t); const h = hd.map(x => x.trim().toLowerCase()); list = rs.map(r => Object.fromEntries(h.map((k, i) => [k, (r[i] || '').trim()]))); } } catch (e) { out.textContent = 'COULD NOT READ IT: ' + e.message; return; }
         const r = await (await api('places/import', { method: 'POST', body: JSON.stringify({ places: list }) })).json(); out.textContent = `${r.added} ADDED${r.bad ? `, ${r.bad} LEFT OUT (NO NAME, OR NO PLACE)` : ''}`; badges(); } }), out));
-    main.replaceChildren(...head('Data', 'Take everything away, or bring places in.'), dl, imp);
+    main.replaceChildren(...head('Data'), dl, imp);
   }
 
   /* ───────── the guide: how each part works, the stack, and where things are ───────── */
@@ -404,7 +415,7 @@
     ['Links', [['Cloudflare dashboard', 'https://dash.cloudflare.com/'], ['The code on GitHub', 'https://github.com/novelglobal/front'], ['iNaturalist API', 'https://api.inaturalist.org/v1/docs/'], ['OpenStreetMap Overpass', 'https://wiki.openstreetmap.org/wiki/Overpass_API'], ['Meshtastic', 'https://meshtastic.org/docs/'], ['Epson ESC/POS', 'https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/index.html']]],
   ];
   function guide() {
-    main.replaceChildren(...head('Guide', 'How each part of novel.global works, and where things are.'), ...G.map(([t, ps]) => el('section', { class: 'guide' }, el('h3', { text: t }),
+    main.replaceChildren(...head('Guide'), ...G.map(([t, ps]) => el('section', { class: 'guide' }, el('h3', { text: t }),
       ...ps.map(p => Array.isArray(p) ? el('p', {}, el('a', { href: p[1], target: '_blank', rel: 'noopener', text: p[0] + ' ↗' })) : el('p', { text: p })))));
   }
 
