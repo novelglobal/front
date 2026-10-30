@@ -30,7 +30,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct · 9"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct · 10"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
@@ -67,8 +67,8 @@ void loadCfg() {
   nNets = prefs.getInt("n", 0); if (nNets > 5) nNets = 5;
   cfgSleep = prefs.getBool("slp", false); cfgScene = prefs.getInt("scn", 0); cfgTouch = prefs.getBool("tch", true);
   for (int i = 0; i < nNets; i++) { nets[i] = prefs.getString(("s" + String(i)).c_str(), ""); passes[i] = prefs.getString(("p" + String(i)).c_str(), ""); ways[i] = prefs.getInt(("w" + String(i)).c_str(), 0); }
-  /* the sketch's own Wi-Fi only until any is set from a phone; then never again */
-  if (real(WIFI_SSID) && nNets == 0) { bool have = false; for (int i = 0; i < nNets; i++) if (nets[i] == WIFI_SSID) have = true; if (!have) { nets[nNets] = WIFI_SSID; passes[nNets++] = WIFI_PASS; } }
+  /* the sketch's own Wi-Fi only until the list is set from a phone (even to none); then never again, so a forgotten one stays forgotten */
+  if (real(WIFI_SSID) && nNets == 0 && !prefs.getBool("set", false)) { bool have = false; for (int i = 0; i < nNets; i++) if (nets[i] == WIFI_SSID) have = true; if (!have) { nets[nNets] = WIFI_SSID; passes[nNets++] = WIFI_PASS; } }
 }
 void saveNets() { prefs.putInt("n", nNets); for (int i = 0; i < nNets; i++) { prefs.putString(("s" + String(i)).c_str(), nets[i]); prefs.putString(("p" + String(i)).c_str(), passes[i]); prefs.putInt(("w" + String(i)).c_str(), 0); ways[i] = 0; } }
 
@@ -114,20 +114,27 @@ int act(const String &job, const String &what) {
 }
 /* joining: every Wi-Fi it knows that it can see, strongest first, each in turn. A Wi-Fi that turns it away is asked again a
    different way, not the same way harder. Most often it is "authentication expired" (reason 2), the router not finishing letting
-   it in. Four ways, in turn:
+   it in. On this board (the T-Display-S3) the commonest cause is its own radio at full power: the supply dips and the antenna
+   swamps the reply, and the handshake runs out. Four ways, in turn:
      0  a plain join, as the first sketch did
-     1  the strongest transmitter of that name, by its own address and channel (a mesh or a building's many points can hand it a far one)
-     2  that, with a gentler transmit power (a dip in the supply as the radio peaks can cut the handshake short)
-     3  that, with WPA2 alone and no protected management frames (routers that also offer WPA3 can stall the handshake here)
-   The way that worked is kept for that Wi-Fi and tried first next time. Each failure is kept with its reason, for the screen to say */
+     1  low power (8.5 dBm): the known cure for this board
+     2  low power, to the strongest transmitter of that name, by its own address and channel (a mesh can hand it a far one)
+     3  a pause first, so the router forgets the last time it was let in (it can still be holding it), then low power,
+        WPA2 alone and no protected management frames (routers that also offer WPA3 can stall the handshake here)
+   The way that worked is kept for that Wi-Fi and tried first next time. Each failure is kept with its reason, for the screen to say.
+   Still turned away after every way, twice over, the radio itself is restarted (at most three times running) */
 String trying, whyNot; int tryNext = 0, tryRssi = 0; volatile int lastReason = 0;
 uint8_t bss[5][6]; int chans[5];
-const char *WAYS[4] = {"plain", "strongest point", "gentle power", "WPA2 only"};
+const char *WAYS[4] = {"plain", "low power", "low power, nearest point", "after a pause"};
+RTC_DATA_ATTR int radioRestarts = 0; int failRounds = 0;
 bool joinWay(int k, int way, bool seenIt) {
   WiFi.setAutoReconnect(false); WiFi.disconnect(false, true); vTaskDelay(pdMS_TO_TICKS(500));
-  WiFi.mode(WIFI_STA); WiFi.setSleep(false); WiFi.setTxPower(way >= 2 ? WIFI_POWER_15dBm : WIFI_POWER_19_5dBm);
+  if (way == 3) for (int i = 0; i < 60 && !setupOn; i++) vTaskDelay(pdMS_TO_TICKS(250));   // 15 s for the router to let go
+  wifi_power_t pw = way >= 1 ? WIFI_POWER_8_5dBm : WIFI_POWER_19_5dBm;
+  WiFi.mode(WIFI_STA); WiFi.setSleep(false); WiFi.setTxPower(pw);
   lastReason = 0;
-  if (way >= 1 && seenIt) WiFi.begin(nets[k].c_str(), passes[k].c_str(), chans[k], bss[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  if ((way == 2 || way == 3) && seenIt) WiFi.begin(nets[k].c_str(), passes[k].c_str(), chans[k], bss[k]); else WiFi.begin(nets[k].c_str(), passes[k].c_str());
+  WiFi.setTxPower(pw);   // again once started: some cores set the power only on a running radio
   if (way >= 3) { wifi_config_t cf; if (esp_wifi_get_config(WIFI_IF_STA, &cf) == ESP_OK) { esp_wifi_disconnect(); cf.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; cf.sta.pmf_cfg.capable = false; cf.sta.pmf_cfg.required = false; esp_wifi_set_config(WIFI_IF_STA, &cf); esp_wifi_connect(); } }
   /* up to 20 s for a weak signal; but once it has been turned away, 4 s more and the next way is tried */
   unsigned long t0 = millis(), failAt = 0;
@@ -152,14 +159,16 @@ void join() {
   int k = order[tryNext % nNets]; xSemaphoreTake(lock, portMAX_DELAY); trying = nets[k]; xSemaphoreGive(lock); tryRssi = vis[k] ? rs[k] : 0;
   /* the way that worked last first, then each of the others; a password refused is not asked again three more ways */
   int first = ways[k] % 4, r = 0;
-  for (int w = 0; w < 4 && !setupOn; w++) { int way = (first + w) % 4; if (way >= 1 && !vis[k]) continue;
+  for (int w = 0; w < 4 && !setupOn; w++) { int way = (first + w) % 4; if (way == 2 && !vis[k]) continue;
     xSemaphoreTake(lock, portMAX_DELAY); trying = way ? nets[k] + " · " + WAYS[way] : nets[k]; xSemaphoreGive(lock);
-    if (joinWay(k, way, vis[k])) { if (way != ways[k]) { ways[k] = way; prefs.putInt(("w" + String(k)).c_str(), way); } return; }
+    if (joinWay(k, way, vis[k])) { failRounds = 0; radioRestarts = 0; if (way != ways[k]) { ways[k] = way; prefs.putInt(("w" + String(k)).c_str(), way); } return; }
     r = lastReason; if (r == 15 || r == 202 || r == 204 || r == 201) break; }
   if (!setupOn) {
     String why = nets[k] + ": " + reasonWords(r) + (vis[k] ? String(", ") + tryRssi + " dBm" : String(", not in its scan of ") + n) + (tryRssi && tryRssi < -78 ? " (too weak here)" : "");
     xSemaphoreTake(lock, portMAX_DELAY); whyNot = why; xSemaphoreGive(lock);
     WiFi.setAutoReconnect(false); WiFi.disconnect(); tryNext++;
+    /* every Wi-Fi it knows, every way, twice over, and still out: the radio started afresh, as unplugging it would */
+    if (++failRounds >= 2 * (nNets ? nNets : 1) && radioRestarts < 3) { radioRestarts++; xSemaphoreTake(lock, portMAX_DELAY); whyNot = why + " - restarting the radio"; xSemaphoreGive(lock); vTaskDelay(pdMS_TO_TICKS(2500)); ESP.restart(); }
   }
 }
 void netTask(void *) {
@@ -481,7 +490,8 @@ void pageSave() {
   if (ss.length() && !pp.length()) for (int i = 0; i < nNets; i++) if (nets[i] == ss) pp = passes[i];   // a known one chosen again keeps its password
   String kn[5], kp[5]; int k = 0; if (ss.length()) { kn[k] = ss; kp[k++] = pp; }
   for (int i = 0; i < nNets && k < 5; i++) if (!web.hasArg("f" + String(i)) && nets[i] != ss) { kn[k] = nets[i]; kp[k++] = passes[i]; }
-  nNets = k; for (int i = 0; i < k; i++) { nets[i] = kn[i]; passes[i] = kp[i]; } saveNets();
+  nNets = k; for (int i = 0; i < k; i++) { nets[i] = kn[i]; passes[i] = kp[i]; } saveNets(); prefs.putBool("set", true);
+  WiFi.disconnect(false, true);   // and the radio's own memory of the last one wiped, so nothing joins it by itself
   String h2 = between(ng, "NG_HOST"), p2 = between(ng, "NG_PRINTER"), t2 = between(ng, "NG_TOKEN");
   if (h2.length()) prefs.putString("host", h2); if (p2.length()) prefs.putString("prn", p2); if (t2.length()) prefs.putString("tok", t2);
   bye(ss.length() ? "Joining " + esc(ss) + "&hellip;" : String("Saved"));

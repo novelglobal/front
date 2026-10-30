@@ -319,7 +319,7 @@ body.mapmode #home, body.mapmode #oled { display: none !important; }
 .idx details.sec > summary h3::before { margin-right: .6em; }
 
 /* the booth: a printer's own page. Only the photograph, then stickers and words, then the print; the menu in small ASCII */
-body.booth > *:not(#booth):not(svg):not(script):not(.toast) { display: none !important; }
+body.booth > *:not(#booth):not(#aura):not(svg):not(script):not(.toast) { display: none !important; }
 #booth { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; font-size: 12px; }
 #booth .bm { margin: 0; letter-spacing: .14em; color: var(--dim); }
 #booth pre.art { margin: 0; color: var(--stick); font: inherit; line-height: 1.25; }
@@ -572,3 +572,29 @@ body.wishmap:not(.mapmode):not(.half) #terrain { pointer-events: auto; }
 @keyframes bt-pass { from { transform: translateY(18px) scale(.96); opacity: 0; } }
 @keyframes bt-pt { to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { #booth .pass canvas { animation: none; } }
+
+/* ───────── the booth over the aura: one page, the same sky and eye turning under it, in its colours, and it scrolls ───────── */
+html.aura-on #booth { position: fixed; inset: 0; z-index: 60; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; justify-content: flex-start;
+  padding: calc(18px + env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom)); background: rgba(8, 24, 50, .42);
+  --ink: #F4F1E8; --paper: #17457F; --dim: rgba(244, 241, 232, .6); --stick: #F4F1E8; --hi: #F4F1E8; color: #F4F1E8; font-family: "Architects Daughter", "Comic Sans MS", cursive; animation: bt-in .5s ease both; }
+html.aura-on.aura-dark #booth { background: rgba(14, 15, 18, .5); }
+html.aura-on #booth > :first-child { margin-top: 0; }
+html.aura-on #booth > :last-child { margin-bottom: auto; }
+html.aura-on body.booth #aura > :not(canvas) { visibility: hidden; }
+html.aura-on #booth .bm { color: #F4F1E8; text-decoration: none; }
+html.aura-on #booth .bm b { font: 700 18px "Helvetica Neue", Helvetica, Arial, sans-serif; color: #F4F1E8; }
+html.aura-on #booth .bm .mk rect { fill: #F4F1E8; }
+html.aura-on #booth .cap { font: 14px/1.3 "Architects Daughter", "Comic Sans MS", cursive; opacity: .75; }
+/* the start: the aura's own eye in the middle of the screen is what is tapped */
+html.aura-on #booth .eye { position: fixed; left: 50%; top: 50%; width: min(56vmin, 300px); height: min(56vmin, 300px); margin: 0; padding: 0; transform: translate(-50%, -50%); border-radius: 50%; box-shadow: 0 0 0 1px rgba(244, 241, 232, .25); animation: bt-breathe 3.6s ease-in-out infinite; }
+html.aura-on #booth .eye + .cap { position: fixed; left: 0; right: 0; top: calc(50% + min(28vmin, 150px) + 14px); margin: 0; }
+html.aura-on #booth .eye ~ .bp { position: fixed; left: 0; right: 0; bottom: calc(24px + env(safe-area-inset-bottom)); margin: 0; }
+html.aura-on #booth .go2 button, html.aura-on #booth .go2 a { color: #F4F1E8; }
+html.aura-on #booth .go2 .go { background: #F4F1E8; color: #17457F; }
+html.aura-on #booth .am.sm button { color: #F4F1E8; background: rgba(244, 241, 232, .08); }
+html.aura-on #booth .am.sm button:hover { background: #F4F1E8; color: #17457F; }
+html.aura-on #booth .bw { color: #F4F1E8; border-bottom-color: rgba(244, 241, 232, .6); font-family: "Architects Daughter", "Comic Sans MS", cursive; }
+html.aura-on #booth .bp button { color: #F4F1E8; }
+@keyframes bt-in { from { opacity: 0; } }
+@keyframes bt-breathe { 50% { box-shadow: 0 0 0 7px rgba(244, 241, 232, .07); } }
+@media (prefers-reduced-motion: reduce) { html.aura-on #booth, html.aura-on #booth .eye { animation: none; } }

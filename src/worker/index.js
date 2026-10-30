@@ -30,6 +30,8 @@ const SCHEMA = [
      photo BLOB, lat REAL, lng REAL, dest TEXT, created INTEGER NOT NULL, decided INTEGER)`,
   `CREATE INDEX IF NOT EXISTS stories_status ON stories(status, decided)`,
   `CREATE INDEX IF NOT EXISTS stories_code ON stories(code)`,
+  /* a maker by their three characters: when first and last seen, how many sent, the stage they were at (for the approval page only) */
+  `CREATE TABLE IF NOT EXISTS makers (who TEXT PRIMARY KEY, first INTEGER NOT NULL, last INTEGER NOT NULL, posts INTEGER NOT NULL DEFAULT 0, stage TEXT)`,
   `CREATE TABLE IF NOT EXISTS printers (id TEXT PRIMARY KEY, name TEXT, paper TEXT, mesh INTEGER DEFAULT 0, auto INTEGER DEFAULT 0, token TEXT, seen INTEGER, created INTEGER)`,
   `CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, printer TEXT NOT NULL, story TEXT, code TEXT, escpos TEXT, mesh TEXT, status TEXT NOT NULL,
      lease INTEGER, tries INTEGER DEFAULT 0, error TEXT, created INTEGER NOT NULL, done INTEGER)`,
@@ -141,6 +143,7 @@ async function photo(db, id, any) {
 async function mine(db, env, req, who, id) {
   if (!WHO.test(who || '')) return fail(400, 'who');
   if (await tooMany(db, env, req, 'mine', 60, 10 * 60e3)) return fail(429, 'too many');
+  await db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(now(), who).run();
   if (id) { const r = await db.prepare('UPDATE stories SET gone = ? WHERE id = ? AND who = ? AND gone IS NULL').bind(now(), id, who).run(); return r.meta && r.meta.changes ? json({ ok: true }) : fail(404, 'not found'); }
   const { results } = await db.prepare(`SELECT id, code, kind, status, body, created, decided, photo IS NOT NULL AS has_photo FROM stories WHERE who = ? AND gone IS NULL AND kind NOT IN ('example', 'message') ORDER BY created DESC LIMIT 100`).bind(who).all();
   return json({ mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
@@ -184,6 +187,7 @@ async function send(db, env, req) {
     for (const r of radios) { if (r.q >= LIMIT.perPrinter) continue; const jb = { id: rid(), status: 'queued' }; job = job || jb;
       ops.push(db.prepare('INSERT INTO jobs (id, printer, story, code, escpos, mesh, status, created) VALUES (?, ?, ?, ?, NULL, ?, ?, ?)').bind(jb.id, r.id, id, b.code, b.mesh, jb.status, t)); }
   }
+  if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage) VALUES (?, ?, ?, 1, ?) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null));
   await db.batch(ops);
   return json({ id, status: 'waiting', job }, 201);
 }
@@ -301,6 +305,7 @@ async function admin(db, env, req, parts) {
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
+  if (what === 'makers' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT m.who, m.first, m.last, m.posts, m.stage, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.status = 'shown' AND s.gone IS NULL) AS shown, (SELECT count(*) FROM stories s WHERE s.who = m.who AND s.gone IS NOT NULL) AS gone FROM makers m ORDER BY m.last DESC LIMIT 500`).all(); return json({ makers: results }); }
   /* the portfolio's posts: every one, drafts too; one to edit; saved; deleted */
   if (what === 'posts' && !id && req.method === 'GET') { const { results } = await db.prepare(`SELECT ${POST_COLS} FROM posts ORDER BY day DESC, created DESC LIMIT 500`).all(); return json({ posts: results.map(postOut) }); }
   if (what === 'posts' && !id && req.method === 'POST') return savePost(db, req);
