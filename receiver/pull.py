@@ -72,7 +72,13 @@ def print_bytes(data):
         log.info('dry run: %d bytes to %s', len(data), path)
         return
     headers = {'authorization': f'Bearer {PRINTD_KEY}'} if PRINTD_KEY else {}
-    status, _ = http('POST', f'{PRINTD}/print/raw', {'bytes_b64': base64.b64encode(data).decode()}, headers, timeout=60)
+    try:
+        status, _ = http('POST', f'{PRINTD}/print/raw', {'bytes_b64': base64.b64encode(data).decode()}, headers, timeout=60)
+    except urllib.error.HTTPError as e:
+        # said plainly where the approval page shows it: most often the printer is not seen on USB at all
+        if not os.path.exists('/dev/usb'):
+            raise RuntimeError('no USB printer seen: check it is on and its cable is in, or restart the Pi') from e
+        raise RuntimeError(f'printd answered {e.code}: {e.read()[:120].decode("utf-8", "replace")}') from e
     if status >= 300:
         raise RuntimeError(f'printd answered {status}')
 

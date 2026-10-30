@@ -409,6 +409,7 @@ async function ledgerAdd(ev) {
   ev.key = ev.key || evKey(); ev.at = ev.at || Date.now(); ev.who = ev.who != null ? ev.who : (S.me.by || ''); ev.dev = S.me.dev;
   ledger.local.push(ev); store.set('da.ledger.v4', ledger.local);
   derive(); refresh();
+  if (PLACED.has(ev.type) || (ev.type === 'signal' && !(ev.data || {}).recv)) made(ev.type === 'signal' ? 'wish' : 'sighting', (ev.data || {}).text || (ev.data || {}).code || ev.type, ev.lat, ev.lng);
   return ev;
 }
 const PLACED = new Set(['noticed', 'need', 'offer', 'event', 'injured', 'lost', 'dead']);

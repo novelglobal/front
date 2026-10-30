@@ -59,7 +59,7 @@ async function photoToSend(src) {
   return null;
 }
 /* sent with this phone's three characters (made by the base on first use), so its maker can find and take it down */
-async function post(payload) { const who = store.get('da.me', ''); if (/^[A-HJ-NP-Z2-9]{3}$/.test(who)) payload.who = who; return apiJSON('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
+async function post(payload) { const who = store.get('da.who', ''); if (/^[A-HJ-NP-Z2-9]{3}$/.test(who)) payload.who = who; payload.from = payload.from || (/portfolio/.test(location.pathname) ? 'portfolio' : 'studio'); return apiJSON('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* bytes, when given, are the strip as drawn in the print shop: what the printer lays down */
 async function directAction(s0, dest, bytes, kind = 'story') {
   /* a place someone marked themselves, perhaps a garden, goes out to about 100 m; a sighting from iNaturalist is already public */

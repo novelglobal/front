@@ -23,6 +23,7 @@
 #include <Wire.h>
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
+#include "mbedtls/base64.h"
 
 #define WIFI_SSID  "your wi-fi"
 #define WIFI_PASS  "its password"
@@ -30,7 +31,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct · 10"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct · 12"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
@@ -84,14 +85,17 @@ bool touched() {
 void buzz(int ms) { if (NG_BUZZ < 0) return; digitalWrite(NG_BUZZ, HIGH); delay(ms); digitalWrite(NG_BUZZ, LOW); }
 
 /* ───────── the server, on its own core so the creature never stutters: what is held; print or squash one ───────── */
-struct Slip { String job, code, say, life, wish[4]; int n = 0; bool paper = true; };   // paper false: a line for the radios alone, nothing printed
+struct Slip { String job, code, say, life, wish[4], img; int n = 0; bool paper = true; };   // paper false: a line for the radios alone, nothing printed
 struct Seen { Slip first; int waiting = 0, printing = 0; unsigned ver = 0; } seen, net;   // net: written by the server task; seen: the loop's copy
 SemaphoreHandle_t lock;
 String askJob, askWhat; volatile bool setupOn = false; volatile int netErr = 1;   // 0 fine, 1 no Wi-Fi, 2 no answer, 3 token refused
+/* one secure connection to the site, kept open between asks (the handshake is the slow part, and the part that failed as -1) */
+WiFiClientSecure tls; bool tlsSet = false;
+WiFiClientSecure &site() { if (!tlsSet) { tls.setInsecure(); tls.setHandshakeTimeout(12); tlsSet = true; } return tls; }
 void poll() {
-  WiFiClientSecure c; c.setInsecure(); HTTPClient h;
-  h.setConnectTimeout(3000);  // fail quickly if the server cannot be reached
-  h.setTimeout(5000);         // bound a stalled status poll; the next poll can retry
+  WiFiClientSecure &c = site(); HTTPClient h; h.setReuse(true);
+  h.setConnectTimeout(6000);
+  h.setTimeout(6000);         // bound a stalled status poll; the next poll can retry
   String ss = WiFi.SSID(), q = ""; for (unsigned i = 0; i < ss.length() && i < 40; i++) { char ch = ss[i]; if (isalnum((unsigned char)ch)) q += ch; else { char b[4]; snprintf(b, 4, "%%%02X", (unsigned char)ch); q += b; } }
   if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "?net=" + q + "&rssi=" + WiFi.RSSI())) { netErr = 2; return; }
   h.addHeader("authorization", String("Bearer ") + token); int code = h.GET();
@@ -99,14 +103,15 @@ void poll() {
   String got = h.getString(); h.end(); JsonDocument d; if (deserializeJson(d, got)) { netErr = 2; return; }
   Seen s; JsonArray held = d["held"].as<JsonArray>(); s.waiting = d["waiting"] | (int)held.size(); s.printing = d["printing"] | 0;
   if (held.size()) { JsonObject f = held[0]; s.first.job = f["job"].as<String>(); s.first.code = f["code"].as<String>(); s.first.say = f["say"].as<String>(); s.first.life = f["life"].as<String>(); s.first.paper = f["paper"] | true;
+    s.first.img = f["img"] | "";
     for (JsonVariant v : f["wish"].as<JsonArray>()) if (s.first.n < 4) s.first.wish[s.first.n++] = v.as<String>(); }
   xSemaphoreTake(lock, portMAX_DELAY); s.ver = net.ver + 1; net = s; xSemaphoreGive(lock); netErr = 0;
 }
 volatile int actCode = 0;   // HTTP result for the last action: 200 accepted; anything else, not
 volatile bool actionPending = false, actionFinished = false;
 int act(const String &job, const String &what) {
-  WiFiClientSecure c; c.setInsecure(); HTTPClient h;
-  h.setConnectTimeout(5000);  // bound connection setup; preserve the existing 9 s response timeout
+  WiFiClientSecure &c = site(); HTTPClient h; h.setReuse(true);
+  h.setConnectTimeout(8000);
   h.setTimeout(9000);
   if (!h.begin(c, String("https://") + host + "/api/touch/" + printerId + "/" + job)) return -100;
   h.addHeader("authorization", String("Bearer ") + token); h.addHeader("content-type", "application/json");
@@ -177,7 +182,7 @@ void netTask(void *) {
     if (setupOn) { vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     if (WiFi.status() != WL_CONNECTED) { netErr = 1; if (nNets) join(); vTaskDelay(pdMS_TO_TICKS(400)); continue; }
     String job, what; xSemaphoreTake(lock, portMAX_DELAY); job = askJob; what = askWhat; askJob = ""; xSemaphoreGive(lock);
-    if (job.length()) { int c = act(job, what); for (int i = 0; i < 2 && c != 200; i++) { vTaskDelay(pdMS_TO_TICKS(1500)); c = act(job, what); }
+    if (job.length()) { int c = act(job, what); for (int i = 0; i < 4 && c != 200 && c != 400 && c != 401; i++) { site().stop(); vTaskDelay(pdMS_TO_TICKS(600 + 400 * i)); c = act(job, what); }
       if (c == 200) { xSemaphoreTake(lock, portMAX_DELAY); if (net.first.job == job) { net.first = Slip(); if (net.waiting > 0) net.waiting--; if (what == "print") net.printing++; net.ver++; } xSemaphoreGive(lock); }
       actCode = c; actionPending = false; actionFinished = true; last = 0; }   // three tries; the result is handled by the display loop
     if (printerId.length() && millis() - last >= 2000) { last = millis(); poll(); }  // discover new jobs about four times faster
@@ -472,19 +477,18 @@ void scanNets() {
 }
 void pageRoot() {
   String s = PAGE_HEAD; s += "<h1>novel.global &middot; touch</h1>";
-  s += "<p style='opacity:.8;font-size:14px'>Printer: <b>" + (printerId.length() ? esc(printerId) + "</b> on " + esc(host) : String("not set yet</b>")) + "<br>Wi-Fis it knows: <b>" + (nNets ? String("") : String("none")) ;
-  for (int i = 0; i < nNets; i++) s += (i ? ", " : "") + esc(nets[i]); s += "</b></p>";
-  s += "<form method=post action=/save><label>Wi-Fi to join</label><select name=s><option value=''>(keep what it knows)</option>" + scanOpts + "</select>";
-  s += "<p style='margin:-6px 0 14px;font-size:13px'><a style='color:#F4F1E8' href=/scan>Scan again</a> if yours isn't listed (it must be 2.4 GHz)</p>";
-  s += "<label>or type its name</label><input name=s2 autocomplete=off autocapitalize=none><label>its password</label><input name=p type=password>";
-  s += "<label>the three lines from the approval page (leave empty to keep them)</label><textarea name=ng rows=4 placeholder='#define NG_HOST ...'></textarea>";
-  if (nNets) { s += "<label>tick to forget</label><div style='margin:6px 0 16px'>"; for (int i = 0; i < nNets; i++) s += "<div><input type=checkbox name=f" + String(i) + " style='width:auto;margin-right:8px'>" + esc(nets[i]) + "</div>"; s += "</div>"; }
-  s += "<button>Save and restart</button></form>";
-  s += "<form method=post action=/done style='margin-top:18px'><button style='background:none;color:#F4F1E8;border:1.5px solid #F4F1E8'>Done, change nothing</button></form>";
+  s += "<p style='opacity:.7;font-size:13px'>" + (printerId.length() ? esc(printerId) : String("no printer")) + "</p>";
+  s += "<form method=post action=/save><label>Wi-Fi</label><select name=s><option value=''>-</option>" + scanOpts + "</select>";
+  s += "<p style='margin:-6px 0 14px;font-size:13px'><a style='color:#F4F1E8' href=/scan>scan again</a></p>";
+  s += "<label>or its name</label><input name=s2 autocomplete=off autocapitalize=none><label>password</label><input name=p type=password>";
+  s += "<label>approval page lines</label><textarea name=ng rows=3></textarea>";
+  if (nNets) { s += "<label>forget</label><div style='margin:6px 0 16px'>"; for (int i = 0; i < nNets; i++) s += "<div><input type=checkbox name=f" + String(i) + " style='width:auto;margin-right:8px'>" + esc(nets[i]) + "</div>"; s += "</div>"; }
+  s += "<button>Save</button></form>";
+  s += "<form method=post action=/done style='margin-top:18px'><button style='background:none;color:#F4F1E8;border:1.5px solid #F4F1E8'>Close</button></form>";
   web.send(200, "text/html", s);
 }
 void pageScan() { scanNets(); web.sendHeader("Location", "/"); web.send(302, "text/plain", ""); }
-void bye(const String &what) { web.send(200, "text/html", String(PAGE_HEAD) + "<h1>" + what + "</h1><p>The screen restarts. You can close this and go back to your own Wi-Fi.</p>"); delay(1500); ESP.restart(); }
+void bye(const String &what) { web.send(200, "text/html", String(PAGE_HEAD) + "<h1>" + what + "</h1>"); delay(1500); ESP.restart(); }
 void pageSave() {
   String ss = web.arg("s2").length() ? web.arg("s2") : web.arg("s"), pp = web.arg("p"), ng = web.arg("ng"); ss.trim();
   if (ss.length() && !pp.length()) for (int i = 0; i < nNets; i++) if (nets[i] == ss) pp = passes[i];   // a known one chosen again keeps its password
@@ -555,6 +559,7 @@ bool printAwaiting = false;
    No aiming: a tap moves to the next, a hold chooses */
 int sel = 0, digits[3], nDig = 0, curDig = 0, wrongs = 0; bool holdFired = false; unsigned long lastTouchMs = 0; float menuAt = 0; String offSaid;
 String autoPrintJob = ""; unsigned long jobSeenAt = 0; bool autoPrintFired = false;
+uint8_t thumbBits[12 * 160]; int thumbW = 0, thumbH = 0; String thumbFor;   // the waiting print, small, one bit a dot
 float fleeAt = -100.0f, fleeX = 0, fleeY = 0; bool qrWasVisible = false; unsigned long wifiReadyAt = 0;
 void loop() {
   float t = millis() / 1000.0f, dt = fminf(0.05f, fmaxf(0.001f, t - lastT)); lastT = t; float k = t - modeAt;
@@ -574,11 +579,11 @@ void loop() {
     actionFinished = false;
     printAwaiting = false;
     if (actCode == 200) {
-      prepPrint();
-      go(PRINTING, t);
+      if (mode != PRINTING) { prepPrint(); go(PRINTING, t); }
     } else {
       autoPrintFired = false;
       jobSeenAt = millis() - 20000UL; // retry after a short pause, not in a tight loop
+      if (mode == PRINTING) go(HELD, t);
     }
   }
 
@@ -712,14 +717,14 @@ void loop() {
       if (k > 4.4f) go(HELD, t);
       break;
     case HELD: {
-      if (!has) { go(ASLEEP, t); break; }
+      if (!has && !printAwaiting && !actionPending) { go(ASLEEP, t); break; }
       J.a = 1; J.x = HELD_X + sinf(t * 0.7f) * 4; J.y = HELD_Y + sinf(t * 1.1f) * 3; J.bw = HELD_BW + sinf(t * 0.9f) * 4; J.cue = true; J.glow = 0.5f + 0.5f * sinf(t * 2.4f); J.look = sinf(t * 0.8f); camT = {W / 2, H / 2, 1};
       float sk = t - springAt; J.sq = sk < 0.9f ? springFrom * expf(-5 * sk) * cosf(14 * sk) : 0;   // let go early: it springs back
       if (printAwaiting || actionPending) { /* wait for the site's response before changing the scene */ }
       else if (cfgTouch && down && held > 0.45f) { go(SQUISH, t); nextTick = 1 / 3.0f; nParts = 0; }
-      else if (cfgTouch && tap) { autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); }
+      else if (cfgTouch && tap) { autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); prepPrint(); go(PRINTING, t); }
       else if (NG_AUTOPRINT > 0 && !autoPrintFired && slip.job.length() && slip.job == autoPrintJob && millis() - jobSeenAt >= NG_AUTOPRINT * 1000UL) {
-        autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print");
+        autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); prepPrint(); go(PRINTING, t);
       }
       break; }
     case SQUISH: {     // held: squeezed slowly flatter, shaking harder, beads pressed out, eyes shut tight; full, it pops
@@ -737,6 +742,7 @@ void loop() {
       if (k > 3.4f) { nParts = 0; fish.on = false; current = 0; go(QUIET, t); }
       break;
     case PRINTING:     // the slip feeds out of the bell as the printer prints it, is torn off, and the jellyfish jets away with the light
+      if ((printAwaiting || actionPending) && k > 0.9f) { modeAt = t - 0.9f; k = 0.9f; }   // the paper waits at its first lines until the site has it
       J.a = 1; J.x = HELD_X; J.bw = HELD_BW; J.eye = 3; J.rate = 2.4f; J.run = fmodf(k * 0.9f, 1.2f); J.y = HELD_Y;
       if (k > 4.1f) { float f = k - 4.1f; J.y = HELD_Y - f * f * 220 - f * 30; J.sq = -0.3f * fabsf(sinf(f * 9)); }
       if (k > 5.4f) go(QUIET, t);
@@ -785,10 +791,15 @@ void loop() {
   if (mode == BURST) { drawParts(k); if (k < 0.4f) { float r = k / 0.4f; ring(PX(HELD_X), PY(48), 24 + r * 80, 1.2f, INK, 0.55f * (1 - r)); } }
   if (mode == SQUISH) drawParts(0);
 
-  /* what waits: its heading, its first line, its code; quiet type, a clear column */
+  /* what waits: the print itself, small, at the right; its words beside it; its code */
+  if (thumbFor != slip.job) { thumbFor = slip.job; thumbW = thumbH = 0; int c1 = slip.img.indexOf(','), c2 = c1 < 0 ? -1 : slip.img.indexOf(',', c1 + 1);
+    if (c2 > 0) { int w2 = slip.img.substring(0, c1).toInt(), h2 = slip.img.substring(c1 + 1, c2).toInt(); size_t got = 0; String b = slip.img.substring(c2 + 1);
+      if (w2 > 0 && w2 <= 96 && h2 > 0 && h2 <= 160 && mbedtls_base64_decode(thumbBits, sizeof(thumbBits), &got, (const unsigned char *)b.c_str(), b.length()) == 0 && got >= (size_t)((w2 + 7) / 8 * h2)) { thumbW = w2; thumbH = h2; } } }
   if (mode == HELD || mode == SQUISH || (mode == ARRIVE && k > 3.6f)) {
     float a = mode == ARRIVE ? fminf(1, (k - 3.6f) * 1.5f) : 1;
-    para(HEAD, slip.say.length() ? slip.say : slip.code, COL, 32, W - COL - 8, 21, 5, INK, a);
+    int tw = thumbW ? thumbW + 12 : 0;
+    if (thumbW && a > 0.5f) { int tx = W - thumbW - 8, ty = 8, th = min(thumbH, H - 16); g->fillRect(tx - 3, ty - 3, thumbW + 6, th + 6, PAPER); g->drawBitmap(tx, ty, thumbBits, thumbW, th, PAPERINK); }
+    if (slip.say.length() || slip.life.length()) para(HEAD, slip.say.length() ? slip.say : slip.life, COL, 32, W - COL - 8 - tw, 21, 5, INK, a);
     text(MONO, slip.code.c_str(), COL, H - 12, INK, 0.75f * a, 2);
   }
   if (mode == PRINTING && !slip.paper) {  // a line for the radios: no paper, its signal going out from the bell in thin rings
@@ -800,10 +811,11 @@ void loop() {
     float feed = ease(k / 3.6f), Lp = feed * 150, y0 = bBot + 4, fall = k > 4.1f ? k - 4.1f : 0, pw = 86, x0 = HELD_X - pw / 2;
     y0 += fall * fall * 300; if (y0 < H) {
       g->fillRect(x0, y0, pw, Lp, PAPER);
-      for (int i = 0; i < nPrint; i++) { float ly = y0 + 14 + i * 12; if (ly + 3 < y0 + Lp && ly < H + 10) text(MONO, printLines[i].c_str(), x0 + 6, ly, PAPERINK, 1, 0); }
+      if (thumbW) { int th = min((int)Lp - 8, thumbH); if (th > 0) g->drawBitmap(HELD_X - thumbW / 2, y0 + 4, thumbBits, thumbW, th, PAPERINK); }
+      else for (int i = 0; i < nPrint; i++) { float ly = y0 + 14 + i * 12; if (ly + 3 < y0 + Lp && ly < H + 10) text(MONO, printLines[i].c_str(), x0 + 6, ly, PAPERINK, 1, 0); }
       if (k > 3.6f && k < 4.3f) for (int i = 0; i < 12; i++) g->fillTriangle(x0 + i * 7.2f, y0, x0 + i * 7.2f + 7.2f, y0, x0 + i * 7.2f + 3.6f, y0 + 3, SEA);   // torn off
     }
-    String lab = k < 4.1f ? String("printing") + String("...").substring(0, (int)fmodf(k * 2, 4)) : String("printed");
+    String lab = printAwaiting || actionPending ? String("sending") + String("...").substring(0, (int)fmodf(t * 2, 4)) : k < 4.1f ? String("printing") + String("...").substring(0, (int)fmodf(k * 2, 4)) : String("printed");
     text(MONO, lab.c_str(), COL, 84, INK, 0.7f, 1);
     text(MONO, slip.code.c_str(), COL, H - 12, INK, 0.75f, 2);
   }
@@ -832,13 +844,10 @@ void loop() {
     }
   }
   if (mode == SETUP) {   // power-on only: join from a phone by scanning, or by name and password
-    text(MONO, "setup", 16, 26, INK, 0.5f, 1);
-    text(HEAD, "NOVEL TOUCH", 16, 54, INK, 1, 0);
-    text(MONO, "scan to join, or use", 16, 80, INK, 0.5f, 0);
-    text(BODY, apPass.c_str(), 16, 100, INK, 0.95f, 1);
-    text(MONO, "then a page opens", 16, 126, INK, 0.5f, 0);
-    text(MONO, "or go to 192.168.4.1", 16, 142, INK, 0.5f, 0);
-    text(MONO, "BOOT again to leave   sketch " NG_VERSION, 16, 160, INK, 0.35f, 0);
+    text(HEAD, "NOVEL TOUCH", 16, 46, INK, 1, 0);
+    text(BODY, apPass.c_str(), 16, 84, INK, 0.95f, 1);
+    text(MONO, "192.168.4.1", 16, 112, INK, 0.5f, 0);
+    text(MONO, NG_VERSION, 16, 160, INK, 0.3f, 0);
     drawQR(QR_JOIN, 29, 246, H / 2, 4);
   }
   if (bootAt >= 0) {   // BOOT held: a ring of dots filling round the word
@@ -853,8 +862,8 @@ void loop() {
     text(MONO, "sketch " NG_VERSION, 8, H - 6, INK, 0.3f, 0);
     if (k > 20 || !printerId.length()) text(MONO, "hold BOOT for setup", W / 2 - textW(MONO, "hold BOOT for setup", 0) / 2, 146, INK, 0.4f, 0);
   }
-  if ((mode == HELD || mode == PRINTING || mode == BURST || mode == QUIET) && actCode) {   // did the site take it
-    String r = actCode == 200 ? String("sent") : String("not sent (") + actCode + ")"; text(MONO, r.c_str(), W - 10 - textW(MONO, r.c_str(), 0), H - 6, INK, actCode == 200 ? 0.45f : 0.85f, 0);
+  if (mode == HELD && actCode && actCode != 200) {   // the site did not take it: it is tried again by itself
+    String r = String("trying again (") + actCode + ")"; text(MONO, r.c_str(), W - 10 - textW(MONO, r.c_str(), 0), H - 6, INK, actCode == 200 ? 0.45f : 0.85f, 0);
   }
   if (mode != SETUP && mode != ASLEEP) counts();
   if (mode != SETUP && netErr) { ring(W - 12, H - 12, 3.5f, 1, INK, 0.55f); if (netErr == 3) text(MONO, "?", W - 28, H - 8, INK, 0.7f, 0); }
