@@ -673,9 +673,20 @@
   }
   /* the step that would come next, once this one has something: a light runs down its tentacle to the tip */
   var nextStep = function () { return S.deep || S.stage >= 3 || !ready() ? -1 : S.stage + 1; };
-  /* the squirt of ink: when something opens or the step changes, a restrained cloud leaves the bell, drifts, and is gone */
+  /* the squirt of ink at print: chance, not a rule. A third of the time none; mostly a restrained cloud from the bell; now and then
+     a great squirt over everything, the poster too, that thins away */
+  var INKC = null;
+  function squirt() { var r = Math.random(); if (r < 0.32 || still) return; S.ink = performance.now() / 1000; S.inkBig = r > 0.8;
+    if (S.inkBig && !INKC) { INKC = document.createElement('canvas'); INKC.className = 'au-inkc'; INKC.setAttribute('aria-hidden', 'true'); document.body.appendChild(INKC); } if (S.inkBig) setTimeout(function () { if (INKC) { INKC.remove(); INKC = null; } }, 5200); }
+  function inkBig(t) {
+    var k = (t - S.ink) / 4.4; if (!INKC) return; var g = INKC.getContext('2d'), w = innerWidth, h = innerHeight; if (INKC.width !== w * dpr) { INKC.width = w * dpr; INKC.height = h * dpr; INKC.style.width = w + 'px'; INKC.style.height = h + 'px'; }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); if (k >= 1) { INKC.remove(); INKC = null; S.ink = 0; return; }
+    var col = DARK ? '226,224,214' : '4,16,34', grow = 1 - Math.pow(1 - Math.min(1, k * 2.2), 3), fade = k < 0.45 ? 1 : 1 - (k - 0.45) / 0.55, R = Math.max(w, h) * 0.8;
+    for (var i = 0; i < 240; i++) { var an = (i * 2.39996) % (Math.PI * 2), sp = 0.15 + ((i * 53) % 17) / 17, r = R * sp * grow, cx = w / 2 + Math.cos(an) * r + noise(i * 0.7, t * 0.3, 7) * 30, cy = L.by + L.bh + Math.sin(an) * r * 0.9 + r * 0.25;
+      var rad = (14 + (i % 9) * 7) * (0.6 + grow * 0.8); g.fillStyle = 'rgba(' + col + ',' + (0.16 * fade * (0.6 + 0.4 * sp)).toFixed(3) + ')'; g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fill(); }
+  }
   function inkSquirt(t, b, a) {
-    if (!S.ink || still) return; var k = (t - S.ink) / 2.6; if (k >= 1 || k < 0) { if (k >= 1) S.ink = 0; return; } var col = DARK ? '244,241,232' : '6,24,52', e = 1 - Math.pow(1 - k, 3);
+    if (!S.ink || still) return; if (S.inkBig) { inkBig(t); return; } var k = (t - S.ink) / 2.6; if (k >= 1 || k < 0) { if (k >= 1) S.ink = 0; return; } var col = DARK ? '244,241,232' : '6,24,52', e = 1 - Math.pow(1 - k, 3);
     for (var i = 0; i < 54; i++) { var an = Math.PI * (0.15 + 0.7 * ((i * 0.618) % 1)), sp = 0.35 + ((i * 37) % 13) / 13, r = (24 + 210 * sp) * e, dx = Math.cos(an) * r * (i % 2 ? 1 : -1) * 0.8 + noise(i * 1.3, t * 0.5, 4) * 22 * k, dy = Math.sin(an) * r * 0.75;
       x.fillStyle = 'rgba(' + col + ',' + (0.3 * (1 - k) * a * (0.5 + 0.5 * sp)).toFixed(3) + ')'; x.beginPath(); x.arc(L.bx + dx, b.bot + dy, (1.5 + (i % 6) * 0.9) * (1 - 0.5 * k), 0, 7); x.fill(); }
   }
@@ -1022,7 +1033,7 @@
     orbs.forEach(function (o, i) { if (in_(ORB_LV[i])) fresh.push(o); }); tabs.forEach(function (b, i) { if (in_(TAB_LV[i])) fresh.push(b); }); devK.forEach(function (b, i) { if (in_(DEV_LV[i])) fresh.push(b); });
     if (in_(1)) fresh.push($('#au-snd'));
     fresh.forEach(function (e) { if (!e) return; e.classList.add('fresh'); setTimeout(function () { e.classList.remove('fresh'); }, 7000); var w = e.querySelector('.au-ow'); if (w) { w.classList.add('say'); setTimeout(function () { w.classList.remove('say'); }, 4000); } });
-    S.ink = performance.now() / 1000; flashWords(400); harp([0, 4, 7]); todoShow();
+    flashWords(400); harp([0, 4, 7]); todoShow();
   }
   var DEV_K = ['radio', 'wish', 'design', 'folio'];
   var devK = [], devOpen = function (i) { return earned(DEV_K[i]); };
@@ -1162,7 +1173,7 @@
   /* the deep engine, the studio, as three devices: each opened in a window over the aura, the aura one touch away. One is earned with each
      poster printed, and rides the ring under the eye with the catch; all three are in the intel */
   var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'RESEARCH BOARD', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
-  var STEPS = [['notice', 'navmap'], ['story', 'pencil'], ['make', 'wave'], ['print', 'poster']];
+  var STEPS = [['notice', 'hradio'], ['story', 'hboard'], ['make', 'hshop'], ['print', 'poster']];
   var ICON = {
     /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */
     eyet: '<g class="lid"><path d="M4 12.5c3.5-4.6 7.5-6.7 12-6.7s8.5 2.1 12 6.7c-3.5 4.6-7.5 6.7-12 6.7s-8.5-2.1-12-6.7z"/><circle cx="16" cy="12.5" r="3.6"/><circle cx="16" cy="12.5" r="1.3" class="f pu"/></g><path d="M10.5 18.5v8M14 19.2v9.5M18 19.2v9.5M21.5 18.5v8" class="d"/>',
@@ -1309,13 +1320,13 @@
        make a song: the ring shaken where it passes), the pencil (to make a poster: the ring drawn behind it, a gap ahead). The eye in
        the middle, the irukandji's own, watches them pass, and opens the photo booth. Each says so once, plainly, then goes quiet */
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
-    [[0, 'go', 'notice', svgI('navmap')], [1, 'wish', 'story', svgI('pencil')], [2, 'art', 'make', svgI('wave')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
+    [[0, 'go', 'notice', svgI('hradio')], [1, 'wish', 'story', svgI('hboard')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
     '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
-    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + [wd('intention.tab', 'intention'), wd('wish.tab', 'wish'), 'art', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
+    STEPS.map(function (s, i) { return '<button class="au-tab" data-s="' + i + '" data-fw="' + ['notice', 'story', 'make', 'print'][i] + '" aria-label="' + s[0] + '">' + svgI(s[1]) + '</button>'; }).join('') +
     DEVS.map(function (d, i) { return '<button class="au-dev" data-dev="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '" hidden>' + svgI('h' + d[0]) + '<i class="led"></i></button>'; }).join('') +
     '<svg class="au-defs" width="0" height="0" aria-hidden="true"><filter id="au-hand" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="1.8"/></filter></svg>' +
     '<button id="au-catch" aria-label="What it has caught: the map, the life, the data, El Niño">' + svgI('catch') + '<b></b></button>' +
@@ -1411,7 +1422,7 @@
     if (i !== 3 && done()) fresh();
     var from = S.stage; if (i === S.stage && !S.deep) { paint(); keys(); return; }
     if (i === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); changed(); }
-    S.ink = performance.now() / 1000; beat('step-' + i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
+    if (i === 3) squirt(); beat('step-' + i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
     S.pass = { from: from, to: i, t0: performance.now() / 1000 }; if (L.tips) ripple(L.tips[i][0], L.tips[i][1] - 10);
   }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('#au-say, .au-wish textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
@@ -1778,7 +1789,7 @@
   }
   /* at print, the piece shown as the paper will have it: the very sheet the printer is sent, dots and all */
   var PV = 0;
-  function printPreview() { var my = ++PV; posterPrint(512).then(function (sh) { if (my !== PV || !sh || S.stage !== 3) return; var g = panel.querySelector('.au-eslide.now canvas'); if (!g) return; g.width = sh.width; g.height = sh.height; var x2 = g.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(sh, 0, 0); g.classList.add('sheet'); }); }
+  function printPreview() { var my = ++PV; posterPrint(512, true).then(function (sh) { if (my !== PV || !sh || S.stage !== 3) return; var g = panel.querySelector('.au-eslide.now canvas'); if (!g) return; g.width = sh.width; g.height = sh.height; var x2 = g.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(sh, 0, 0); g.classList.add('sheet'); }); }
   api.redraw = function () { redraw(); };
   /* saving a poster to the phone. An iPhone opens a data link and then does nothing with it, so the poster is made into a file ahead of
      time and the tap hands it straight to the share sheet (Save Image). Elsewhere it downloads as a file */
@@ -1856,10 +1867,13 @@
       g.putImageData(im, 0, 0); };
     var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
     /* the head: the mark, the name, the code */
-    var hd = mk(78), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
-    var hmw = ngMark(hx, m + 1, 39, 26, '#000', dotFill(hx, 2)); hx.font = '700 34px "Helvetica Neue", Helvetica, Arial, sans-serif'; hx.fillText('novel.global', m + hmw + 14, 40);
-    var code = (P.note && P.note.code) || '', day = NG.when(P.at || Date.now()).slice(0, 6) + (P.who ? ' · by ' + P.who : ''); if (code) { hx.font = '700 26px ' + PS; var cw = hx.measureText(code).width; hx.fillText(code, W - m - cw, 40); hx.font = '600 20px ' + PS; hx.fillText(day, W - m - cw - 14 - hx.measureText(day).width, 41); }
-    if (!dark) hx.fillRect(m, 74, W - m * 2, 3); parts.push(hard(hd, dark));
+    /* the head, a quarter smaller and never crowded: the mark and the name at the left; the code at the right; under them, small, the
+       day and its maker's code (on paper only: on the screen's preview, dots). Whatever does not fit is left off, never overlapped */
+    var hd = mk(64), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
+    var hmw = ngMark(hx, m + 1, 24, 19, '#000', dotFill(hx, 2)); hx.font = '700 25px "Helvetica Neue", Helvetica, Arial, sans-serif'; var nx = m + hmw + 10; hx.fillText('novel.global', nx, 25); var nEnd = nx + hx.measureText('novel.global').width;
+    var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 19px ' + PS; var cw = hx.measureText(code).width; if (W - m - cw > nEnd + 16) hx.fillText(code, W - m - cw, 25); }
+    var day = NG.when(P.at || Date.now()).slice(0, 6) + (P.who ? ' · by ' + (S.preview ? '· · ·' : P.who) : ''); hx.font = '500 14px ' + PS; hx.fillText(day, nx, 49);
+    if (!dark) hx.fillRect(m, 61, W - m * 2, 2); parts.push(hard(hd, dark));
     /* the picture, edge to edge, with everything laid over it */
     var picP = null; if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); picP = dc; } }
     if (picP) picP._pic = 1; if (picP && !P.wtop) parts.push(picP);
@@ -1930,9 +1944,9 @@
       d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; }
     g.putImageData(im, 0, 0); return c;
   }
-  function posterPrint(W) {
+  function posterPrint(W, preview) {
     if (!NG.forPrint || !NG.ditherLib) return Promise.resolve(null);
-    return Promise.all([fontReady(), NG.ditherLib(), NG.qrLib ? NG.qrLib() : null]).then(function (r) { var out = printSheet(W, r[1]); S.lastPrint = [out.width, out.height]; S.lastSheet = out; return out; }).catch(function (e) { console.error('print sheet: ' + (e && e.stack || e)); return null; });
+    return Promise.all([fontReady(), NG.ditherLib(), NG.qrLib ? NG.qrLib() : null]).then(function (r) { S.preview = !!preview; var out; try { out = printSheet(W, r[1]); } finally { S.preview = 0; } S.lastPrint = [out.width, out.height]; S.lastSheet = out; return out; }).catch(function (e) { console.error('print sheet: ' + (e && e.stack || e)); return null; });
   }
   var PMODES = [['paper', 'print', '80 mm'], ['mesh', 'sig', '80 mm + mesh'], ['wall', 'wall', 'wall only']];
   S.pmode = store.get('da.aura.pmode', 'paper'); if (!PMODES.some(function (m) { return m[0] === S.pmode; })) S.pmode = 'paper';
@@ -1947,7 +1961,7 @@
       return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null); });
     })).then(function (s) {
       st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going');
-      if (!toWall && s !== 'failed') { lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
+      if (!toWall && s !== 'failed') { squirt(); lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P).then(function (c) {
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
