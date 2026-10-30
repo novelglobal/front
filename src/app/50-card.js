@@ -84,7 +84,7 @@ function paintFace(f, wipe) {
 /* opt.sig: a story, opened on its slip; its strings stand on the ground until the cell has a figure of its own.
    opt.cell: a story's cell opened on its card, not its slip */
 /* the radio in the aura's window is for tying: a touch opens a thing's card and its strings (the constellation, its song), never only the intention */
-const tieHere = () => IN_AURA && AURA_ONLY === 0;
+const tieHere = () => IN_AURA && (AURA_ONLY === 0 || AURA_ONLY === 1);
 function select(id, opt = {}) {
   const o = S.byId.get(id); if (!o) return;
   /* a first visit: a life touched is what was noticed, and W.I.S.H. holds it (43-journey.js) */

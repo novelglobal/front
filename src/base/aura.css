@@ -911,3 +911,14 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 #aura .au-win header nav .au-i { stroke: currentColor !important; }
 #aura .au-win header nav .au-i .f { fill: currentColor; }
 #aura.dark .au-win header nav button { color: #E9F2E4; }
+
+/* the device window's top: its keys plainly seen on the light frame; the way back a dark round key */
+#aura .au-win header nav button { opacity: .8 !important; }
+#aura .au-win header nav button[aria-current], #aura .au-win header nav button.on { opacity: 1 !important; }
+#aura .au-win header .au-wx { background: #26262A !important; color: #F4F1E8 !important; opacity: 1 !important; }
+#aura .au-win header .au-wx .au-i { stroke: #F4F1E8 !important; }
+#aura .au-win header .au-wx .au-i .f { fill: #F4F1E8 !important; }
+
+/* the great squirt: over everything for a moment, never in the way of a touch */
+.au-inkc { position: fixed; left: 0; top: 0; z-index: 70; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .au-inkc { display: none; } }
