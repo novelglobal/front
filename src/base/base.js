@@ -1011,7 +1011,9 @@ function meUsed() { store.set('da.who.at', Date.now()); }
 function me() {
   var c = store.get('da.who', ''), at = +store.get('da.who.at', 0) || 0; if (WHO_RE.test(c) && at && Date.now() - at > LUNA) { store.set('da.who', ''); store.set('da.who.pass', 0); c = ''; }
   if (WHO_RE.test(c)) { if (!at) meUsed(); return c; } var r = new Uint8Array(3); try { crypto.getRandomValues(r); } catch (e) { for (var i = 0; i < 3; i++) r[i] = Math.random() * 256 | 0; }
-  c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; store.set('da.who', c); meUsed(); return c;
+  /* letters and numbers both, never all one kind */
+  for (var tries = 0; tries < 50; tries++) { c = ''; for (var j = 0; j < 3; j++) c += WHO_CH[r[j] % 32]; if (/[A-Z]/.test(c) && /[2-9]/.test(c)) break; try { crypto.getRandomValues(r); } catch (e) { for (var i2 = 0; i2 < 3; i2++) r[i2] = Math.random() * 256 | 0; } }
+  store.set('da.who', c); meUsed(); return c;
 }
 function setMe(c) { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!WHO_RE.test(c)) return false; store.set('da.who', c); store.set('da.who.pass', 1); meUsed(); return true; }
 function mine() { meUsed(); return api('/mine/' + me()).then(function (j) { if (j && j.kin != null) store.set('da.kin', j.kin); return (j && j.mine) || []; }); }
