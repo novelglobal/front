@@ -1853,7 +1853,7 @@ if (run('base')) try {
   const bw = (((await admin('stories?status=waiting')).stories) || []).find(x => x.kind === 'record' && /"booth"/.test(x.body));
   const bb = bw ? JSON.parse(bw.body) : {};
   const onSlip = await qrIn(out.url);
-  check('⎙ prints it: sent to the printer with its colour photograph for the gallery, its words, and the receipt\'s small code opens its page on the site', !!bw && bw.photo && bw.dest === 'novelglobal' && bb.type === 'booth' && bb.text === 'hello from carlton' && out.w === 512 && onSlip === 'https://oan.test/#n=' + bw.code, JSON.stringify({ bb, onSlip, code: bw && bw.code }));
+  check('⎙ prints it: sent to the printer with its colour photograph for the gallery, its words, and the receipt\'s small code opens its page on the site', !!bw && bw.photo && bw.dest === 'novelglobal' && bb.type === 'booth' && bb.text === 'hello from carlton' && out.w === 512 && onSlip === null, JSON.stringify({ bb, onSlip, code: bw && bw.code }));
   await sleep(600); await shot(page, 'b06c-booth-sent.png');
   check('once sent, three ways on: again (hidden for the ten minutes until this phone can print again), save it, or novel.global (where it goes by itself after a while)', out.keys.join() === '[ ↺ ]>,[ ↓ ]>,[ novel.global ]>https://oan.test/' && hid, JSON.stringify(out.keys) + hid);
   /* then the pass: the phone's three characters as a card to keep, and novel.global */

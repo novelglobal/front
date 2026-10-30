@@ -612,3 +612,14 @@ html.aura-on body:not(.booth) #booth { display: none !important; }
 #booth .go2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 320px); }
 #booth .go2 button { width: 100%; padding: 14px 0 !important; font: 18px "Architects Daughter", "Comic Sans MS", cursive !important; border-radius: 999px; }
 #booth .bw { font: 22px "Architects Daughter", "Comic Sans MS", cursive !important; border-bottom-style: dashed !important; }
+
+/* the booth's stamps on light tiles (ink on paper, as they print); undo beside them; a stamp dragged on the photo */
+html.aura-on #booth .am.sm button.px { background: #F4F1E8 !important; }
+html.aura-on #booth .am.sm #bt-undo { width: 44px; height: 52px; font: 22px/1 ui-monospace, Menlo, monospace; background: none !important; color: #F4F1E8; }
+#booth .pv canvas { touch-action: none; }
+/* print and save: the same size, side by side */
+html.aura-on #booth .go2 { align-items: center; }
+html.aura-on #booth .go2 button { height: 54px; padding: 0 !important; line-height: 54px; border: 0; border-radius: 27px; box-shadow: inset 0 0 0 1.5px #F4F1E8 !important; background: none; color: #F4F1E8; }
+html.aura-on #booth .go2 .go { background: #F4F1E8 !important; color: #17457F !important; }
+/* the kept screen: its word under the ring, not over the sky's lines */
+html.aura-on #booth .kept + .cap { margin-top: 10px; background: rgba(8, 24, 50, .6); padding: 4px 10px; border-radius: 999px; }

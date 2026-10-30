@@ -308,6 +308,23 @@ const KNOT_W = { place: 'PLACE', person: 'PERSON', idea: 'IDEA' };
 const FAM_W = f => (FAMILIES[f] || {}).w || '';
 const KIND_ROW = n => n.t === 'biz' ? `<i class="role${(n.harm || []).length ? ' on' : ''}">${(n.harm || []).length ? (ROLES[n.harm[0]] || {}).w || '' : FAM_W(n.fam) || (ROLES[n.role] || {}).w || ''}</i>` : n.t === 'group' ? '<i class="role">GROUP</i>' : n.t === 'water' ? '<i class="role">WATER</i>' : n.t === 'custom' ? `<i class="role">${KNOT_W[n.kind] || 'KNOT'}</i>` : `<i class="role">${esc((M.KINDS[n.g] || '').toUpperCase())}</i>`;
 const nodeMark = n => n.t === 'biz' ? `<i class="fm fm-${esc(n.fam || (ROLES[n.role] || {}).cat || 'service')}${(n.harm || []).length || (n.on && !n.harm) ? ' harm' : ''}${n.tied ? ' tied' : ''}"></i>` : n.t === 'group' ? `<i class="patch" style="--c:${C.tribe[n.kind] || C.tribe.park}"></i>` : n.t === 'water' ? icon('water', 'sm') : n.t === 'custom' ? `<i class="sq${n.tied ? ' tied' : ''}"></i>` : glyphSVG(n.g || 'paw');
+/* a constellation made into something to use: kept as a song among the songs (it plays, layers, goes onto a poster from there),
+   or its star chart onto the poster as art */
+async function conUse(a) {
+  const o = S.byId.get(S.sel); if (!o) return; const name = strings.nameFor(o, strings.fig) || 'A constellation';
+  if (a === 'keepSong') { const m = mixNow(); m.where.place = name; LOOPS.unshift(m); LOOPS.splice(8); while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop(); made('song', name); snd.tick(1900); toast('✓'); return; }
+  if (a === 'asIntel') {
+    const tied = strings.reach().filter(x => x.tied).slice(0, 14), W = 600, H = 120 + tied.length * 34, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#111'; x.font = '600 28px Poppins, sans-serif'; x.fillText(name.slice(0, 30), 24, 48); x.font = '500 13px "IBM Plex Mono", monospace'; x.fillText(`${tied.length} TIED · ${nameOf(o).toUpperCase().slice(0, 30)}`, 24, 76);
+    tied.forEach((k, i) => { const y = 112 + i * 34; x.font = '500 18px Poppins, sans-serif'; x.fillText(String(strings.labelOf(k.key) || k.n || '').slice(0, 34), 44, y); x.font = '500 12px "IBM Plex Mono", monospace'; x.fillText(String({ biz: 'PLACE', group: 'GROUP', water: 'WATER', life: 'LIFE', custom: 'KNOT' }[k.t] || '') + ' · ' + metres(k.d), W - 190, y); x.beginPath(); x.arc(28, y - 6, 4, 0, 7); x.fill(); });
+    const png = c.toDataURL('image/png'); made('intel', name); if (IN_AURA) toAura(png, true); else { setView(2); setTimeout(() => placeOnPage(png, 'art', 240), 500); } return;
+  }
+  let svg = strings.chartOf(o.id, 120); if (!svg) return; if (!/xmlns=/.test(svg)) svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await new Promise(r => { im.onload = r; im.onerror = r; });
+  const c = document.createElement('canvas'); c.width = c.height = 600; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 600, 600); try { x.drawImage(im, 0, 0, 600, 600); } catch (e) { return; }
+  x.fillStyle = '#111'; x.font = '600 26px Poppins, sans-serif'; x.fillText(name.slice(0, 32), 24, 572); const png = c.toDataURL('image/png'); made('art', name);
+  if (IN_AURA) toAura(png, true); else { setView(2); setTimeout(() => placeOnPage(png, 'art', 240), 500); }
+}
 function fillStrings() {
   const el = $('#r-strings'); const o = S.byId.get(S.sel); if (!o || S.mode !== 'ping' || o.ob) { el.innerHTML = ''; el.hidden = true; return; }
   const f = strings.fig; const n = f.e.length; const all = strings.reach(); const det = el.querySelector('details'); const open = det ? det.open : false; const pk = strings.peeked;
@@ -322,10 +339,11 @@ function fillStrings() {
     + `<button type="button" class="ib" data-st="restore" aria-label="Bring back" data-tip="Bring back"${f.prev ? '' : ' disabled'}>${icon('restore')}</button></div>`
     + (n ? `<div class="st-con"><button type="button" class="st-print" data-st="print" aria-label="The print it will make" data-tip="The print it will make"><canvas id="st-print" width="120" height="200"></canvas></button><div class="st-meta"><input class="con-n" id="con-n" value="${esc(name)}" maxlength="48" aria-label="The constellation's name" spellcheck="false"><span class="chart-wrap">${strings.chartOf(o.id, 72)}</span></div></div>` : '')
     + (all.length ? `<details class="reach"${open ? ' open' : ''}><summary class="mono">IN REACH · ${all.length}<span>${metres(rangeOf(o))}</span></summary><ol>${all.slice(0, 160).map(x => `<li><button type="button" class="nrow${x.tied ? ' on' : ''}${x.key === pk ? ' pk' : ''}" data-node="${esc(x.key)}">${nodeMark(x)}<span class="n">${esc(strings.labelOf(x.key) || x.n)}</span>${KIND_ROW(x)}<small class="mono">${metres(x.d)}</small></button><button type="button" class="tie${x.tied ? ' on' : ''}" data-tie="${esc(x.key)}" aria-pressed="${x.tied}" aria-label="${x.tied ? 'Let go' : 'Join'}">${icon(x.tied ? 'close' : 'string', 'sm')}</button></li>`).join('')}</ol></details>` : '');
-  if (n) drawMini($('#st-print'), o);
+  if (n) { drawMini($('#st-print'), o); el.insertAdjacentHTML('beforeend', `<div class="st-use"><button type="button" data-st="keepSong" aria-label="Keep as a song">${icon('sound')}<small>song</small></button><button type="button" data-st="asArt" aria-label="Its star chart onto my poster">${icon('string')}<small>art</small></button><button type="button" data-st="asIntel" aria-label="What it ties together, onto my poster">${icon('search')}<small>intel</small></button></div>`); }
 }
 $('#r-strings').addEventListener('click', e => {
-  const s2 = e.target.closest('[data-st]'); if (s2) { const a = s2.dataset.st; if (a === 'print') { const o = S.byId.get(S.sel); if (o) toWish(o); return; } if (a === 'trace') { strings.traceIt(); fitWeb(); return; } strings[a](); return; }
+  const s2 = e.target.closest('[data-st]'); if (s2) { const a = s2.dataset.st; if (a === 'print') { const o = S.byId.get(S.sel); if (o) toWish(o); return; }
+    if (a === 'keepSong' || a === 'asArt' || a === 'asIntel') { conUse(a); return; } if (a === 'trace') { strings.traceIt(); fitWeb(); return; } strings[a](); return; }
   const t = e.target.closest('[data-tie]'); if (t) { strings.join(t.dataset.tie); return; }
   const n = e.target.closest('[data-node]'); if (n) { const k = n.dataset.node; if (k === strings.peeked) strings.act(k); else { strings.peek(k); bringIntoView(k); } }
 });

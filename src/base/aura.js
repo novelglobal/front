@@ -1008,7 +1008,7 @@
   var earned = function (k) { if (ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
   function lvUp(n) { var was = LV(); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); }
   /* the booth (on the same page, or another visit) says a photo was taken: level one */
-  function lvSync() { LVN = Math.max(LVN, +store.get('da.lv', 0) || 0); if (ROUNDS >= 2) lvUp(5); if (store.get('da.who.pass', 0) || store.get('da.aura.printed', 0)) lvUp(1); else applyGates(); }
+  function lvSync() { var was = LV(), n = Math.max(+store.get('da.lv', 0) || 0, store.get('da.who.pass', 0) || store.get('da.aura.printed', 0) ? 1 : 0, ROUNDS >= 2 ? 5 : 0); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); else applyGates(); keyName(); }
   addEventListener('ng-level', function () { lvSync(); });
   /* something new: it comes in where it lives, glowing a while, its word said once; what was done shows, then tucks itself away */
   function unlocked(from, to) {
@@ -1420,7 +1420,8 @@
   var owSaid = false;
   function orbWords() { if (owSaid || START.discWords === false) return; owSaid = true; orbs.concat([$('#au-eyec')]).forEach(function (o, i) { var w = o && o.querySelector('.au-ow'); if (!w) return; setTimeout(function () { w.classList.add('say'); setTimeout(function () { w.classList.remove('say'); }, 3200); }, 900 + i * 2600); }); }
   $('#au-up').addEventListener('click', toGlobe);
-  function barColour() { var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', DARK ? '#18191C' : '#17457F'); }
+  /* the phone's bars: an iPhone takes a new colour only from a new tag, so the old one is swapped for one of the sky's colour */
+  function barColour() { var col = DARK ? '#18191C' : '#17457F'; [].forEach.call(document.querySelectorAll('meta[name="theme-color"]'), function (m) { m.remove(); }); var m2 = document.createElement('meta'); m2.name = 'theme-color'; m2.content = col; document.head.appendChild(m2); document.documentElement.style.backgroundColor = col; document.body.style.backgroundColor = col; }
   function setDark(on) { DARK = !!on; setTimeout(barColour, 0); store.set('da.aura.dark', DARK); root.classList.toggle('dark', DARK); document.documentElement.classList.toggle('aura-dark', DARK); var b = $('#au-theme'); if (b) b.setAttribute('aria-pressed', String(DARK)); WORMS.length = 0; S.wormAt = 0; }
   document.documentElement.classList.toggle('aura-dark', DARK); setTimeout(barColour, 0);
   /* the checklist: what there is to do here, in plain words; done ones ticked, the next ones only dots until near, with a hint.
@@ -2034,10 +2035,10 @@
       .then(function (r) { i.disabled = false; if (r.status === 201) { i.value = ''; TK.re = null; i.placeholder = '…'; return r.json().then(function (j) { if (j.kin != null) { store.set('da.kin', j.kin); keyName(); } made('talk', t, false); talkOpen(TK.sec); }); }
         var k = $('#au-yours'); if (k) { k.classList.remove('took'); void k.offsetWidth; k.classList.add('took'); } bell(1, 0.1); })
       .catch(function () { i.disabled = false; }); });
-  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var tk = $('#au-talk'); if (tk) tk.hidden = !on; }
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var tk = $('#au-talk'); if (tk) tk.hidden = !on; var yk = $('#au-yours'); if (yk) yk.hidden = !!on && !root.classList.contains('keyon'); }
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
-    i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); }, 4000); harp([0, 4, 7]); }); });
+    i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); keyName(); }, 4000); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
   var making = function () { return !!P && !P.sent && filled(); };
