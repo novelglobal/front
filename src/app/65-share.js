@@ -69,7 +69,7 @@ async function directAction(s0, dest, bytes, kind = 'story') {
   if (p) { try { payload.escpos = b64bytes(bytes || await escpos(s, p.paper)); } catch (e) { /* the words go without the bytes */ } }
   const own = s.img && s.img.k === 'own' ? sigSrc(s, false) : ''; if (own && /^data:/.test(own)) { const ph = await photoToSend(own); if (ph) payload.photo = ph; }
   SENT[s.code] = { dest: payload.dest, status: 'sending', at: Date.now() }; saveSent(); tie(2);
-  try { const j = await post(payload); SENT[s.code] = { ...SENT[s.code], id: j.id, status: j.status, job: j.job ? j.job.status : null }; }
+  try { const j = await post(payload); SENT[s.code] = { ...SENT[s.code], id: j.id, status: j.status, job: j.job ? j.job.status : null }; if (payload.dest === 'mesh') store.set('da.aura.mesh', 1); }
   catch (e) {
     if (e.status) { delete SENT[s.code]; saveSent(); throw e; }
     OUTBOX.push(payload); store.set('da.outbox.v1', OUTBOX); SENT[s.code].status = 'outbox';   /* no signal: it goes when there is one */

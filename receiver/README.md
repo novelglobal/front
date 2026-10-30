@@ -118,7 +118,7 @@ The printer prints a **READY** slip with this place's name. On the approval page
 sudo -u da python3 -m pip install --user meshtastic
 ```
 
-Then set `DA_MESH=auto` in `/etc/da-pull.env`, or the radio's device, such as `/dev/ttyACM0`. Turn **MESH ON** for this printer on the approval page, and run `sudo systemctl restart da-pull`. Each slip's mesh line, 200 bytes at most, now also goes out on the radio's primary channel.
+Then set `DA_MESH=auto` in `/etc/da-pull.env` for a radio plugged into the Pi by USB (best: no address to change from place to place), or its device, such as `/dev/ttyACM0`. For a radio on the same Wi-Fi instead, `DA_MESH=tcp:auto` finds it by the name it announces on that Wi-Fi, wherever it is (it needs `avahi-utils`, on Raspberry Pi OS already). Turn **MESH ON** for this printer on the approval page, and run `sudo systemctl restart da-pull`. Each slip's mesh line, 200 bytes at most, now also goes out on the radio's primary channel.
 
 ## 6. Wi-Fi from a phone, and turning it off
 
@@ -129,6 +129,14 @@ curl -fsSL https://raw.githubusercontent.com/novelglobal/front/staging/receiver/
 ```
 
 **Wi-Fi from a phone** (`setup/wifi.py`). When the Pi has found no Wi-Fi it knows for two minutes, it opens its own, `<NAME> SETUP`, and the printer prints its password and a code to scan. Join it with a phone: a page opens by itself (or go to `http://10.42.0.1`). Choose the Wi-Fi, type its password and press **JOIN**. The printer prints **ON WI-FI** once the Pi has joined, and the Pi remembers it. Every Wi-Fi the Pi already knows is kept. If nobody comes, the setup Wi-Fi closes after ten minutes and the Wi-Fi it knows is looked for again. It is built on NetworkManager's own hotspot, so it needs Raspberry Pi OS Bookworm or newer, and nothing else to install. `python3 wifi.py --demo` shows the page on a computer, at `http://127.0.0.1:8080`.
+
+**Moving it to another Wi-Fi**, even while it is on one. Any of three ways opens the setup Wi-Fi and prints its slip:
+
+- **CHANGE WI-FI** on the approval page, under **PRINTERS** (shown once the Pi has the latest bridge).
+- **The plug**: plug it in, and within a minute unplug it and plug it in again. A start cut short is noticed at the next one; no clock or screen is needed.
+- `sudo python3 /opt/wifi-setup/wifi.py --now`, over ssh (`ssh novel@da-novelglobal.local` finds it on any Wi-Fi by its name).
+
+Its page marks a Wi-Fi too **WEAK** for the touch screen, which has a smaller radio: pick a strong one. The **ON WI-FI** slip carries a code a phone's camera reads to join the same Wi-Fi, so the screen can be set to match (`WIFI_SHARE=0` in `/etc/wifi-setup.env` leaves it off). The approval page's printer card shows which Wi-Fi the Pi and the screen are each on, how strongly, the Pi's address, and whether they share one.
 
 **Turning it off**, so its card is never cut off mid-write:
 

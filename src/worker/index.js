@@ -185,7 +185,8 @@ const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false };
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
    curations: the portfolio's twelve groups (JSON: [{ k, name, about }]) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000 };
+/* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothWait [min, max] minutes) */
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600 };
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
@@ -227,7 +228,7 @@ async function touchAuth(db, req, id) {
   if (!p || !p.touch || !tok || !(await same(await sha256(tok), p.touch))) return null;
   if (!p.touch_seen || now() - p.touch_seen > 60e3) await db.prepare('UPDATE printers SET touch_seen = ? WHERE id = ?').bind(now(), id).run(); return p;
 }
-const netOf = url => { const n = (url.searchParams.get('net') || '').slice(0, 40), r = +url.searchParams.get('rssi'); return n ? JSON.stringify({ n, rssi: Number.isFinite(r) ? Math.max(-120, Math.min(0, Math.round(r))) : null, at: now() }) : null; };
+const netOf = url => { const n = (url.searchParams.get('net') || '').slice(0, 40), r = +url.searchParams.get('rssi'), ip = url.searchParams.get('ip') || ''; return n ? JSON.stringify({ n, rssi: Number.isFinite(r) ? Math.max(-120, Math.min(0, Math.round(r))) : null, ...(/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? { ip } : {}), at: now() }) : null; };
 async function touchList(db, req, id) {
   const p0 = await touchAuth(db, req, id); if (!p0) return fail(401, 'token');
   { const tn = netOf(new URL(req.url)); if (tn) { const o = JSON.parse(tn), was = (() => { try { return JSON.parse(p0.touch_net || 'null'); } catch (e) { return null; } })(); if (!was || was.n !== o.n || Math.abs((was.rssi || 0) - (o.rssi || 0)) > 6 || o.at - was.at > 60e3) await db.prepare('UPDATE printers SET touch_net = ? WHERE id = ?').bind(tn, id).run(); } }
@@ -461,7 +462,7 @@ async function resetSite(db, req) {
   if (b.places) ops.push(db.prepare("UPDATE places SET status = 'deleted', decided = ? WHERE status != 'deleted'").bind(t));
   if (b.posts) ops.push(db.prepare("UPDATE posts SET status = 'draft', updated = ? WHERE status = 'published'").bind(t));
   if (b.words) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('template', 'words', 'cities')"));
-  if (b.settings) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('lifeLock', 'exampleEdit', 'phreak', 'gates', 'fx')"));
+  if (b.settings) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('lifeLock', 'exampleEdit', 'phreak', 'gates', 'fx', 'start')"));
   if (b.traffic) ops.push(db.prepare('DELETE FROM traffic'));
   if (!ops.length) return fail(400, 'nothing');
   await db.batch(ops); return json({ ok: true });

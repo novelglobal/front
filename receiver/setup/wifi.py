@@ -7,6 +7,11 @@ itself (or go to http://10.42.0.1), choose the Wi-Fi and type its password. The 
 slip to say so. Every Wi-Fi it already knows is kept: this only adds. If nobody comes, the setup Wi-Fi closes after ten
 minutes and the Wi-Fi it knows is looked for again, so a router that was slow to start is still found.
 
+To move it to another Wi-Fi, three ways: CHANGE WI-FI on the approval page (the bridge leaves a note in /run/da-pull/wifi);
+plug it in and, within two minutes, unplug it and plug it in again (a start cut short is noticed at the next); or
+sudo python3 wifi.py --now. Its page marks a Wi-Fi too weak for the touch screen, and the slip saying it joined carries a
+code a phone's camera reads to join the same Wi-Fi (WIFI_SHARE=0 in /etc/wifi-setup.env leaves it off).
+
 Built on NetworkManager's own hotspot (Raspberry Pi OS Bookworm and later). Standard library only. Runs as root.
 Settings come from /etc/wifi-setup.env (receiver/setup/install.sh writes it); slips go through printd where this Pi
 has it (/etc/printd.env), else straight to the printer.
@@ -34,6 +39,10 @@ CON = 'wifi-setup'   # NetworkManager's name for the setup Wi-Fi
 MINE = 'setup: '     # and the start of the name of each Wi-Fi added from the page
 ADDR = '10.42.0.1'
 DEMO = '--demo' in sys.argv
+SHARE = os.environ.get('WIFI_SHARE', '1') == '1'                    # the joined Wi-Fi's code on its slip
+WANT = os.environ.get('WIFI_WANT', '/run/da-pull/wifi')           # CHANGE WI-FI, from the approval page through the bridge
+QUICK = os.environ.get('WIFI_QUICK', '/var/lib/wifi-setup/quick')  # written at start, gone after two minutes up
+WEAK = 50   # NetworkManager's percent below which the touch screen, a smaller radio, may not reach it
 slipped = False      # the setup slip prints once a start, however often the setup Wi-Fi opens
 failed = ''          # why the setup Wi-Fi last failed to open, printed once a start
 
@@ -217,8 +226,9 @@ def bars(sig):
 
 def choose_page(nets, error):
     rows = ''.join(f'<label class="n"><input type="radio" name="net" value="{html.escape(n, True)}"{" checked" if i == 0 else ""}>'
-                   f'<span>{html.escape(n)}</span><i>{"" if locked else "OPEN "}{bars(s)}</i></label>' for i, (n, s, locked) in enumerate(nets))
-    return page((f'<p class="e">{html.escape(error)}</p>' if error else '') + f'<form method="post" action="/join">{rows}'
+                   f'<span>{html.escape(n)}</span><i>{"" if locked else "OPEN "}{"WEAK " if s < WEAK else ""}{bars(s)}</i></label>' for i, (n, s, locked) in enumerate(nets))
+    tip = '<p>PICK A STRONG ONE: THE SCREEN NEEDS TO REACH IT TOO.</p>' if any(s < WEAK for _, s, _ in nets) else ''
+    return page((f'<p class="e">{html.escape(error)}</p>' if error else '') + tip + f'<form method="post" action="/join">{rows}'
                 '<label class="f">OTHER<input type="text" name="other" autocomplete="off" autocapitalize="off" spellcheck="false"></label>'
                 '<label class="f">PASSWORD<input type="password" name="pw" autocomplete="off"></label><button>JOIN</button></form>')
 
@@ -311,13 +321,55 @@ def setup_round():
         if join(name, pw, hidden):
             log('on', name)
             if SLIPS:
-                send(slip(NAME, ['ON WI-FI', name, 'REMEMBERED', '', stamp()]))
+                share = SHARE and pw
+                send(slip(NAME, ['ON WI-FI', name, 'REMEMBERED'] + (['', 'SCAN TO JOIN THE SAME WI-FI', '(FOR THE SCREEN, OR A PHONE)'] if share else []) + ['', stamp()],
+                          qr=wifi_qr(name, pw) if share else None, at=4))
             return True
         if SLIPS:
             send(slip(NAME, ['COULD NOT JOIN', name, 'CHECK ITS PASSWORD, THEN JOIN', SSID, 'AGAIN', '', stamp()]))
         error = f'COULD NOT JOIN {name}. CHECK ITS PASSWORD.'
         if not setup_wifi(True):
             return False
+
+
+def quick_start():
+    """True when the last start was cut short: plugged back in within two minutes of being plugged in. No clock is needed
+    (a Pi has none that survives a move): the mark left at start is only taken away once it has been up two minutes"""
+    try:
+        bid = open('/proc/sys/kernel/random/boot_id').read().strip()
+    except OSError:
+        return False
+    try:
+        prev = open(QUICK).read().strip()
+    except OSError:
+        prev = ''
+    try:
+        os.makedirs(os.path.dirname(QUICK), exist_ok=True)
+        with open(QUICK, 'w') as f:
+            f.write(bid)
+        os.sync()
+    except OSError:
+        return False
+    return bool(prev) and prev != bid
+
+
+def up_long():
+    """the mark taken away once this start has lasted two minutes"""
+    try:
+        if float(open('/proc/uptime').read().split()[0]) > 120 and os.path.exists(QUICK):
+            os.remove(QUICK); os.sync()
+    except (OSError, ValueError):
+        pass
+
+
+def asked():
+    """CHANGE WI-FI from the approval page: the note, taken"""
+    try:
+        if os.path.exists(WANT):
+            os.remove(WANT); return True
+    except OSError:
+        pass
+    return False
 
 
 def main():
@@ -329,11 +381,16 @@ def main():
     if len(PASS) < 8:
         log('WIFI_PASSWORD, of 8 or more characters, is missing from /etc/wifi-setup.env'); return 2
     setup_wifi(False)   # a setup Wi-Fi left open by an earlier run is closed
-    force, lost = '--now' in sys.argv, None
+    force, lost = '--now' in sys.argv or quick_start(), None
+    if force:
+        log('opening the setup Wi-Fi now')
     log('watching the network; the setup Wi-Fi opens after', WAIT, 'seconds without one')
     while True:
+        up_long()
+        if asked():
+            log('CHANGE WI-FI, from the approval page'); force = True
         if not force and online():
-            lost = None; time.sleep(15); continue
+            lost = None; time.sleep(5); continue
         lost = lost or time.time()
         if not force and time.time() - lost < WAIT:
             time.sleep(5); continue

@@ -742,3 +742,51 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 /* the pixel maker, held up: its key larger than the rest, a faint glow round it */
 #aura .au-tray [data-add="p"] { transform: scale(1.3); margin: 0 6px; filter: drop-shadow(0 0 5px rgba(124, 255, 176, .5)); }
 #aura .au-tray [data-add="p"].on { filter: drop-shadow(0 0 8px rgba(124, 255, 176, .8)); }
+
+/* ───────── the start, with three clear ways in ───────── */
+/* placed by the script a moment after they exist: unseen until then, so nothing flashes in the top left at the start */
+#aura .au-orb:not([style*="transform"]), #aura .au-tab:not([style*="transform"]), #aura .au-dev:not([style*="transform"]) { visibility: hidden; }
+/* each disc's words, said once in plain words under it, then gone; again on a hover */
+.au-orb { overflow: visible; }
+.au-orb .au-ow { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font: 15px/1.2 "Architects Daughter", "Comic Sans MS", cursive; color: var(--ink); opacity: 0; transition: opacity 1.2s; pointer-events: none; }
+.au-orb .au-ow.say, .au-orb:hover .au-ow, .au-orb:focus-visible .au-ow { opacity: .9; }
+.au-orb svg.au-i path:not(.f) { fill: none; }
+/* the checklist's string, beside day and night */
+#au-todo { position: absolute; left: 52px; top: 0; width: 30px; height: 66px; display: none; background: none; border: 0; cursor: pointer; }
+#aura.m-globe #au-todo, #aura.m-seed #au-todo, #aura.m-iruk #au-todo { display: block; }
+#au-todo i { position: absolute; left: 14px; top: 0; height: 30px; border-left: 1.5px dotted var(--faint); }
+#au-todo b { position: absolute; left: 8px; top: 30px; width: 13px; height: 15px; border-radius: 2px; box-shadow: inset 0 0 0 1.3px var(--ink); background: linear-gradient(var(--ink), var(--ink)) 3px 4px / 7px 1.3px no-repeat, linear-gradient(var(--ink), var(--ink)) 3px 7px / 7px 1.3px no-repeat, linear-gradient(var(--ink), var(--ink)) 3px 10px / 5px 1.3px no-repeat; }
+/* pulled: a tentacle comes down and the list hangs from it */
+.au-todo { position: absolute; left: 30px; top: 46px; z-index: 30; width: min(260px, calc(100vw - 48px)); padding: 0 0 0 22px; }
+.au-todo[hidden] { display: none; }
+.au-todo .au-tent { position: absolute; left: 6px; top: 0; width: 10px; height: 100%; background: radial-gradient(circle, var(--ink) 1.1px, transparent 1.6px) 50% 0 / 10px 9px repeat-y; transform-origin: top; animation: au-tent 1.1s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes au-tent { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.au-todo ol { list-style: none; margin: 0; padding: 10px 0; display: grid; gap: 9px; font: 15px/1.25 "Architects Daughter", "Comic Sans MS", cursive; color: var(--ink); }
+.au-todo li { opacity: 0; animation: au-in .5s ease forwards; }
+.au-todo li:nth-child(1) { animation-delay: .5s; } .au-todo li:nth-child(2) { animation-delay: .6s; } .au-todo li:nth-child(3) { animation-delay: .7s; } .au-todo li:nth-child(4) { animation-delay: .8s; }
+.au-todo li:nth-child(5) { animation-delay: .9s; } .au-todo li:nth-child(6) { animation-delay: 1s; } .au-todo li:nth-child(7) { animation-delay: 1.1s; } .au-todo li:nth-child(8) { animation-delay: 1.2s; }
+@keyframes au-in { to { opacity: .85; } }
+.au-todo li.done { text-decoration: line-through; text-decoration-thickness: 1px; }
+.au-todo li small { display: block; font-size: 12px; opacity: .6; }
+/* the small player on the sound desk */
+.au-desk .au-kept { list-style: none; margin: 0; padding: 4px; display: grid; gap: 2px; max-height: 150px; overflow-y: auto; background: rgba(0, 0, 0, .35); border-radius: 6px; font: 500 10px "Departure Mono", ui-monospace, Menlo, monospace; }
+.au-desk .au-kept li { display: flex; align-items: center; gap: 4px; }
+.au-desk .au-kept li [data-ks] { flex: 1; display: flex; gap: 8px; align-items: center; padding: 5px 6px; border-radius: 4px; text-align: left; color: #CFE8C9; }
+.au-desk .au-kept li [data-ks] span { flex: 1; text-transform: uppercase; letter-spacing: .06em; }
+.au-desk .au-kept li [data-ks] b { opacity: .55; font-weight: 500; }
+.au-desk .au-kept li [data-ks]:hover { background: rgba(255, 255, 255, .08); }
+.au-desk .au-kept li.on [data-ks] { background: rgba(92, 224, 122, .18); color: #5CE07A; }
+.au-desk .au-kept li .x { width: 22px; opacity: .5; }
+
+/* the stamps among the pixel maker's subjects: small, the same weight as the drawn ones */
+.au-pix .au-subs .au-pxst img { width: 26px; height: 26px; display: block; image-rendering: pixelated; opacity: .85; }
+.au-pix .au-subs .au-pxst.on img { opacity: 1; }
+
+/* the checklist, all done (or turned off on the approval page): gone */
+#aura #au-todo.gone, #aura #au-todo.gone + .au-todo { display: none !important; }
+
+/* the checklist, quieter: no dotted tentacle, a word each, the ones not yet open only their distance, faint */
+.au-todo .au-tent { display: none; }
+.au-todo { padding-left: 4px; }
+.au-todo li.near small { font-size: 13px; opacity: .45; }
+.au-todo li.secret { color: #7CFFB0; }
