@@ -6,3 +6,6 @@ test/shots/
 .env
 src/worker/stamp.js
 __pycache__/
+
+# the Arduino compiler's working folder, beside a sketch
+src/touch/*/build/

@@ -104,6 +104,11 @@
         const hint = !L ? 'Pieces go to the printer chosen on the site; make one on this site and print it here.' : L.status === 'held' ? (p.touch ? 'Waiting for a press on the touch screen.' : 'Waiting for approval below.') : L.status === 'queued' ? (fresh(p.seen) ? 'The Pi will take it in a moment.' : 'Waiting for the Pi to ask.') : L.status === 'failed' ? 'The Pi could not print it: see the error (printd answered 500 means the printer is off or unplugged).' : '';
         let R = null; try { R = p.refused ? JSON.parse(p.refused) : null; } catch (e) { /* none */ } const ref = R && (!L || R.at > L.at) ? `  ·  ✗ LAST SEND REFUSED ${when(R.at)}: ${R.why}` : '';
         return el('div', { class: 'note', text: `${pi}  ·  ${scr}  ·  ${mesh}  ·  ${last}${ref}${hint ? '  —  ' + hint : ''}` }); })(),
+      /* the Wi-Fi each is on, as each last said: the same, or not; and how strong */
+      (() => { const J = v => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }; const a = J(p.net), b = J(p.touch_net); if (!a && !b) return null;
+        const bars = r => (r == null ? '' : r > -60 ? ' STRONG' : r > -70 ? ' GOOD' : r > -78 ? ' WEAK' : ' TOO WEAK'); const one = (who, x) => (x ? `${who} ON ${x.n} (${x.rssi} dBm${bars(x.rssi)}) ${when(x.at)}` : `${who} HAS NOT SAID`);
+        const same = a && b ? (a.n === b.n ? '✓ THE SAME WI-FI' : '✗ NOT THE SAME WI-FI: SET THE SCREEN (HOLD BOOT 3 S) OR THE PI (CHANGE WI-FI) TO ONE BOTH REACH') : '';
+        return el('div', { class: 'note', text: [one('PI', a), p.touch ? one('SCREEN', b) : '', same].filter(Boolean).join('  ·  ') }); })(),
       el('div', { class: 'acts' },
         el('button', { type: 'button', text: p.paired ? 'NEW TOKEN' : 'PAIR A PRINTER', onclick: async () => { if (p.paired && !confirm('A new token stops the old one working. Go on?')) return; const j = await setP(p.id, { action: 'token' }); tok.hidden = false; tok.textContent = `This token shows once. Put it on the receiver, in /etc/da-pull.env:\n\nDA_SERVER=${location.origin}\nDA_PRINTER=${p.id}\nDA_TOKEN=${j.token}`; } }),
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,
@@ -117,6 +122,7 @@
         /* the printer's icon on the map: online when switched on here, or while its Pi is listening */
         el('button', { type: 'button', class: p.live ? 'on' : '', text: p.live ? 'ONLINE ON THE MAP' : 'NOT YET ONLINE ON THE MAP', onclick: async () => { await setP(p.id, { action: 'live', on: !p.live }); show('printers'); } }),
         el('button', { type: 'button', text: `PAPER ${p.paper === '80' ? '58' : '80'} MM`, onclick: async () => { await setP(p.id, { action: 'paper', paper: p.paper === '80' ? '58' : '80' }); show('printers'); } }),
+        p.paired && /\bwifi\b/.test(p.can || '') ? el('button', { type: 'button', text: fresh(p.wifi) ? 'OPENING ITS WI-FI SETUP' : 'CHANGE WI-FI', onclick: async () => { if (!confirm('Open this printer\'s Wi-Fi setup? It leaves its Wi-Fi, prints its setup slip with a code to scan, and waits ten minutes for a phone to choose another.')) return; await setP(p.id, { action: 'wifi' }); show('printers'); } }) : null,
         p.paired ? el('button', { type: 'button', text: 'TEST PRINT', onclick: async () => { await setP(p.id, { action: 'test' }); show('printers'); } }) : null,
         canOff && !listening ? el('button', { type: 'button', disabled: true, text: 'OFF OR OUT OF WI-FI' }) : null,
         canOff && listening ? el('button', { type: 'button', class: 'no', text: fresh(p.off) ? 'TURNING OFF' : 'TURN OFF', onclick: async () => { if (!confirm('Turn this printer off? It prints a slip, then shuts down. Unplug it once its green light stops.')) return; await setP(p.id, { action: 'off' }); show('printers'); } }) : null),
