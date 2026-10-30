@@ -341,7 +341,7 @@ async function output(k, s, btn) {
   const pre = $('#s-text'); const show = t => { pre.hidden = false; pre.textContent = t; pre.dataset.n = k === 'mesh' ? `${bytes(t)} B` : `${t.length}`; };
   tie(2); if (k === 'print') { printSlip(s); return; }
   if (k === 'mesh' || k === 'pager') { const t = k === 'mesh' ? meshText(s) : pagerText(s); show(t); const ok = await copyText(t); toast(ok ? `COPIED · ${pre.dataset.n}` : pre.dataset.n); snd.tick(2100); return; }
-  if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); try { if (navigator.share && url) { await navigator.share({ title: s.code, text: (s.lines || {}).h || '', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; } show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
+  if (k === 'link') { const url = linkOf(s); const t = url || meshText(s); show(t); toast((await copyText(t)) ? 'COPIED' : s.code); return; }
   btn.classList.add('busy'); snd.printer(700);
   try {
     if (k === 'bits') download(`${s.code}-384.png`, await slipPNG(s, 384, 2));

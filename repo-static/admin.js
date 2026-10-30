@@ -43,7 +43,7 @@
   }
   function storyCard(x) {
     const card = el('article', { class: 'card' + (x.kind !== 'story' && x.kind !== 'message' ? ' rec' : '') });
-    const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}`;
+    const dest = x.dest ? `TO ${x.dest.toUpperCase()}` : 'THE BOARD ONLY'; const meta = `${x.code} · ${x.kind.toUpperCase()} · ${when(x.created)} · ${dest}${x.job ? ` · PRINT ${x.job.toUpperCase()}` : ''}${x.who ? ` · BY ${x.who}` : ''}${x.gone ? ` · TAKEN DOWN BY ITS MAKER ${when(x.gone)} (OFF THE SITE, KEPT HERE)` : ''}`;
     let body;
     if (x.kind === 'story' || x.kind === 'message') {
       const j = unpack(x.body) || {}; const p = j.p || []; const lines = (j.l || []).filter(Boolean);
@@ -68,6 +68,7 @@
     }
     const acts = el('div', { class: 'acts' },
       x.status === 'shown' && x.kind === 'story' ? el('button', { type: 'button', class: x.star ? 'on' : '', text: x.star ? '★ STARRED' : '☆ STAR', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.star ? 'unstar' : 'star' }) }); show('shown'); } }) : null,
+      x.gone ? el('button', { type: 'button', class: 'on', text: 'BACK ON THE SITE', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: 'ungone' }) }); x.gone = null; card.querySelector('.meta').textContent = card.querySelector('.meta').textContent.replace(/ · TAKEN DOWN BY ITS MAKER.*$/, ''); } }) : null,
       x.status === 'deleted' ? el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: () => act(x.id, 'restore', card) }) : null,
       x.status !== 'shown' && x.status !== 'deleted' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
@@ -303,28 +304,37 @@
   async function site() {
     const st = await (await api('settings')).json(); let g = {}; try { g = st.gates ? JSON.parse(st.gates) : {}; } catch (e) { g = {}; }
     const save = async o => { await api('settings', { method: 'POST', body: JSON.stringify(o) }); show('site'); };
+    /* each setting says, in plain words, what it changes, what to type, and what a visitor then sees */
+    const hint = t => el('small', { class: 'hint', text: t });
     /* the devices, like a game: earned one a poster (as set), all open, or all closed */
     /* seven devices, each earned on its own: 0 is open from the start */
     const mode = el('select', {}, ...[['earn', 'EARNED: EACH AFTER ITS OWN NUMBER OF POSTERS'], ['open', 'OPEN: ALL FROM THE START'], ['closed', 'CLOSED: ONLY THOSE SET TO 0']].map(([v, t]) => el('option', { value: v, text: t }))); mode.value = g.mode || 'earn';
-    const DEVS7 = [['music', 'MUSIC (THE SOUND KEY)', 0], ['intention', 'INTENTION AND W.I.S.H.', 0], ['print', 'ART AND PRINT', 0], ['radio', 'RADIO (COMPLEX)', 1], ['wish', 'RESEARCH BOARD', 2], ['design', 'DESIGN (COMPLEX ART)', 3], ['desk', 'FOUR-TRACK DESK', 4]];
+    const DEVS7 = [['music', 'MUSIC (THE SOUND KEY)', 0, 'The round sound key, top right of the first screen. Plays the music and the desk.'], ['intention', 'INTENTION AND W.I.S.H.', 0, 'Writing what was noticed and the four W.I.S.H. lines.'],
+      ['print', 'ART AND PRINT', 0, 'Making the poster (stickers, photos, pixel art) and printing it.'], ['radio', 'RADIO (COMPLEX)', 1, 'The full radio in the studio: layers, moods, the map.'], ['wish', 'RESEARCH BOARD', 2, 'The studio board for gathering species, notes and places.'],
+      ['design', 'DESIGN (COMPLEX ART)', 3, 'The studio print shop: full poster design.'], ['desk', 'FOUR-TRACK DESK', 4, 'The four-layer sound desk.']];
     const old = Array.isArray(g.at) ? { radio: g.at[0], wish: g.at[1], design: g.at[2] } : (g.at || {});
     const at = DEVS7.map(([k, , d]) => { const n = el('input', { type: 'number', min: 0, max: 50, step: 1 }); n.value = String(old[k] != null ? old[k] : d); n.dataset.k = k; return n; });
-    const gates = el('section', { class: 'ed' }, el('h3', { text: 'DEVICES' }), el('label', {}, 'MODE', mode), el('div', { class: 'three' }, ...DEVS7.map(([, t], i) => el('label', {}, t, at[i]))),
+    const gates = el('section', { class: 'ed' }, el('h3', { text: 'DEVICES' }),
+      hint('Seven parts of the site a visitor can open, like levels in a game. Each number is how many posters a visitor must make before that part opens on their phone: a whole number from 0 to 50, where 0 means open from the very first visit. Saved, it reaches visitors the next time they load the site; a part a visitor already opened stays open for them.'),
+      el('label', {}, 'MODE', mode), hint('EARNED: each part opens at its own number. OPEN: all seven show to everyone straight away (the numbers are ignored). CLOSED: only parts set to 0 show, the rest stay hidden for everyone.'),
+      el('div', { class: 'three' }, ...DEVS7.map(([, t, , d], i) => el('label', {}, t, at[i], hint(d)))),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ gates: JSON.stringify({ mode: mode.value, at: Object.fromEntries(at.map(n => [n.dataset.k, Math.max(0, Math.min(50, Math.round(+n.value || 0)))])) }) }) })));
     /* motion: calm, as built, or chaos; and the phreak, base64 drifting under the stars */
     const fx = el('select', {}, ...[['calm', 'CALM: SLOWER, FEWER PARTICLES'], ['base', 'AS BUILT'], ['chaos', 'CHAOS: FASTER, MORE, RESTLESS']].map(([v, t]) => el('option', { value: v, text: t }))); fx.value = st.fx || 'base';
     const motion = el('section', { class: 'ed' }, el('h3', { text: 'MOTION AND PHREAK' }), el('p', { class: 'note', text: 'HOW THE AURA MOVES FOR EVERY VISITOR. A VISITOR WHO ASKS THEIR DEVICE FOR LESS MOTION ALWAYS GETS STILLNESS. PHREAK: LINES OF BASE64, THE SHAPE A POSTER TRAVELS IN, DRIFT FAINTLY UNDER THE STARS.' }),
-      el('label', {}, 'MOTION', fx), el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox' }); c.checked = !!st.phreak; c.id = 'phreak'; return c; })(), 'BASE64 PHREAK'),
+      el('label', {}, 'MOTION', fx), hint('CALM: slower, with fewer stars and particles. AS BUILT: as designed. CHAOS: faster, more of them, restless. Applies to every visitor on their next load.'),
+      el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox' }); c.checked = !!st.phreak; c.id = 'phreak'; return c; })(), 'BASE64 PHREAK'), hint('Ticked: faint lines of base64 (the text a poster becomes when it travels by mesh radio) drift under the stars. Unticked: none.'),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ fx: fx.value, phreak: $('#phreak').checked }) })));
     /* the twelve curations of the portfolio */
     const curs = await curationsOf(); const rows = curs.map((c, i) => { const n = el('input', { type: 'text', maxlength: 40, placeholder: `CURATION ${String(i + 1).padStart(2, '0')}` }), a = el('input', { type: 'text', maxlength: 200, placeholder: 'A LINE ABOUT IT (OPTIONAL)' }); n.value = c.name || ''; a.value = c.about || ''; return [n, a]; });
     const cur = el('section', { class: 'ed' }, el('h3', { text: 'PORTFOLIO · THE TWELVE CURATIONS' }), el('p', { class: 'note', text: 'TWELVE THEMES OR CURATIONS, EACH A TAB ON THE PORTFOLIO. A POST JOINS ONE BY ITS CURATION (CHOSEN WHEN IT IS WRITTEN). ONLY NAMED ONES SHOW.' }),
+      hint('NAME: up to 40 characters, the tab\'s title on the portfolio. ABOUT: up to 200 characters, one line under it (leave empty for none). A tab with no name is hidden. Renaming keeps the posts in it. Saved, the portfolio shows it straight away.'),
       ...rows.map(([n, a], i) => el('div', { class: 'two' }, el('label', {}, String(i + 1).padStart(2, '0'), n), el('label', {}, 'ABOUT', a))),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ curations: JSON.stringify(rows.map(([n, a]) => ({ name: n.value.trim(), about: a.value.trim() }))) }) })));
     /* back to base: archived (so it can come back), never the printers, their tokens or the password */
     const R = ['stories', 'example', 'places', 'posts', 'words', 'settings', 'traffic'], RL = { stories: 'EVERY STORY, NOTICING AND PACK (TO THE ARCHIVE)', example: 'BOARD 00 BACK TO THE SITE\'S OWN', places: 'EVERY PLACE ADDED OR SUGGESTED (TO THE ARCHIVE)', posts: 'EVERY PUBLISHED POST BACK TO A DRAFT', words: 'THE WORDS, THE TEMPLATE AND THE CITIES BACK TO THE SITE\'S OWN', settings: 'THESE SETTINGS BACK TO AS BUILT', traffic: 'THE COUNTS' };
     const boxes = R.map(k => { const c = el('input', { type: 'checkbox' }); c.dataset.k = k; return el('label', { class: 'check' }, c, RL[k]); });
-    const reset = el('section', { class: 'ed' }, el('h3', { text: 'BACK TO THE BASE VERSION' }), el('p', { class: 'note', text: 'CHOOSE WHAT GOES BACK. STORIES AND PLACES GO TO THE ARCHIVE, WHERE THEY CAN BE BROUGHT BACK. THE PRINTERS, THEIR TOKENS AND THE PASSWORD ARE NEVER TOUCHED, SO EVERYTHING KEEPS WORKING.' }), ...boxes,
+    const reset = el('section', { class: 'ed' }, el('h3', { text: 'BACK TO THE BASE VERSION' }), el('p', { class: 'note', text: 'CHOOSE WHAT GOES BACK. STORIES AND PLACES GO TO THE ARCHIVE, WHERE THEY CAN BE BROUGHT BACK. THE PRINTERS, THEIR TOKENS AND THE PASSWORD ARE NEVER TOUCHED, SO EVERYTHING KEEPS WORKING.' }), hint('Tick each thing to put back, press RESET WHAT IS TICKED, then type RESET in capitals to confirm. Stories and places move to the Archive section (bring any back from there). Posts become drafts. Words, BOARD 00 and these settings return to how the site was built. The counts start again from zero. What visitors made on their own phones stays with them.'), ...boxes,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'RESET WHAT IS TICKED', onclick: async () => { const o = {}; boxes.forEach(b => { const c = b.querySelector('input'); if (c.checked) o[c.dataset.k] = true; }); if (!Object.keys(o).length) return; if (prompt('Type RESET to go back to the base version for what is ticked.') !== 'RESET') return; await api('reset', { method: 'POST', body: JSON.stringify(o) }); show('overview'); badges(); } })),
       el('h3', { text: 'THIS BROWSER' }), el('p', { class: 'note', text: 'CLEARS WHAT HAS BEEN MADE IN THIS BROWSER ON NOVEL.GLOBAL: POSTERS ON ITS WALL, THE PIECE BEING MADE, KEPT SONGS, BOARDS AND THE STUDIO\'S POSTERS. NOTHING ON THE SERVER, AND THIS PAGE STAYS OPEN.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'CLEAR THIS BROWSER', onclick: async () => { if (!confirm('Clear everything made in this browser on novel.global?')) return; Object.keys(localStorage).filter(k => /^da\./.test(k)).forEach(k => localStorage.removeItem(k)); await new Promise(r => { try { const q = indexedDB.deleteDatabase('novelglobal'); q.onsuccess = q.onerror = q.onblocked = r; } catch (e) { r(); } }); alert('Cleared. novel.global opens as new in this browser.'); } })));
@@ -333,10 +343,14 @@
     const chk = (id, on, t) => el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox', id }); c.checked = on; return c; })(), t);
     const pn = el('select', {}, ...[['paper', 'AS THE PAPER: BLUE PRINTS NIGHT, WHITE PRINTS DAY'], ['day', 'ALWAYS DAY: BLACK ON WHITE'], ['night', 'ALWAYS NIGHT: WHITE ON A DARK SHADE']].map(([v, t]) => el('option', { value: v, text: t }))); pn.value = so.printNight || 'paper';
     const num = (v, mn, mx, stp) => { const n = el('input', { type: 'number', min: mn, max: mx, step: stp }); n.value = String(v); return n; };
-    const bh = num(so.boothHome != null ? so.boothHome : 3.5, 1, 60, 0.5), bw0 = num((so.boothWait || [2, 5])[0], 0, 60, 1), bw1 = num((so.boothWait || [2, 5])[1], 0, 120, 1);
-    const start = el('section', { class: 'ed' }, el('h3', { text: 'START AND BOOTH' }), chk('so-words', so.discWords !== false, 'THE THREE DISCS SAY WHAT THEY DO, ONCE'), chk('so-check', so.checklist !== false, 'THE CHECKLIST BESIDE DAY AND NIGHT'),
-      el('label', {}, 'A PRINT STARTS', pn), el('div', { class: 'three' }, el('label', {}, 'BOOTH: BACK TO THE START AFTER (S)', bh), el('label', {}, 'BOOTH: NEXT PHOTO AFTER (MIN, AT LEAST)', bw0), el('label', {}, 'UP TO (MIN)', bw1)),
-      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 3.5)), boothWait: [Math.max(0, +bw0.value || 0), Math.max(+bw0.value || 0, +bw1.value || 0)] }) }) })));
+    const bh = num(so.boothHome != null ? so.boothHome : 10, 1, 60, 0.5), bg = num(so.boothGap != null ? so.boothGap : 10, 0, 240, 1);
+    const start = el('section', { class: 'ed' }, el('h3', { text: 'START AND BOOTH' }),
+      chk('so-words', so.discWords !== false, 'THE THREE DISCS SAY WHAT THEY DO, ONCE'), hint('Ticked: under the three round buttons on the first screen, their words (Share what you noticed, Make a song, Print a photo) show once, then fade. Unticked: the buttons alone, no words.'),
+      chk('so-check', so.checklist !== false, 'THE CHECKLIST BESIDE DAY AND NIGHT'), hint('Ticked: a short list sits top left (Notice, Poster, Print, Song, Photo, and how far the next parts are) and ticks itself as a visitor does each; once all are done it goes for good. Unticked: never shown.'),
+      el('label', {}, 'A PRINT STARTS', pn), hint('How a poster first prints on the 80 mm paper. AS THE PAPER: a blue poster prints dark (white on a dark shade), a white poster prints light. ALWAYS DAY: black on white. ALWAYS NIGHT: white on a dark shade. A visitor can still flip it with the moon key before they print.'),
+      el('div', { class: 'three' }, el('label', {}, 'BOOTH: THE PASS SHOWS FOR (SECONDS)', bh, hint('After a booth print or save, the pass (the visitor\'s three-character code, with Save your pass) shows this long, then the phone goes to novel.global. 1 to 60, halves allowed. As built: 10.')),
+        el('label', {}, 'BOOTH: MINUTES BETWEEN PRINTS FROM ONE PHONE', bg, hint('After printing, the same phone can print again after this many minutes. Until then the print button counts down; save still works. Whole minutes, 0 to 240; 0 means no wait. As built: 10. Counted on each phone, so another phone can print straight away.'))),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 10)), boothGap: Math.max(0, Math.min(240, Math.round(+bg.value || 0))) }) }) })));
     main.replaceChildren(...head('Settings', 'How novel.global behaves for everyone. Saved settings reach visitors the next time they open the site.'), gates, start, motion, cur, reset);
   }
 
@@ -350,7 +364,7 @@
     const dl = el('section', { class: 'ed' }, el('h3', { text: 'DOWNLOAD' }), el('p', { class: 'note', text: 'EVERYTHING AS ONE FILE (STORIES, PLACES, POSTS, PRINTERS WITHOUT THEIR TOKENS, SETTINGS, COUNTS), OR THE PLACES AND STORIES AS SHEETS FOR A SPREADSHEET. PHOTOGRAPHS DOWNLOAD ONE AT A TIME FROM EACH STORY (PHOTO ↓).' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'EVERYTHING (.JSON)', onclick: async () => { const j = await all(); save(`novel-global-${j.at.slice(0, 10)}.json`, JSON.stringify(j, null, 1), 'application/json'); } }),
         el('button', { type: 'button', text: 'PLACES (.CSV)', onclick: async () => { const j = await all(); save('novel-global-places.csv', csv(j.places, [...PCOLS, 'status', 'src']), 'text/csv'); } }),
-        el('button', { type: 'button', text: 'STORIES (.CSV)', onclick: async () => { const j = await all(); save('novel-global-stories.csv', csv(j.stories, ['code', 'kind', 'status', 'lat', 'lng', 'dest', 'created', 'decided', 'has_photo']), 'text/csv'); } }),
+        el('button', { type: 'button', text: 'STORIES (.CSV)', onclick: async () => { const j = await all(); save('novel-global-stories.csv', csv(j.stories, ['code', 'kind', 'status', 'who', 'gone', 'lat', 'lng', 'dest', 'created', 'decided', 'has_photo']), 'text/csv'); } }),
         el('button', { type: 'button', text: 'COUNTS (.CSV)', onclick: async () => { const j = await all(); save('novel-global-counts.csv', csv(j.traffic, ['day', 'k', 'n']), 'text/csv'); } })));
     const ta = el('textarea', { class: 'body', spellcheck: 'false', placeholder: 'n,cat,role,what,addr,sub,url,lat,lng\nBrunswick Tool Library,circular,repair,A tool library with a repair café,127 Nicholson St,Brunswick East,https://www.brunswicktoollibrary.org/,-37.7718,144.9782' });
     const file = el('input', { type: 'file', accept: '.csv,.json,text/csv,application/json' }); file.addEventListener('change', async () => { const f = file.files[0]; if (f) ta.value = await f.text(); });

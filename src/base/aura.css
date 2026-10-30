@@ -790,3 +790,25 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 .au-todo { padding-left: 4px; }
 .au-todo li.near small { font-size: 13px; opacity: .45; }
 .au-todo li.secret { color: #7CFFB0; }
+/* the player's rows: full width, one line each, the words cut short rather than overlapping */
+.au-desk .au-kept li { position: static; min-width: 0; }
+.au-desk .au-kept li [data-ks] { width: auto !important; height: auto !important; min-width: 0; overflow: hidden; white-space: nowrap; place-items: initial; background: transparent; }
+.au-desk .au-kept li [data-ks] span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.au-desk .au-kept li [data-ks] i { font-style: normal; opacity: .6; flex: none; }
+.au-desk .au-kept li .x { position: static; width: 22px; height: 22px; line-height: 22px; background: none; opacity: .45; flex: none; }
+.au-desk .au-kept li .x:hover { opacity: 1; }
+/* the checklist hangs under its own string, not under day and night */
+.au-todo { left: 58px; top: 50px; }
+/* delete: plain to see, and asks once more (a tick) before it goes */
+#aura .au-del svg { stroke: #C8452F; }
+#aura .au-del.sure { color: #C8452F; }
+/* your code: the three characters large, another typed in, what was sent with them */
+#aura .au-mek b { font: 700 13px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .08em; }
+.au-sig.au-me { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+.au-me .au-mec { font: 700 44px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .18em; color: #F4F1E8; }
+.au-me .au-mew { color: #F4F1E8; opacity: .6; font-size: 11px; margin-top: -6px; }
+.au-me .au-mei { display: flex; gap: 8px; align-items: center; }
+.au-me .au-mei input { width: 5.5em; text-align: center; text-transform: uppercase; font: 600 18px "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .2em; background: transparent; color: #F4F1E8; border: 0; border-bottom: 1.5px solid rgba(244, 241, 232, .6); padding: 4px 0; }
+.au-me .au-mel { list-style: none; margin: 0; padding: 0; width: 100%; max-height: 220px; overflow: auto; color: #F4F1E8; }
+.au-me .au-mel li { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 4px 2px; border-top: 1px solid rgba(244, 241, 232, .15); font: 13px "Departure Mono", ui-monospace, Menlo, monospace; }
+.au-me .au-mel small { opacity: .6; flex: 1; text-align: left; }

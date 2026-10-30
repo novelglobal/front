@@ -545,3 +545,30 @@ body.wishmap:not(.mapmode):not(.half) #terrain { pointer-events: auto; }
 #booth.done .pv.slip { animation: bt-away 3.2s ease-in forwards; }
 @keyframes bt-away { 0% { transform: none; opacity: 1; } 60% { transform: translateY(-14px); opacity: 1; } 100% { transform: translateY(-60px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #booth.done .pv.slip { animation: none; } }
+
+/* ───────── the booth, polished: the site's own type, the mark, one tiny word under each thing ───────── */
+#booth { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; gap: 10px; }
+#booth .bm { display: flex; align-items: center; gap: 8px; letter-spacing: 0; color: var(--ink); cursor: pointer; }
+#booth .bm b { font: 700 18px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+#booth .bm .mk { width: 34px; height: 16px; margin: 0; }
+#booth .eye { cursor: pointer; padding: 18px 24px; border-radius: 50%; transition: transform .2s; }
+#booth .eye:hover, #booth .eye:focus-within { transform: scale(1.06); }
+#booth .eye pre.art { font: 15px/1.25 ui-monospace, Menlo, monospace; }
+#booth .cap { display: block; font: 11px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; opacity: .55; text-align: center; margin-top: -4px; }
+#booth .pv { width: auto; padding: 14px; background: #fff; box-shadow: 0 6px 24px rgba(0, 0, 0, .28); border-radius: 2px; }
+#booth .pv canvas { image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; }
+#booth .am.sm button { font: 20px ui-monospace, Menlo, monospace; padding: 4px 8px; border-radius: 6px; }
+#booth .bw { text-align: center; font: 18px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+#booth .go2 { gap: 18px; margin-top: 6px; }
+#booth .go2 span { display: grid; gap: 6px; justify-items: center; }
+#booth .go2 button { font: 600 17px "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 12px 26px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px currentColor; }
+#booth .go2 .go { background: var(--ink); color: var(--paper); box-shadow: none; padding: 14px 40px; }
+#booth .go2 button:disabled { opacity: .35; cursor: default; }
+/* the pass: the card, its save, and a thin line running out the seconds until novel.global */
+#booth .pass canvas { width: min(300px, 70vw); height: auto; display: block; border-radius: 14px; box-shadow: 0 10px 34px rgba(0, 0, 0, .35); animation: bt-pass .6s ease-out both; }
+#booth .go2 { align-items: start; }
+#booth .go2 a { display: inline-block; font: 600 17px/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 14px 26px; border-radius: 999px; box-shadow: inset 0 0 0 1.5px currentColor; color: inherit; text-decoration: none; }
+#booth .pt { position: fixed; left: 0; bottom: 0; height: 3px; width: 100%; background: currentColor; opacity: .5; transform-origin: left; animation: bt-pt linear forwards; }
+@keyframes bt-pass { from { transform: translateY(18px) scale(.96); opacity: 0; } }
+@keyframes bt-pt { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { #booth .pass canvas { animation: none; } }

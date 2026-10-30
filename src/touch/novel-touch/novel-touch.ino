@@ -30,8 +30,9 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct · 8"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct · 9"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
+#define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
 
 /* the T-Display-S3's own wiring */
@@ -47,7 +48,7 @@
 const int W = 320, H = 170;
 /* the kinds that functions below take, named before any function: Arduino lists every function's heading above the first one */
 struct Part { float x, y, vx, vy, rot, vr, s; float px[6], py[6]; uint8_t n, kind; bool on; };   // kind: 0 a bead, 1 a piece of bell or tentacle (a short line), 2 the eye, 3 a bubble
-enum Mode { CONNECTING, SETUP, ASLEEP, AWAKE, ARRIVE, HELD, SQUISH, PRINTING, BURST, QUIET };
+enum Mode { CONNECTING, SETUP, ASLEEP, AWAKE, ARRIVE, HELD, SQUISH, PRINTING, BURST, QUIET, QRUP, CODE, MENU, SETS, LINK, INFO, OFFQ };
 struct Glyph { uint16_t off; uint8_t w, h; int8_t xo, yo; uint8_t adv; };   // one letter: where its 4-bit coverage starts, its size, where it sits, how far on
 struct Font { const uint8_t *bits; const Glyph *g; uint8_t lh, asc; };
 extern const Font HEAD, BODY, MONO;
@@ -57,12 +58,14 @@ Arduino_Canvas *g = new Arduino_Canvas(W, H, tft);
 
 /* ───────── what it knows: the Wi-Fis (up to five, kept), the site, the printer, the token ───────── */
 Preferences prefs;
+bool cfgSleep = false, cfgTouch = true; int cfgScene = 0;   // sleep when idle; 0 day and night in turn, 1 always day, 2 always night; a touch prints or squashes
 String host, printerId, token, nets[5], passes[5]; int nNets = 0, ways[5];
 bool real(const char *s) { return s && *s && strcmp(s, "your wi-fi") && strcmp(s, "printer id") && strcmp(s, "touch token"); }
 void loadCfg() {
   prefs.begin("ngtouch", false);
   host = prefs.getString("host", NG_HOST); printerId = prefs.getString("prn", real(NG_PRINTER) ? NG_PRINTER : ""); token = prefs.getString("tok", real(NG_TOKEN) ? NG_TOKEN : "");
   nNets = prefs.getInt("n", 0); if (nNets > 5) nNets = 5;
+  cfgSleep = prefs.getBool("slp", false); cfgScene = prefs.getInt("scn", 0); cfgTouch = prefs.getBool("tch", true);
   for (int i = 0; i < nNets; i++) { nets[i] = prefs.getString(("s" + String(i)).c_str(), ""); passes[i] = prefs.getString(("p" + String(i)).c_str(), ""); ways[i] = prefs.getInt(("w" + String(i)).c_str(), 0); }
   /* the sketch's own Wi-Fi only until any is set from a phone; then never again */
   if (real(WIFI_SSID) && nNets == 0) { bool have = false; for (int i = 0; i < nNets; i++) if (nets[i] == WIFI_SSID) have = true; if (!have) { nets[nNets] = WIFI_SSID; passes[nNets++] = WIFI_PASS; } }
@@ -337,7 +340,7 @@ void drawJelly(float t) {
 struct Flake { float x, y, r, a, ph; } snow[30];
 float current = 0;
 unsigned long sceneStartMs = 0;
-bool isNightScene() { unsigned long cycle = (millis() - sceneStartMs) % 420000UL; return cycle >= 300000UL; }
+bool isNightScene() { if (cfgScene == 1) return false; if (cfgScene == 2) return true; unsigned long cycle = (millis() - sceneStartMs) % 420000UL; return cycle >= 300000UL; }
 void drawSea(float t, float dt) {
   bool night = isNightScene();
   const uint16_t seaColor = night ? 0x0820 : SEA;  // deep ink-blue at night
@@ -538,6 +541,9 @@ void setup() {
 
 unsigned long downAt = 0; bool down = false; float lastT = 0, bl = 255, bootAt = -1;
 bool printAwaiting = false;
+/* the hidden menu: a hold shows the code; a hold on the code asks for three numbers; then settings, set-up, and turning the Pi off.
+   No aiming: a tap moves to the next, a hold chooses */
+int sel = 0, digits[3], nDig = 0, curDig = 0, wrongs = 0; bool holdFired = false; unsigned long lastTouchMs = 0; float menuAt = 0; String offSaid;
 String autoPrintJob = ""; unsigned long jobSeenAt = 0; bool autoPrintFired = false;
 float fleeAt = -100.0f, fleeX = 0, fleeY = 0; bool qrWasVisible = false; unsigned long wifiReadyAt = 0;
 void loop() {
@@ -576,6 +582,8 @@ void loop() {
   }
   if (down) held = (millis() - downAt) / 1000.0f;
   if (!now && down) { down = false; tap = held < 0.45f; }
+  bool hold = false; if (down && held > 0.9f && !holdFired) { holdFired = true; hold = true; buzz(20); } if (!down) holdFired = false;
+  if (press) lastTouchMs = millis();
   /* BOOT held: a ring fills; at three seconds, setup */
   if (digitalRead(KEY_BOOT) == LOW && !setupOn) { if (bootAt < 0) bootAt = t; if (t - bootAt > 3) { bootAt = -1; startSetup(t); } } else bootAt = -1;
 
@@ -585,7 +593,44 @@ void loop() {
   J.tp += dt * J.rate; J.cue = false; J.glow = 0; J.run = -1; J.jit = 0; J.len = 1; J.look = sinf(t * 0.37f) * 0.6f; J.eye = 0; J.rate = 1; if (mode != HELD) J.sq = 0;
   float blT = 255; bool draw = true;
 
+  if (hold && (mode == ASLEEP || mode == AWAKE || mode == QUIET || mode == CONNECTING || (mode == HELD && !cfgTouch))) { go(QRUP, t); menuAt = t; hold = false; }
+  bool menuMode = mode == QRUP || mode == CODE || mode == MENU || mode == SETS || mode == LINK || mode == INFO || mode == OFFQ;
+  if (menuMode) { J.a = 0.22f; J.x = W / 2 + sinf(t * 0.2f) * 60; J.y = 70 + sinf(t * 0.3f) * 20; J.bw = 50; J.rate = 0.5f; camT = {W / 2, H / 2, 1}; if (press || hold) menuAt = t; }
   switch (mode) {
+    case QRUP:   // a minute of the code to scan; a hold asks for the numbers
+      if (hold) { nDig = 0; curDig = 0; go(CODE, t); } else if (t - menuAt > 60) go(ASLEEP, t);
+      break;
+    case CODE:   // three numbers: a tap counts on, a hold keeps it
+      if (tap) curDig = (curDig + 1) % 10;
+      if (hold) { digits[nDig++] = curDig; curDig = 0;
+        if (nDig == 3) { String got = String(digits[0]) + digits[1] + digits[2]; nDig = 0;
+          if (got == NG_CODE) { wrongs = 0; sel = 0; go(MENU, t); } else if (++wrongs >= 3) { wrongs = 0; go(ASLEEP, t); } else buzz(60); } }
+      if (t - menuAt > 40) go(ASLEEP, t);
+      break;
+    case MENU:   // settings, set-up, turn the Pi off, back
+      if (tap) sel = (sel + 1) % 4;
+      if (hold) { if (sel == 0) { sel = 0; go(SETS, t); } else if (sel == 1) { sel = 0; go(LINK, t); } else if (sel == 2) { sel = 0; offSaid = ""; go(OFFQ, t); } else go(ASLEEP, t); }
+      if (t - menuAt > 40) go(ASLEEP, t);
+      break;
+    case SETS:   // each held to change it, kept
+      if (tap) sel = (sel + 1) % 4;
+      if (hold) { if (sel == 0) { cfgSleep = !cfgSleep; prefs.putBool("slp", cfgSleep); } else if (sel == 1) { cfgScene = (cfgScene + 1) % 3; prefs.putInt("scn", cfgScene); } else if (sel == 2) { cfgTouch = !cfgTouch; prefs.putBool("tch", cfgTouch); } else { sel = 0; go(MENU, t); } }
+      if (t - menuAt > 40) go(ASLEEP, t);
+      break;
+    case LINK:   // the screen's own Wi-Fi setup, or what it is linked to
+      if (tap) sel = (sel + 1) % 3;
+      if (hold) { if (sel == 0) startSetup(t); else if (sel == 1) go(INFO, t); else { sel = 1; go(MENU, t); } }
+      if (t - menuAt > 40) go(ASLEEP, t);
+      break;
+    case INFO:   // a hold, or half a minute, and back
+      if (hold || t - menuAt > 30) { sel = 1; go(LINK, t); }
+      break;
+    case OFFQ:   // turn the printer's Pi off: no, or yes; then what the site said
+      if (offSaid.length()) { if (actionFinished && !actionPending) { actionFinished = false; offSaid = actCode == 200 ? "the printer is turning off" : String("not sent (") + actCode + ")"; menuAt = t; } if (t - menuAt > 8) go(ASLEEP, t); break; }
+      if (tap) sel = (sel + 1) % 2;
+      if (hold) { if (sel == 1) { offSaid = "asking..."; ask("off", "off"); } else { sel = 2; go(MENU, t); } }
+      if (t - menuAt > 40) go(ASLEEP, t);
+      break;
     case CONNECTING:   // a small jellyfish, asleep, until the Wi-Fi is joined and the site answers
       J.a = 0.86f + 0.08f * sinf(t * 0.8f); J.x = W / 2 + sinf(t * 0.27f) * 54; J.y = 58 + sinf(t * 0.61f) * 18; J.bw = 56 + 5 * sinf(t * 0.4f); J.eye = 2; J.rate = 0.6f; J.look = sinf(t * 0.33f); camT = {W / 2, H / 2, 1};
       if (WiFi.status() == WL_CONNECTED && netErr != 1) go(has && !autoPrintFired ? ARRIVE : AWAKE, t);   // it never opens setup by itself here: it keeps looking, and says what for
@@ -661,8 +706,8 @@ void loop() {
       J.a = 1; J.x = HELD_X + sinf(t * 0.7f) * 4; J.y = HELD_Y + sinf(t * 1.1f) * 3; J.bw = HELD_BW + sinf(t * 0.9f) * 4; J.cue = true; J.glow = 0.5f + 0.5f * sinf(t * 2.4f); J.look = sinf(t * 0.8f); camT = {W / 2, H / 2, 1};
       float sk = t - springAt; J.sq = sk < 0.9f ? springFrom * expf(-5 * sk) * cosf(14 * sk) : 0;   // let go early: it springs back
       if (printAwaiting || actionPending) { /* wait for the site's response before changing the scene */ }
-      else if (down && held > 0.45f) { go(SQUISH, t); nextTick = 1 / 3.0f; nParts = 0; }
-      else if (tap) { autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); }
+      else if (cfgTouch && down && held > 0.45f) { go(SQUISH, t); nextTick = 1 / 3.0f; nParts = 0; }
+      else if (cfgTouch && tap) { autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print"); }
       else if (NG_AUTOPRINT > 0 && !autoPrintFired && slip.job.length() && slip.job == autoPrintJob && millis() - jobSeenAt >= NG_AUTOPRINT * 1000UL) {
         autoPrintFired = true; printAwaiting = true; buzz(30); ask(slip.job, "print");
       }
@@ -697,6 +742,7 @@ void loop() {
   if (mode != SETUP && t - fleeAt >= 0 && t - fleeAt < 1.35f && mode != HELD && mode != SQUISH && mode != PRINTING && mode != BURST) {
     float f = 1.0f - (t - fleeAt) / 1.35f; J.x += fleeX * f; J.y += fleeY * f; J.jit += 1.8f * f; J.rate += 1.4f * f; J.eye = 3;
   }
+  if (cfgSleep && !has && (mode == ASLEEP || mode == AWAKE || mode == QUIET) && millis() - lastTouchMs > 120000UL) { draw = false; blT = 0; }
   if (bootAt >= 0) { blT = 255; draw = true; }
   bl += (blT - bl) * fminf(1, dt * 4); analogWrite(PIN_BL, (int)bl);
   if (!draw && bl < 2) { delay(60); return; }
@@ -711,7 +757,7 @@ void loop() {
   bool wifiReady = WiFi.status() == WL_CONNECTED && netErr != 1 && mode != CONNECTING && mode != SETUP;
   if (!wifiReady) wifiReadyAt = 0; else if (!wifiReadyAt) wifiReadyAt = millis();
   unsigned long qrCycleMs = wifiReadyAt ? (millis() - wifiReadyAt) % 30000UL : 30000UL;
-  bool qrVisible = wifiReady && !has && qrCycleMs < 10000UL;
+  bool qrVisible = wifiReady && !has && qrCycleMs < 10000UL && !menuMode;
   if (qrVisible) {
     float entrance = fminf(1.0f, qrCycleMs / 1200.0f);
     float slide = 1.0f - ease(entrance);
@@ -750,6 +796,30 @@ void loop() {
     String lab = k < 4.1f ? String("printing") + String("...").substring(0, (int)fmodf(k * 2, 4)) : String("printed");
     text(MONO, lab.c_str(), COL, 84, INK, 0.7f, 1);
     text(MONO, slip.code.c_str(), COL, H - 12, INK, 0.75f, 2);
+  }
+  if (menuMode) {
+    const char *how = "tap: next   hold: choose";
+    if (mode == QRUP) { drawQR(QR_SITE, 25, W / 2, H / 2 - 6, 5); text(MONO, "novel.global", W / 2 - textW(MONO, "novel.global", 1) / 2, H - 8, INK, 0.6f, 1); }
+    else if (mode == CODE) {
+      for (int i = 0; i < 3; i++) { int bx = W / 2 - 66 + i * 46; ring(bx + 20, 70, 20, 1.2f, INK, i == nDig ? 0.95f : 0.35f);
+        String d = i < nDig ? String("*") : i == nDig ? String(curDig) : String(""); text(HEAD, d.c_str(), bx + 20 - textW(HEAD, d.c_str(), 0) / 2, 78, INK, 1, 0); }
+      text(MONO, "tap: count on   hold: keep it", W / 2 - textW(MONO, "tap: count on   hold: keep it", 0) / 2, 130, INK, 0.55f, 0);
+    } else if (mode == INFO) {
+      String ip = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : String("not on Wi-Fi");
+      String L[6] = { String("Wi-Fi  ") + (WiFi.status() == WL_CONNECTED ? WiFi.SSID() + "  " + WiFi.RSSI() + " dBm" : String("none")), String("address  ") + ip, String("printer  ") + (printerId.length() ? printerId : String("not set")), String("site  ") + host, String("sketch  ") + NG_VERSION, String(netErr == 0 ? "linked: the site answers" : netErr == 3 ? "the screen's token was refused" : "the site does not answer") };
+      for (int i = 0; i < 6; i++) text(MONO, L[i].c_str(), 18, 30 + i * 20, INK, i == 5 ? 0.95f : 0.75f, 0);
+      text(MONO, "hold: back", 18, H - 8, INK, 0.45f, 0);
+    } else {
+      const char *M[4] = {"Settings", "Set-up", "Turn the printer off", "Back"};
+      String S3[4] = { String("Sleep when idle: ") + (cfgSleep ? "on" : "off"), String("Sky: ") + (cfgScene == 0 ? "day and night" : cfgScene == 1 ? "always day" : "always night"), String("Touch prints: ") + (cfgTouch ? "on" : "off"), "Back" };
+      const char *K[3] = {"Wi-Fi", "Linked", "Back"}; const char *Q[2] = {"No", "Yes, turn it off"};
+      int n = mode == MENU ? 4 : mode == SETS ? 4 : mode == LINK ? 3 : 2;
+      if (mode == OFFQ) text(BODY, offSaid.length() ? offSaid.c_str() : "Turn the printer's Pi off?", 24, 34, INK, 0.9f, 0);
+      for (int i = 0; i < n; i++) { const char *s = mode == MENU ? M[i] : mode == SETS ? S3[i].c_str() : mode == LINK ? K[i] : Q[i]; int y = (mode == OFFQ ? 66 : 36) + i * 28;
+        if (mode == OFFQ && offSaid.length()) break;
+        if (i == sel) dotA(14, y - 5, 3, INK, 0.95f); text(BODY, s, 26, y, INK, i == sel ? 1.0f : 0.5f, 0); }
+      if (!(mode == OFFQ && offSaid.length())) text(MONO, how, W - 12 - textW(MONO, how, 0), H - 8, INK, 0.45f, 0);
+    }
   }
   if (mode == SETUP) {   // power-on only: join from a phone by scanning, or by name and password
     text(MONO, "setup", 16, 26, INK, 0.5f, 1);

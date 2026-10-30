@@ -58,7 +58,8 @@ async function photoToSend(src) {
   try { const im = await loadImage(src); for (const [N, q] of [[800, 0.8], [640, 0.72], [480, 0.65]]) { const k = Math.min(1, N / Math.max(im.naturalWidth, im.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); const u = c.toDataURL('image/jpeg', q); if (u.length < 400e3) return u; } } catch (e) { /* no photograph, then */ }
   return null;
 }
-async function post(payload) { return apiJSON('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
+/* sent with this phone's three characters (made by the base on first use), so its maker can find and take it down */
+async function post(payload) { const who = store.get('da.me', ''); if (/^[A-HJ-NP-Z2-9]{3}$/.test(who)) payload.who = who; return apiJSON('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
 /* bytes, when given, are the strip as drawn in the print shop: what the printer lays down */
 async function directAction(s0, dest, bytes, kind = 'story') {
   /* a place someone marked themselves, perhaps a garden, goes out to about 100 m; a sighting from iNaturalist is already public */

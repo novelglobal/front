@@ -242,6 +242,19 @@ try {
   await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
   const mp = await call('/api/stories'); const mc = await call('/api/stories/DA-3MSG'); const mph = await call(`/api/photos/${ms.json.id}`); const mr = await call(`/api/receipts/${ms.json.id}`);
   check('a message is private: approved, its print joins the queue; it is never listed, found by its code, nor its photograph shown', ms.status === 201 && !mp.json.stories.some(x => x.code === 'DA-3MSG') && mc.status === 404 && mph.status === 404 && mr.json.job && mr.json.job.status === 'queued', JSON.stringify({ s: ms.status, listed: mp.json.stories.some(x => x.code === 'DA-3MSG'), mc: mc.status, mph: mph.status, job: mr.json.job }));
+  /* a maker's own three characters: their things listed by them alone, taken down off the site by them, kept and put back on the approval page */
+  const w1 = await call('/api/stories', { method: 'POST', ip: '198.51.100.9', body: story('DA-3WHY', { who: 'K7Q' }) });
+  await call(`/api/admin/stories/${w1.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  const wl = await call('/api/mine/K7Q', { ip: '198.51.100.9' }), wo = await call('/api/mine/ZZ9', { ip: '198.51.100.9' }), wbad = await call('/api/mine/k7', { ip: '198.51.100.9' });
+  const wpub = await call('/api/stories'), wnot = await call(`/api/mine/ZZ9/${w1.json.id}`, { method: 'POST', ip: '198.51.100.9', body: {} });
+  const wdrop = await call(`/api/mine/K7Q/${w1.json.id}`, { method: 'POST', ip: '198.51.100.9', body: {} });
+  const wpub2 = await call('/api/stories'), wone = await call('/api/stories/DA-3WHY'), wl2 = await call('/api/mine/K7Q', { ip: '198.51.100.9' }), wad = await call('/api/admin/stories?status=shown', { key: KEY });
+  const kept = (wad.json.stories || []).find(x => x.id === w1.json.id) || {};
+  await call(`/api/admin/stories/${w1.json.id}`, { method: 'POST', key: KEY, body: { action: 'ungone' } }); const wpub3 = await call('/api/stories');
+  check('a maker code: their things listed by it alone (never with anyone else, never the code in public), taken down off the site by it only, still on the approval page, and put back from there',
+    wl.json.mine.length === 1 && wl.json.mine[0].code === 'DA-3WHY' && wo.json.mine.length === 0 && wbad.status === 400 && wpub.json.stories.some(x => x.code === 'DA-3WHY' && !('who' in x)) && wnot.status === 404 &&
+    wdrop.status === 200 && !wpub2.json.stories.some(x => x.code === 'DA-3WHY') && wone.status === 404 && wl2.json.mine.length === 0 && kept.who === 'K7Q' && !!kept.gone && wpub3.json.stories.some(x => x.code === 'DA-3WHY'),
+    JSON.stringify({ wl: wl.json, wo: wo.json, wbad: wbad.status, wnot: wnot.status, wdrop: wdrop.status, wone: wone.status, kept: { who: kept.who, gone: kept.gone } }));
   let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }
