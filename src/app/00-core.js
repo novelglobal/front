@@ -507,8 +507,9 @@ const snd = (() => {
     /* a cell reached by the sweep. spec: { g } a life, { fam } a place (its own small real sound). opt: v, pan, mood, bright
        (new), danger, vi (which voice) */
     ping(spec, f, opt = {}) {
-      if (!ready()) return false; const now = performance.now(); if (now - lastBlip < 55) return false;
-      const t = onGrid(ctx.currentTime + 0.01); if (!room(t)) return false; lastBlip = now;
+      /* sure: a kept song's note, already one of the few its sixteenth holds, never dropped for another */
+      if (!ready()) return false; const now = performance.now(); if (!opt.sure && now - lastBlip < 55) return false;
+      const t = onGrid(ctx.currentTime + 0.01); if (!room(t, !!opt.sure)) return false; lastBlip = now;
       const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
       /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
          a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */

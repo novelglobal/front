@@ -42,13 +42,13 @@ const tkSel = id => `[data-tk="${CSS.escape(id)}"]`;
 /* each kind keeps its own voice, from its name */
 const flashVoice = (id, key) => partialOf(key || 'x') % 8;
 function pingCell(it, first) {
-  const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound || LOOP.on) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
+  const o = it.o; const id = o.pack ? 'p:' + o.pack : 'life'; if (!TRK.on[id] || !prefs.sound || LOOP.on || LOOP.hush) return false; const L = lvlOf(o.pack ? 'community' : 'life'); if (L < 0.02) return false; flashLayer(o.pack ? 'community' : 'life');
   const g = o.pack ? o.pk : o.hum ? 'human' : glyphOf(o); const vi = flashVoice(id, g);
   return snd.ping(o.pack ? (PACK_SPEC[o.pk] && PACK_SPEC[o.pk].fam ? PACK_SPEC[o.pk] : { g }) : { g }, F0 * partialOf(g || 'x') * (it.b.tone === 'flora' ? 2 : 1),
     { mood: moodOfLayer(o.pack ? 'community' : 'life'), v: 0.05 * L * (first ? 1 : 0.6) * (0.35 + 0.65 * (it.fade == null ? 1 : it.fade)), pan: Math.sin((it.sb || 0) * Math.PI / 180) * 0.7, bright: !!it.flag, danger: !!(it.alarm || it.b.dz >= 3), vi: Math.max(0, vi), cluster: (it.pile || 0) >= 2, fx: fxOf(o.pack ? 'community' : 'life') });
 }
 function pingPlace(p) {
-  if (!TRK.on.places || !prefs.sound || LOOP.on) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
+  if (!TRK.on.places || !prefs.sound || LOOP.on || LOOP.hush) return false; const L = lvlOf(p.on ? 'pollution' : 'community'); if (L < 0.02) return false;
   /* a busy street is not a wall of sound: the places listed by name always, a third of the rest */
   if (!p.cur && partialOf(p.n) % 3) return false; flashLayer(p.on ? 'pollution' : 'community');
   return snd.ping({ fam: p.fam }, F0 * partialOf(p.fam), { mood: moodOfLayer(p.on ? 'pollution' : 'community'), vi: partialOf(p.n || p.fam) % 8, v: 0.04 * L, pan: Math.sin((p.sb || 0) * Math.PI / 180) * 0.7, fx: fxOf(p.on ? 'pollution' : 'community') });
@@ -140,7 +140,9 @@ function markConnect() {
 function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
 function setRadio(on) {
   if (on && !S.started) { startRadio(true); return; }
-  S.radio = on; if (!on && LOOP.on) setLoop(false, null); try { if (IN_AURA) window.parent.postMessage({ ng: 'radio', on: !!on }, location.origin); } catch (e) { /* alone */ }
+  S.radio = on;
+  if (!on && LOOP.on) { LOOP.paused = snapOf().ms; LOOP.ms = []; loopSync(false); }
+  else if (on && !LOOP.on && LOOP.paused && LOOP.paused.length) { LOOP.ms = rebeat(LOOP.paused); LOOP.paused = null; loopSync(true); } try { if (IN_AURA) window.parent.postMessage({ ng: 'radio', on: !!on }, location.origin); } catch (e) { /* alone */ }
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } nudgeWishSoon(); }
   syncTracks(); if (on) life.replay();
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });
@@ -157,7 +159,7 @@ function flashLayer(k) {
 }
 /* water: a drop; a pond or wetland lower, a fountain higher */
 function pingClimate(c) {
-  if (!TRK.on.water || !prefs.sound || LOOP.on) return false; flashLayer('water');
+  if (!TRK.on.water || !prefs.sound || LOOP.on || LOOP.hush) return false; flashLayer('water');
   return snd.ping({ g: 'aquatic' }, F0 * (c.k === 'fountain' ? 12 : 6), { mood: moodOfLayer('water'), v: 0.045 * layerLvl('water'), pan: Math.sin((c.sb || 0) * Math.PI / 180) * 0.7, fx: fxOf('water') });
 }
 /* a layer's volume, three steps: quiet, half, full */
@@ -178,9 +180,9 @@ $('#view').addEventListener('click', e => {
   const lp = e.target.closest('[data-loop-play]'); if (lp) { playLoop(lp.dataset.loopPlay); return; }
   if (e.target.closest('[data-loop-next]')) { nextLoop(); return; }
   if (e.target.closest('[data-t4all]')) { playFour(); return; }
-  const fk = e.target.closest('[data-t4k]'); if (fk) { playLoop(fk.dataset.t4k); return; }
-  const fs = e.target.closest('[data-t4save]'); if (fs) { saveFour(fs); return; }
-  const fx = e.target.closest('[data-t4x]'); if (fx) { const id = fx.dataset.t4x; LOOP.ms = LOOP.ms.filter(t => t.m.id !== id); const j = LOOPS.findIndex(l => l.id === id); if (j >= 0) LOOPS.splice(j, 1); store.set('da.loops.v1', LOOPS); loopSync(false); refreshFour(); return; }
+  const fk = e.target.closest('[data-t4k]'); if (fk) { toggleTrack(fk.dataset.t4k); return; }
+  if (e.target.closest('[data-t4save]')) { saveFour(); return; }
+  const fx = e.target.closest('[data-t4x]'); if (fx) { const id = fx.dataset.t4x; LOOP.ms = LOOP.ms.filter(t => t.of !== id); const j = LOOPS.findIndex(l => l.id === id); if (j >= 0) LOOPS.splice(j, 1); store.set('da.loops.v1', LOOPS); loopSync(false); refreshFour(); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
   const vb = e.target.closest('[data-vol]'); if (vb) { const k = vb.dataset.vol; const n = (volStep(k) + 1) % VOLS.length; prefs.lvl = { ...(prefs.lvl || {}), [k]: VOLS[n] }; savePrefs(); vb.dataset.v = String(n); snd.tick(1200 + n * 300); return; }
@@ -224,101 +226,160 @@ function tuneMix(m, play) {
   prefs.lm = { ...(prefs.lm || {}), ...Object.fromEntries(Object.entries(m.layers).filter(([, v]) => v.mood).map(([k, v]) => [k, v.mood])) }; prefs.lvl = { ...(prefs.lvl || {}), ...Object.fromEntries(Object.entries(m.layers).map(([k, v]) => [k, v.lvl])) };
   for (const [k, v] of Object.entries(m.layers)) { if (k === 'life') prefs.mute = !v.on; else if (k in T4) T4[k] = !!v.on; }
   prefs.t4 = { ...T4 }; savePrefs(); syncTracks();
+  if (play && LOOP.on) { LOOP.back.push(snapOf()); LOOP.ms = []; loopSync(false); }
   if (play) setRadio(true); else if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
 function playMix(id) { const m = MIXES.find(x => x.id === id) || LOOPS.find(x => x.id === id); if (m) tuneMix(m, true); }
 /* ───────── the loop: the radio as it sounds now, kept on this device (da.loops.v1) and played round and round from where it
-   was made. The radar can move on: it is quiet while the loop plays, and a dashed ring stays where the loop was grounded ───────── */
+   was made. The radar can move on: it is quiet while anything kept plays, and a dashed ring stays where the loop was grounded ───────── */
 const LOOPS = store.get('da.loops.v1', []);
-const LOOP = { on: false, live: false, m: null, t0: 0, last: 0, timer: 0, ms: [] };   // live: LOOP itself going round (the radar quiet under it)   // ms: the tracks going round, { m, t0, last, live }
+/* ms: the tracks going round, { m, t0, step, live, of } (of: the song they belong to); back: what was playing before, to come
+   back when what replaced it stops; paused: what went round when the radio was paused; hush: quiet under a recording */
+const LOOP = { on: false, live: false, m: null, t0: 0, timer: 0, ms: [], back: [], paused: null, hush: false };
 const loopDur = m => Math.max(2, +((m && m.loop) || CONFIG.SCAN.turn || 8)) * 1000 / ((life.tempo && life.tempo()) || 1);
 const loopBearing = () => (LOOP.m ? ((performance.now() - LOOP.t0) % loopDur(LOOP.m)) / loopDur(LOOP.m) * 360 : 0);
-function loopTick() {
-  const now = performance.now(), hold = !LOOP.on || document.hidden || !prefs.sound || !S.radio;
-  for (const tr of LOOP.ms) { const last = tr.last; tr.last = now; if (!hold) loopOne(tr, last, now); }
-}
-function loopOne(tr, last, now) {
-  const D = loopDur(tr.m); const a = ((last - tr.t0) % D) / D * 360, b = ((now - tr.t0) % D) / D * 360;
-  const crossed = deg => (a <= b ? deg > a && deg <= b : deg > a || deg <= b);
-  /* each cell sounded exactly as the radar sounds it, so a loop kept is the radio as it was: the live loop with the layer keys as
-     they are now, a kept track with its own, and quieter the more tracks go round together */
-  const share = 1 / Math.sqrt(LOOP.ms.length || 1);
-  for (const [k, L] of Object.entries(tr.m.layers || {})) {
-    const lvl = (tr.live ? lvlOf(k) : (L.lvl == null ? 0.7 : +L.lvl)) * share; if (!(tr.live ? trackOn(k) : L.on) || lvl < 0.02) continue; const mood = tr.live ? moodOfLayer(k) : L.mood || moodOfLayer(k);
-    for (const c of L.cells || []) {
-      if (!crossed(c.b)) continue; const pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
-      if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * lvl * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life') }); }
-      else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * lvl, pan, fx: fxOf('water') });
-      else { if (!c.cur && partialOf(c.n || '') % 3) continue; ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * lvl, pan, fx: fxOf(k) }); }
-      if (ok) flashLayer(k);
-    }
+/* a song as a score: its turn cut into sixteenths, each cell in the sixteenth it lies in, those in danger and the bright ones
+   first. Each track plays its own notes a sixteenth at a time whatever else plays, so a mix is every track's notes together,
+   and what one turn leaves out the next plays */
+const SCORES = new WeakMap();
+function scoreOf(m) {
+  if (SCORES.has(m)) return SCORES.get(m);
+  const n = Math.max(16, Math.round(Math.max(2, +(m.loop || CONFIG.SCAN.turn || 8)) / 0.125)), at = b => Math.floor(((((+b || 0) % 360) + 360) % 360) / 360 * n) % n;
+  const sc = Array.from({ length: n }, () => []), figs = Array.from({ length: n }, () => []);
+  for (const [k, L] of Object.entries(m.layers || {})) for (const c of L.cells || []) {
+    if (k !== 'life' && k !== 'water' && !c.cur && partialOf(c.n || '') % 3) continue;   // a busy street: the places named, a third of the rest, as the radar plays them
+    sc[at(c.b)].push({ k, c, w: (c.dz ? 4 : 0) + (c.br ? 2 : 0) + (c.cur ? 1 : 0) + (c.fa || 1) });
   }
-  for (const f of tr.m.figs || []) if (f.b != null && crossed(f.b)) strings.playFig(f.id);
+  for (const s of sc) s.sort((x, y) => y.w - x.w);
+  for (const f of m.figs || []) if (f.b != null) figs[at(f.b)].push(f.id);
+  const o = { n, sc, figs }; SCORES.set(m, o); return o;
+}
+function loopTick() {
+  const now = performance.now(), hold = !LOOP.on || document.hidden || !prefs.sound || !S.radio || LOOP.hush;
+  const share = 1 / Math.sqrt(LOOP.ms.length || 1), B = snd.lite ? 1 : 2;
+  for (const tr of LOOP.ms) {
+    const { n, sc, figs } = scoreOf(tr.m), st = Math.floor((now - tr.t0) / loopDur(tr.m) * n), prev = tr.step; tr.step = st;
+    if (hold || prev == null || st <= prev) continue;
+    for (let s = Math.max(prev + 1, st - 2); s <= st; s++) { const i = ((s % n) + n) % n; loopStep(tr, sc[i], Math.floor(s / n), share, B); for (const id of figs[i]) strings.playFig(id); }
+  }
+}
+/* one sixteenth of one track: up to B of its notes (one on a slower phone), turning through them turn by turn; each sounded as
+   the radar sounds it, at the level and mood it was kept with (the live loop with the layer keys as they are now) */
+function loopStep(tr, notes, turn, share, B) {
+  const Ls = tr.m.layers || {}, on = notes.filter(x => (tr.live ? trackOn(x.k) : (Ls[x.k] || {}).on)); if (!on.length) return;
+  for (let j = 0; j < Math.min(B, on.length); j++) {
+    const { k, c } = on[(turn * B + j) % on.length], L = Ls[k] || {}; const lvl = tr.live ? lvlOf(k) : (L.lvl == null ? 0.7 : +L.lvl); if (lvl < 0.02) continue;
+    const v = lvl * share, mood = tr.live ? moodOfLayer(k) : L.mood || moodOfLayer(k), pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
+    if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * v * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life'), sure: true }); }
+    else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * v, pan, fx: fxOf('water'), sure: true });
+    else ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * v, pan, fx: fxOf(k), sure: true });
+    if (ok) flashLayer(k);
+  }
 }
 /* where the radar is: placed where the map is looking, if it has not been yet (the radio opened in the aura's window) */
 const here = () => { if (!placed()) startRadio(false); return placed() && !!S.scan && Number.isFinite(+S.scan.lat); };
 /* a song kept: newest first, eight at most, smaller and smaller until this phone has room for it */
 function keepLoop(m) {
   LOOPS.unshift(m); LOOPS.splice(8);
-  if (!store.set('da.loops.v1', LOOPS)) for (const l of LOOPS) for (const L of Object.values(l.layers || {})) if ((L.cells || []).length > 24) L.cells = L.cells.filter((c, i) => i % 2 === 0);
+  const thin = L => { if ((L.cells || []).length > 24) L.cells = L.cells.filter((c, i) => i % 2 === 0); };
+  if (!store.set('da.loops.v1', LOOPS)) for (const l of LOOPS) for (const p of [l, ...(l.parts || [])]) Object.values(p.layers || {}).forEach(thin);
   while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop();
   return LOOPS[0] === m;
 }
-const trackOf = m => ({ m, t0: performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m), last: performance.now(), live: false });
-/* the tracks going round, said to the keys, the ring on the map and the timer */
+/* a song's tracks: one, or each part of a mix kept together, all on one beat (t0), where the radar's hand is if none is given */
+const trackOf = (m, t0) => ({ m, t0: t0 != null ? t0 : performance.now() - ((life.sweepAt ? life.sweepAt() : 0) / 360) * loopDur(m), step: null, live: false, of: m.id });
+const tracksOf = (m, t0) => { const ps = m.parts && m.parts.length ? m.parts : [m]; const a = trackOf(ps[0], t0); return ps.map((p, i) => ({ ...(i ? trackOf(p, a.t0) : a), of: m.id })); };
+const going = id => LOOP.ms.some(t => t.of === id);
+/* the four-track: the four songs kept last (a mix kept together sits with the songs, not here) */
+const FOUR = () => LOOPS.filter(l => !l.parts).slice(0, 4);
+const inFour = () => LOOP.ms.length > 0 && LOOP.ms.every(t => !t.live && FOUR().some(l => l.id === t.of));
+/* what plays now, kept to come back to */
+const snapOf = () => ({ radio: S.radio, ms: LOOP.ms.map(t => ({ m: t.m, live: t.live, of: t.of })) });
+const rebeat = ms => { let t0 = null; return ms.map(x => { const tr = { ...trackOf(x.m, t0), live: x.live, of: x.of }; if (t0 == null) t0 = tr.t0; return tr; }); };
+/* something new plays: what played is kept to come back to */
+function startPlay(ms) { LOOP.back.push(snapOf()); if (LOOP.back.length > 6) LOOP.back.shift(); LOOP.paused = null; LOOP.ms = ms; loopSync(true); }
+/* what played stops: what it replaced comes back, as it was (songs, the radio alone, or quiet) */
+function comeBack() {
+  const s = LOOP.back.pop(); LOOP.ms = s ? rebeat(s.ms) : []; loopSync(!!LOOP.ms.length);
+  if (s && !s.radio && !LOOP.ms.length && S.radio) setRadio(false);
+}
+/* the tracks going round, said to every key that shows them, the ring on the map and the timer */
 function loopSync(on) {
   LOOP.on = LOOP.ms.length > 0; LOOP.live = LOOP.ms.some(t => t.live); LOOP.m = LOOP.on ? LOOP.ms[0].m : null; LOOP.t0 = LOOP.on ? LOOP.ms[0].t0 : 0;
-  clearInterval(LOOP.timer); if (LOOP.on) { LOOP.timer = setInterval(loopTick, snd.lite ? 80 : 40); if (!S.radio) setRadio(true); }
+  clearInterval(LOOP.timer); if (LOOP.on) { LOOP.timer = setInterval(loopTick, snd.lite ? 60 : 30); if (!S.radio) setRadio(true); }
+  const four = inFour(), all = four && FOUR().length > 1 && FOUR().every(l => going(l.id));
   $$('[data-loop]').forEach(b => { b.setAttribute('aria-pressed', String(LOOP.live)); b.classList.toggle('on', LOOP.live); });
-  const going = id => LOOP.ms.some(t => t.m.id === id), all = LOOP.ms.length > 1;
   $$('[data-t4k]').forEach(b => { const o = going(b.dataset.t4k); b.setAttribute('aria-pressed', String(o)); b.classList.toggle('on', o); });
   $$('[data-loop-play]').forEach(b => { const o = going(b.dataset.loopPlay); b.classList.toggle('on', o); b.setAttribute('aria-pressed', String(o)); if (b.classList.contains('ib')) b.innerHTML = icon(o ? 'pause' : 'play', 'sm'); });
   $$('[data-t4all]').forEach(b => { b.setAttribute('aria-pressed', String(all)); b.classList.toggle('on', all); });
+  $$('[data-loop-next]').forEach(b => { b.disabled = !LOOPS.length; });
   document.body.classList.toggle('looping', LOOP.on); snd.tick(on ? 1900 : 1100); buzz(on ? [6, 30, 6] : 5); life.redraw();
 }
-/* LOOP: the radio as it sounds now, kept and going round (or every track stopped) */
+/* LOOP: the radio as it sounds now, kept and going round alone; pressed again, what played before comes back. (null: all stops) */
 function setLoop(on, kept) {
   if (on && !kept && !here()) { toast('WHERE ARE YOU?'); return; }
-  if (on) { const m = kept || mixNow(); if (!kept) keepLoop(m); LOOP.ms = [{ ...trackOf(m), live: !kept }]; if (!kept) refreshFour(); }
-  else LOOP.ms = kept === null ? [] : LOOP.ms.filter(t => !t.live);
-  loopSync(on);
+  if (on) { const m = kept || mixNow(); if (!kept) keepLoop(m); startPlay(tracksOf(m).map(t => ({ ...t, live: !kept }))); if (!kept) refreshFour(); return; }
+  if (kept === null) { LOOP.back = []; LOOP.ms = []; loopSync(false); return; }
+  if (LOOP.live) comeBack();
 }
-/* a kept song played again exactly as it was made, alone: whatever went round stops for it; pressed again while it plays
-   alone, it stops */
+/* a song (or a mix kept together) played alone, exactly as kept: what played stops for it; pressed again, it stops and what it
+   replaced comes back */
 function playLoop(id) {
   const m = LOOPS.find(l => l.id === id); if (!m) return;
-  const alone = LOOP.ms.length === 1 && LOOP.ms[0].m.id === id;
-  LOOP.ms = alone ? [] : [trackOf(m)]; loopSync(!alone);
+  if (LOOP.ms.length && LOOP.ms.every(t => t.of === id)) { comeBack(); return; }
+  startPlay(tracksOf(m));
 }
-const toggleTrack = playLoop;
-/* NEXT: the song kept after the one going round (the first, when none is) */
+/* NEXT: the song kept after the one playing (the first, when none is), in its place */
 function nextLoop() {
   if (!LOOPS.length) { toast('KEEP A SONG FIRST'); return; }
-  const i = LOOP.on ? LOOPS.findIndex(l => l.id === LOOP.m.id) : -1; const m = LOOPS[(i + 1) % LOOPS.length];
-  LOOP.ms = [trackOf(m)]; loopSync(true); toast((m.where || {}).place || 'RADIO');
+  const i = LOOP.on ? LOOPS.findIndex(l => l.id === LOOP.ms[0].of) : -1, m = LOOPS[(i + 1) % LOOPS.length];
+  if (LOOP.on) { LOOP.ms = tracksOf(m); loopSync(true); } else startPlay(tracksOf(m)); toast((m.where || {}).place || 'RADIO');
 }
-/* the four kept last, together, each at its own levels; pressed again, they stop */
+/* the four-track is a mixer: a track pressed goes in or out of what plays, on the same beat, so any one or any few play
+   together; pressed while something else plays, it plays alone in its place. Every track out, what played before comes back */
+function toggleTrack(id) {
+  const m = LOOPS.find(l => l.id === id); if (!m) return;
+  if (!inFour()) { startPlay(tracksOf(m)); return; }
+  if (going(id)) { LOOP.ms = LOOP.ms.filter(t => t.of !== id); if (LOOP.ms.length) loopSync(false); else comeBack(); return; }
+  LOOP.ms = LOOP.ms.concat(tracksOf(m, LOOP.ms[0].t0)); loopSync(true);
+}
+/* ALL: the four together; pressed again, they stop */
 function playFour() {
-  const four = LOOPS.slice(0, 4); if (four.length < 2) return;
-  const all = LOOP.ms.length > 1;
-  LOOP.ms = all ? [] : four.map(trackOf); loopSync(!all);
+  const four = FOUR(); if (four.length < 2) return; const mixing = inFour();
+  if (mixing && four.every(l => going(l.id))) { comeBack(); return; }
+  const t0 = mixing ? LOOP.ms[0].t0 : trackOf(four[0]).t0, ms = four.flatMap(l => tracksOf(l, t0));
+  if (mixing) { LOOP.ms = ms; loopSync(true); } else startPlay(ms);
 }
-/* the four-track on the radio: the four songs kept last, each a key that goes round with the others; × lets one go */
+/* the tracks playing (none playing, the four), kept together as one song among the songs, and shared */
+function mixOf(parts) {
+  const layers = Object.fromEntries(LAYERS.map(L => { const ps = parts.map(p => (p.layers || {})[L.k] || {}).filter(x => x.on);
+    return [L.k, { on: ps.length > 0, lvl: ps.length ? Math.max(...ps.map(x => (x.lvl == null ? 0.7 : +x.lvl))) : 0.7, mood: (ps[0] || {}).mood || moodOfLayer(L.k), n: ps.reduce((a, x) => a + (x.n || 0), 0), cells: ps.flatMap(x => x.cells || []) }]; }));
+  const place = [...new Set(parts.map(p => (p.where || {}).place).filter(Boolean))].slice(0, 3).join(' + ');
+  return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: Math.max(...parts.map(p => +p.loop || 8)), where: { ...parts[0].where, place: place || 'RADIO' }, layers, parts: parts.map(p => { const q = { ...p }; delete q.parts; return q; }) };
+}
+function saveFour() {
+  let ms = LOOP.ms; if (!ms.length) ms = FOUR().flatMap(l => tracksOf(l));
+  if (!ms.length) { toast('KEEP A SONG FIRST'); return; }
+  const ids = [...new Set(ms.map(t => t.of))]; let song = ids.length === 1 ? LOOPS.find(l => l.id === ids[0]) : null;
+  if (!song) { song = mixOf(ms.map(t => t.m)); if (!keepLoop(song)) { toast('NO ROOM ON THIS PHONE'); return; } made('song', 'mix'); snd.tick(1900); if (S.view !== 0) refreshPanel(); }
+  shareSong(song);
+}
+/* a song shared: the phone's own share (its link, which opens the radio where it was made), else its link copied */
+async function shareSong(l) {
+  const url = mixURL(l), title = (l.where || {}).place || 'novel.global';
+  if (navigator.share) { try { await navigator.share({ title, url }); toast('✓ SHARED'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60));
+}
+/* a recording playing (a life's own call): what the radio plays waits under it, and comes back when it ends */
+function hush(on) { LOOP.hush = !!on; }
+/* the four-track on the radio: + keeps the sound now; the four songs kept last, each in or out of the mix; ALL; SHARE */
 function fourHTML() {
-  const all = LOOP.ms.length > 1;
-  return `<ol class="four" role="group" aria-label="Four-track">${[0, 1, 2, 3].map(i => { const l = LOOPS[i]; if (!l) return i === LOOPS.length ? `<li><button type="button" class="f4 f4s f4p" data-song-keep aria-label="Keep the radar's sound now" data-tip="Keep the sound now">${icon('plus')}<small class="mono">keep</small></button></li>` : `<li><span class="f4 none mono" aria-hidden="true">${i + 1}</span></li>`;
-    const on = LOOP.ms.some(t => t.m.id === l.id), nm = esc((l.where || {}).place || 'RADIO');
-    return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}<li><button type="button" class="f4 f4s${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${LOOPS.length > 1 ? '' : ' disabled'}>${icon('loop')}<small class="mono">all</small></button></li><li><button type="button" class="f4 f4s" data-t4save aria-label="Save the tracks going round as one sound file" data-tip="Save them together"${LOOPS.length ? '' : ' disabled'}>${icon('download')}<small class="mono">save</small></button></li></ol>`;
-}
-/* the tracks going round, together, as one sound file: two turns of the longest (a minute at most). None going round, the four kept last go round for it */
-async function saveFour(btn) {
-  if (!LOOP.on) { LOOP.ms = LOOPS.slice(0, 4).map(trackOf); loopSync(true); }
-  if (!LOOP.ms.length) { toast('KEEP A TRACK FIRST'); return; }
-  const ms = Math.min(60e3, 2 * Math.max(...LOOP.ms.map(t => loopDur(t.m)))) + 400; btn.disabled = true; btn.classList.add('rec'); toast('● ' + Math.round(ms / 1000) + ' S');
-  try { const b = await snd.record(ms); const place = String((LOOP.ms[0].m.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-'); const a = document.createElement('a');
-    a.href = URL.createObjectURL(b); a.download = `novel-global-four-track-${place}-${new Date().toISOString().slice(0, 10)}.${/mp4/.test(b.type) ? 'm4a' : 'webm'}`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60e3); toast('✓ SAVED'); made('song', 'four-track');
-  } catch (e) { toast('THIS BROWSER CANNOT RECORD'); }
-  btn.disabled = false; btn.classList.remove('rec');
+  const four = FOUR(), all = inFour() && four.length > 1 && four.every(l => going(l.id));
+  return `<ol class="four" role="group" aria-label="Four-track">${[0, 1, 2, 3].map(i => { const l = four[i]; if (!l) return i === four.length ? `<li><button type="button" class="f4 f4s f4p" data-song-keep aria-label="Keep the radar's sound now" data-tip="Keep the sound now">${icon('plus')}<small class="mono">keep</small></button></li>` : `<li><span class="f4 none mono" aria-hidden="true">${i + 1}</span></li>`;
+    const on = going(l.id), nm = esc((l.where || {}).place || 'RADIO');
+    return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}`
+    + `<li><button type="button" class="f4 f4s${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${four.length > 1 ? '' : ' disabled'}>${icon('loop')}<small class="mono">all</small></button></li>`
+    + `<li><button type="button" class="f4 f4s" data-t4save aria-label="Keep what plays as one song and share it" data-tip="Keep and share what plays"${four.length ? '' : ' disabled'}>${icon('share')}<small class="mono">share</small></button></li></ol>`;
 }
 function refreshFour() { const f = $('#view .four'); if (f) f.outerHTML = fourHTML(); $$('[data-loop-next]').forEach(b => { b.disabled = !LOOPS.length; }); }
 /* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
@@ -330,25 +391,26 @@ const songCard = (l, i) => ({ id: 's:' + l.id, img: loopArt(l), kind: 'song', na
 const songsHTML = () => `<section class="sec songs" id="sec-songs"><div class="lab-row">${labI('sound', 'Songs', LOOPS.length)}<button type="button" class="pill sq" data-song-keep aria-label="Keep the radar's song as it is now" data-tip="Keep the radar's song">${icon('plus', 'sm')}</button></div>`
   + (LOOPS.length ? `<ol class="albums">${LOOPS.map((l, i) => `<li class="album"><button type="button" class="al-sleeve" data-loop-play="${esc(l.id)}" aria-label="Play ${esc((l.where || {}).place || 'this song')}"><img class="al-art" src="${loopArt(l)}" alt=""><img class="al-card" data-song-card="${i}" alt=""></button>`
     + `<span class="al-t"><b>${esc((l.where || {}).place || 'RADIO')}</b><small class="mono">${Math.round((l.where || {}).r || 0)} M · ${fmtStamp(l.at).split(' ')[0]}</small></span>`
-    + `<span class="al-k"><button type="button" class="ib${LOOP.ms.some(t => t.m.id === l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(LOOP.ms.some(t => t.m.id === l.id) ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-song-share="${esc(l.id)}" aria-label="Copy its link" data-tip="Copy its link">${icon('share', 'sm')}</button><button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
+    + `<span class="al-k"><button type="button" class="ib${going(l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(going(l.id) ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-song-share="${esc(l.id)}" aria-label="Copy its link" data-tip="Copy its link">${icon('share', 'sm')}</button><button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
     : '<p class="al-none mono">NO SONGS KEPT YET · + KEEPS THE RADAR\'S SONG</p>') + '</section>';
 async function fillSongs() { for (const im of $$('#view img[data-song-card]')) { const l = LOOPS[+im.dataset.songCard]; if (!l) continue; try { const c = await cardArt(songCard(l, +im.dataset.songCard), +im.dataset.songCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 $('#view').addEventListener('click', async e => {
   if (e.target.closest('[data-song-keep]')) { if (!here()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); const ok = keepLoop(m); snd.tick(ok ? 1900 : 700); toast(ok ? '✓ KEPT' : 'NO ROOM ON THIS PHONE'); if (ok) made('song', (m.where || {}).place || 'RADIO'); refreshFour(); if (S.view !== 0) refreshPanel(); return; }
   /* a kept track onto the poster: its card, in the aura's poster or on the strip */
   const sp = e.target.closest('[data-song-poster]'); if (sp) { const l = LOOPS.find(x => x.id === sp.dataset.songPoster); if (!l) return; const art = mixArt(l, mixURL(l)); if (IN_AURA) toAura(art, true); else { setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); } snd.tick(1900); return; }
-  const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (!l) return; const url = mixURL(l);
-    const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60)); }
+  const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (l) shareSong(l); }
 });
 /* ───────── the radio as a link: the place, its reach, and each layer's on, volume and mood, short enough for a code on a
    receipt. Opened, it tunes the radio there; a touch on play and it sounds ───────── */
 const volIdx = v => VOLS.reduce((best, q, i) => (Math.abs(q - v) < Math.abs(VOLS[best] - v) ? i : best), 0);
 function mixCode(m) {
+  if (m.parts && m.parts.length) return m.parts.map(mixCode).join(';');
   const ks = Object.keys(MOODS); const w = m.where;
   return `${(+w.lat).toFixed(4)},${(+w.lng).toFixed(4)},${Math.round(w.r)},${LAYERS.map(L => { const x = (m.layers || {})[L.k] || {}; return `${x.on ? 1 : 0}${volIdx(x.lvl == null ? 0.7 : x.lvl)}${Math.max(0, ks.indexOf(x.mood)).toString(36)}`; }).join('')}`;
 }
 const mixURL = m => `${String(/\.workers\.dev$|localhost|\.test$/.test(location.hostname) ? location.origin + '/' : CONFIG.PORTAL_URL || location.origin + '/').replace(/#.*$/, '')}#mix=${mixCode(m)}`;
 function mixOfCode(code) {
+  if (String(code || '').includes(';')) { const ps = String(code).split(';').slice(0, 8).map(mixOfCode).filter(Boolean); return ps.length ? mixOf(ps) : null; }
   const [lat, lng, r, L] = String(code || '').split(','); const ks = Object.keys(MOODS);
   if (!Number.isFinite(+lat) || !Number.isFinite(+lng) || !/^([01]\d[0-9a-z]){4}$/.test(L || '')) return null;
   const layers = Object.fromEntries(LAYERS.map((Lr, i) => { const s = L.slice(i * 3, i * 3 + 3); return [Lr.k, { on: s[0] === '1', lvl: VOLS[+s[1]] || 0.7, mood: ks[parseInt(s[2], 36)] || 'fog' }]; }));
