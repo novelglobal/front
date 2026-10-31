@@ -117,7 +117,7 @@
   async function act(id, action, card) {
     if (action === 'purge' && !confirm('Delete this for good? It cannot be brought back.')) return;
     await api('stories/' + id, { method: 'POST', body: JSON.stringify({ action }) });
-    card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: { show: 'SHOWN · AND SENT TO PRINT', refuse: 'REFUSED', delete: 'ARCHIVED · IT CAN BE BROUGHT BACK FROM ARCHIVE', restore: 'BACK IN WAITING', purge: 'DELETED FOR GOOD' }[action] || 'DONE' }));
+    card.querySelector('.acts').replaceChildren(el('span', { class: 'done', text: { show: 'SHOWN · AND SENT TO PRINT', refuse: 'REFUSED', delete: 'OFF NOVEL.GLOBAL, IN THE ARCHIVE · IT CAN BE BROUGHT BACK', restore: 'BACK IN WAITING', purge: 'DELETED FROM NOVEL.GLOBAL FOR GOOD' }[action] || 'DONE' }));
     badges();
   }
   /* the print as it went to the printer: its small one-bit picture ("w,h,base64"), drawn crisp */
@@ -155,7 +155,7 @@
       x.status === 'deleted' ? el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: () => act(x.id, 'restore', card) }) : null,
       x.status !== 'shown' && x.status !== 'deleted' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
-      x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => act(x.id, 'delete', card) }),
+      x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FROM NOVEL.GLOBAL FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'TAKE OFF NOVEL.GLOBAL (ARCHIVE)', onclick: () => act(x.id, 'delete', card) }),
       x.status === 'shown' && x.code ? el('button', { type: 'button', text: `ITS TALK (${x.said || 0})`, onclick: () => { talkSec = 'p.' + x.code; show('talk'); } }) : null);
     keys.push(
       x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null,
@@ -176,6 +176,13 @@
     card.append(pic, el('div', { class: 'body' }, title, brief, acts, drop));
     return card;
   }
+  /* what people make, on the site or not: off, everything shown here is a draft that only this page sees */
+  async function madeSwitch() {
+    const s0 = await (await api('settings')).json(), on = !!s0.madeShow;
+    return el('section', { class: 'printer made' + (on ? ' on' : '') }, el('h3', { text: on ? 'ON NOVEL.GLOBAL: WHAT IS SHOWN HERE IS PUBLIC' : 'DRAFTS: NOTHING MADE IS ON NOVEL.GLOBAL' }),
+      el('div', { class: 'note', text: on ? 'EVERY STORY, POSTER, PACK AND PHOTOGRAPH SHOWN HERE IS ON THE MAP AND THE WALL FOR EVERY VISITOR.' : 'SHOW STILL APPROVES AND PRINTS, BUT VISITORS SEE NONE OF IT: NOT ON THE MAP, THE WALL OR IN ITS TALK. NOTHING IS DELETED. THE EXAMPLE IS SET APART, UNDER WORDS AND BOARDS.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: on ? 'on' : '', text: on ? 'SHOWN ON NOVEL.GLOBAL' : 'DRAFTS · HIDDEN', onclick: async () => { if (!on && !confirm('Show everything approved here on novel.global, to every visitor?')) return; await api('settings', { method: 'POST', body: JSON.stringify({ madeShow: !on }) }); show(tab); } })));
+  }
   async function stories(st) {
     const r = await api('stories?status=' + st); const { stories: list } = await r.json();
     const clear = st === 'waiting' && list.length ? [el('button', { type: 'button', text: `CLEAR ALL ${list.length} WAITING`, onclick: async () => { if (!confirm(`Refuse and clear all ${list.length} waiting, with their held prints?`)) return; await api('stories/clear', { method: 'POST', body: '{}' }); stories(st); } })] : [];
@@ -188,12 +195,12 @@
     let shown = list;
     const draw = () => { const w = q.value.trim().toLowerCase(); shown = list.filter(x => !w || hay(x).includes(w)).slice();
       const by = { new: (p, n) => n.created - p.created, old: (p, n) => p.created - n.created, kind: (p, n) => String(p.kind).localeCompare(n.kind) || n.created - p.created, who: (p, n) => String(p.who || '~').localeCompare(n.who || '~') || n.created - p.created, pic: (p, n) => (!!(n.photo || n.thumb) - !!(p.photo || p.thumb)) || n.created - p.created }[so.value]; shown.sort(by);
-      count.textContent = shown.length + ' OF ' + list.length; bulk.textContent = st === 'deleted' ? 'DELETE THESE ' + shown.length + ' FOR GOOD' : 'ARCHIVE THESE ' + shown.length; bulk.hidden = !shown.length || !w;
+      count.textContent = shown.length + ' OF ' + list.length; bulk.textContent = st === 'deleted' ? 'DELETE THESE ' + shown.length + ' FOR GOOD' : 'TAKE THESE ' + shown.length + ' OFF NOVEL.GLOBAL'; bulk.hidden = !shown.length || !w;
       box.replaceChildren(...(shown.length ? shown.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })])); };
     bulk.onclick = async () => { const n = shown.length, act2 = st === 'deleted' ? 'purge' : 'delete'; if (!confirm((act2 === 'purge' ? 'Delete for good ' : 'Archive ') + n + ' shown by this search?')) return; bulk.disabled = true;
       for (const x of shown) await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: act2 }) }).catch(() => {}); bulk.disabled = false; show(st); badges(); };
     q.oninput = draw; so.onchange = draw; draw();
-    main.replaceChildren(...head(T[0]), ...clear, el('div', { class: 'tools' }, q, so, count, bulk), box, ...extra);
+    main.replaceChildren(...head(T[0]), ...(st === 'waiting' || st === 'shown' ? [await madeSwitch()] : []), ...clear, el('div', { class: 'tools' }, q, so, count, bulk), box, ...extra);
   }
 
   /* ───────── printers: paired with a token shown once; printing with or without approval; a test print ───────── */
@@ -248,8 +255,12 @@
     const lr = el('section', { class: 'printer' }); lr.append(el('h3', { text: 'PHOTOGRAPHS' }), el('div', { class: 'note', text: st.lowRes ? 'LOW RES: ONLY THE PRINT-SIZED PICTURE IS KEPT.' : 'FULL SIZE: EACH PHOTOGRAPH IS ALSO KEPT FULL SIZE IN R2 (UP TO 8 GB, THEN SMALL ONLY).' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.lowRes ? 'on' : '', text: st.lowRes ? 'LOW RES ON' : 'LOW RES OFF', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ lowRes: !st.lowRes }) }); show('stations'); } })));
     /* BOARD 00, the example: as everyone sees it, or open to rewriting in the W.I.S.H. tab and sending here */
-    const ex = el('section', { class: 'printer' }); ex.append(el('h3', { text: 'BOARD 00 · THE EXAMPLE' }), el('div', { class: 'note', text: st.exampleEdit ? 'OPEN TO EDITING: CHANGE IT IN W.I.S.H. → BOARD 00, PRESS SEND, THEN SHOW IT HERE UNDER WAITING.' : 'LOCKED: EVERY VISITOR SEES IT AS IT IS.' }),
-      el('div', { class: 'acts' }, el('button', { type: 'button', class: st.exampleEdit ? 'on' : '', text: st.exampleEdit ? 'EDITING ON' : 'LOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ exampleEdit: !st.exampleEdit }) }); show('stations'); } })));
+    const setK = o => async () => { await api('settings', { method: 'POST', body: JSON.stringify(o) }); show('stations'); };
+    const ex = el('section', { class: 'printer' }); ex.append(el('h3', { text: 'THE EXAMPLE · ITS POSTER AND BOARD 00' }),
+      el('div', { class: 'note', text: (st.exampleShow ? 'SHOWN TO VISITORS: THE EXAMPLE POSTER ON THE WALL AND BOARD 00 IN W.I.S.H.' : 'HIDDEN FROM VISITORS.') + ' ' + (st.exampleEdit ? 'OPEN TO EDITING (AND SHOWN WHILE IT IS): CHANGE BOARD 00 IN THE STUDIO, W.I.S.H. → BOARD 00, PRESS SEND, THEN SHOW IT UNDER WAITING. THE EXAMPLE POSTER IS MADE FROM BOARD 00, SO IT UPDATES WITH IT.' : 'LOCKED: NO ONE CAN CHANGE IT.') }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: st.exampleShow ? 'on' : '', text: st.exampleShow ? 'SHOWN TO VISITORS' : 'HIDDEN', onclick: setK({ exampleShow: !st.exampleShow }) }),
+        el('button', { type: 'button', class: st.exampleEdit ? 'on' : '', text: st.exampleEdit ? 'EDITING ON' : 'LOCKED', onclick: setK({ exampleEdit: !st.exampleEdit }) }),
+        el('button', { type: 'button', class: 'no', text: 'DELETE THE SHARED EDIT (BACK TO THE BUILT-IN EXAMPLE)', onclick: async () => { if (!confirm('Delete the edited BOARD 00 from novel.global for everyone? The example built into the site comes back. Copies on phones are not touched.')) return; await api('reset', { method: 'POST', body: JSON.stringify({ example: true }) }); show('stations'); } })));
     /* the first board's template: its words, a note to a paragraph, its title on its first line; empty, the site's own */
     const own = ((window.DA_CONFIG || {}).TEMPLATE || []).map(([, t, d]) => `${t}\n${d}`).join('\n\n');
     const ta = el('textarea', { class: 'body', maxlength: 6000, spellcheck: 'true', 'aria-label': 'The first board, in words' }); ta.value = st.template || own;
@@ -400,7 +411,7 @@
       (() => { const U = o.use || { req: 0, w: 0, r2: 0, cap: { req: 1, w: 1, r2: 1 }, level: 0 }, bar = (n, cap, label, txt) => el('div', { class: 'act' }, el('span', { text: label }), el('i', { class: 'bar', style: `width:${Math.min(100, Math.round(100 * n / cap))}%${n / cap >= 0.85 ? ';background:#E25C40' : n / cap >= 0.6 ? ';background:#F2C14E' : ''}` }), el('b', { text: txt }));
         return el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'FREE ALLOWANCE · TODAY · ' + ['ALL CLEAR', 'CALM: PRINTERS ASK LESS OFTEN', 'RESTING: TALK AND NEW PLACES WAIT FOR TOMORROW'][U.level || 0] }),
           bar(U.req, U.cap.req, 'REQUESTS', `${U.req.toLocaleString()} / ${U.cap.req.toLocaleString()}`), bar(U.w, U.cap.w, 'ROWS WRITTEN', `${U.w.toLocaleString()} / ${U.cap.w.toLocaleString()}`),
-          bar(U.r2, U.cap.r2 * 0.8, 'FULL-SIZE PHOTOS (R2)', `${(U.r2 / 1e9).toFixed(2)} / ${(U.cap.r2 * 0.8 / 1e9).toFixed(0)} GB`)); })(),
+          bar(U.r2, U.cap.r2 * 0.8, 'PHOTOGRAPHS AND POSTERS (R2)', `${(U.r2 / 1e9).toFixed(2)} / ${(U.cap.r2 * 0.8 / 1e9).toFixed(0)} GB`)); })(),
       el('div', { class: 'row' },
         el('div', { class: 'cell g' }, gauge([[S.waiting, '#E25C40'], [S.shown, '#7FE3D3'], [S.refused, '#5F6B7A'], [S.deleted, '#2A3542']], 'SENT')),
         el('div', { class: 'cell g' }, gauge([[Pl.waiting, '#E25C40'], [Pl.shown, '#7FE3D3'], [Pl.deleted, '#2A3542']], 'PLACES')),
