@@ -1202,6 +1202,7 @@
     again: '<path d="M8 9a10 10 0 1 1-2 9"/><path d="M8 3.5V9h5.5"/>',
     back: '<path d="M25 9H12a7 7 0 0 0 0 14h10"/><path d="M17 4l-5 5 5 5"/>',
     bin: '<path d="M7 9h18M13 9V6h6v3M9 9l1.2 17h11.6L23 9"/><path d="M14 13v9M18 13v9" class="d"/>',
+    offsite: '<circle cx="16" cy="16" r="9.5"/><path d="M6.5 16h19M16 6.5c3.2 3 3.2 16 0 19M16 6.5c-3.2 3-3.2 16 0 19" class="d"/><path d="M6 26L26 6"/>',
     text: '<path d="M6 25L13 6h2l7 19M9 18h10"/><path d="M23 25c0-3 1.5-5 4-5s3 2 3 5" class="d"/>',
     eye: '<path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z"/><circle cx="16" cy="16" r="4.5"/><circle cx="16" cy="16" r="1.4" class="f"/>',
     pix: '<path d="M9 7h14v4h3v6h-3v2H9v-2H6v-6h3z"/><path d="M10 22v6M14 22v4M18 22v6M22 22v4" class="d"/>',
@@ -2058,7 +2059,7 @@
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
-      (f.code && !f.wall && store.get('da.who.pass', 0) && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
+      (f.code && !f.wall && store.get('da.who.pass', 0) && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
@@ -2079,6 +2080,8 @@
       var ag = $('#au-again'); if (ag) NG.sureTap(ag, function () { P = unpack(f.piece); P.sent = 0; think(); WALL = 0; paint(); fontReady().then(function () { setTimeout(function () { if ($('#au-print')) printNow(); }, 400); }); bell(5, 0.2); });
       var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { dropSlide(f).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
+      /* taken down from novel.global by one's own code: off the map and the wall for everyone, kept on the approval page and on this phone */
+      var dn = $('#au-down'); if (dn) NG.sureTap(dn, function () { NG.mine().then(function (l) { var s = (l || []).filter(function (x) { return x.code === f.code; })[0]; return s ? NG.dropMine(s.id) : null; }).then(function () { f.down = 1; NG.toast('TAKEN DOWN FROM NOVEL.GLOBAL'); paint(); }).catch(function () { NG.toast('NOT TAKEN DOWN · TRY AGAIN'); }); bell(1, 0.16); });
     }
     var sk = $('#au-sigk'); if (sk) sk.addEventListener('click', function () { openSig(f.now ? null : f); });
     [].forEach.call(panel.querySelectorAll('.au-wdots i'), function (d, i) { d.classList.toggle('on', i === WALL); });

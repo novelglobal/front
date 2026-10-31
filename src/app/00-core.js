@@ -89,6 +89,8 @@ const placeOf = o => { const s = typeof o.id === 'number' && o.pg ? o.pg.toLower
 const TRK_SEE = { life: true, places: false };
 /* the site's own settings, as last heard: the nature station stays on the map for everyone unless unlocked on the approval page */
 const CFG = Object.assign({ lifeLock: true }, store.get('da.cfg.v1', {}));
+/* the example (its poster on the wall and BOARD 00) shown: as the approval page has it, and always while it is open to editing */
+const exShown = () => CFG.exampleShow !== false || !!CFG.exampleEdit;
 const seeTrack = id => {
   if (id === 'life' && CFG.lifeLock) return true;
   /* the places are two tracks: EXPOSURE, those on notice; COMMUNITY, those that care */

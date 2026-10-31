@@ -17,7 +17,7 @@ const uid = p => `${p}${Date.now().toString(36)}${Math.random().toString(36).sli
 /* the boards: the first carries over a board kept before there were several */
 const BOARDS = (() => { const b = store.get('da.boards.v1', null); if (Array.isArray(b) && b.length) return b; const old = store.get('da.board.v1', null); if (old && old.json) store.set('da.board.b1', old); const first = [{ id: 'b1', n: 'BOARD 01', at: Date.now() }]; store.set('da.boards.v1', first); return first; })();
 if (window.DA_EXAMPLE_KIT && !BOARDS.some(b => b.id === 'b00')) { BOARDS.unshift({ id: 'b00', n: 'BOARD 00', at: 0, ex: true }); store.set('da.boards.v1', BOARDS); }
-let boardId = BOARDS.some(b => b.id === prefs.board) ? prefs.board : (BOARDS.find(b => !b.ex) || BOARDS[0]).id;
+let boardId = BOARDS.some(b => b.id === prefs.board && (!b.ex || exShown())) ? prefs.board : (BOARDS.find(b => !b.ex) || BOARDS[0]).id;
 const boardOf = id => store.get('da.board.' + id, null);
 const boardJSON = () => { const k = boardOf(boardId); return (k && k.json) || { objects: [] }; };
 const HIST = []; let histLast = '', fullAt = 0;
@@ -469,7 +469,7 @@ const sigRow2 = m => { const gs = [...new Set(((m.layers.life || {}).cells || []
 function viewSignals() {
   const on = BOARDS.find(b => b.id === boardId) || BOARDS[0]; const ms = MIXES.filter(m => (m.board || (BOARDS.find(b => !b.ex) || BOARDS[0]).id) === on.id);
   return wishDevice(true) + consStrip()
-    + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.map(b => `<li>${b.ex ? `<button type="button" class="b-key ex mono" data-board="${esc(b.id)}" aria-pressed="${b.id === on.id}">${esc(b.n)}</button>` : b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
+    + `<section class="sec book" id="sec-book"><div class="bk-h"><ol class="b-keys">${BOARDS.filter(b => !b.ex || exShown()).map(b => `<li>${b.ex ? `<button type="button" class="b-key ex mono" data-board="${esc(b.id)}" aria-pressed="${b.id === on.id}">${esc(b.n)}</button>` : b.id === on.id ? `<input class="bg-n mono" data-board-name="${esc(b.id)}" value="${esc(b.n)}" maxlength="32" aria-label="The board's name">` : `<button type="button" class="b-key mono" data-board="${esc(b.id)}" aria-pressed="false">${esc(b.n)}</button>`}</li>`).join('')}</ol>`
     + `<span class="bk-a"><button type="button" class="ib" data-new-board aria-label="A new board" data-tip="A new board">${icon('plus')}</button>${boardId !== 'b00' ? `<button type="button" class="ib" data-del-board aria-label="Take this board away" data-tip="Take this board away">${icon('close')}</button>` : ''}<button type="button" class="ib io" data-book-md aria-label="Download the field notes" data-tip="Field notes, out">${icon('download')}<small class="mono">.MD</small></button><label class="ib io" aria-label="Bring field notes in" data-tip="Field notes, in">${icon('receive')}<small class="mono">.MD</small><input type="file" id="md-in" accept=".md,text/markdown,text/plain" hidden></label></span></div>`
     + `<div class="bgroup on">${ms.length ? `<ol class="g-sigs">${ms.map(sigRow2).join('')}</ol>` : ''}</div></section>` + consSection();
 }

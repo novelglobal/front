@@ -520,7 +520,7 @@ const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length)
    on a strip that slides under a finger or the keys, one at a time (scroll snap: no library). Under the screen its number on a
    small display and the keys: back, close up, as a card, download, on ───────── */
 let galleryAt = 0, galleryFocus = null;
-const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2, ...SITE_POSTERS];
+const wallOf = () => [...(EXK && exShown() ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2, ...SITE_POSTERS];
 const wallNo = x => (x.ex ? '000' : x.site ? x.code.slice(3) : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
 const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}${x.site && x.said ? ` · ${x.said}` : ''}`;
 function showGallery(on) {

@@ -15,13 +15,15 @@ const { url } = await server.listen(); const O = url.origin;
 const call = async (p, { method = 'GET', body, key, token, origin = O, raw, ip } = {}) => {
   const headers = { origin }; if (ip) headers['cf-connecting-ip'] = ip; if (body !== undefined) headers['content-type'] = 'application/json'; if (key) headers.authorization = `Bearer ${key}`; if (token) headers.authorization = `Bearer ${token}`;
   const r = await server.fetch(new URL(p, O), { method, headers, body: raw != null ? raw : body !== undefined ? JSON.stringify(body) : undefined });
-  const t = r.headers.get('content-type') || ''; return { status: r.status, type: t, json: /json/.test(t) ? await r.json() : null, text: /text/.test(t) ? await r.text() : null };
+  const t = r.headers.get('content-type') || ''; return { status: r.status, type: t, json: /json/.test(t) ? await r.json() : null, text: /text/.test(t) ? await r.text() : null, bin: /image/.test(t) ? Buffer.from(await r.arrayBuffer()) : null };
 };
 const SIG = Buffer.from(JSON.stringify({ c: 'DA-7K2Q', t: 'hs0d7', p: [-37.77, 144.96, 'bird', 'Noisy Miner', 'Manorina melanocephala', 'BRUNSWICK', 0], l: ['A line', '', '', ''], k: [], e: [] })).toString('base64url');
-const JPEG = 'data:image/jpeg;base64,' + Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xD9]).toString('base64');
+const JPEG_B = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xD9]), JPEG = 'data:image/jpeg;base64,' + JPEG_B.toString('base64');
 const story = (code, extra = {}) => ({ kind: 'story', code, body: SIG, lat: -37.77, lng: 144.96, ...extra });
 
 try {
+  /* what is made is a draft until the approval page shows it on the site: these checks show it */
+  { const st0 = await call('/api/settings'); check('what people make starts hidden from visitors, the example shown', st0.json.madeShow === false && st0.json.exampleShow === true, JSON.stringify(st0.json)); await call('/api/admin/settings', { method: 'POST', key: KEY, body: { madeShow: true } }); }
   const h = await call('/api/health');
   check('health answers ok with the build', h.status === 200 && /^ok \w+/.test(h.text), h.text);
   const pa = await call('/api/partners');
@@ -69,8 +71,9 @@ try {
   check('the printer that asked shows as ready', pa2.json.partners.find(p => p.id === 'pickles').ready === true, JSON.stringify(pa2.json.partners[0]));
 
   await call(`/api/admin/stories/${s1.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  { const ov = await call('/api/admin/overview', { key: KEY }); check('a photograph is kept in R2, not in the database, and counted there', ov.json.use.r2 >= JPEG_B.length, JSON.stringify(ov.json.use)); }
   const pub1 = await call('/api/stories'); const one1 = await call('/api/stories/DA-7K2Q'); const ph1 = await call(`/api/photos/${s1.json.id}`); const r1 = await call(`/api/receipts/${s1.json.id}`);
-  check('approved: it is shown to everyone, with its photograph, and its print joins the queue', pub1.json.stories.filter(s => s.kind === 'story').length === 1 && pub1.json.stories[0].body === SIG && one1.status === 200 && ph1.status === 200 && ph1.type === 'image/jpeg' && r1.json.job.status === 'queued' && r1.json.job.ahead === 0, JSON.stringify({ n: pub1.json.stories.length, r: r1.json }));
+  check('approved: it is shown to everyone, with its photograph, and its print joins the queue', pub1.json.stories.filter(s => s.kind === 'story').length === 1 && pub1.json.stories[0].body === SIG && one1.status === 200 && ph1.status === 200 && ph1.type === 'image/jpeg' && !!ph1.bin && ph1.bin.equals(JPEG_B) && r1.json.job.status === 'queued' && r1.json.job.ahead === 0, JSON.stringify({ n: pub1.json.stories.length, r: r1.json }));
 
   /* the receiver at Pickles pulls it, prints it, and says so */
   const j1 = await call('/api/printers/pickles/next', { token: T }); const j2 = await call('/api/printers/pickles/next', { token: T });
@@ -187,7 +190,7 @@ try {
   check('a post without the password is refused; with it, it waits as a draft nobody sees', pd0.status === 401 && pd.status === 201 && pd.json.slug === 'fan-night-a-case-study' && po0.json.posts.length === 0 && one0p.status === 404, `${pd0.status} ${pd.status} ${JSON.stringify(pd.json)} ${po0.json.posts.length} ${one0p.status}`);
   await call('/api/admin/posts', { method: 'POST', key: KEY, body: { id: pd.json.id, title: 'Fan night, a case study', cat: 'work', summary: 'What happened', body: 'One.\n\nTwo.', links: ['https://example.org/a'], status: 'published' } });
   const po1 = await call('/api/posts'); const po1one = await call('/api/posts/fan-night-a-case-study'); const cov = await call('/api/posts/fan-night-a-case-study/cover');
-  check('published, it is listed with its category and cover, and only https links are kept', po1.json.posts.length === 1 && po1.json.posts[0].cat === 'WORK' && po1.json.posts[0].cover && po1one.json.post.links.join() === 'https://example.org/a' && cov.status === 200 && cov.type === 'image/jpeg', `${JSON.stringify(po1.json)} ${cov.status}`);
+  check('published, it is listed with its category and cover, and only https links are kept', po1.json.posts.length === 1 && po1.json.posts[0].cat === 'WORK' && po1.json.posts[0].cover && po1one.json.post.links.join() === 'https://example.org/a' && cov.status === 200 && cov.type === 'image/jpeg' && !!cov.bin && cov.bin.equals(JPEG_B), `${JSON.stringify(po1.json)} ${cov.status}`);
   await call(`/api/admin/posts/${pd.json.id}`, { method: 'POST', key: KEY, body: { action: 'delete' } });
   check('deleted, it is gone', (await call('/api/posts')).json.posts.length === 0);
   /* in the field: the Pi and its screen say which Wi-Fi they are on, for the approval page; CHANGE WI-FI reaches only a receiver that says it can */
@@ -290,6 +293,9 @@ try {
   check('a maker on the approval page: what they sent and said, for the approval page only; deleted, their stories are archived and their posts and record are gone',
     qA.status === 201 && qM.status === 200 && qM.json.stories.length === 1 && qM.json.talk.length === 1 && (qMx.status === 401 || qMx.status === 429) && qD.status === 200 && qM2.status === 404 && !qT.json.talk.some(t => t.text === 'a kelp forest of paper') && qAr.json.stories.some(x => x.code === 'DA-4QXA'),
     JSON.stringify({ m: qM.status, x: qMx.status, d: qD.status, m2: qM2.status }));
+  { await call('/api/admin/settings', { method: 'POST', key: KEY, body: { madeShow: false } }); const [hs, ho, hp, hph, hpa, ha] = await Promise.all([call('/api/stories'), call('/api/stories/DA-7K2Q'), call('/api/posters'), call(`/api/photos/${s1.json.id}`), call('/api/talk?s=p.DA-7K2Q&who=K7Q'), call('/api/admin/stories?status=shown', { key: KEY })]);
+    check('switched off, visitors see nothing made (no stories, posters, photographs or poster talk), the approval page still sees it all', hs.json.stories.length === 0 && ho.status === 404 && hp.json.posters.length === 0 && hph.status === 404 && hpa.status >= 400 && ha.json.stories.length > 0, [hs.json.stories.length, ho.status, hp.json.posters.length, hph.status, hpa.status, ha.json.stories.length].join());
+    await call('/api/admin/settings', { method: 'POST', key: KEY, body: { madeShow: true } }); }
   let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }
