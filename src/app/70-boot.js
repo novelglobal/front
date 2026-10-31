@@ -33,7 +33,11 @@ addEventListener('hashchange', () => {
 
 /* ───────── live: while the page is open, and whenever it comes back ───────── */
 document.addEventListener('visibilitychange', () => { if (document.hidden) return; if (Date.now() - S.lastSignal > CONFIG.REFRESH_MIN * 60000) { fetchSightings(true); loadWeather(); } else liveTick(); });
-setInterval(() => { if (!document.hidden) liveTick(); }, Math.max(1, CONFIG.LIVE_MIN || 5) * 60000);
+/* refreshed only while someone is there: a page left open and untouched for a quarter of an hour asks nothing, and catches up at the next touch */
+let usedAt = Date.now(); const IDLE = 15 * 60e3;
+const usedLast = () => { let t = usedAt; try { if (IN_AURA && parent.NG && parent.NG.usedAt) t = Math.max(t, parent.NG.usedAt()); } catch (e) { /* its own */ } return t; };
+['pointerdown', 'keydown', 'wheel'].forEach(k => addEventListener(k, () => { const was = usedLast(); usedAt = Date.now(); if (Date.now() - was > IDLE && !document.hidden) liveTick(); }, { passive: true }));
+setInterval(() => { if (!document.hidden && Date.now() - usedLast() < IDLE) liveTick(); }, Math.max(1, CONFIG.LIVE_MIN || 5) * 60000);
 
 /* ───────── a word on hover: every [data-tip] says what it is; on touch, a tap shows it for a moment ───────── */
 const tipEl = $('#tip'); let tipFor = null, tipT = 0;

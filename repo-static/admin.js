@@ -30,7 +30,27 @@
   async function show(t) {
     tab = t; document.querySelectorAll('#tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     main.replaceChildren(el('p', { class: 'empty', text: 'LOADING' }));
-    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else if (t === 'use') await use(); else if (t === 'talk') await talk(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+    try { if (t === 'overview') await overview(); else if (t === 'printers') await printers(); else if (t === 'stations') await stations(); else if (t === 'places') await places(); else if (t === 'posts') await posts(); else if (t === 'site') await site(); else if (t === 'data') await data(); else if (t === 'guide') guide(); else if (t === 'makers') await makers(); else if (t === 'use') await use(); else if (t === 'talk') await talk(); else if (t === 'species') await species(); else await stories(t); } catch (e) { if (e.message !== 'locked') main.replaceChildren(el('p', { class: 'empty', text: 'NO ANSWER · TRY AGAIN' })); }
+  }
+
+  /* ───────── species: every kind of life the devices have met, learned from their pulls. In the field list, a kind has its months,
+     needs and who to call; with a mark only, it is drawn by its group until it is added to src/field.js ───────── */
+  async function species(only) {
+    const [j, pack] = await Promise.all([api('species').then(r => r.json()), fetch('/base-db.json').then(r => r.json()).catch(() => ({ field: [] }))]);
+    const F = new Set((pack.field || []).map(f => String(f.n || '').toLowerCase())), G = new Set([...F].map(n => n.split(' ')[0]));
+    const where = n => { n = String(n || '').toLowerCase(); return F.has(n) || F.has(n.split(/\s+/).slice(0, 2).join(' ')) ? 'FIELD LIST' : G.has(n.split(/\s+/)[0]) ? 'BY ITS GENUS' : ''; };
+    const all = j.species || [], wk = Date.now() - 7 * 864e5, mark = all.filter(s => !where(s.n)), fresh = all.filter(s => s.first > wk);
+    const list = only === 'new' ? fresh : only === 'mark' ? mark : all;
+    const pick = (k, text) => el('button', { type: 'button', class: (only || '') === k ? 'on' : '', text, onclick: () => species(k).catch(() => {}) });
+    const row = s => el('tr', {}, el('td', {}, s.ph ? el('img', { src: s.ph, alt: '', loading: 'lazy', style: 'width:40px;height:40px;object-fit:cover;display:block' }) : el('span', { class: 'soft', text: '·' })),
+      el('td', { text: s.cn || '—' }), el('td', { class: 'soft', text: s.n }), el('td', { text: (s.ic || '').toUpperCase() }), el('td', { class: 'soft', text: s.g || '' }), el('td', { text: where(s.n) || 'MARK ONLY' }), el('td', { class: 'soft', text: when(s.first) }),
+      el('td', {}, el('a', { href: 'https://www.inaturalist.org/taxa/' + s.id, target: '_blank', rel: 'noopener', class: 'note', text: 'INATURALIST ↗' }), el('button', { type: 'button', class: 'no', text: 'REMOVE', onclick: async () => { if (!confirm('Remove this from the kinds met? A device that meets it again does not tell it again.')) return; await api('species/' + s.id, { method: 'POST', body: '{}' }); species(only).catch(() => {}); } })));
+    main.replaceChildren(...head('Species'),
+      el('p', { class: 'note', text: `${all.length} KINDS MET · ${fresh.length} NEW THIS WEEK · ${mark.length} WITH A MARK ONLY. EVERY PULL OF SIGHTINGS ADDS THE KINDS NO DEVICE HAD MET; THE FIRST DEVICE TO MEET ONE TELLS IT HERE ONCE. A KIND IN THE FIELD LIST HAS ITS MONTHS, NEEDS AND WHO TO CALL; ONE WITH A MARK ONLY IS DRAWN BY ITS GROUP UNTIL IT IS ADDED TO src/field.js (THE SHEET BELOW HAS WHAT TO ADD).` }),
+      el('p', { class: 'note', text: 'OFFLINE, EACH DEVICE KEEPS WHAT IT HAS MET: THE SIGHTINGS, EVERY PHOTOGRAPH AND MAP TILE ONCE SEEN (UP TO 3,000), THE FIELD LIST AND THE APP ITSELF. NOTHING IS ASKED WHILE A PAGE IS HIDDEN OR LEFT UNTOUCHED FOR A QUARTER OF AN HOUR.' }),
+      el('div', { class: 'acts' }, pick('', 'ALL'), pick('new', 'NEW THIS WEEK'), pick('mark', 'MARK ONLY'),
+        el('button', { type: 'button', text: 'MARK ONLY (.CSV)', onclick: () => save('novel-global-species-to-add.csv', csv(mark, ['id', 'n', 'cn', 'ic', 'g', 'ph']), 'text/csv') })),
+      list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['', 'NAME', 'SCIENTIFIC', 'GROUP', 'MARK', 'IN THE ENGINE', 'FIRST MET', ''].map(h => el('th', { text: h })))), el('tbody', {}, ...list.map(row))) : el('p', { class: 'empty', text: 'NONE YET: THEY ARRIVE AS DEVICES PULL SIGHTINGS' }));
   }
 
   /* ───────── talk: the board, every post with its maker's code and kin; hidden ones stay here ───────── */
@@ -375,7 +395,7 @@
           el('span', { text: [p.paired ? 'PAIRED' : 'UNPAIRED', p.seen ? (fresh(p.seen) ? 'LISTENING' : 'LAST ' + when(p.seen)) : 'NEVER HEARD', p.mesh ? 'MESH' : '', p.touch ? 'SCREEN' : ''].filter(Boolean).join(' · ') })))),
         el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'ACTIVITY · TODAY / 7 DAYS' }), ...(keys.length ? keys.map(k => el('div', { class: 'act' }, el('span', { text: TRAFFIC[k].toUpperCase() }), el('i', { class: 'bar', style: `width:${Math.round(100 * (o.week[k] || 0) / top)}%` }), el('b', { text: `${o.today[k] || 0} / ${o.week[k] || 0}` }))) : [el('span', { class: 'cap', text: 'NOTHING COUNTED YET' })]))));
     main.replaceChildren(...head('Overview'), hud);
-    ovT = setTimeout(() => { if (tab === 'overview') overview().catch(() => {}); }, 30000);
+    const again = () => { ovT = setTimeout(() => { if (tab !== 'overview') return; if (document.hidden) return again(); overview().catch(() => {}); }, 30000); }; again();
   }
 
 
@@ -494,6 +514,7 @@
     ['Printers', ['PAIR A PRINTER shows a token once: it goes on the Raspberry Pi in /etc/da-pull.env. PRINTS AFTER APPROVAL holds each slip here (or on its touch screen, if one is paired) until shown; PRINTS WITHOUT APPROVAL prints at once.', 'MESH ON sends a line to the T-Beam only for slips sent to the mesh. Paper always prints before any mesh line.', 'TEST PRINT, TURN OFF and the state of each part (Pi, screen, mesh, the last slip) are on each printer.']],
     ['Places', ['Add one under PLACES, or many under DATA → BRING IN PLACES from a sheet. A sheet has a first row of column names: n, cat, role, what, addr, sub, url, lat, lng. Right-click a spot in a map app to copy its latitude and longitude.', 'Places written into the site itself (places.js) are always there too.']],
     ['Words, boards and cities', ['WORDS AND BOARDS rewrites the words on INTENTION and W.I.S.H., the first board every visitor gets, and BOARD 00 (open it to editing, change it in the studio, send it, then show it under WAITING).', 'Cities: a line # Name begins a city, "centre, lat, lng" places it, and each other line is "name, lat, lng".']],
+    ['Species and offline', ['SPECIES lists every kind of life the devices have met, the newest first, learned from their pulls of sightings: no device is asked for anything extra. MARK ONLY are the kinds not yet in the field list (src/field.js); download them as a sheet and add the ones that matter, with their months, needs and who to call. Offline, each device keeps what it has met: sightings, photographs and map tiles once seen, the field list and the app. Nothing is asked of the site while a page is hidden or left untouched for a quarter of an hour, and nothing runs on the site while no one is using it.']],
     ['Signing in', ['The password is the ADMIN_KEY secret set in Cloudflare (Workers & Pages → front → Settings → Variables and Secrets). It is kept only in this browser tab until it is closed or LOCK is pressed.']],
     ['Devices and motion', ['SETTINGS → DEVICES: seven devices, each earned on its own after the number of posters set beside it (0: open from the start). The simple ones are the music, INTENTION with W.I.S.H., and art and print; the complex ones are the radio, the research board, design and the four-track desk. One never opens another. OPEN makes all open; CLOSED leaves only those set to 0.', 'MOTION: calm, as built or chaos; PHREAK lays faint lines of base64 under the stars. A visitor who asks their device for less motion always gets stillness.']],
     ['Portfolio', ['Name up to twelve curations under SETTINGS; each named one is a tab on novel.global/portfolio.html. Write posts under PORTFOLIO and give each its curation. Drafts are seen only here (PREVIEW).']],

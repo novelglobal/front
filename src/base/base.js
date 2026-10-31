@@ -2350,7 +2350,9 @@ credit(); render(); if (ORB) ORB.on();
 nowTick(); setTimeout(function () { db().then(function () { oledI = 1; }); flush(); }, 700);
 if (location.hash) route();
 /* what the aura (aura.js) is given of the base: its engine, its stores, its print and its sound */
-window.NG = { $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: toast, sureTap: sureTap, exif: exif, lib: lib, loadImg: loadImg, shrink: shrink,
+/* when someone last touched the page, so the studio inside it asks nothing while it is left alone */
+var USED = Date.now(); ['pointerdown', 'keydown', 'wheel'].forEach(function (k) { addEventListener(k, function () { USED = Date.now(); }, { passive: true }); });
+window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, store: store, when: when, ll: ll, toast: toast, sureTap: sureTap, exif: exif, lib: lib, loadImg: loadImg, shrink: shrink,
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
