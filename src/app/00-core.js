@@ -48,6 +48,12 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
 };
+/* what is too large for localStorage (pictures): IndexedDB, novelglobal-kept; each answer a promise, null where there is none */
+const big = (() => {
+  let db = null; const open = () => db || (db = new Promise(res => { try { const q = indexedDB.open('novelglobal-kept', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => res(q.result); q.onerror = () => res(null); } catch (e) { res(null); } }));
+  const tx = (mode, fn) => open().then(d => (d ? new Promise(res => { try { const t = d.transaction('kv', mode), r = fn(t.objectStore('kv')); t.oncomplete = () => res(r && r.result !== undefined ? r.result : mode === 'readwrite' ? true : null); t.onerror = t.onabort = () => res(null); } catch (e) { res(null); } }) : null));
+  return { get: k => tx('readonly', s => s.get(k)), set: (k, v) => tx('readwrite', s => s.put(v, k)), del: k => tx('readwrite', s => s.delete(k)), keys: () => tx('readonly', s => s.getAllKeys()) };
+})();
 const loadOne = (src, cors) => new Promise((res, rej) => { const im = new Image(); if (cors) im.crossOrigin = 'anonymous'; im.decoding = 'async'; im.onload = () => res(im); im.onerror = () => rej(new Error('image')); im.src = src; });
 /* a photograph whose pixels are needed (to dither it for paper): through novel.global, which lets the page read it; else
    straight from its host, asked afresh so a copy the browser kept without that permission is not used */

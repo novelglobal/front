@@ -2139,6 +2139,11 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
     const n0 = window.AURA.state().piece ? window.AURA.state().piece.adds.length : 0; d.querySelector('#sd-lcard').click(); await w(900); const st = window.AURA.state(); window.AURA.desk(false);
     return { src: web.code.charAt(3), notes: web.code.slice(4).replace(/[^0-9]/g, '').length, on, off, card: st.piece.adds.slice(n0).some(a => a.crisp === 1), glyph: !!document.querySelector('.au-dev svg use, .au-dev svg path') }; });
   check(`aura (${tag}): the desk's web makes a song of the radius's constellations, the kept songs play in turn and stop, and the playlist goes onto the poster as line work with one code`, pl.src === '3' && pl.notes > 4 && pl.on && pl.off && pl.card, JSON.stringify(pl));
+  /* one music at a time: the studio's radio coming on pauses the desk's song, and going off brings it back */
+  const tt = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)); window.AURA.desk(); await w(300); const d = document.querySelector('.au-desk'); if (!window.AURA.desk().play) d.querySelector('#sd-go').click(); await w(200);
+    const a = window.AURA.desk().play; window.postMessage({ ng: 'radio', on: true }, location.origin); await w(200); const b = window.AURA.desk().play, hum = window.__auraHum || 0;
+    window.postMessage({ ng: 'radio', on: false }, location.origin); await w(200); const c = window.AURA.desk().play; if (c) d.querySelector('#sd-go').click(); window.AURA.desk(false); return { a, b, c, hum }; });
+  check(`aura (${tag}): the desk's song and the studio's radio take turns: the radio on pauses the song (and the hum), off brings the song back`, tt.a && !tt.b && tt.c && !tt.hum, JSON.stringify(tt));
   await tap(page, '#au-up'); await page.waitForFunction(() => window.AURA.state().mode === 'globe', null, { timeout: 5000 }).catch(() => {}); const s4 = await st(); await shot(page, `${P}16-back.png`);
   check(`aura (${tag}): the line rising at the top takes it back up to the globe`, s4.mode === 'globe', s4.mode);
   await page.goto('https://oan.test/#radio'); await sleep(1200); const bs = await page.evaluate(() => ({ aura: document.querySelector('#aura').hidden, sheet: !document.querySelector('#sheet').hidden }));
