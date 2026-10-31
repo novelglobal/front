@@ -112,6 +112,12 @@ async function checkSent() {
    it prints, not at the next refresh of the map */
 setInterval(() => { if (!document.hidden && Object.values(SENT).some(v => v.id && (v.status === 'waiting' || (v.job && !['printed', 'failed', 'expired'].includes(v.job))) && Date.now() - v.at < 864e5)) checkSent(); }, 20000);
 /* the site's own settings, as they are now */
+/* every poster shown on the site, as designed, for the wall (one's own, kept here, are already on it) */
+let SITE_POSTERS = [];
+async function loadSitePosters() {
+  try { const j = await apiJSON('/posters'); const mine = new Set(Object.values(SENT).map(v => v.id)); const next = (j.posters || []).filter(p => !mine.has(p.id)).map(p => ({ id: 'w' + p.id, site: true, code: p.code, at: p.at, said: p.said, quiet: p.quiet, img: '/api/posters/' + encodeURIComponent(p.id) }));
+    if (JSON.stringify(next.map(p => [p.id, p.said, p.quiet])) !== JSON.stringify(SITE_POSTERS.map(p => [p.id, p.said, p.quiet]))) { SITE_POSTERS = next; if (S.view === 3) showGallery(true); } } catch (e) { /* the wall as it was */ }
+}
 async function loadSettings() {
   try { const j = await apiJSON('/settings'); if (j && typeof j.exampleEdit === 'boolean' && j.exampleEdit !== !!CFG.exampleEdit) { CFG.exampleEdit = j.exampleEdit; store.set('da.cfg.v1', CFG); if (cv && boardId === 'b00') exFrame(); }
     if (j && typeof j.lifeLock === 'boolean' && j.lifeLock !== CFG.lifeLock) { CFG.lifeLock = j.lifeLock; store.set('da.cfg.v1', CFG); if (S.view === 0) refreshPanel(); if (S.mapReady) { life.redraw(); life.moved(); } }

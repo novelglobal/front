@@ -28,10 +28,11 @@ Isolation as shelter; safety as the ground of creative belonging.
 2. **160 is the ceiling, and the wait list is the only way past it.** Someone who visits a full island is put in its queue.
    They can always see, simply and at a glance, that they have asked and their number in the queue. Beside the number, a way
    to build their own island and run their own novel.global.
-3. **A code lives for 7 days.** Without a request for 7 more, it is deleted: removed from every island and the site, kept on
-   the approval page, and able to be brought back from there. Extending (and seeing the days left) is hidden in the main
+3. **A code lives for one stage of the moon.** From the moon it was given under to the next quarter (new to first quarter, first quarter
+   to full, and so on, about a week). Without a request for another stage, it is deleted: removed from every island and the site, kept on
+   the approval page, and able to be brought back from there. Extending (and seeing the moon it lasts until) is hidden in the main
    journey and shown in the portfolio. Each visit to a hub renews it too, as being there is the point.
-4. **No copy.** The queue, the days left, the renew key and the build-your-own way are marks, numbers, light and motion.
+4. **No copy.** The queue, the moon a code lasts until, the renew key and the build-your-own way are marks, numbers, light and motion.
 5. **Every island has its own ground.** Its own map, places, water, sightings and species for wherever its hub is, always cut to
    the same size as Melbourne's (about 8 km north to south and 6.5 km east to west, centred on the hub). Islands in one city may
    overlap; where they do, they share the ground and keep their own people. Seen together, the islands are a patchy map of the
@@ -80,13 +81,13 @@ art direction with restraint.
 | Moment | What the person feels | What they see | The joy |
 |---|---|---|---|
 | Hearing of an island | Curiosity | A printed slip passed hand to hand: an island's mark and a code | Something real before anything online |
-| Finding the hub | Anticipation | On the globe the island glows; its hub has a countdown and a ring where it will be | Being there when the countdown lands |
+| Finding the hub | Anticipation | On the globe the island glows; its hub shows the moon it will appear under and a ring where it will be | Being there when that moon comes |
 | Arriving | Welcome | The hub prints the passport: their mark, the island's mark, the seal, a code | A certificate in the hand that no one else has |
 | Arriving at a full island | Patience, not rejection | Their place in the queue as a number on a small ring that fills; beside it, the seed of their own island | Being counted, and offered somewhere to begin |
 | Belonging | Recognition | The island's talk, each member by their kin mark; prints held out by the jellyfish | Being known by a mark, not a name |
 | Making | Pride | Notice, W.I.S.H., make and print, with the island's seal on the poster | A poster carrying the island's stamp |
 | Receiving | Surprise | A print held by the jellyfish: tap to open, keep it on the wall, or let it float away | Choosing what stays |
-| Keeping it alive | Care, not pressure | In the portfolio only: the days left as seven marks fading, one key to add seven | Tending something, like a plant |
+| Keeping it alive | Care, not pressure | In the portfolio only: the moon it lasts until, drawn as that phase; one key carries it on to the next | Tending something, like a plant |
 | Leaving | Relief | One gesture; their mark fades from the island's ring | Leaving is easy, so staying is a choice |
 
 ## The engine, checked: what works, what is broken, what will not scale
@@ -118,7 +119,7 @@ Four layers, each with one job. Every feature lives in exactly one.
 | Layer | Its job | What lives there |
 |---|---|---|
 | **The experience** (aura, base, studio) | Feeling and making | The journey, the devices, the poster engine, one sound engine, the archipelago scene. No business rules |
-| **The island** (one Durable Object each) | Belonging | Roster of 160, the queue, the talk, prints held for members, the hub's socket, countdowns and alerts, the 7-day clock |
+| **The island** (one Durable Object each) | Belonging | Roster of 160, the queue, the talk, prints held for members, the hub's socket, signals and alerts, the moon clock |
 | **The hub** (novel.global's Worker, D1, R2) | Certifying and connecting | The register of islands, charters, the master key, the approval page, backups, the build kit, the public map |
 | **The printer** (Pi, touch screen, radio) | The physical response | Printing passports and posters, approving at the printer, the local mesh, its own key |
 
@@ -135,10 +136,14 @@ Four layers, each with one job. Every feature lives in exactly one.
 - **Many islands, one person:** a person holds a passport for every island they have visited, and moves between them on the
   archipelago. The stage talk built in 0.11 becomes each island's own.
 
-### 2. The 7-day life of a code
+### 2. A code's life by the moon
 
-- Every code has a clock of 7 days. A visit to any of its hubs, or the renew key, adds 7 more.
-- The renew key and the days left (seven marks, fading) are in the portfolio only, never in the main journey.
+- Time is the moon, always: the accurate phase, worked out on the device from the date (no service needed), and named
+  plainly (new, waxing crescent, first quarter, waxing gibbous, full, waning gibbous, last quarter, waning crescent) only where
+  it matters. Never days, hours or countdowns.
+- Every code lasts until the next quarter of the moon after it was given. A visit to any of its hubs, or the renew key,
+  carries it on to the quarter after that.
+- The renew key and the moon it lasts until (that phase, drawn) are in the portfolio only, never in the main journey.
 - At zero the code is deleted from its islands and the site, and moved to the approval page's archive, where it can be
   brought back. Its posters stay where they were printed.
 
@@ -189,7 +194,7 @@ where every island can be seen, tracked and viewed (members, prints, signals, he
 
 ### 5. Signals from the hub
 
-- **A countdown and a place:** the owner sets when, and roughly where, the hub appears next. Members see the countdown, and a
+- **A moon and a place:** the owner sets the moon under which, and roughly where, the hub appears next. Members see that moon, and a
   ring on the map (never a point) until it lands.
 - **Alerts as prints:** an alert arrives as a sealed print the jellyfish holds out. **Tap** opens it, **keep** hangs it on
   the wall, **float away** lets it drift off and go from the island. Unopened prints float away after a moon.
@@ -205,9 +210,9 @@ Everything stays inside the free allowances, and the meter (da-v135) keeps it th
 
 | Feature | What it does here | Plan |
 |---|---|---|
-| Durable Objects (SQLite) | One per island: roster, queue, talk, held prints, the 7-day clocks, the hub's socket | Free, 5 GB per account (check the limits page) |
+| Durable Objects (SQLite) | One per island: roster, queue, talk, held prints, the moon clocks, the hub's socket | Free, 5 GB per account (check the limits page) |
 | Hibernating WebSockets | Only if a hub ever needs to hear in under 2 seconds; the waking polls do the job for now | Part of Durable Objects |
-| Durable Object alarms | The 7-day clock, countdowns landing, prints floating away | Part of Durable Objects |
+| Durable Object alarms | A code reaching its moon, a hub's moon arriving, prints floating away | Part of Durable Objects |
 | D1 | The register of islands and charters; migrations at deploy | Free |
 | R2 | Every photograph, the hub image, island archives; lifecycle rules | Free to 10 GB |
 | Turnstile | The talk (on); claiming a hub; joining a queue | Free |
@@ -230,10 +235,10 @@ Everything stays inside the free allowances, and the meter (da-v135) keeps it th
 ## Safety
 
 - No names, emails or addresses anywhere; a person is a code and a kin mark.
-- A hub's place is a ring, never a point, until its countdown lands.
+- A hub's place is a ring, never a point, until its moon comes.
 - Every island can be closed by its owner and by the approval page.
 - The talk and prints stay inside the island's object; only what is signed and chosen reaches novel.global.
-- A code not tended for 7 days leaves the public side by itself.
+- A code not tended past its moon leaves the public side by itself.
 
 ## Stages, in order
 
@@ -244,8 +249,8 @@ every existing check passing.
 |---|---|---|
 | A | **The engine, made safe to grow:** the meter and the waking polls (done, da-v135); then D1 migrations, photographs out of D1 into R2, IndexedDB on the phone, the checks split | Every check passes, the journey looks the same |
 | B | **The island as a Durable Object:** roster of 160, the queue, the talk moved in | Two islands on staging cannot see each other |
-| C | **Passports and the 7-day clock:** keys, signing, the passport receipt and its offline check, striking, deletion to the archive and bringing back, renew in the portfolio | A passport printed on staging checks with no network; a code left 7 days goes to the archive and comes back |
+| C | **Passports and the moon clock:** keys, signing, the passport receipt and its offline check, striking, deletion to the archive and bringing back, renew in the portfolio | A passport printed on staging checks with no network; a code left past its moon goes to the archive and comes back |
 | D | **The archipelago scene:** islands drawn from their codes on the globe, moving between them without a cut, the queue's ring and number, LOW RES | An island is found, entered, queued for and left on staging without a jump |
 | E | **The hub kit:** the USB stick for any Pi with Wi-Fi, the bare start and the island's own pack, each island's own approval page, ISLANDS on novel.global's, BUILD A HUB, claim by print, the island's own ground, the checklist with other printers, boards and screens, the one-stop install with its title card and music, the builder's slip | A second Pi with a different printer claims an island in another city from a fresh card, and its map is its own |
-| F | **Signals:** countdown and place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
+| F | **Signals:** the moon and the place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
 | G | **Their own novel.global:** Deploy to Cloudflare and registration with the master | A copy on another account appears on the archipelago |

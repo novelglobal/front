@@ -942,3 +942,7 @@ html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 .au-talkp li span { grid-column: 2 / 4; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
 .au-talkp form { display: flex; gap: 8px; } .au-talkp input { flex: 1; min-width: 0; font: 17px "Architects Daughter", "Comic Sans MS", cursive; color: inherit; background: transparent; border: 0; border-bottom: 1.5px dashed rgba(244, 241, 232, .6); padding: 6px 2px; outline: 0; }
 .au-talkp form button { width: 38px; border-radius: 50%; border: 0; background: #F4F1E8; color: #17457F; font-size: 18px; cursor: pointer; }
+/* a poster's talk: the marks for a swap or a share, before the words */
+.au-talkp .au-tks { display: flex; gap: 2px; align-items: center; } .au-talkp .au-tks button { width: 30px; height: 30px; border: 1px solid transparent; border-radius: 50%; background: none; color: inherit; font: 15px ui-monospace, Menlo, monospace; opacity: .5; cursor: pointer; padding: 0; }
+.au-talkp .au-tks button[aria-pressed="true"] { opacity: 1; border-color: currentColor; } .au-talkp:not(.poster) .au-tks { display: none; }
+.au-talkp li .tkm { font-style: normal; opacity: .9; } .au-talkp.poster header b { letter-spacing: .2em; }
