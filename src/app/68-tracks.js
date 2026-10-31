@@ -369,13 +369,25 @@ function saveFour() {
   if (!ms.length) { toast('KEEP A SONG FIRST'); return; }
   const ids = [...new Set(ms.map(t => t.of))]; let song = ids.length === 1 ? LOOPS.find(l => l.id === ids[0]) : null;
   if (!song) { song = mixOf(ms.map(t => t.m)); if (!keepLoop(song)) { toast('NO ROOM ON THIS PHONE'); return; } made('song', 'mix'); snd.tick(1900); if (S.view !== 0) refreshPanel(); }
-  shareSong(song);
+  loopFile(song);
 }
 /* a song shared: the phone's own share (its link, which opens the radio where it was made), else its link copied */
 async function shareSong(l) {
   const url = mixURL(l), title = (l.where || {}).place || 'novel.global';
   if (navigator.share) { try { await navigator.share({ title, url }); toast('✓ SHARED'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60));
+}
+/* a song as a sound file: it plays alone from the top of its turn, one whole turn is recorded as it sounds (m4a on an iPhone,
+   else webm) and saved; what played before comes back after */
+let filing = false;
+async function loopFile(l) {
+  if (filing) return; filing = true; if (!prefs.sound) { prefs.sound = true; savePrefs(); } snd.wake();
+  const ms = tracksOf(l), dur = Math.max(...ms.map(t => loopDur(t.m))), t0 = performance.now() + 150; for (const t of ms) { t.t0 = t0; t.step = null; }
+  startPlay(ms); $$('[data-t4save], [data-song-share]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 1200);
+  try { const b = await snd.record(dur + 1000); const nm = String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radio';
+    download(`novel-global-${nm}-loop.${/mp4/.test(b.type) ? 'm4a' : 'webm'}`, b); toast('✓ SAVED'); }
+  catch (e) { toast('NOT SAVED · TRY AGAIN'); }
+  $$('[data-t4save], [data-song-share]').forEach(b => b.classList.remove('going')); if (LOOP.ms.length && LOOP.ms.every(t => t.of === l.id)) comeBack(); filing = false;
 }
 /* a recording playing (a life's own call): what the radio plays waits under it, and comes back when it ends */
 function hush(on) { LOOP.hush = !!on; }
@@ -386,7 +398,7 @@ function fourHTML() {
     const on = going(l.id), nm = esc((l.where || {}).place || 'RADIO');
     return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}`
     + `<li><button type="button" class="f4 f4s${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${four.length > 1 ? '' : ' disabled'}>${icon('loop')}<small class="mono">all</small></button></li>`
-    + `<li><button type="button" class="f4 f4s" data-t4save aria-label="Keep what plays as one song and share it" data-tip="Keep and share what plays"${four.length ? '' : ' disabled'}>${icon('share')}<small class="mono">share</small></button></li></ol>`;
+    + `<li><button type="button" class="f4 f4s" data-t4save aria-label="Keep what plays as one song and save it as a sound file" data-tip="Save the whole loop"${four.length ? '' : ' disabled'}>${icon('save')}<small class="mono">save</small></button></li></ol>`;
 }
 function refreshFour() { const f = $('#view .four'); if (f) f.outerHTML = fourHTML(); $$('[data-loop-next]').forEach(b => { b.disabled = !LOOPS.length; }); }
 /* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
@@ -405,7 +417,7 @@ $('#view').addEventListener('click', async e => {
   if (e.target.closest('[data-song-keep]')) { if (!here()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); const ok = keepLoop(m); snd.tick(ok ? 1900 : 700); toast(ok ? '✓ KEPT' : 'NO ROOM ON THIS PHONE'); if (ok) made('song', (m.where || {}).place || 'RADIO'); refreshFour(); if (S.view !== 0) refreshPanel(); return; }
   /* a kept track onto the poster: its card, in the aura's poster or on the strip */
   const sp = e.target.closest('[data-song-poster]'); if (sp) { const l = LOOPS.find(x => x.id === sp.dataset.songPoster); if (!l) return; const art = mixArt(l, mixURL(l)); if (IN_AURA) toAura(art, true); else { setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); } snd.tick(1900); return; }
-  const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (l) shareSong(l); }
+  const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (l) loopFile(l); }
 });
 /* ───────── the radio as a link: the place, its reach, and each layer's on, volume and mood, short enough for a code on a
    receipt. Opened, it tunes the radio there; a touch on play and it sounds ───────── */

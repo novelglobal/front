@@ -2319,6 +2319,7 @@ function route() {
   var h = decodeURIComponent(location.hash.slice(1));
   if (/^me=/i.test(h)) { history.replaceState(null, '', location.pathname + location.search); return; }   // an old pass link: dropped (a code is typed from a print, never taken from a link)
   if (/^songs?=/i.test(h)) return;   // a song's link: the aura's own (aura.js)
+  if (/^mix=/i.test(h)) { if (!AURA_ON) location.replace('studio' + location.search + location.hash); return; }   // the radio's song: in the aura's radio window
   if (!/^(radio|wish|shop|print|showcase|pixel|search|guide|now|booth(=[a-z0-9-]+)?|n=[A-Z0-9-]+)$/i.test(h)) { location.replace('studio' + location.search + location.hash); return; }
   if (/^booth/i.test(h)) { if (!BTH) boothOn(h.split('=')[1]); return; }
   if (BTH) return;

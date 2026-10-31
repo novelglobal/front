@@ -932,6 +932,12 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 .au-talkp { position: fixed; left: 50%; bottom: calc(66px + var(--sab, 0px)); transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); max-height: min(64vh, 520px); z-index: 32; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(12, 32, 62, .96); box-shadow: 0 10px 40px rgba(0, 0, 0, .4); color: #F4F1E8; font-family: "Architects Daughter", "Comic Sans MS", cursive; }
 html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 .au-talkp[hidden] { display: none; }
+#aura .au-press:not(.unfold) .au-fold { display: none; }
+#aura .au-dots { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+#aura .au-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; transition: transform .2s; }
+#aura .unfold .au-dots i:nth-child(2) { transform: scale(.5); }
+.au-talkp .au-tkst { margin: 0; min-height: 14px; font: 600 10px "Departure Mono", ui-monospace, monospace; letter-spacing: .12em; opacity: .75; } .au-talkp .au-tkst.ok { color: #7CE0A3; opacity: 1; }
+.au-talkp li.mine { background: rgba(124, 224, 163, .12); }
 .au-talkp header { display: flex; align-items: center; } .au-talkp header b { font: 600 11px "Departure Mono", ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; opacity: .7; }
 .au-talkp header .x { margin-left: auto; width: 32px; height: 32px; border: 0; background: none; color: inherit; font-size: 20px; cursor: pointer; }
 .au-talkp ol { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 8px; }
