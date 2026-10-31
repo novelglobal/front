@@ -93,9 +93,14 @@ const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<
 /* the aura's window turned to another device: the same studio laid out for it, at once, never loaded again */
 if (IN_AURA) addEventListener('message', e => {
   if (e.origin !== location.origin || !e.data || e.data.ng !== 'only') return; const i = ({ radio: 0, wish: 1, print: 2, portfolio: 3 })[e.data.d]; if (i == null) return;
-  const h = document.documentElement; h.classList.remove('only-radio', 'only-wish', 'only-print', 'only-portfolio'); h.classList.add('only-' + e.data.d); AURA_ONLY = i; if (S.view !== i) setView(i);
+  const h = document.documentElement; h.classList.remove('only-radio', 'only-wish', 'only-print', 'only-portfolio'); h.classList.add('only-' + e.data.d); AURA_ONLY = i; if (S.view !== i) { quietView = true; setView(i); }
 });
 /* ───────── the four destinations ───────── */
+/* another device, from inside the aura's window, which holds one at a time: the aura is asked to turn the window to it (MAKE
+   handing its receipt to DESIGN); alone, the page itself */
+const goDev = i => { if (IN_AURA && AURA_ONLY != null && AURA_ONLY !== i) { try { parent.postMessage({ ng: 'go', d: ['radio', 'wish', 'print', 'portfolio'][i] }, location.origin); } catch (e) { /* alone */ } return; } setView(i); };
+/* quietView: the next page drawn without its fade (another device turned to in the aura's window: the fade there strobed) */
+let quietView = false;
 function setView(i, keep, part) {
   if (AURA_ONLY != null && i !== AURA_ONLY) { i = AURA_ONLY; part = null; }
   /* a first visit opens only the pages it has reached, and SELECT belongs to PRINT alone */
@@ -109,7 +114,7 @@ function setView(i, keep, part) {
   /* once started, the radio plays on under every page */
   document.body.classList.toggle('off-map', offMap(i));
   renderView(); life.data();
-  viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in');
+  if (!quietView) { viewEl.classList.remove('in'); void viewEl.offsetWidth; viewEl.classList.add('in'); } else viewEl.classList.remove('in'); quietView = false;
   if (part) goPart(part);
   try { history.replaceState(null, '', '#' + (part || VIEWS[i].slug || VIEWS[i].k)); } catch (e) { /* file:// */ }
 }
@@ -216,9 +221,11 @@ const segTone = i => Math.min(4, Math.floor(i / (EQ_SEGS / 5)));
 /* the equaliser is the music: each month a band of what is sounding now, low on the left to high on the right, each column as
    tall as its band is loud and taller as its month is hot (the El Niño months the most); a cap above it rises and falls back
    slowly, and every note of the sweep pulses the extreme months. Quiet, it rests at its month's heat */
-let eqRaf = 0, eqNote = 0; const EQK = new WeakMap();
+let eqRaf = 0, eqNote = 0, vuL = 0; const EQK = new WeakMap();
 function eqTick() {
-  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !(document.body.classList.contains('on-air') || snd.level() > 0.01) || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); const base = +m.dataset.lit || 2; if (c) c.querySelectorAll('i:not(.eq-cap)').forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < base); el.classList.remove('snd'); el.classList.toggle('pk', idx === base - 1); }); EQK.delete(m); m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); }); return; }
+  /* the VU needle too: as loud as what is sounding now, falling back slowly, never a fixed kick */
+  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'), vu = $('#view .vu'); const lvN = snd.level(); if (vu) { vuL = Math.max(lvN, vuL * 0.92); vu.style.setProperty('--v', Math.min(1, vuL).toFixed(2)); }
+  if ((!cols.length && !vu) || !(document.body.classList.contains('on-air') || lvN > 0.01) || document.hidden || reduced()) { if (vu) { vuL = 0; vu.style.setProperty('--v', '0'); } cols.forEach(m => { const c = m.querySelector('.eq-c'); const base = +m.dataset.lit || 2; if (c) c.querySelectorAll('i:not(.eq-cap)').forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < base); el.classList.remove('snd'); el.classList.toggle('pk', idx === base - 1); }); EQK.delete(m); m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); }); return; }
   const nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt; const bd = snd.bands(cols.length);
   /* each column the same height, in the same box: the heat of its month lights it to a level, the music lights more above
      that as loud as the month is hot, never past the top; a peak holds a moment and falls back */

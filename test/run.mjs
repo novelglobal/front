@@ -2000,9 +2000,10 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   await tap(page, '#au-dx'); await sleep(1600); await shot(page, `${P}09-art.png`);
   const af = (await st()).form; check(`aura (${tag}): in art the four tentacles are the four sides round the piece`, af === 'frame2', af);
   const lay = (await st()).layers; check(`aura (${tag}): only the rings' own drone, no backing layers grown under it`, lay === 0, String(lay));
+  await tap(page, '.au-tray [data-add="more"]'); await sleep(300);
   const a = await page.evaluate(() => { const c = document.querySelector('.au-drag canvas'), x = c.getContext('2d'); let sat = 0; for (let i = 0; i < 40; i++) { const d = x.getImageData(Math.floor(c.width * (0.2 + i / 70)), Math.floor(c.height * 0.2), 1, 1).data; sat = Math.max(sat, Math.max(d[0], d[1], d[2]) - Math.min(d[0], d[1], d[2])); }
     return { arts: [...document.querySelectorAll('[data-art]')].map(b => b.dataset.art + (b.classList.contains('on') ? '*' : '') + (b.textContent.trim() ? '+words' : '')), thumbs: [...document.querySelectorAll('[data-art] canvas')].filter(c => c.width > 0).length, marks: document.querySelectorAll('.au-tray [data-mark]').length, stamps: document.querySelectorAll('.au-tray [data-stamp]').length, words: !!document.querySelector('.au-tray [data-add="t"]'), w: c.width, sat }; });
-  check(`aura (${tag}): one way of drawing it, the photograph whole in colour on blueprint; marks and words to add`, a.arts.length === 0 && a.marks >= 4 && a.stamps === 6 && a.words && a.w === 900 && a.sat > 40, JSON.stringify(a));
+  check(`aura (${tag}): one way of drawing it, the photograph whole in colour on blueprint; marks behind the dots and words to add, the stamps in the pixel maker`, a.arts.length === 0 && a.marks >= 4 && a.stamps === 0 && a.words && a.w === 900 && a.sat > 40, JSON.stringify(a));
   await tap(page, '.au-tray [data-mark="star"]'); await sleep(500); await tap(page, '.au-tray [data-add="t"]'); await sleep(300);
   /* on a phone, words come through a box focused in the tap itself (so the keyboard and its microphone come up), and go on with Enter or the tick */
   const ibx = await page.evaluate(() => ({ box: !!document.querySelector('#au-inbox'), focus: (document.activeElement || {}).id || '', edit: document.querySelector('#au-inarea') ? getComputedStyle(document.querySelector('#au-inarea')).userSelect : '' }));
@@ -2019,10 +2020,6 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   await page.evaluate(() => window.AURA.state()); for (const t of ['r', 's+', 'tone', 'b']) { await page.evaluate(t => document.querySelector(`.au-sel [data-t="${t}"]`).click(), t); await sleep(150); }
   const tfl = (await st()).piece.tf.life || {};
   check(`aura (${tag}): what is in hand turns, grows, changes tone and loses its frame`, tfl.r === 15 && Math.abs(tfl.s - 1.15) < 1e-6 && tfl.tone === 'turn' && tfl.b === false, JSON.stringify(tfl));
-  await tap(page, '.au-tray [data-stamp="3"]'); await sleep(400); await tap(page, '.au-tray [data-stamp="0"]'); await sleep(500); await shot(page, `${P}11b-stamps.png`);
-  const sp = await st(); const stamps = sp.piece.adds.filter(x => x.k === 'st').map(x => x.g);
-  check(`aura (${tag}): the stamps go on the poster (stay with the trouble, novel.global), and come off`, stamps.join() === '3,0' && sp.sel === 'a' + (sp.piece.adds.length - 1), JSON.stringify({ stamps, sel: sp.sel }));
-  await page.evaluate(() => document.querySelector('.au-sel [data-t="x"]').click()); await sleep(300);
   await tap(page, '.au-tray [data-add="p"]'); await sleep(600); const pixOn = await page.evaluate(() => !!document.querySelector('.au-pix canvas')); await shot(page, `${P}11c-pix.png`);
   await page.evaluate(() => document.querySelector('[data-px="cells"]').click()); await page.evaluate(() => document.querySelector('[data-px="put"]').click()); await sleep(400);
   const px2 = (await st()).piece.adds.filter(x => x.k === 'p');
@@ -2030,6 +2027,10 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   for (const sub of ['coral', 'trash', 'clip']) { await page.evaluate(q => document.querySelector(`[data-pxs="${q}"]`).click(), sub); await sleep(250); for (let k = 0; k < 5 && (await st()).pix.tone !== 'colour'; k++) await page.evaluate(() => document.querySelector('[data-px="tone"]').click()); await page.evaluate(() => document.querySelector('[data-px="put"]').click()); await sleep(250); }
   await shot(page, `${P}11d-found.png`); const found2 = (await st()).piece.adds.filter(x => x.k === 'p').map(x => x.sub + ':' + x.tone2);
   check(`aura (${tag}): beside it, coral, what the tide brings and paperclips, each its own and in colour if wanted`, found2.join() === 'jelly:ink,coral:colour,trash:colour,clip:colour', JSON.stringify(found2));
+  const stOn = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)); document.querySelector('.au-pix [data-pxmore]').click(); await w(300); document.querySelector('.au-pix [data-pxs="st3"]').click(); await w(300);
+    const o = { n: document.querySelectorAll('.au-pix [data-pxs^="st"]').length, on: !!document.querySelector('.au-pix [data-pxs="st3"].on'), tray: document.querySelectorAll('.au-tray [data-stamp]').length };
+    document.querySelector('.au-pix [data-pxs="jelly"]').click(); await w(300); document.querySelector('.au-pix [data-pxmore]').click(); await w(300); return o; });
+  await shot(page, `${P}11b-stamps.png`); check(`aura (${tag}): the stamps all in the pixel maker, behind its dots (stay with the trouble picked), none on the tray`, stOn.n === 6 && stOn.on && stOn.tray === 0, JSON.stringify(stOn));
   await tap(page, '.au-tray [data-add="p"]'); await sleep(300);
   const nA = (await st()).piece.adds.length; await page.setInputFiles('.au-tray #au-file2', [{ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }, { name: 'b.jpg', mimeType: 'image/jpeg', buffer: await exifJPEG() }]);
   await page.waitForFunction(n => window.AURA.state().piece.adds.filter(a => a.k === 'im').length === 2, null, { timeout: 8000 }).catch(() => {}); await sleep(600); await shot(page, `${P}11e-pictures.png`);
