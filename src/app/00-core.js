@@ -203,7 +203,7 @@ const snd = (() => {
     try {
       if (ctx && (sick || ctx.state === 'closed')) rebuild();
       if (!ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ latencyHint: LITE ? 'playback' : 'balanced' }); } catch (e) { ctx = new AC(); } bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
+        const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ latencyHint: 'playback' }); } catch (e) { ctx = new AC(); } bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
         /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
         heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2;
@@ -237,6 +237,15 @@ const snd = (() => {
   const qf = f => { let x = f; while (x > 440) x /= 2; while (x < 55) x *= 2; return qn(x); };
   const SIX = 0.125; const SLOTS = new Map();
   const onGrid = t => Math.ceil((t - 0.004) / SIX) * SIX;
+  /* notes laid out ahead (a constellation's song) are made a moment before they sound, not all at once: a long song never builds
+     hundreds of voices in one go, so nothing stutters while the radio plays over it. Each still sounds on its own sixteenth */
+  const AHEAD = []; let aheadT = 0;
+  function drain() {
+    if (!ctx) AHEAD.length = 0; const now = ctx ? ctx.currentTime : 0;
+    for (let i = 0; i < AHEAD.length;) { const a = AHEAD[i]; if (a.t > now + 0.3) { i++; continue; } AHEAD.splice(i, 1); if (a.t > now - 0.05) try { a.fn(); } catch (e) { /* a voice missing */ } }
+    if (!AHEAD.length) { clearInterval(aheadT); aheadT = 0; }
+  }
+  function later(t, fn) { AHEAD.push({ t, fn }); if (!aheadT) aheadT = setInterval(drain, 40); drain(); }
   function room(t, force) { const k = Math.round(t / SIX); const n = SLOTS.get(k) || 0; if (n >= (LITE ? 1 : 2) && !force) return false; SLOTS.set(k, n + 1); if (SLOTS.size > 48) for (const key of [...SLOTS.keys()]) if (key < k - 16) SLOTS.delete(key); return true; }
   /* the hall's tail: noise falling away over a few seconds, darker as it goes */
   function hallBuffer(sec) {
@@ -509,7 +518,7 @@ const snd = (() => {
     strum(lens = [], dir = 1) { buzz(6); if (!ready()) return; const L = lens.length ? lens : [0.5]; const t0 = onGrid(ctx.currentTime + 0.01) - ctx.currentTime; L.forEach((l, i) => play(string(qn(150 + (1 - clamp(l, 0, 1)) * 470), 2, 0.997), 0.09, t0 + i * SIX, dir * (i / Math.max(1, L.length - 1) - 0.5), 3600)); },
     /* a song: each string plucked in the order it was tied, and each knot answering in its own voice */
     song(seq = []) { buzz(6); if (!ready() || !seq.length) return; const t0 = onGrid(ctx.currentTime + 0.06);
-      for (const n of seq.slice(0, 180)) { const t = t0 + Math.round(n.t / SIX) * SIX; if (!room(t)) continue; if (n.spec) knotAt(n.spec, qf(n.f), t, n.v || 0.8, n.pan || 0); else play(string(qn(n.f), n.dur || 2, n.dc || 0.997), n.g || 0.09, t - ctx.currentTime, n.pan || 0, n.cut || 3600); } },
+      for (const n of seq.slice(0, 180)) { const t = t0 + Math.round(n.t / SIX) * SIX; if (!room(t)) continue; later(t, () => { if (n.spec) knotAt(n.spec, qf(n.f), t, n.v || 0.8, n.pan || 0); else play(string(qn(n.f), n.dur || 2, n.dc || 0.997), n.g || 0.09, Math.max(0, t - ctx.currentTime), n.pan || 0, n.cut || 3600); }); } },
     /* a constellation born: four notes of the dub stab, rising, a sixteenth apart */
     born() { buzz([6, 30, 6]); if (!ready()) return; const t = onGrid(ctx.currentTime + 0.01); room(t, true); withFx('mist', () => [110, 130.81, 164.81, 220].forEach((f, i) => dubV(f, t + i * SIX, 0.04, (i - 1.5) * 0.3, true, false, 2))); },
     /* a cell reached by the sweep. spec: { g } a life, { fam } a place (its own small real sound). opt: v, pan, mood, bright
@@ -517,7 +526,7 @@ const snd = (() => {
     ping(spec, f, opt = {}) {
       /* sure: a kept song's note, already one of the few its sixteenth holds, never dropped for another */
       if (!ready()) return false; const now = performance.now(); if (!opt.sure && now - lastBlip < 55) return false;
-      const t = onGrid(ctx.currentTime + 0.01); if (!room(t, !!opt.sure)) return false; lastBlip = now;
+      const t = onGrid(ctx.currentTime + 0.03); if (!room(t, !!opt.sure)) return false; lastBlip = now;
       const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
       /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
          a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */
