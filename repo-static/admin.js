@@ -5,6 +5,8 @@
   'use strict';
   const $ = s => document.querySelector(s);
   const main = $('#main'); let KEY = sessionStorage.getItem('da.admin') || ''; let tab = 'overview';
+  /* each cell of a table carries its column's heading, so on a phone (headings hidden, cells in a row) a number still says what it is */
+  new MutationObserver(() => { for (const t of main.querySelectorAll('table.makers:not([data-h])')) { t.dataset.h = '1'; const hs = [...t.querySelectorAll('thead th')].map(th => th.textContent); if (hs.length) for (const tr of t.querySelectorAll('tbody tr')) [...tr.children].forEach((td, i) => { if (hs[i]) td.dataset.h = hs[i]; }); } }).observe(main, { childList: true, subtree: true });
   const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v != null && v !== false) e.setAttribute(k, v === true ? '' : v); } for (const c of kids.flat()) if (c != null) e.append(c); return e; };
   async function api(path, opt = {}) {
     const r = await fetch('/api/admin/' + path, { ...opt, cache: 'no-store', headers: { authorization: `Bearer ${KEY}`, 'content-type': 'application/json' } });
@@ -61,10 +63,10 @@
   async function talk() {
     const j = await (await api('talk')).json(), all = j.talk || [], secs = [...new Set(all.map(t => t.sec))].sort(), list = talkSec ? all.filter(t => t.sec === talkSec) : all;
     const pick = el('select', { onchange: e => { talkSec = e.target.value; talk().catch(() => {}); } }, el('option', { value: '', text: 'EVERY TALK' }), ...secs.map(sc => { const o = el('option', { value: sc, text: (sc.startsWith('p.') ? 'POSTER ' + sc.slice(2) : sc).toUpperCase() }); o.selected = sc === talkSec; return o; }));
-    const row = t => { const tr = el('tr', { class: t.hidden ? 'soft' : '' }, el('td', { text: t.sec.toUpperCase() }), el('td', { class: 'mono', text: t.who }), el('td', { text: kinName(t.kin) }), el('td', { text: (t.k === 'swap' ? '⇄ ' : t.k === 'share' ? '↗ ' : '') + (t.re ? '↳ ' : '') + t.text }), el('td', { class: 'soft', text: when(t.at) }),
-      el('td', {}, el('button', { type: 'button', text: t.hidden ? 'SHOW' : 'HIDE', onclick: async () => { await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: t.hidden ? 'show' : 'hide' }) }); show('talk'); } }),
-        el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: async () => { if (!confirm('Delete this for good?')) return; await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('talk'); } }))); return tr; };
-    main.replaceChildren(...head('Talk'), el('div', { class: 'tools' }, pick), list.length ? el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['SECTION', 'CODE', 'KIN', 'SAID', 'WHEN', ''].map(h => el('th', { text: h })))), el('tbody', {}, ...list.map(row))) : el('p', { class: 'empty', text: 'NOTHING YET' }));
+    const row = t => el('li', { class: 'said' + (t.hidden ? ' soft' : '') }, el('div', { class: 'note', text: [(t.sec.startsWith('p.') ? 'POSTER ' + t.sec.slice(2) : t.sec).toUpperCase(), t.who, kinName(t.kin).toUpperCase(), when(t.at), t.hidden ? 'HIDDEN' : ''].filter(Boolean).join(' · ') }), el('p', { text: (t.k === 'swap' ? '⇄ ' : t.k === 'share' ? '↗ ' : '') + (t.re ? '↳ ' : '') + t.text }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', text: t.hidden ? 'SHOW' : 'HIDE', onclick: async () => { await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: t.hidden ? 'show' : 'hide' }) }); show('talk'); } }),
+        el('button', { type: 'button', class: 'no', text: 'DELETE', onclick: async () => { if (!confirm('Delete this for good?')) return; await api('talk/' + t.id, { method: 'POST', body: JSON.stringify({ action: 'delete' }) }); show('talk'); } })));
+    main.replaceChildren(...head('Talk'), el('div', { class: 'tools' }, pick), list.length ? el('ol', { class: 'talk' }, ...list.map(row)) : el('p', { class: 'empty', text: 'NOTHING YET' }));
   }
 
   /* ───────── use: how far people get, step by step, and what is opened and what is not (counts only, never who) ───────── */
@@ -146,24 +148,32 @@
       let j = {}; try { j = JSON.parse(x.body); } catch (e) { /* shown as it is */ }
       body = [el('h3', { text: `${String(j.type || 'record').toUpperCase()} · ${j.text || (j.tx && j.tx.cn) || ''}` }), el('div', { class: 'meta', text: `${meta} · ${j.lat} ${j.lng}` }), j.who ? el('p', { class: 'note', text: '— ' + j.who }) : null];
     }
+    const keys = [];
     const acts = el('div', { class: 'acts' },
       x.status === 'shown' && x.kind === 'story' ? el('button', { type: 'button', class: x.star ? 'on' : '', text: x.star ? '★ STARRED' : '☆ STAR', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.star ? 'unstar' : 'star' }) }); show('shown'); } }) : null,
-      x.gone ? el('button', { type: 'button', class: 'on', text: 'BACK ON THE SITE', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: 'ungone' }) }); x.gone = null; card.querySelector('.meta').textContent = card.querySelector('.meta').textContent.replace(/ · TAKEN DOWN BY ITS MAKER.*$/, ''); } }) : null,
+      x.gone ? el('button', { type: 'button', class: 'on', text: 'BACK ON THE SITE', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: 'ungone' }) }); x.gone = null; const fm = card.querySelector('.meta.full'); if (fm) fm.textContent = fm.textContent.replace(/ · TAKEN DOWN BY ITS MAKER.*$/, ''); } }) : null,
       x.status === 'deleted' ? el('button', { type: 'button', class: 'on', text: 'BRING BACK', onclick: () => act(x.id, 'restore', card) }) : null,
       x.status !== 'shown' && x.status !== 'deleted' ? el('button', { type: 'button', class: 'on', text: x.kind === 'message' ? 'PRINT' : 'SHOW', onclick: () => act(x.id, 'show', card) }) : null,
       x.status !== 'refused' && x.status !== 'deleted' ? el('button', { type: 'button', text: 'REFUSE', onclick: () => act(x.id, 'refuse', card) }) : null,
       x.status === 'deleted' ? el('button', { type: 'button', class: 'no', text: 'DELETE FOR GOOD', onclick: () => act(x.id, 'purge', card) }) : el('button', { type: 'button', class: 'no', text: 'ARCHIVE', onclick: () => act(x.id, 'delete', card) }),
+      x.status === 'shown' && x.code ? el('button', { type: 'button', text: `ITS TALK (${x.said || 0})`, onclick: () => { talkSec = 'p.' + x.code; show('talk'); } }) : null);
+    keys.push(
       x.photo ? el('button', { type: 'button', text: 'PHOTO ↓', onclick: async () => { const r = await api('photos/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null,
       /* the poster as designed, and its own talk: read it, close it (nothing more said there) or open it again */
       x.art ? el('button', { type: 'button', text: 'POSTER ↓', onclick: async () => { const r = await api('art/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}-poster.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null,
-      x.status === 'shown' && x.code ? el('button', { type: 'button', text: `ITS TALK (${x.said || 0})`, onclick: () => { talkSec = 'p.' + x.code; show('talk'); } }) : null,
       x.status === 'shown' && x.code ? el('button', { type: 'button', class: x.quiet ? 'on' : '', text: x.quiet ? 'TALK CLOSED' : 'CLOSE ITS TALK', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.quiet ? 'unquiet' : 'quiet' }) }); show(tab); } }) : null,
       x.full ? el('button', { type: 'button', text: 'FULL SIZE ↓', onclick: async () => { const r = await api('full/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}-full.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img); const tc = thumbCanvas(x.thumb);
+    const [title, full, ...rest] = body; if (full) full.className = 'meta full';
+    const brief = el('div', { class: 'meta', text: [x.code, x.kind.toUpperCase(), when(x.created), x.who ? 'BY ' + x.who : '', x.gone ? 'TAKEN DOWN' : '', x.quiet ? 'TALK CLOSED' : ''].filter(Boolean).join(' · ') });
     /* its mesh line and where it came from, each on a line of its own */
     let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { o = {}; }
     const more = el('div', { class: 'more' }, o.mesh ? el('p', { class: 'mesh', text: 'MESH · ' + o.mesh }) : null, x.jobat ? el('p', { class: 'note', text: 'PRINTER · ' + String(x.jobat).toUpperCase() }) : null);
-    card.append(el('div', { class: 'pics' }, img || null, tc || null, !img && !tc ? el('div', { class: 'nopic' }) : null), el('div', {}, body, more, acts));
+    /* MORE: the pictures large, every detail, the files and the rest of the keys */
+    const big = el('div', { class: 'big' }), drop = el('details', { class: 'drop' }, el('summary', { text: 'MORE' }), big, full || null, ...rest, more, el('div', { class: 'acts' }, ...keys.filter(Boolean)));
+    drop.ontoggle = () => { if (!drop.open || big.childElementCount) return; if (img && img.src) big.append(el('img', { alt: '', src: img.src })); const t2 = thumbCanvas(x.thumb); if (t2) big.append(t2); };
+    const pic = el('button', { type: 'button', class: 'pics', 'aria-label': 'More', onclick: () => { drop.open = !drop.open; } }, img || tc || el('div', { class: 'nopic' }));
+    card.append(pic, el('div', { class: 'body' }, title, brief, acts, drop));
     return card;
   }
   async function stories(st) {
@@ -397,9 +407,9 @@
         el('div', { class: 'cell g' }, gauge([[J.printed, '#7FE3D3'], [(J.queued || 0) + (J.held || 0), '#F2C14E'], [J.failed, '#E25C40']], 'PRINTS 7D')),
         el('div', { class: 'cell rds' }, read(S.waiting, 'WAITING', 'waiting', 1), read(Pl.waiting, 'PLACES IN', 'places', 1), read((J.queued || 0) + (J.held || 0), 'IN A QUEUE', 'printers', 1), read(J.failed, 'FAILED 7D', 'printers', 1), read(Po.published, 'POSTS LIVE', 'posts'), read(S.deleted, 'ARCHIVED', 'deleted'))),
       el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'VISITS · 14 DAYS' }), trace(days.map(d => per(d, /^open-/))), el('div', { class: 'ticks' }, ...days.map(d => el('span', { text: d.slice(8) })))),
-      el('div', { class: 'row' },
+      el('div', { class: 'row wide' },
         el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'UNITS' }), ...o.printers.map(p => el('div', { class: 'unit' + (fresh(p.seen) ? ' live' : '') }, el('i', { class: 'led' }), el('b', { text: (p.name || p.id).toUpperCase() }),
-          el('span', { text: [p.paired ? 'PAIRED' : 'UNPAIRED', p.seen ? (fresh(p.seen) ? 'LISTENING' : 'LAST ' + when(p.seen)) : 'NEVER HEARD', p.mesh ? 'MESH' : '', p.touch ? 'SCREEN' : ''].filter(Boolean).join(' · ') })))),
+          el('span', { text: [p.paired ? 'PAIRED' : 'UNPAIRED', p.seen ? (fresh(p.seen) ? 'LISTENING' : 'LAST ' + new Date(p.seen).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) : 'NEVER HEARD', p.mesh ? 'MESH' : '', p.touch ? 'SCREEN' : ''].filter(Boolean).join(' · ') })))),
         el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'ACTIVITY · TODAY / 7 DAYS' }), ...(keys.length ? keys.map(k => el('div', { class: 'act' }, el('span', { text: TRAFFIC[k].toUpperCase() }), el('i', { class: 'bar', style: `width:${Math.round(100 * (o.week[k] || 0) / top)}%` }), el('b', { text: `${o.today[k] || 0} / ${o.week[k] || 0}` }))) : [el('span', { class: 'cap', text: 'NOTHING COUNTED YET' })]))));
     main.replaceChildren(...head('Overview'), hud);
     const again = () => { ovT = setTimeout(() => { if (tab !== 'overview') return; if (document.hidden) return again(); overview().catch(() => {}); }, 30000); }; again();
