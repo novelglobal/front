@@ -441,6 +441,19 @@ function sendAnim(dev) {
   document.body.appendChild(box); setTimeout(() => box.remove(), 2600);
 }
 const POSTERS2 = store.get('da.posters2.v1', []);
+/* the list of posters kept small in localStorage, each poster's picture in IndexedDB (kept: it is there); those kept before move
+   over, and a picture whose poster is gone is let go */
+function savePosters() {
+  for (const p of POSTERS2) if (p.img && !p.kept && !p._going) { p._going = 1; big.set('poster:' + p.id, p.img).then(ok => { p._going = 0; if (ok) { p.kept = 1; savePosters(); } }); }
+  const ok = store.set('da.posters2.v1', POSTERS2.map(({ img, _hit, _going, ...p }) => (p.kept ? p : { ...p, img })));
+  big.keys().then(ks => { for (const k of ks || []) if (/^poster:/.test(k) && !POSTERS2.some(p => 'poster:' + p.id === k)) big.del(k); });
+  return ok;
+}
+Promise.all(POSTERS2.filter(p => !p.img).map(p => big.get('poster:' + p.id).then(v => { if (v) p.img = v; }))).then(() => {
+  const lost = POSTERS2.filter(p => !p.img).length; for (let i = POSTERS2.length - 1; i >= 0; i--) if (!POSTERS2[i].img) POSTERS2.splice(i, 1);
+  if (lost || POSTERS2.some(p => !p.kept)) savePosters();
+  life.redraw(); if (S.open && typeof refreshPanel === 'function') refreshPanel();
+});
 let lastPoster = '';
 /* the strip again, in colour: drawn on a canvas of its own from what is on it, each thing in ink swapped for its colour self */
 async function colourStrip(s, scale) {
@@ -469,7 +482,7 @@ async function savePoster(quiet) {
   const where = s && s.pin ? { lat: +s.pin.lat, lng: +s.pin.lng } : { lat: S.scan.lat, lng: S.scan.lng };
   const figs = strings.list().filter(g => g.o && life.inScan(g.o.lat, g.o.lng)).slice(0, 3).map(g => String(g.id));
   POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: c.toDataURL('image/jpeg', 0.84), ...(s && s.img ? { ph: sigSrc(s, true) } : {}), ...where, figs, ...(s ? { story: s.key } : {}) }); POSTERS2.splice(12);
-  while (!store.set('da.posters2.v1', POSTERS2) && POSTERS2.length > 1) POSTERS2.pop();
+  while (!savePosters() && POSTERS2.length > 1) POSTERS2.pop();
   if (!quiet) { snd.horn(); toast('✓'); } life.redraw(); return POSTERS2[0];
 }
 /* ───────── a poster as a card from an old handheld: four tones of the deep, a pixel frame with corner stars, its number
@@ -629,7 +642,7 @@ async function pressOut(k, given) {
     st.textContent = PRESS.fmt === 'zine' ? '@page{size:A5;margin:0}' : `@page{size:${F.n === '58' ? 58 : 80}mm ${Math.ceil(SH / F.w * (F.n === '58' ? 58 : 80)) + 6}mm;margin:0}`;
     tie(2); store.set('da.printed.v1', Date.now()); setTimeout(() => window.print(), 300); return;
   }
-  if (k === 'poster') { if (given) { POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: (await thumbOf(url, 600)), lat: S.scan.lat, lng: S.scan.lng, figs: [] }); POSTERS2.splice(12); store.set('da.posters2.v1', POSTERS2); snd.horn(); toast('✓'); return; } await savePoster(); return; }
+  if (k === 'poster') { if (given) { POSTERS2.unshift({ id: uid('p'), at: Date.now(), img: (await thumbOf(url, 600)), lat: S.scan.lat, lng: S.scan.lng, figs: [] }); POSTERS2.splice(12); savePosters(); snd.horn(); toast('✓'); return; } await savePoster(); return; }
   if (k === 'oled') {
     const im = await loadImage(url, false); const W = 128, H = 64; const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
     const k2 = Math.min(W / im.width, H / im.height); const dw = im.width * k2, dh = im.height * k2; x.drawImage(im, (W - dw) / 2, (H - dh) / 2, dw, dh);

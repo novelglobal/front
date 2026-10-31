@@ -138,11 +138,18 @@ function markConnect() {
   if (S.connected) return; S.connected = true; markTweak(); if (S.open && S.view === 0 && !S.mode) refreshPanel();
 }
 function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.view === 0 && !S.mode) refreshPanel(); }
-function setRadio(on) {
+/* the aura's own SOUND desk playing: the radio pauses under it and comes back when it stops (quiet: the aura asked, so it is not told) */
+let auraHeld = false;
+if (IN_AURA) addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || e.data.ng !== 'hush') return;
+  if (e.data.on && S.radio) { auraHeld = true; setRadio(false, true); } else if (!e.data.on && auraHeld) { auraHeld = false; setRadio(true, true); }
+});
+function setRadio(on, quiet) {
   if (on && !S.started) { startRadio(true); return; }
+  if (!quiet) auraHeld = false;
   S.radio = on;
   if (!on && LOOP.on) { LOOP.paused = snapOf().ms; LOOP.ms = []; loopSync(false); }
-  else if (on && !LOOP.on && LOOP.paused && LOOP.paused.length) { LOOP.ms = rebeat(LOOP.paused); LOOP.paused = null; loopSync(true); } try { if (IN_AURA) window.parent.postMessage({ ng: 'radio', on: !!on }, location.origin); } catch (e) { /* alone */ }
+  else if (on && !LOOP.on && LOOP.paused && LOOP.paused.length) { LOOP.ms = rebeat(LOOP.paused); LOOP.paused = null; loopSync(true); } try { if (IN_AURA && !quiet) window.parent.postMessage({ ng: 'radio', on: !!on }, location.origin); } catch (e) { /* alone */ }
   if (on) { snd.wake(); if (!prefs.sound) { prefs.sound = true; savePrefs(); } nudgeWishSoon(); }
   syncTracks(); if (on) life.replay();
   document.querySelectorAll('[data-radio]').forEach(b => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); const ic = b.querySelector('svg.i'); if (ic) ic.outerHTML = icon(on ? 'pause' : 'play'); else b.insertAdjacentHTML('beforeend', icon(on ? 'pause' : 'play')); });

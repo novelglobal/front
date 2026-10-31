@@ -450,7 +450,7 @@ const life = (() => {
   function posters(ctx) {
     for (const p of POSTERS2) p._hit = null;
     if (!POSTERS2.length || S.mode === 'place') return;
-    POSTERS2.slice(0, 12).forEach((p, i) => {
+    POSTERS2.slice(0, 12).filter(p => p.img).forEach((p, i) => {
       let card = PIM.get(p.id); if (!card) { card = { c: null }; PIM.set(p.id, card); cardArt(p, POSTERS2.length - 1 - POSTERS2.indexOf(p), 3).then(c => { card.c = c; fxDirty = true; }).catch(() => {}); }
       if (!card.c) return; const q = map.project([p.lng, p.lat]); if (off(q.x, q.y)) return;
       const w = 58, h = 96, cx = q.x + 36 + (i % 3) * 8, cy = q.y - 56 - (i % 2) * 8, rot = ((i % 3) - 1) * 0.1;
