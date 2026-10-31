@@ -169,7 +169,7 @@ const buzz = ms => { try {
 /* an old phone or tablet: the aura's own reading when inside it, else the same test (few cores, little memory, no audio worklets) */
 const LITE = (() => { try { const ng = IN_AURA && window.parent.NG; if (ng && typeof ng.lite === 'boolean') return ng.lite; return (navigator.hardwareConcurrency || 2) <= 4 || (navigator.deviceMemory || 4) <= 2 || !window.AudioWorkletNode; } catch (e) { return false; } })();
 const snd = (() => {
-  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null;
+  let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null, tap = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   /* ───────── the sound watched over. A phone can leave its sound "running" with its clock stopped, or give it back silent
      after something else took it; a voice can blow the mix up. Any of these, and the whole of it is built again at the next
@@ -180,7 +180,7 @@ const snd = (() => {
     if (ctx.currentTime !== ctSeen) { ctSeen = ctx.currentTime; ctAt = now; return true; } return now - ctAt < 1500;
   }
   function rebuild() {
-    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear(); NZ.clear(); CK.clear(); for (const k of Object.keys(FXB)) delete FXB[k];
+    const old = ctx; ctx = null; bus = wet = hall = mixLP = heatWS = mon = stabLad = dubIn = tap = null; hasLadder = false; sick = false; ctSeen = -1; SLOTS.clear(); KS.clear(); NZ.clear(); CK.clear(); for (const k of Object.keys(FXB)) delete FXB[k];
     try { if (old && old.state !== 'closed') old.close().catch(() => {}); } catch (e) { /* gone */ }
   }
   setInterval(() => {
@@ -203,7 +203,7 @@ const snd = (() => {
         const dip = ctx.createBiquadFilter(); dip.type = 'peaking'; dip.frequency.value = 2800; dip.Q.value = 1.1; dip.gain.value = -7;
         const shelf = ctx.createBiquadFilter(); shelf.type = 'highshelf'; shelf.frequency.value = 4800; shelf.gain.value = -6;
         bus.connect(dip); dip.connect(shelf); shelf.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
-        mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon);
+        mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon); tap = comp;
         /* a small, soft room: two short delays fed back through a low-pass */
         wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
@@ -463,6 +463,15 @@ const snd = (() => {
     describe,
     /* woken inside a touch itself, as phones require: true once sound can play */
     lite: LITE,
+    /* what reaches the speaker for ms milliseconds, as a sound file: m4a where the phone makes it (Safari), else webm */
+    record(ms) {
+      const c = ready(); if (!c || !tap || !window.MediaRecorder || !c.createMediaStreamDestination) return Promise.reject(new Error('none'));
+      const type = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+      const dst = c.createMediaStreamDestination(); tap.connect(dst); const rec = new MediaRecorder(dst.stream, type ? { mimeType: type } : {}), parts = [];
+      return new Promise((ok, no) => { rec.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
+        rec.onstop = () => { try { tap && tap.disconnect(dst); } catch (e) { /* gone */ } const b = new Blob(parts, { type: rec.mimeType || type || 'audio/webm' }); b.size ? ok(b) : no(new Error('empty')); };
+        rec.onerror = e => no(e.error || new Error('record')); rec.start(500); setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, ms); });
+    },
     wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
     /* El Niño: the same tempo, more heat: the mix opened and driven harder */
     heat(on) { if (ctx && mixLP) heatSet(!!on); },

@@ -393,7 +393,7 @@ function viewRadio() {
   return `<section class="band dev radio mod${upCls()}" id="sec-heat">${mods('DIRECT ACTION', 'RADIO')}${upMods()}${flipBtn()}
       ${pagerHTML()}<div class="vu" aria-hidden="true"><i class="vu-n"></i></div><p class="b-emerg mono" data-tip="El Niño emergency in"><b class="cd"${ex && !ex.now ? ` data-to="${ex.to}"` : ''}${stepAttr()}>${ex ? (ex.now ? 'NOW' : countText(ex.to)) : stepWords()}</b></p>
       ${monthStrip()}
-      <div class="hp-row"><button type="button" class="hp-k${LOOP.on ? ' on' : ''}" data-loop aria-pressed="${LOOP.on}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
+      <div class="hp-row"><button type="button" class="hp-k${LOOP.live ? ' on' : ''}" data-loop aria-pressed="${LOOP.live}" aria-label="Loop: keep this sound playing wherever the radar goes">${icon('loop')}<small>loop</small></button>`
      + `<button type="button" class="hero-play${S.radio ? ' on' : ''}" data-radio aria-pressed="${S.radio}" aria-label="The radio" data-tip="The radio"><i class="hp-ring"></i>${icon(S.radio ? 'pause' : 'play')}</button>`
      + `<button type="button" class="hp-k hp-keep" data-song-keep aria-label="Keep this track" data-tip="Keep this track">${icon('download')}<small>keep</small></button></div>
       ${fourHTML()}

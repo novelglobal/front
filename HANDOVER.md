@@ -26,7 +26,8 @@ Read this file first. Then read `README.md`, which is what users see, and `docs/
 | Live data behind the Worker | Not built. This is stage 4. Each browser still calls iNaturalist, Overpass and Open-Meteo directly |
 | Storage, bot check, backups | Full-size photographs go to R2 (`MEDIA`, bucket `front-media`) once R2 is switched on and the line in `wrangler.jsonc` is uncommented. Turnstile guards the talk once `TURNSTILE_SITE` and `TURNSTILE_SECRET` are set. **DATA → BACKUP AND REBUILD** on the approval page zips everything kept, links the code zip, and brings a backup back. See `docs/rebuild.md` |
 | Talk | Each step has its own talk, opened by a third key circling the jellyfish at the last level (a third poster printed), read and written only with a code from a print |
-| Sound on old devices | A slow device (four cores or fewer, little memory, or no audio worklets) gets a longer audio buffer, a shorter hall, one sound a sixteenth, and the aura drone waits while the radio plays. The radio's FOUR-TRACK layers up to four kept songs |
+| Sound on old devices | A slow device (four cores or fewer, little memory, or no audio worklets) gets a longer audio buffer, a shorter hall, one sound a sixteenth, and the aura drone waits while the radio plays. The radio's FOUR-TRACK layers up to four kept songs over the live radar and saves them together as one sound file (m4a or webm) |
+| Step devices | The jellyfish holds out the INTENTION device (the W.I.S.H. device's front over the map) at notice, and the RADIO with its constellations at W.I.S.H. (`DEV_AT` in aura.js); the intention device is earned first. The studio's own tab order on /studio is unchanged |
 | Prototype deadline | One receiver and one printer, with a repeatable end-to-end demo, by 16 October 2026 |
 
 ## What is built and working
