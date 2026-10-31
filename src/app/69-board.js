@@ -32,10 +32,13 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); tplFix(); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['paste', 'receive', 'PASTE'], ['poster', 'receipt', 'TO POSTER'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
-  t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
+  /* on a phone the keys used most stay out, the rest fold behind dots */
+  const KEEP = new Set(['add', 'tpl', 'note', 'link', 'image', 'paste', 'poster', 'exsend']);
+  t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt${KEEP.has(k) ? '' : ' fold'}" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('')
+    + '<button type="button" class="bt bt-dots" data-bt="dots" aria-label="More" aria-expanded="false"><i></i><i></i><i></i></button><input type="file" id="board-file" accept="image/*" hidden>';
   $('#board-label').textContent = 'WISH MAKER · MODEL DA-03 · IN: SIGNALS, CELLS, CONSTELLATIONS · OUT: STORIES TO PRINT · LINK JOINS, A CLICK ON A STRING LETS IT GO · CONTAINS LIVE DATA';
   edgeFade(t);
 }
@@ -391,18 +394,42 @@ $('#board').addEventListener('change', e => { const fl = e.target.files && e.tar
 const typing = el => !!el && (/INPUT|TEXTAREA|SELECT/.test(el.tagName || '') || el.isContentEditable || (cv && cv.getActiveObject() && cv.getActiveObject().isEditing));
 document.addEventListener('paste', e => {
   if (S.view !== 1 || !S.open || $('#board').hidden || typing(document.activeElement)) return;
-  const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(x => /^image\//.test(x.type)); if (!it) return;
+  const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(x => /^image\//.test(x.type));
+  if (!it) { const t = e.clipboardData && e.clipboardData.getData('text/plain'); if (t && t.trim()) { e.preventDefault(); boardTextIn(t); } return; }
   e.preventDefault(); const fl = it.getAsFile(); if (fl) { boardImageIn(fl); snd.tick(1700); }
 });
-$('#board').addEventListener('dragover', e => { if ([...(e.dataTransfer.items || [])].some(x => /^image\//.test(x.type))) { e.preventDefault(); $('#board').classList.add('drop'); } });
+$('#board').addEventListener('dragover', e => { if ([...(e.dataTransfer.items || [])].some(x => /^image\//.test(x.type) || x.type === 'text/uri-list' || x.type === 'text/plain')) { e.preventDefault(); $('#board').classList.add('drop'); } });
 $('#board').addEventListener('dragleave', () => $('#board').classList.remove('drop'));
-$('#board').addEventListener('drop', e => { $('#board').classList.remove('drop'); const fl = [...(e.dataTransfer.files || [])].find(f => /^image\//.test(f.type)); if (!fl) return; e.preventDefault(); boardImageIn(fl); });
+$('#board').addEventListener('drop', e => { $('#board').classList.remove('drop'); const fl = [...(e.dataTransfer.files || [])].find(f => /^image\//.test(f.type)); if (!fl) { const u = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'); if (u) { e.preventDefault(); boardTextIn(u.split('\n')[0]); } return; } e.preventDefault(); boardImageIn(fl); });
 async function boardImageIn(fl) {
   await workBoard(); const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = async () => { const k = Math.min(1, 900 / Math.max(im.width, im.height)); const t = document.createElement('canvas'); t.width = Math.round(im.width * k); t.height = Math.round(im.height * k); t.getContext('2d').drawImage(im, 0, 0, t.width, t.height);
     const c = await showBoard(true); const p = free(); window.fabric.Image.fromURL(t.toDataURL('image/jpeg', 0.82), img => { img.set({ left: p.x, top: p.y, daId: uid('i'), daKind: 'image' }); img.scaleToWidth(220); c.add(img); c.setActiveObject(img); c.renderAll(); saveSoon(); }); }; im.src = rd.result; };
   rd.readAsDataURL(fl);
 }
-$('#board').addEventListener('click', e => { const b = e.target.closest('[data-bt]'); if (b) boardTool(b.dataset.bt); });
+$('#board').addEventListener('click', e => { const b = e.target.closest('[data-bt]'); if (!b) return; const k = b.dataset.bt;
+  if (k === 'dots') { const t = $('#board-tools'), on = !t.classList.contains('unfold'); t.classList.toggle('unfold', on); b.setAttribute('aria-expanded', String(on)); b.setAttribute('aria-label', on ? 'Fewer' : 'More'); snd.tick(on ? 1700 : 1100); return; }
+  if (k === 'paste') { boardPaste(); return; }
+  if (k === 'poster') { boardToPoster(); return; }
+  boardTool(k); });
+/* PASTE: whatever was copied, from anywhere: a picture onto the board as a picture, a link or words as a card (the phone asks first) */
+async function boardPaste() {
+  try { if (navigator.clipboard && navigator.clipboard.read) { for (const it of await navigator.clipboard.read()) { const ty = it.types.find(x => /^image\//.test(x)); if (ty) { boardImageIn(await it.getType(ty)); snd.tick(1700); return; } } }
+    const t = navigator.clipboard && navigator.clipboard.readText ? await navigator.clipboard.readText() : ''; if (t && t.trim()) { boardTextIn(t); return; } toast('NOTHING COPIED'); }
+  catch (e) { toast('PASTE IS NOT ALLOWED HERE · TRY IMG'); }
+}
+/* a link (or words) as a card: its site large, its address under it, kept on the board as any note */
+async function boardTextIn(t) {
+  t = String(t).trim().slice(0, 600); if (!t) return; const url = /^https?:\/\/\S+$/i.test(t) ? t : null;
+  await workBoard(); const c = await showBoard(true); if (!c) return; const f = window.fabric, p = free();
+  const txt = url ? `↗ ${(() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return 'link'; } })()}\n${url}` : t;
+  const n = textCard(f, uid('n'), 'note', txt, p.x, p.y); if (url) n.set({ daUrl: url }); c.add(n); c.setActiveObject(n); c.renderAll(); saveSoon(); snd.tick(1700);
+}
+/* the picture chosen on the board (or the whole board) onto the poster in hand: in the aura's poster, or on the strip */
+async function boardToPoster() {
+  const c = await showBoard(true); if (!c) return; const s = c.getActiveObject();
+  let url = s && s.type === 'image' && s.getSrc ? s.getSrc() : null; if (!url) { const pic = await boardPicture(); if (!pic) { tick(600); return; } url = pic.toDataURL('image/png'); }
+  if (IN_AURA) toAura(url, false); else { setView(2); setTimeout(() => placeOnPage(url, 'art', 240), 500); } snd.tick(1900); toast('✓ ON THE POSTER');
+}
 
 /* ───────── the W.I.S.H.: the master form. Four lines written for a signal, sent on as a story waiting to print ───────── */
 /* what a W.I.S.H. is for: a species (sent here, or in the radar now), the climate emergency, or the circular economy */
