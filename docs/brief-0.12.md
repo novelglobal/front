@@ -41,6 +41,17 @@ Isolation as shelter; safety as the ground of creative belonging.
 7. **The install is one stop and a pleasure.** In the spirit of the best open-source sharing: a checklist of parts, a single
    run that sets up everything, an ASCII title card and plain install notes, and small bit-tone music while it works. No names,
    logos or references to anywhere else: only the aesthetic and the generosity.
+8. **One USB stick, any Pi with Wi-Fi.** Plugging the stick into a Pi sets up the whole hub: networking, the printer, the
+   screen, the files and a bare novel.global, with no Melbourne map, species or base data. Setup then asks for the place and
+   lets the owner make it their own: tweaks, species, layers, their own sounds and songs, their own icons, the full suite.
+   The engine and the print system stay the same underneath, adaptable and modular.
+9. **Online, an island gets its own keys.** Once it reaches the internet the hub makes its keys, pairs, takes updates and
+   joins the site from anywhere in the world as its own island.
+10. **They run it; the owner sees it all.** Each island's owner manages and controls everything on it: approvals, members,
+    signals, its look and sound. novel.global's approval page can see, track and view every island, and close one only
+    under the safety rules.
+11. **Automated, modular, hackable.** Approvals, onboarding, setup and stages are as automatic and as open to change as
+    possible, while the deep, simple journey flows the same on every island.
 
 Still open (the defaults below are used unless the owner says otherwise):
 
@@ -143,8 +154,17 @@ Four layers, each with one job. Every feature lives in exactly one.
 
 ### 4. The hub kit: every printer its own island, Melbourne as the blueprint
 
-The approval page gains **ISLANDS**. novel.global gains **BUILD A HUB**, drawn as a parts sheet, and the queue links to it.
+Each island has its own approval page, where its owner controls everything on it. novel.global's approval page gains **ISLANDS**,
+where every island can be seen, tracked and viewed (members, prints, signals, health, version). novel.global gains **BUILD A HUB**, drawn as a parts sheet, and the queue links to it.
 
+- **The USB stick:** a folder to copy onto any USB stick. Plugged into a Raspberry Pi already running its usual system with
+  Wi-Fi, it installs itself (one udev rule on first boot of the card image, or one line typed once on a Pi already set up),
+  finds the printer and the screen, and opens setup on the screen or on a phone joined to the hub's own Wi-Fi.
+- **A bare start:** the base novel.global with no Melbourne map, species or base data. The island's own pack (place, field
+  list, layers, sounds, songs, icons, words) lives in one folder of plain files on the hub and on its island, so it can be
+  changed by hand, in setup, or on its own approval page, and backed up as one zip.
+- **Modular underneath:** the same engine, journey and print system on every island; each part (printer driver, screen,
+  mesh, sound set, icon set, data layers) is a module that can be swapped or added without touching the others.
 - **Its own ground:** at claim, the hub's rough place sets its island's box, the same size as Melbourne's. The island then
   builds its ground once, through the routes the site already has (iNaturalist sightings and species, OpenStreetMap places and
   water), and keeps it, so it works offline from then on. Its field list starts as the kinds met there (as SPECIES does now)
@@ -226,6 +246,6 @@ every existing check passing.
 | B | **The island as a Durable Object:** roster of 160, the queue, the talk moved in | Two islands on staging cannot see each other |
 | C | **Passports and the 7-day clock:** keys, signing, the passport receipt and its offline check, striking, deletion to the archive and bringing back, renew in the portfolio | A passport printed on staging checks with no network; a code left 7 days goes to the archive and comes back |
 | D | **The archipelago scene:** islands drawn from their codes on the globe, moving between them without a cut, the queue's ring and number, LOW RES | An island is found, entered, queued for and left on staging without a jump |
-| E | **The hub kit:** ISLANDS on the approval page, BUILD A HUB, claim by print, the island's own ground, the checklist with other printers, boards and screens, the one-stop install with its title card and music, the builder's slip | A second Pi with a different printer claims an island in another city from a fresh card, and its map is its own |
+| E | **The hub kit:** the USB stick for any Pi with Wi-Fi, the bare start and the island's own pack, each island's own approval page, ISLANDS on novel.global's, BUILD A HUB, claim by print, the island's own ground, the checklist with other printers, boards and screens, the one-stop install with its title card and music, the builder's slip | A second Pi with a different printer claims an island in another city from a fresh card, and its map is its own |
 | F | **Signals:** countdown and place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
 | G | **Their own novel.global:** Deploy to Cloudflare and registration with the master | A copy on another account appears on the archipelago |
