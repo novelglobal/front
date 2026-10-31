@@ -968,6 +968,25 @@ function moon(t) {
   var f = (((lm - ls) % 360) + 360) % 360 / 360, n = Math.round((t - NEW0) / LUNA - f), i = Math.floor(f * 8 + 0.5) % 8;
   return { n: n, f: f, age: f * 29.530588853, name: MOONS[i], i: i, lit: (1 - Math.cos(f * 2 * Math.PI)) / 2 };
 }
+/* the moon as it looks from a place: its lit part as a path round 0,0 of radius r. South of the equator a waxing moon is lit on
+   its left; the terminator an ellipse as wide as the light is short of half */
+function moonPath(f, lat, r) {
+  var k = Math.cos(f * 2 * Math.PI), rx = Math.max(0.01, Math.abs(k) * r).toFixed(2), right = (f < 0.5) !== (+lat < 0);
+  return right ? 'M0,' + -r + 'A' + r + ',' + r + ' 0 0 1 0,' + r + 'A' + rx + ',' + r + ' 0 0 ' + (k > 0 ? 0 : 1) + ' 0,' + -r + 'Z'
+    : 'M0,' + -r + 'A' + r + ',' + r + ' 0 0 0 0,' + r + 'A' + rx + ',' + r + ' 0 0 ' + (k > 0 ? 1 : 0) + ' 0,' + -r + 'Z';
+}
+/* its name, and the month that places it: WAXING GIBBOUS · NOV 2026 */
+var MON3 = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+function moonTip(t) { var d = new Date(t || Date.now()); return moon(t).name.toUpperCase() + ' · ' + MON3[d.getMonth()] + ' ' + d.getFullYear(); }
+/* the moon a thing was made under, small in its corner: the disc a hairline, its light filled, the month beside it. On every print
+   and every piece kept, unless switched off on the approval page (moonShow) */
+var MOON_ON = true; siteOf().then(function (s) { if (s && s.moonShow === false) MOON_ON = false; });
+function moonMark(x, cx, cy, r, ink, lat, t, words) {
+  if (!MOON_ON || !x || !x.save) return; var m = moon(t); x.save(); x.translate(cx, cy); x.globalAlpha = 0.55; x.strokeStyle = x.fillStyle = ink || '#000'; x.lineWidth = Math.max(1, r / 9);
+  x.beginPath(); x.arc(0, 0, r, 0, Math.PI * 2); x.stroke(); try { x.fill(new Path2D(moonPath(m.f, lat, r))); } catch (e) { /* no Path2D */ }
+  if (words !== false) { var d = new Date(t || Date.now()); x.font = '500 ' + Math.round(r * 1.1) + 'px "Departure Mono", ui-monospace, Menlo, monospace'; x.textAlign = 'right'; x.textBaseline = 'middle'; x.fillText(MON3[d.getMonth()] + ' ' + d.getFullYear(), -r * 1.8, 0); }
+  x.restore();
+}
 /* how long ago, in moons: "this moon", "last moon", "3 moons ago" */
 function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon' : k === 1 ? 'last moon' : k + ' moons ago'; }
 /* the briefs: short, for a world that keeps arriving. What heat, fire, flood and a changing planet ask of us here, said plainly,
@@ -2096,7 +2115,7 @@ function printReady(x, W, H, D) {
 }
 function forPrint(src, W, D) {
   var H = Math.round(src.height * W / src.width), c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(src, 0, 0, W, H); printReady(x, W, H, D); return c;
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(src, 0, 0, W, H); printReady(x, W, H, D); var mr = Math.max(6, Math.round(W * 0.022)); moonMark(x, W - mr * 2.2, H - mr * 2.2, mr, '#000', (window.NG && NG.map && NG.map.lat) || -37.8); return c;
 }
 function drawStickers(x, W, H, ink) {
   BTH.st.forEach(function (s) {
@@ -2358,7 +2377,7 @@ window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, stor
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

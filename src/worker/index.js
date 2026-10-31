@@ -357,7 +357,8 @@ async function learnKinds(db, env, req) {
 /* lowRes: keep only the print-sized photograph, never the full-size one (off: full size in R2) */
 /* madeShow: what people make (stories, posters, packs, their photographs and talk) shown to visitors; off, every one of them stays a
    draft, decided on here and seen by no one else. exampleShow: the example poster and BOARD 00 shown to visitors */
-const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false, lowRes: false, madeShow: false, exampleShow: true };
+/* moonShow: the moon tonight beside SOUND in the dark, and the moon each thing was made under in the corner of every print and piece kept */
+const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false, lowRes: false, madeShow: false, exampleShow: true, moonShow: true };
 const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);

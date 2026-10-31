@@ -22,8 +22,8 @@ function flip() {
   prefs.flipped = { ...(prefs.flipped || {}), [i]: 1 };
   const go = () => { setFace(i, to); headBar(); renderView(); viewEl.scrollTop = 0; };
   if (reduced()) { go(); return; }
-  viewEl.classList.remove('flip-in'); viewEl.classList.add('flip-out');
-  setTimeout(() => { go(); viewEl.classList.remove('flip-out'); viewEl.classList.add('flip-in'); setTimeout(() => viewEl.classList.remove('flip-in'), 380); }, 190);
+  /* the other face at once, settling in one short turn: never faded out and back. The page's own fade (.in) is taken off first: left on, it ran again from nothing as the turn ended, and the device strobed */
+  viewEl.classList.remove('flip-in', 'flip-out', 'in'); go(); void viewEl.offsetWidth; viewEl.classList.add('flip-in'); setTimeout(() => viewEl.classList.remove('flip-in'), 280);
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-flip]')) flip(); });
 /* ───────── on a phone the device rides a rail: up from the foot over the big screen, and a finger slides it up and down, never
@@ -78,8 +78,8 @@ const SCREWS = '<i class="hack h-screw a" aria-hidden="true"></i><i class="hack 
 
 /* ───────── RADIO, the front: the smoked radio at half its height. The El Niño switch, the grille, play, a knob for each layer,
    in one row ───────── */
-const KNOB_A = [-135, -45, 45, 135];
-/* a knob is a layer's filter: off, then MIST, HALL, DEPTH; the level stays where it is */
+const KNOB_A = [-135, -81, -27, 27, 81, 135];
+/* a knob is a layer's filter: off, then MIST, HALL, DEPTH, BLOOM, LUNG; the level stays where it is */
 const knobPos = k => (trackOn(k) ? FXS.indexOf(fxOf(k)) + 1 : 0);
 /* the El Niño switch, on both faces of the radio: one setting, one speed */
 const ninoSwitch = () => `<button type="button" class="rd-nino${prefs.nino ? ' on' : ''}" data-nino role="switch" aria-checked="${!!prefs.nino}" aria-label="El Niño: 120 BPM" data-tip="El Niño · 120 BPM"><i class="rn-lever" aria-hidden="true"></i></button><b class="rn-tag" aria-hidden="true">EL NIÑO</b>`;
@@ -89,11 +89,11 @@ function radioFront() {
     + `${knobsHTML()}${upMods()}${flipBtn()}</div></section>`;
 }
 /* a knob for each layer: off, then three levels, its ticks lit as far as it is turned, its layer's mark under it */
-const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="3" aria-valuenow="${p}" aria-valuetext="${p ? FXS[p - 1].toUpperCase() : 'OFF'}" data-tip="${L.w} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
-  + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`;
+const knobsHTML = () => `<ol class="rd-knobs">${LAYERS.map(L => { const p = knobPos(L.k); return `<li class="rd-k${p ? ' on' : ''}" data-lyr="${L.k}"><button type="button" class="rd-knob" data-knob="${L.k}" role="slider" aria-label="${L.w}" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${p}" aria-valuetext="${p ? FXS[p - 1].toUpperCase() : 'OFF'}" data-tip="${L.w} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}" style="--a:${KNOB_A[p]}deg"><i class="kn-ind"></i></button>`
+  + `<i class="kn-ticks" aria-hidden="true">${[1, 2, 3, 4, 5].map(n => `<b${n <= p ? ' class="on"' : ''}></b>`).join('')}</i><span class="kn-ic" aria-hidden="true">${icon(L.ic, 'sm')}</span></li>`; }).join('')}</ol>`;
 /* a knob turned: a click goes round, off, one, two, three; arrow keys step and stop at the ends */
 function turnKnob(k, d, stop) {
-  const p0 = knobPos(k); let p = p0 + d; p = stop ? clamp(p, 0, 3) : (p + 4) % 4; if (p === p0) { tick(600); return; }
+  const p0 = knobPos(k); let p = p0 + d; p = stop ? clamp(p, 0, 5) : (p + 6) % 6; if (p === p0) { tick(600); return; }
   if (!p) setTrack4(k, false); else { prefs.fx = { ...(prefs.fx || {}), [k]: FXS[p - 1] }; savePrefs(); if (!trackOn(k)) setTrack4(k, true); }
   const b = $(`#view [data-knob="${k}"]`); if (b) { b.style.setProperty('--a', `${KNOB_A[p]}deg`); b.setAttribute('aria-valuenow', String(p)); b.setAttribute('aria-valuetext', p ? FXS[p - 1].toUpperCase() : 'OFF'); b.dataset.tip = `${b.getAttribute('aria-label')} · ${p ? FXS[p - 1].toUpperCase() : 'OFF'}`; const li = b.closest('.rd-k'); li.classList.toggle('on', !!p); li.querySelectorAll('.kn-ticks b').forEach((x, n) => x.classList.toggle('on', n < p)); }
   snd.tick(800 + p * 320);

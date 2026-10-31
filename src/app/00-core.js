@@ -177,6 +177,7 @@ const buzz = ms => { try {
 /* an old phone or tablet: the aura's own reading when inside it, else the same test (few cores, little memory, no audio worklets) */
 const LITE = (() => { try { const ng = IN_AURA && window.parent.NG; if (ng && typeof ng.lite === 'boolean') return ng.lite; return (navigator.hardwareConcurrency || 2) <= 4 || (navigator.deviceMemory || 4) <= 2 || !window.AudioWorkletNode; } catch (e) { return false; } })();
 const snd = (() => {
+  let FQB = null;
   let ctx = null, bus = null, wet = null, hall = null, lastBlip = 0, hasLadder = false, mixLP = null, heatWS = null, drive = null, mon = null, stabLad = null, tap = null;
   const active = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   /* ───────── the sound watched over. A phone can leave its sound "running" with its clock stopped, or give it back silent
@@ -267,6 +268,12 @@ const snd = (() => {
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.4; const g = ctx.createGain(); lp.connect(g); g.connect(bus); let rm = 1;
     if (k === 'mist') { lp.frequency.value = 1300; g.gain.value = 1.05; rm = 0.6; }
     else if (k === 'hall') { lp.frequency.value = 2600; g.gain.value = 0.5; rm = 3.6; const h = ctx.createGain(); h.gain.value = 1.3; lp.connect(h); h.connect(hall); }
+    /* BLOOM: the note opened out, its low end let go, into an echo that keeps coming back brighter than it left and on into the hall: dreamy, far */
+    else if (k === 'bloom') { lp.frequency.value = 7000; g.gain.value = 0.55; rm = 4.2; const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 320; lp.connect(hp);
+      const d = ctx.createDelay(1); d.delayTime.value = 0.25; const fb = ctx.createGain(); fb.gain.value = 0.58; const dl = ctx.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 4200;
+      hp.connect(d); d.connect(dl); dl.connect(fb); fb.connect(d); dl.connect(g); const dg = ctx.createGain(); dg.gain.value = 0.5; dl.connect(dg); dg.connect(hall); const h = ctx.createGain(); h.gain.value = 1.4; hp.connect(h); h.connect(hall); }
+    /* LUNG: the whole layer breathes, its filter opening and closing slowly, one breath in eight seconds, as if heard from under water */
+    else if (k === 'lung') { lp.frequency.value = 1100; lp.Q.value = 2.2; g.gain.value = 1.1; rm = 1.2; const lfo = ctx.createOscillator(); lfo.frequency.value = 0.125; const lg = ctx.createGain(); lg.gain.value = 800; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(); }
     else { lp.frequency.value = 380; g.gain.value = 1.4; rm = 0.25; const d = ctx.createGain(); d.gain.value = 1; lp.connect(d); d.connect(dubEcho()); }
     fxNow = was; return (FXB[k] = { in: lp, room: rm });
   }
@@ -428,6 +435,62 @@ const snd = (() => {
     const th = ctx.createBufferSource(); th.buffer = noise(0.4); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; const tg = ctx.createGain(); tg.gain.setValueAtTime(v * 3, t); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.35); th.connect(lp); lp.connect(tg); tg.connect(e); th.start(t);
     out(e, pan * 0.2, 0.7); const s2 = ctx.createGain(); s2.gain.value = 0.45; e.connect(s2); s2.connect(dubEcho());
   }
+  /* ───────── after Animal Collective's My Girls (2009), what it is made of and never the song. COLLECTIVE: plucked notes going
+     round one chord, quick and even, under voices stacked into one slow 'ooh', far off in the hall, and a soft pulse under them,
+     a heart heard through water. The more lives together, the more voices ───────── */
+  function collectiveV(f, t, v, pan, bright, danger, vi, cluster) {
+    let b = f; while (b > 440) b /= 2; while (b < 220) b *= 2;
+    const ns = (vi || 0) % 2 ? [0, 7, 12, 16, 19, 16, 12, 7] : [0, 4, 7, 12, 16, 12, 7, 4];
+    ns.forEach((n, i) => { const tt = t + i * SIX / 2, ff = qn(semi(b, n)), e = ctx.createGain();
+      for (const [ty, dt, g] of [['triangle', -6, 1], ['sawtooth', 6, 0.22]]) { const o = osc(ty, ff, tt, tt + 0.3); o.detune.value = dt; const og = ctx.createGain(); og.gain.value = g; o.connect(og); og.connect(e); }
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 3200 : 1900; e.connect(lp); const a = ctx.createGain(); lp.connect(a); env(a, tt, 0.004, v * (1.3 - i * 0.07), 0.02, 0.22); out(a, pan + Math.sin(i * 1.3) * 0.35, 2.6); });
+    oohV(b / 2, t, v * (cluster ? 0.9 : 0.55), -pan * 0.5, cluster || danger ? 3 : 2);
+    const k = osc('sine', 110, t, t + 0.5); k.frequency.exponentialRampToValueAtTime(42, t + 0.18); const kg = ctx.createGain(); k.connect(kg); env(kg, t, 0.004, v * 2.2, 0.02, 0.32); out(kg, 0, 0.15);
+  }
+  /* voices stacked into one 'ooh': a few, each a little apart in time and tune, swelling slowly and let go into the hall */
+  function oohV(f, t, v, pan, n = 2) {
+    const end = t + 3.6, e = ctx.createGain(); const fm = [[350, 7, 1], [800, 9, 0.35]].map(([fq, q, g]) => { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = fq; bp.Q.value = q; const gg = ctx.createGain(); gg.gain.value = g; bp.connect(gg); gg.connect(e); return bp; });
+    for (let i = 0; i < n; i++) { const o = osc('sawtooth', qn(f * [1, 1.5, 2][i % 3]), t, end); o.detune.value = (i - (n - 1) / 2) * 9; vib(o, t, end, 4.8 + i * 0.4, f * 0.005, 0.5); const og = ctx.createGain(); og.gain.value = 1 / (i + 1); o.connect(og); fm.forEach(bp => og.connect(bp)); }
+    env(e, t, 1.1, v * 2.2, 0.6, 1.8); out(e, pan, 3);
+  }
+  /* BREATH: a breath taken and let go under water, the in rising and the out falling, a hum in the chest on the note under the
+     out, and now and then a few small bubbles. As slow as breathing is */
+  function breathV(f, t, v, pan, bright, danger, vi) {
+    const inL = 0.9 + ((vi || 0) % 3) * 0.2, outL = inL * 1.5, end = t + inL + outL, P = x => Math.max(0.0002, x);
+    const s0 = ctx.createBufferSource(); s0.buffer = noise(2.8); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(380, t); bp.frequency.exponentialRampToValueAtTime(bright ? 1500 : 1100, t + inL); bp.frequency.exponentialRampToValueAtTime(260, end);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(P(v * 1.6), t + inL * 0.9); g.gain.exponentialRampToValueAtTime(P(v * 0.5), t + inL + 0.12); g.gain.exponentialRampToValueAtTime(P(v * 1.3), t + inL + outL * 0.3); g.gain.exponentialRampToValueAtTime(0.0001, end);
+    s0.connect(bp); bp.connect(lp); lp.connect(g); out(g, pan * 0.5, 1.4); s0.start(t); s0.stop(end + 0.05);
+    let h = f; while (h > 165) h /= 2; while (h < 82) h *= 2; const ht = t + inL, ho = osc('sine', h, ht, end), ho2 = osc('triangle', h * 2, ht, end);
+    const hf = ctx.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 300; hf.Q.value = 3; const hg = ctx.createGain(), h2 = ctx.createGain(); h2.gain.value = 0.25; ho2.connect(h2); h2.connect(hf); ho.connect(hg); hf.connect(hg);
+    env(hg, ht, 0.4, v * (danger ? 1.6 : 1.1), outL * 0.4, outL * 0.5); out(hg, pan * 0.3, 1);
+    if (!((vi || 0) % 2)) for (let i = 0; i < 3; i++) { const bt = ht + 0.2 + i * 0.13 + Math.random() * 0.05, bf = 700 + Math.random() * 900, bo = osc('sine', bf, bt, bt + 0.08); bo.frequency.exponentialRampToValueAtTime(bf * 1.8, bt + 0.06); const bg = ctx.createGain(); env(bg, bt, 0.003, v * 0.5, 0.01, 0.05); bo.connect(bg); out(bg, pan + (Math.random() - 0.5) * 0.6, 0.8); }
+  }
+  /* a fuzz: the wave pushed into a soft clip, harder as k grows; each strength made once */
+  const CURVES = new Map();
+  const shaper = k => { if (!CURVES.has(k)) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) c[i] = Math.tanh((i / (n - 1) * 2 - 1) * k); CURVES.set(k, c); } const w = ctx.createWaveShaper(); w.curve = CURVES.get(k); w.oversample = '2x'; return w; };
+  /* RIOT, after Atari Teenage Riot: a break run too fast, its kick and snare torn through a clipped fuzz, and now and then a voice
+     that screams upward through a narrow mouth. No louder than the others: its edge is in the tear, not the level */
+  function riotV(f, t, v, pan, bright, danger, vi) {
+    const w = shaper(danger ? 14 : 8), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = bright ? 6400 : 5200; const o0 = ctx.createGain(); o0.gain.value = 0.5; w.connect(lp); lp.connect(o0); out(o0, pan * 0.4, 0.4);
+    const pat = (vi || 0) % 2 ? [1, 0, 2, 2, 0, 2, 1, 2] : [1, 2, 0, 2, 1, 0, 2, 2], st = SIX / 2;
+    pat.forEach((h, i) => { const tt = t + i * st; if (!h) return;
+      if (h === 1) { const k = osc('sine', 160, tt, tt + 0.2); k.frequency.exponentialRampToValueAtTime(45, tt + 0.08); const kg = ctx.createGain(); env(kg, tt, 0.002, v * 3, 0.01, 0.14); k.connect(kg); kg.connect(w); }
+      else { const s0 = ctx.createBufferSource(); s0.buffer = noise(0.2); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.9; const sg = ctx.createGain(); env(sg, tt, 0.001, v * 2.4, 0.01, 0.07); s0.connect(bp); bp.connect(sg); sg.connect(w); s0.start(tt); s0.stop(tt + 0.2); } });
+    if ((vi || 0) % 3 === 0 || danger) { const L = 0.7, so = osc('sawtooth', qn(f), t, t + L); so.frequency.exponentialRampToValueAtTime(f * 2.5, t + L); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 8; bp.frequency.setValueAtTime(900, t); bp.frequency.exponentialRampToValueAtTime(2800, t + L);
+      const sg = ctx.createGain(); env(sg, t, 0.02, v * 1.6, L * 0.6, L * 0.35); so.connect(bp); bp.connect(sg); const w2 = shaper(20); sg.connect(w2); const g2 = ctx.createGain(); g2.gain.value = 0.35; w2.connect(g2); out(g2, -pan, 1.2); }
+  }
+  /* RIFF, after the Yeah Yeah Yeahs: a kit played straight (kick, hat, snare, hat), and a fuzzed guitar on two notes cut short like
+     a hand on the strings, the third let ring */
+  function riffV(f, t, v, pan, bright, danger, vi) {
+    let r = f; while (r > 165) r /= 2; while (r < 82) r *= 2;
+    ['k', 'h', 's', 'h'].forEach((d, i) => { const tt = t + i * SIX;
+      if (d === 'k') { const k = osc('sine', 130, tt, tt + 0.3); k.frequency.exponentialRampToValueAtTime(48, tt + 0.1); const kg = ctx.createGain(); env(kg, tt, 0.002, v * 3, 0.02, 0.22); k.connect(kg); out(kg, 0, 0.2); return; }
+      const s0 = ctx.createBufferSource(); s0.buffer = noise(0.25); const fl = ctx.createBiquadFilter(); fl.type = d === 's' ? 'bandpass' : 'highpass'; fl.frequency.value = d === 's' ? 1700 : 7000; const sg = ctx.createGain(); env(sg, tt, 0.001, v * (d === 's' ? 2 : 0.6), 0.01, d === 's' ? 0.14 : 0.04); s0.connect(fl); fl.connect(sg); out(sg, d === 's' ? pan * 0.2 : 0.3, d === 's' ? 1 : 0.3); s0.start(tt); s0.stop(tt + 0.25); });
+    const w = shaper(danger ? 12 : 6), cab = ctx.createBiquadFilter(); cab.type = 'lowpass'; cab.frequency.value = bright ? 3600 : 2600; const go = ctx.createGain(); go.gain.value = 0.4; w.connect(cab); cab.connect(go); out(go, pan, 0.6);
+    ((vi || 0) % 2 ? [0, 0, 3] : [0, 5, 7]).forEach((n, i) => { const tt = t + i * SIX * 1.5, L = i === 2 ? 0.5 : 0.11, ff = qn(semi(r, n)), e = ctx.createGain(); for (const m of [1, 1.5, 2]) { const o = osc('sawtooth', ff * m, tt, tt + L + 0.05); o.detune.value = m === 1.5 ? 4 : 0; o.connect(e); } env(e, tt, 0.003, v * 0.9, L * 0.6, L * 0.4); e.connect(w); });
+  }
   /* the knob a layer is heard through is its instrument in the mix: MIST ambient and close, the soft pluck, the choir for a
      cluster, the depth charge for a life in danger; HALL ethereal, the choir on every note and air an octave above it; DEPTH
      electro, a sub pulse under the note and the note an octave up into the dub echo. El Niño heats each: a breath of choir over
@@ -497,6 +560,9 @@ const snd = (() => {
     /* how loud the whole mix is now, 0 to 1, read off its output; and when the last note of the sweep sounded */
     level() { if (!mon || !ctx || ctx.state !== 'running' || sick) return 0; mon.getFloatTimeDomainData(MONB); let s = 0; for (let i = 0; i < MONB.length; i += 2) { const v = MONB[i]; if (Number.isFinite(v)) s += v * v; } return Math.min(1, Math.sqrt(s / (MONB.length / 2)) * 5); },
     noteAt: () => lastBlip,
+    /* what is sounding, as n bands from low to high (40 Hz to 9 kHz, spaced as the ear hears them), each 0 to 1 */
+    bands(n) { const o = new Array(n).fill(0); if (!mon || !ctx || ctx.state !== 'running' || sick) return o; if (!FQB || FQB.length !== mon.frequencyBinCount) FQB = new Uint8Array(mon.frequencyBinCount); mon.getByteFrequencyData(FQB);
+      const hz = ctx.sampleRate / 2 / FQB.length; for (let i = 0; i < n; i++) { const a = Math.max(1, Math.floor(40 * Math.pow(225, i / n) / hz)), b = Math.max(a + 1, Math.floor(40 * Math.pow(225, (i + 1) / n) / hz)); let m = 0; for (let j = a; j < b && j < FQB.length; j++) m = Math.max(m, FQB[j]); o[i] = m / 255; } return o; },
     /* for the checks: the sound as a phone can leave it, running with nothing coming out */
     __sicken() { sick = true; },
     /* a dry click for a press: at once, but on a note of the key, so a knob turned climbs the scale */
@@ -530,7 +596,7 @@ const snd = (() => {
       const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
       /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
          a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */
-      const V = { dub: dubV, weight: dropV, dust: dustV, stab: stabV, burial: burialV, fog: breath, boa: boaV }[md] || dubV;
+      const V = { dub: dubV, weight: dropV, dust: dustV, stab: stabV, burial: burialV, fog: breath, boa: boaV, collective: collectiveV, breath: breathV, riot: riotV, riff: riffV }[md] || dubV;
       withFx(opt.fx || 'mist', () => { if (spec.fam && md === 'fog') knotAt(spec, fq, t, v * 5, pan); else V(fq, t, v, pan, bright, opt.danger, opt.vi || 0, opt.cluster); });
       return true;
     },

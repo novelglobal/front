@@ -88,6 +88,18 @@ html.aura-on body { background: var(--blue, #17457F); }
 #au-snd svg { position: absolute; left: 5px; top: calc(52px + var(--sat)); width: 24px; height: 12px; }
 #au-snd.off i::after { background: none; border: 1.4px solid var(--ink); }
 #au-snd.off svg { opacity: .3; }
+#au-moon { position: absolute; right: 52px; top: calc(48px + var(--sat)); width: 20px; height: 20px; display: none; }
+#aura.dark.m-iruk #au-moon:not([hidden]) { display: block; }
+#au-moon svg { width: 100%; height: 100%; overflow: visible; animation: au-moon 7s ease-in-out infinite; }
+#au-moon circle { fill: none; stroke: var(--faint); stroke-width: 1; }
+#au-moon path { fill: var(--ink); }
+@keyframes au-moon { 50% { opacity: .72; filter: drop-shadow(0 0 2.5px var(--ink)); } }
+@media (max-width: 759px) { #au-moon { right: 38px; } }
+@media (prefers-reduced-motion: reduce) { #au-moon svg { animation: none; } }
+/* the top keys cast and reeled in on their lines */
+#au-up, #au-snd, #au-moon { transition: transform 1.6s cubic-bezier(.3, .7, .2, 1), opacity 1.2s ease; }
+#au-up.reeled, #au-snd.reeled, #au-moon.reeled { transform: translateY(calc(-74px - var(--sat))); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #au-up, #au-snd, #au-moon { transition: opacity .6s ease; } #au-up.reeled, #au-snd.reeled, #au-moon.reeled { transform: none; } }
 @media (max-width: 759px) { #au-snd { right: 2px; } }
 
 /* the panel: the step's own page, the tentacles faint behind it. Each step arrives, it is not swapped */
@@ -851,6 +863,9 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 .au-desk .au-kept li .sv { width: 24px !important; height: 24px; flex: none; display: grid; place-items: center; opacity: .6; color: #CFE8C9; }
 .au-desk .au-kept li .sv svg { width: 15px; height: 15px; }
 .au-desk .au-kept li .sv.going { animation: au-going .6s steps(2) infinite; }
+.au-desk .au-kept li .rc { width: 24px !important; height: 24px; flex: none; display: grid; place-items: center; opacity: .6; color: #CFE8C9; }
+.au-desk .au-kept li .rc svg { width: 15px; height: 15px; }
+.au-desk .au-kept li .rc.on { opacity: 1; animation: au-going .9s steps(2) infinite; }
 @keyframes au-going { 50% { opacity: .15; } }
 
 /* the journey: the sound key on the journey only (on the start it is the drone); something newly there glows a while */
