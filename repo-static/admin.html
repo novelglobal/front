@@ -43,7 +43,6 @@
   .note { font: 500 10px/1.6 var(--mono); letter-spacing: .07em; color: var(--grey); }
   .card, .printer, .ed, .post-row, .tile { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; }
   .card { display: grid; grid-template-columns: 140px 1fr; gap: 16px; padding: 16px; margin: 0 0 10px; }
-  .card.rec { grid-template-columns: 1fr; }
   #main > .card:not(:has(img)) { grid-template-columns: 1fr; }
   .card img { width: 140px; height: 140px; object-fit: cover; background: var(--paper); border-radius: 6px; }
   .card h3 { margin: 0 0 4px; font-size: 15px; }
@@ -116,13 +115,20 @@
     nav#tabs { position: static; height: auto; flex-direction: row; flex-wrap: wrap; padding: 8px; }
     nav#tabs .grp { display: none; }
     main { padding: 14px; }
-    .card { grid-template-columns: 1fr; } .card img { width: 100%; height: auto; aspect-ratio: 1; }
     .ed .two, .ed .three { grid-template-columns: 1fr; }
   }
 
   /* the story list's tools and pictures; makers open; insights */
   .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; } .tools .q { flex: 1 1 220px; min-width: 0; } .tools .cnt { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--grey); }
-  .card .pics { display: grid; gap: 6px; align-content: start; } .card .pics img, .card .pics canvas { width: 100%; height: auto; display: block; border-radius: 3px; } .card .pics canvas.thumb { image-rendering: pixelated; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+  /* a sent piece as one short row: its picture small, what it is, its keys; MORE drops down the rest */
+  .list .card { grid-template-columns: 76px minmax(0, 1fr); gap: 14px; padding: 12px; align-items: start; }
+  .card .pics { display: block; padding: 0; border: 0; background: none; cursor: pointer; } .card .pics img, .card .pics canvas, .card .pics .nopic { width: 76px; height: 76px; object-fit: cover; display: block; border-radius: 4px; }
+  .card canvas.thumb { image-rendering: pixelated; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+  .card .body { min-width: 0; } .card .body > h3 { font-size: 14px; line-height: 1.35; } .card .body > .acts { margin-top: 8px; }
+  .card .drop { margin-top: 8px; border-top: 1px solid var(--line); } .card .drop summary { cursor: pointer; padding: 8px 0 2px; font: 600 10px var(--mono); letter-spacing: .12em; color: var(--grey); list-style: none; } .card .drop summary::-webkit-details-marker { display: none; } .card .drop summary::before { content: '▸ '; } .card .drop[open] summary::before { content: '▾ '; }
+  .card .big { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; } .card .big img { width: auto; height: auto; max-width: min(100%, 280px); max-height: 280px; border-radius: 4px; } .card .big canvas { width: min(100%, 280px); height: auto; }
+  /* talk: one word under the next, who and where above it */
+  ol.talk { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } ol.talk .said { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; } ol.talk .said.soft { opacity: .55; } ol.talk p { margin: 6px 0 0; font: 14px/1.45 var(--sans); overflow-wrap: anywhere; } ol.talk .acts { display: flex; gap: 6px; margin-top: 8px; }
   .card .nopic { aspect-ratio: 1; border: 1px dashed var(--line); border-radius: 3px; } .card .more .mesh { font: 500 12px var(--mono); padding: 6px 8px; background: var(--teal-wash); border-radius: 3px; overflow-wrap: anywhere; }
   table.makers tr.go { cursor: pointer; } table.makers tr.go:hover td { background: var(--teal-wash); } table.makers canvas.thumb { width: 48px; image-rendering: pixelated; }
   .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -134,16 +140,24 @@
     nav#tabs { position: sticky !important; top: 0; z-index: 4; flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 4px; scrollbar-width: none; }
     nav#tabs button { flex: none; white-space: nowrap; }
     main { padding: 10px !important; min-width: 0; } h2 { font-size: 20px; }
-    .hud { padding: 10px; } .hud .row { grid-template-columns: 1fr 1fr !important; gap: 8px; } .hud .cell { padding: 8px; min-width: 0; } .hud .rds { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
-    .hud .act { grid-template-columns: 1fr 60px 52px; } .hud header { flex-wrap: wrap; } .hud .gauge { max-width: 110px; }
-    table.makers { display: block; overflow-x: auto; white-space: nowrap; } .card { padding: 12px; }
+    .hud { padding: 10px; } .hud .row { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px; } .hud .cell { padding: 8px; min-width: 0; } .hud .rds { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+    .hud .row.wide { grid-template-columns: minmax(0, 1fr) !important; }
+    .hud .act { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 3px; padding: 5px 0; } .hud .act .bar { grid-column: 1 / -1; grid-row: 2; height: 3px; } .hud .act b { white-space: nowrap; }
+    .hud .unit { grid-template-columns: 12px minmax(0, 1fr); row-gap: 2px; } .hud .unit span { grid-column: 2; text-align: left; }
+    .hud header { flex-wrap: wrap; } .hud .gauge { max-width: 92px; }
+    .list .card { grid-template-columns: 60px minmax(0, 1fr); gap: 10px; } .card .pics img, .card .pics canvas, .card .pics .nopic { width: 60px; height: 60px; }
+    /* a table on a phone: each row a small block, its cells one after another, the headings left off */
+    table.makers { display: block; border: 0; background: none; } table.makers thead { display: none; } table.makers tbody { display: grid; gap: 6px; }
+    table.makers tr { display: block; padding: 10px 12px; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; }
+    table.makers td { display: inline-block; padding: 2px 10px 2px 0; border: 0; vertical-align: middle; } table.makers td:empty { display: none; } table.makers td[data-h]:not(:first-child)::before { content: attr(data-h) ' '; font: 600 9px var(--mono); letter-spacing: .1em; color: var(--grey); }
+    .shell { align-content: start; } main > h2 { margin-top: 4px; }
+    .tools .q, .tools select { padding: 8px 10px; border: 1px solid #A7B1BF; border-radius: 6px; background: #fff; font-family: var(--mono) !important; } .tools .q { flex-basis: 100%; } table.makers td:has(.bar) { display: block; padding-right: 0; }
     /* held to the screen: the one column never wider than the phone (a long line, a link or a file picker once pushed it out), and every
        field at 16px so the phone never zooms in on a tap and leaves the page off to one side */
     html, body { max-width: 100%; overflow-x: clip; }
     .shell { grid-template-columns: minmax(0, 1fr) !important; }
     main, main > *, .ed, .printer, .card, .hud, section { min-width: 0; max-width: 100%; box-sizing: border-box; }
     .note, .ed p, .card p, .lede, td, .insights { overflow-wrap: anywhere; word-break: break-word; }
-    table.makers td { white-space: normal; }
     input, textarea, select { font-size: 16px !important; max-width: 100%; box-sizing: border-box; }
     input[type=file] { width: 100%; }
     .acts > * { max-width: 100%; } .acts a.note { white-space: normal; }
