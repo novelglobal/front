@@ -2036,9 +2036,9 @@ html.night .steps .st.done .st-d{background-color:#6FE3CF}
 .ph{position:relative}
 .leaf{perspective:1400px}
 #view.flip-out{animation:flipout .19s ease-in forwards;transform-origin:50% 20%}
-#view.flip-in{animation:flipin .38s cubic-bezier(.2,.9,.3,1.15);transform-origin:50% 20%}
+#view.flip-in{animation:flipin .26s cubic-bezier(.2,.8,.3,1);transform-origin:50% 20%}
 @keyframes flipout{to{transform:translateY(var(--rail,0px)) rotateY(78deg);opacity:.15}}
-@keyframes flipin{from{transform:translateY(var(--rail,0px)) rotateY(-78deg);opacity:.15}to{transform:translateY(var(--rail,0px));opacity:1}}
+@keyframes flipin{from{transform:translateY(var(--rail,0px)) rotateY(-14deg);opacity:.7}to{transform:translateY(var(--rail,0px));opacity:1}}
 
 /* the strip on the front: the receipt alone, its keys on the label maker */
 body.simple[data-face="front"][data-view="signs"] #zine .tools{display:none}
@@ -2143,7 +2143,7 @@ html.night .rd-grille{background-image:radial-gradient(circle,rgba(0,0,0,.55) 0 
 .rd-led{position:absolute;top:14px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#262C30;box-shadow:inset 0 1px 1px rgba(0,0,0,.5)}
 .rd-play.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 4px rgba(0,0,0,.25),0 0 0 5px rgba(143,232,214,.5),0 8px 16px rgba(10,40,50,.24)}
 .rd-play.on .rd-led{background:#7CFF6B;box-shadow:0 0 7px #7CFF6B}
-.rd-knobs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rd-knobs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .rd-k{display:grid;justify-items:center;gap:8px}
 .rd-knob{position:relative;width:50px;height:50px;padding:0;border:0;border-radius:50%;cursor:pointer;background:radial-gradient(circle,#40494F 0 62%,#363E43 63%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -2px 3px rgba(0,0,0,.25),0 0 0 3px rgba(255,255,255,.24),0 4px 8px rgba(10,40,50,.22);transition:opacity .2s}
 .rd-k .kn-ind{position:absolute;left:50%;top:5px;z-index:1;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:#EEF3F4;transform-origin:50% 20px;transform:rotate(var(--a,-135deg));transition:transform .28s cubic-bezier(.3,1.5,.5,1)}
@@ -3181,6 +3181,22 @@ body[data-view="portfolio"] #view>.sec:not(#sec-printer):not(#sec-quick) .set .i
 .al-k{display:flex;gap:6px}
 .al-k .ib{width:30px;height:30px;border:1.5px solid #141412;border-radius:3px;background:#FFFFFF;color:#141412}
 .al-none{margin:0;font-size:11px;letter-spacing:.08em;color:#3B4146}
+.tapes{margin-bottom:18px}
+.tape .al-art{image-rendering:pixelated;aspect-ratio:3/5;object-fit:cover}
+.tape-mk{display:flex;flex-direction:column;gap:10px;margin:0 0 18px;padding:12px;border:1.5px solid #141412;border-radius:3px}
+.tape-mk input[name=tn]{font:400 20px/1 VT323,ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;border:0;border-bottom:1.5px solid #141412;background:none;padding:4px 0;color:#141412;min-width:0}
+.tape-sp{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.tape-sp label,.tape-pub label{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;cursor:pointer}
+.tape-sp input,.tape-pub input{position:absolute;opacity:0;pointer-events:none}
+.tape-sp img,.tape-sp i{width:44px;height:56px;object-fit:cover;border-radius:22px 22px 2px 2px;border:1.5px solid transparent;background:#E7E3DA}
+.tape-sp span{font-size:9px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#3B4146}
+.tape-sp input:checked~img,.tape-sp input:checked~i{border-color:#0E8F84}
+.tape-sp input:checked~span{color:#141412}
+.tape-pub{display:flex;gap:6px}
+.tape-pub label span{font-size:11px;letter-spacing:.08em;padding:5px 9px;border:1.5px solid #141412;border-radius:3px}
+.tape-pub input:checked+span{background:#141412;color:#FFFFFF}
+.tape-sp input:focus-visible~img,.tape-pub input:focus-visible+span{outline:2px solid #0E8F84;outline-offset:2px}
+.tape-mk [type=submit]{align-self:flex-start;display:inline-flex;gap:6px;align-items:center}
 @media (prefers-reduced-motion:reduce){.al-card{transition:none}}
 /* the handheld sending: its paper lifts out of the slot and goes as bits, up to novel.global */
 .simple-p .tp-slot.sending .tp-paper{animation:tpsend 1.3s ease-in both}
@@ -3260,14 +3276,22 @@ html.plain .zine::after, html.plain #zine::after { display: none !important; }
 /* the studio as one of the aura's devices: print, printer bytes and the radios are the aura's last step, so they step aside here */
 html.in-aura [data-pout="print"], html.in-aura [data-pout="escpos"], html.in-aura [data-pout="oled"], html.in-aura [data-pout="mesh"], html.in-aura [data-prn], html.in-aura #tp-info { display: none !important; }
 /* narrow screens and a phone's large text (a page of 260 to 340 px): the radio's four knobs fold into two rows beside the play key, never off its edge */
-@media (max-width:340px){.dev.radio.jr-dev{grid-template-columns:52px 62px minmax(0,1fr)!important}.dev.radio .rd-knobs{grid-template-columns:repeat(2,30px)!important;gap:4px!important;justify-content:center}.dev.radio .rd-knobs .rd-k,.dev.radio .rd-knob{width:30px!important;height:30px!important}}
+@media (max-width:340px){.dev.radio.jr-dev{grid-template-columns:52px 62px minmax(0,1fr)!important}.dev.radio .rd-knobs{grid-template-columns:repeat(3,30px)!important;gap:4px!important;justify-content:center}.dev.radio .rd-knobs .rd-k,.dev.radio .rd-knob{width:30px!important;height:30px!important}}
 
 /* the one wall in the portfolio: every poster from novel.global's wall, small; one touched shows large across the page */
 #sec-wall .wall-g{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
 #sec-wall .wall-k{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
 #sec-wall .wall-k img{display:block;width:100%;height:auto;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 #sec-wall li:has(.wall-k.big){grid-column:1/-1}
-#sec-wall .wall-k.big{cursor:zoom-out}
+#sec-wall .wall-k{position:relative}
+#sec-wall .wall-play{position:absolute;right:4px;bottom:4px;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#141412;color:#FFFFFF}
+#wall-v{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:rgba(10,12,14,.92)}
+#wall-v[hidden]{display:none}
+#wall-v figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0;max-width:100%}
+#wall-v img{max-width:min(100%,720px);max-height:calc(100vh - 150px);object-fit:contain;background:#FFFFFF;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+#wall-v figcaption{font-size:11px;letter-spacing:.08em;color:#C9CED2;text-transform:uppercase}
+#wall-v nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#wall-v .ib{width:38px;height:38px;display:grid;place-items:center;padding:0;border:1.5px solid #E9ECEE;border-radius:3px;background:transparent;color:#E9ECEE}
 #sec-wall .lab-row .pill{margin-left:auto}
 
 /* the studio as one device in the aura's window: its page alone, no rail of pages */

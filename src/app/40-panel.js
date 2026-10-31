@@ -213,18 +213,20 @@ function monthKinds() {
    to black at the extreme. Pressed, a month opens its readout: the month, its danger, its window, and the lives it reaches */
 const EQ_SEGS = 11, EQ_LIT = [4, 6, 7, 9, 11];
 const segTone = i => Math.min(4, Math.floor(i / (EQ_SEGS / 5)));
-/* the equaliser moves with the music, not a wave of its own: each column lifts with the mix as loud as its month is hot, a cap
-   above it rises and falls back slowly, and every note of the sweep pulses the extreme months */
+/* the equaliser is the music: each month a band of what is sounding now, low on the left to high on the right, each column as
+   tall as its band is loud and taller as its month is hot (the El Niño months the most); a cap above it rises and falls back
+   slowly, and every note of the sweep pulses the extreme months. Quiet, it rests at its month's heat */
 let eqRaf = 0, eqNote = 0; const EQK = new WeakMap();
 function eqTick() {
-  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !document.body.classList.contains('on-air') || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); const base = +m.dataset.lit || 2; if (c) c.querySelectorAll('i:not(.eq-cap)').forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < base); el.classList.remove('snd'); el.classList.toggle('pk', idx === base - 1); }); EQK.delete(m); m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); }); return; }
-  const lv = snd.level(), nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt;
+  eqRaf = 0; const cols = $$('#view .mstrip.eq .mo'); if (!cols.length || !(document.body.classList.contains('on-air') || snd.level() > 0.01) || document.hidden || reduced()) { cols.forEach(m => { const c = m.querySelector('.eq-c'); const base = +m.dataset.lit || 2; if (c) c.querySelectorAll('i:not(.eq-cap)').forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < base); el.classList.remove('snd'); el.classList.toggle('pk', idx === base - 1); }); EQK.delete(m); m.style.setProperty('--hot', (+m.dataset.heat || 0) + (prefs.nino ? 0.25 : 0)); }); return; }
+  const nt = snd.noteAt(); const hit = nt !== eqNote; eqNote = nt; const bd = snd.bands(cols.length);
   /* each column the same height, in the same box: the heat of its month lights it to a level, the music lights more above
      that as loud as the month is hot, never past the top; a peak holds a moment and falls back */
-  for (const m of cols) { const w = (+m.dataset.lv || 1) / 4, base = +m.dataset.lit || 2, c = m.querySelector('.eq-c'); const up = lv * w; const k = EQK.get(m) || { n: base, pk: base }; const n = Math.min(EQ_SEGS, base + Math.round((0.35 + up) * 5)); k.pk = Math.max(n, k.pk - 0.08);
-    if (c && (n !== k.n || Math.round(k.pk) !== k.pkr)) { const segs = c.querySelectorAll('i:not(.eq-cap)'); segs.forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < n); el.classList.toggle('snd', idx >= base && idx < n); el.classList.toggle('pk', idx === Math.round(k.pk) - 1); }); k.n = n; k.pkr = Math.round(k.pk); }
-    EQK.set(m, k); m.style.setProperty('--hot', Math.min(1.4, (+m.dataset.heat || 0) + up * 0.9 + (prefs.nino ? 0.25 : 0)).toFixed(3));
-    if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } }
+  cols.forEach((m, i) => { const h = +m.dataset.heat || 0, base = +m.dataset.lit || 2, c = m.querySelector('.eq-c'); const up = Math.min(1, Math.pow(bd[i] || 0, 1.6) * (0.75 + h * 0.9 + (prefs.nino && +m.dataset.lv >= 3 ? 0.35 : 0)));
+    const k = EQK.get(m) || { n: base, pk: base }; const n = Math.max(Math.ceil(base * 0.6), Math.min(EQ_SEGS, Math.round(up * EQ_SEGS))); k.pk = Math.max(n, k.pk - 0.08);
+    if (c && (n !== k.n || Math.round(k.pk) !== k.pkr)) { const segs = c.querySelectorAll('i:not(.eq-cap)'); segs.forEach((el, di) => { const idx = EQ_SEGS - 1 - di; el.classList.toggle('l', idx < n); el.classList.toggle('snd', idx >= Math.min(n, Math.round(base / 2)) && idx < n); el.classList.toggle('pk', idx === Math.round(k.pk) - 1); }); k.n = n; k.pkr = Math.round(k.pk); }
+    EQK.set(m, k); m.style.setProperty('--hot', Math.min(1.4, h + up * 0.6 + (prefs.nino ? 0.25 : 0)).toFixed(3));
+    if (hit && m.classList.contains('d4')) { m.classList.remove('hit'); void m.offsetWidth; m.classList.add('hit'); } });
   eqRaf = requestAnimationFrame(eqTick);
 }
 const eqWake = () => { if (!eqRaf) eqRaf = requestAnimationFrame(eqTick); };
@@ -684,18 +686,43 @@ function sure(btn, fn) {
   if (btn.classList.contains('sure')) { clearTimeout(btn.sureT); btn.classList.remove('sure'); fn(); return; }
   btn.classList.add('sure'); snd.tick(700); buzz([10, 30, 10]); clearTimeout(btn.sureT); btn.sureT = setTimeout(() => btn.classList.remove('sure'), 3000);
 }
-/* the one wall, here too: every poster finished on novel.global (kept by the aura in this browser), the newest first. A touch shows it
-   large; the key goes to the wall itself, where it can be printed again, saved or taken down */
-const wallSection = () => `<section class="sec wall" id="sec-wall" hidden><div class="lab-row">${labI('stories', 'Wall')}<a class="pill" href="/" aria-label="To the wall on novel.global" data-tip="To the wall">${icon('next', 'sm')}</a></div><ol class="wall-g" id="wall-g"></ol></section>`;
+/* the one wall, here too: everything made in this browser, the newest first: the pieces and songs the aura kept, and the posters
+   made in the print shop. A touch opens it full size, with its keys: back and on, full screen, save, onto the poster, and play for
+   a song. The key above goes to the wall itself (in the aura: its window closed and the wall shown, never the site inside it) */
+const wallSection = () => `<section class="sec wall" id="sec-wall" hidden><div class="lab-row">${labI('stories', 'Wall')}<a class="pill" href="/" data-wall-go aria-label="To the wall on novel.global" data-tip="To the wall">${icon('next', 'sm')}</a></div><ol class="wall-g" id="wall-g"></ol></section>`;
 function wallFill() {
   const sec = $('#sec-wall'), ol = $('#wall-g'); if (!sec || !ol || !window.indexedDB) return;
   let q; try { q = indexedDB.open('novelglobal', 2); } catch (e) { return; }
   q.onupgradeneeded = () => { const d = q.result; for (const n of ['folio', 'piece']) if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); };
   q.onsuccess = () => { let d; try { d = q.result; const all = [], c = d.transaction('folio').objectStore('folio').openCursor();
-    c.onsuccess = () => { const k = c.result; if (k) { all.push(k.value); k.continue(); return; } all.sort((a, b) => b.at - a.at); sec.hidden = !all.length;
-      ol.innerHTML = all.slice(0, 24).map(f => `<li><button type="button" class="wall-k" aria-label="${esc(f.cap || f.code || 'A poster')}" data-tip="${esc([f.code, f.cap].filter(Boolean).join(' · '))}"><img src="${f.src}" alt="" loading="lazy"></button></li>`).join(''); }; } catch (e) { /* none yet */ } };
+    c.onsuccess = () => { const k = c.result; if (k) { all.push(k.value); k.continue(); return; }
+      for (const p of POSTERS2) if (p.img && !all.some(f => f.id === 'p:' + p.id)) all.push({ id: 'p:' + p.id, at: p.at || 0, src: p.img, cap: p.place || 'A poster', code: p.code || '' });
+      all.sort((a, b) => (b.at || 0) - (a.at || 0)); WALLS = all.slice(0, 36); sec.hidden = !WALLS.length;
+      ol.innerHTML = WALLS.map((f, i) => `<li><button type="button" class="wall-k${songsOf(f).length ? ' song' : ''}" data-wall="${i}" aria-label="${esc(f.cap || f.code || 'A poster')}" data-tip="${esc([f.code && !/^songs:/.test(f.code) ? f.code : '', f.cap].filter(Boolean).join(' · '))}"><img src="${f.src}" alt="" loading="lazy">${songsOf(f).length ? `<i class="wall-play" aria-hidden="true">${icon('play', 'sm')}</i>` : ''}</button></li>`).join(''); }; } catch (e) { /* none yet */ } };
 }
-$('#view').addEventListener('click', e => { const k = e.target.closest('.wall-k'); if (!k) return; const on = !k.classList.contains('big'); $$('#wall-g .wall-k.big').forEach(x => x.classList.remove('big')); k.classList.toggle('big', on); tick(on ? 1500 : 1100); });
+let WALLS = [], WALLAT = -1;
+/* a song kept as a card carries its code (one song, v1…) or its playlist's (songs:code,code…) */
+const songsOf = f => { const c = String((f && f.code) || ''); return /^songs:/.test(c) ? c.slice(6).split(',').filter(Boolean) : /^v1\d/.test(c) ? [c] : []; };
+function wallShow(i) {
+  WALLAT = (i + WALLS.length) % WALLS.length; const f = WALLS[WALLAT]; let v = $('#wall-v'); if (!f) return;
+  if (!v) { v = document.createElement('div'); v.id = 'wall-v'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', 'Made here'); document.body.appendChild(v); }
+  const k = (a, ic, w, more = '') => `<button type="button" class="ib" data-wv="${a}" aria-label="${w}" data-tip="${w}"${more}>${icon(ic, 'sm')}</button>`;
+  v.innerHTML = `<figure><img src="${f.src}" alt=""><figcaption class="mono">${esc(f.cap || '')}</figcaption></figure><nav>${k('x', 'close', 'Back')}${WALLS.length > 1 ? k('prev', 'back', 'Before') : ''}${songsOf(f).length ? k('play', 'play', 'Play it') : ''}${k('full', 'out', 'Full screen')}<a class="ib" href="${f.src}" download="novel-global-${String(f.id || 'piece').replace(/[^a-z0-9]+/gi, '-')}.${/^data:image\/png/.test(f.src) ? 'png' : 'jpg'}" aria-label="Save it" data-tip="Save it">${icon('download', 'sm')}</a>${k('poster', 'plus', 'Onto my poster')}${WALLS.length > 1 ? k('next', 'next', 'On') : ''}</nav>`;
+  v.hidden = false; tick(1500);
+}
+function wallShut() { const v = $('#wall-v'); if (v) v.hidden = true; WALLAT = -1; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+$('#view').addEventListener('click', e => {
+  if (e.target.closest('[data-wall-go]') && IN_AURA) { e.preventDefault(); try { parent.postMessage({ ng: 'wall' }, location.origin); } catch (er) { /* alone */ } return; }
+  const k = e.target.closest('.wall-k'); if (!k) return; wallShow(+k.dataset.wall);
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('#wall-v [data-wv]'); if (!b) { if (e.target.id === 'wall-v') wallShut(); return; } const f = WALLS[WALLAT]; if (!f) return; const a = b.dataset.wv;
+  if (a === 'x') wallShut(); else if (a === 'prev') wallShow(WALLAT - 1); else if (a === 'next') wallShow(WALLAT + 1);
+  else if (a === 'full') { const im = $('#wall-v img'); if (im && im.requestFullscreen) im.requestFullscreen().catch(() => {}); else if (im && im.webkitEnterFullscreen) im.webkitEnterFullscreen(); }
+  else if (a === 'poster') { wallShut(); if (IN_AURA) toAura(f.src, true); else { setView(2); setTimeout(() => placeOnPage(f.src, 'art', 240), 500); } snd.tick(1900); }
+  else if (a === 'play') { const cs = songsOf(f); try { if (IN_AURA && parent.AURA && parent.AURA.play) { parent.AURA.play(cs); toast('▶'); } else toast('♪'); } catch (er) { toast('♪'); } }
+});
+document.addEventListener('keydown', e => { if (WALLAT < 0) return; if (e.key === 'Escape') wallShut(); else if (e.key === 'ArrowLeft') wallShow(WALLAT - 1); else if (e.key === 'ArrowRight') wallShow(WALLAT + 1); });
 /* the board, in the portfolio: everyone's few words in the journey's four sections, by kin; written with the code from a print */
 const TALK = { s: 'notice' };
 const talkSection = () => IN_AURA ? `<section class="sec talk-sec" id="sec-talk">${labI('stories', 'Talk')}<div class="ts">${['notice', 'story', 'make', 'print'].map(k => `<button type="button" data-tks="${k}" class="${k === TALK.s ? 'on' : ''}">${k.toUpperCase()}</button>`).join('')}</div><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button type="submit" class="pill sq" aria-label="Send">↑</button></form></section>` : '';
