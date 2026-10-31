@@ -763,7 +763,7 @@
     catchK.style.setProperty('--at', tr); catchK.style.transform = tr; catchK.style.zIndex = front > 0 ? 3 : 1; catchK.style.opacity = (S.fade * (0.72 + 0.28 * (front + 1) / 2)).toFixed(2);
     var tk = $('#au-chat'); if (tk) { var ton = S.mode === 'iruk' && !S.deep && earned('talk') && !!store.get('da.who.pass', 0); tk.hidden = !ton;
       if (ton) { var at2 = a2 + Math.PI * 0.5, ft = Math.sin(at2); tk.style.transform = 'translate(' + (L.bx + Math.cos(at2) * L.hrx).toFixed(1) + 'px,' + (L.gy + ft * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (ft + 1) / 2).toFixed(3) + ')'; tk.style.zIndex = ft > 0 ? 3 : 1; tk.style.opacity = (S.fade * (0.6 + 0.4 * (ft + 1) / 2)).toFixed(2); } }
-    var want = S.deep ? -1 : [0, 1, 2, 3][S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
+    var want = S.deep ? -1 : DEV_AT[S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
       b.style.transform = 'translate(' + (L.bx + Math.cos(an) * L.hrx).toFixed(1) + 'px,' + (L.gy + fr * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (fr + 1) / 2).toFixed(3) + ')'; b.style.zIndex = fr > 0 ? 3 : 1; b.style.opacity = (S.fade * (0.6 + 0.4 * (fr + 1) / 2)).toFixed(2); });
   }
   /* ───────── the sound desk: everything musical, behind the sound key. Its own irukandji, whose four tentacles are the four tracks and
@@ -1023,7 +1023,7 @@
      yet is not there at all */
   var LVN = +store.get('da.lv', 0) || 0;
   var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 6; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
-  var NEED = { music: 1, intention: 1, radio: 2, print: 3, wish: 3, design: 4, desk: 4, folio: 5, talk: 6 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [2, 3, 4, 5];
+  var NEED = { music: 1, intention: 1, wish: 2, radio: 3, print: 3, design: 4, desk: 4, folio: 5, talk: 6 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [3, 2, 4, 5];   // by device: the intention device (1) is earned first, then the radio (0)
   var earned = function (k) { if (ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
   function lvUp(n) { var was = LV(); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); }
   /* the booth (on the same page, or another visit) says a photo was taken: level one */
@@ -1049,7 +1049,7 @@
     /* the radio as the simple music radio (make a song) needs only the music; as the complex radio, its own posters */
     var d = DEVS[i]; if (!d || !(devOpen(i) || (auto === 'song' && i === 0 && earned('music')))) return;
     if (!WIN) { WIN = document.createElement('section'); WIN.className = 'au-win'; WIN.setAttribute('role', 'dialog'); WIN.setAttribute('aria-label', 'The studio');
-      WIN.innerHTML = '<header><i class="led"></i><b></b><nav>' + DEVS.map(function (q, j) { return '<button data-wd="' + j + '" aria-label="' + q[1] + '">' + svgI(q[3]) + '</button>'; }).join('') + '</nav><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header><iframe title="The studio" allow="geolocation; camera; autoplay"></iframe>';
+      WIN.innerHTML = '<header><i class="led"></i><b></b><nav>' + DEV_AT.map(function (j) { var q = DEVS[j]; return '<button data-wd="' + j + '" aria-label="' + q[1] + '">' + svgI(q[3]) + '</button>'; }).join('') + '</nav><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header><iframe title="The studio" allow="geolocation; camera; autoplay"></iframe>';
       root.appendChild(WIN); var fr = WIN.querySelector('iframe');
       /* the studio's own way home lands back here, not inside the window */
       fr.addEventListener('load', function () { try { var lp = fr.contentWindow.location.pathname; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { /* not ours */ } });
@@ -1175,8 +1175,10 @@
      the one thing held. No words on hover: the names are for those who listen for them (aria) ───────── */
   /* the deep engine, the studio, as three devices: each opened in a window over the aura, the aura one touch away. One is earned with each
      poster printed, and rides the ring under the eye with the catch; all three are in the intel */
-  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'RESEARCH BOARD', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
-  var STEPS = [['notice', 'hradio'], ['story', 'hboard'], ['make', 'hshop'], ['print', 'poster']];
+  /* the devices, and the order the steps hold them out: the intention device at notice, the radio and its constellations at W.I.S.H. */
+  var DEV_AT = [1, 0, 2, 3];
+  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'INTENTION', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
+  var STEPS = [['notice', 'hboard'], ['story', 'hradio'], ['make', 'hshop'], ['print', 'poster']];
   var ICON = {
     /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */
     eyet: '<g class="lid"><path d="M4 12.5c3.5-4.6 7.5-6.7 12-6.7s8.5 2.1 12 6.7c-3.5 4.6-7.5 6.7-12 6.7s-8.5-2.1-12-6.7z"/><circle cx="16" cy="12.5" r="3.6"/><circle cx="16" cy="12.5" r="1.3" class="f pu"/></g><path d="M10.5 18.5v8M14 19.2v9.5M18 19.2v9.5M21.5 18.5v8" class="d"/>',
@@ -1333,7 +1335,7 @@
        make a song: the ring shaken where it passes), the pencil (to make a poster: the ring drawn behind it, a gap ahead). The eye in
        the middle, the irukandji's own, watches them pass, and opens the photo booth. Each says so once, plainly, then goes quiet */
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
-    [[0, 'go', 'notice', svgI('hradio')], [1, 'wish', 'story', svgI('hboard')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
+    [[0, 'go', 'notice', svgI('hboard')], [1, 'wish', 'story', svgI('hradio')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
     '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
@@ -2162,7 +2164,7 @@
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
     deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' + (NG.brief ? '<p class="au-brief">' + esc(NG.brief(1)) + '</p>' : '') +
-      '<div class="au-c">' + (CITIES.length ? '<nav class="au-cities">' + '<button data-city="-1" data-fw="here" aria-label="Where I am">' + svgI('pin') + '</button>' + CITIES.map(function (c, i) { return '<button data-city="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</nav>' : '') + '<nav class="au-devs">' + DEVS.map(function (d, i) { return devOpen(i) ? '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>' : ''; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
+      '<div class="au-c">' + (CITIES.length ? '<nav class="au-cities">' + '<button data-city="-1" data-fw="here" aria-label="Where I am">' + svgI('pin') + '</button>' + CITIES.map(function (c, i) { return '<button data-city="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</nav>' : '') + '<nav class="au-devs">' + DEV_AT.map(function (i) { var d = DEVS[i]; return devOpen(i) ? '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>' : ''; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul><ul class="au-spots" id="au-spots"></ul>' +
         /* stage 5: a place suggested where the map is, waiting on the approval page until shown to everyone */
