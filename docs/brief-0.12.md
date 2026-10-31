@@ -1,163 +1,214 @@
 # novel.global — brief 0.12: islands
 
-Written 31 October 2026 from the owner's notes of the same day. Nothing in it is built yet. Build it in the order of the
-stages at the end, one stage to a session, each checked on staging before the next. Where this brief and an earlier one
-differ, this one wins.
+Written 31 October 2026 from the owner's notes of the same day, then revised the same day with the owner's decisions and a
+check of the whole engine. Nothing in it is built yet. Build it in the order of the stages at the end, one stage to a session,
+each checked on staging before the next. Where this brief and an earlier one differ, this one wins.
 
-## The idea
+## Purpose (for the team, never on screen)
 
-novel.global becomes the hub of an archipelago. Each island is a small, self-contained community of at most **160 people**
-gathered round one solar thermal printer: its hub. The islands are separate on purpose. Inside an island, people know each
-other's marks, read each other's talk and hold each other's prints. Between islands only what is signed and chosen to travel
-goes across, through novel.global.
+This section is the design manifesto. None of it is ever written into the experience: no copy, no slogans, no explanations.
+It decides what is built and how it feels.
 
-Two sources give it its lore:
+novel.global is a platform and an ecosystem for telling better stories in a safer way than online or social media allow. It
+is an antidote to modern anxiety, and to social infrastructure that harms and exploits creativity, communities and third
+spaces. Screens ask for no physical, real response; novel.global always ends in one: a place visited, a print in the hand, a
+person met.
 
-- **Leon Krier's polycentric city:** a city of cities, made of quarters each small enough to know and walk, each complete in
-  itself, joined but never merged. An island is a quarter.
-- **Japan's closed country (sakoku, about 1639 to 1853):** two centuries with the doors mostly shut, in which ukiyo-e,
-  kabuki, haiku and the great craft schools came of age. Isolation as the shelter in which a culture finds its own voice.
+**The single-minded idea: you can only belong where you have been.**
 
-The promise to a member is safety first: a place small enough to belong to, closed enough to be brave in. novel.global's part
-is the digital and certification layer. It issues the islands' charters, certifies their hubs and members, keeps the map of
-the archipelago and the kit to build a new hub.
+It is built as an archipelago. Each island is a closed group of at most 160 people round one solar thermal printer, its hub.
+Its lore comes from Leon Krier's city of small, complete quarters, joined but never merged, and from Japan's closed country
+(sakoku, about 1639 to 1853), two centuries with the doors mostly shut in which ukiyo-e, kabuki and haiku came of age.
+Isolation as shelter; safety as the ground of creative belonging.
+
+## The owner's decisions (31 October 2026)
+
+1. **Physically visiting is the only way in.** A person joins a printer's group only at that printer: the passport is printed
+   there. They can belong to every group they have visited; there is no limit on the number of islands, only on each one.
+2. **160 is the ceiling, and the wait list is the only way past it.** Someone who visits a full island is put in its queue.
+   They can always see, simply and at a glance, that they have asked and their number in the queue. Beside the number, a way
+   to build their own island and run their own novel.global.
+3. **A code lives for 7 days.** Without a request for 7 more, it is deleted: removed from every island and the site, kept on
+   the approval page, and able to be brought back from there. Extending (and seeing the days left) is hidden in the main
+   journey and shown in the portfolio. Each visit to a hub renews it too, as being there is the point.
+4. **No copy.** The queue, the days left, the renew key and the build-your-own way are marks, numbers, light and motion.
+
+Still open (the defaults below are used unless the owner says otherwise):
+
+- Can islands see each other's posters on the archipelago, or only their marks and glow? *Default: only marks and glow.*
+- The age to join, and who moderates an island's talk. *Default: 16 and over; the hub's owner moderates, and the approval page
+  can close any island.*
+- Is LOW RES only the storage switch, or also the older dotted print look? *Default: only the storage switch.*
 
 ## How it should feel (the experience lens)
 
 The next build needs the eye of an experiential designer: journey and joy mapping, emotional before functional, distinctive
-art direction with restraint. These rules hold for every stage.
+art direction with restraint.
 
-1. **Copy-free.** Marks, light, motion and sound, never instructions. A word appears only to a resting hand (as now).
-2. **One continuous scene.** Nothing jumps. An island is reached the way the jellyfish moves: the globe turns, the sea comes
-   up, the island rises out of it. Every change is a camera move or a tide, never a page load.
-3. **Emotional benefit first.** Joining is belonging, not signing up; a print received is a gift held out, not a notification.
-4. **Restraint.** One new visual idea: the archipelago itself. Islands are drawn like the rings and devices are now (ink, few
-   lines, dark-strange-clean), each island's shape grown from its own code so no two are alike.
-5. **Safety is felt.** The island you are on is always plain to see. Nothing from outside reaches you unless it is signed.
-   You can leave with one gesture, and leaving is quiet.
+1. **Copy-free.** Marks, light, motion and sound. A word appears only to a resting hand, as now.
+2. **One continuous scene.** No jumps. An island is reached as the jellyfish moves: the globe turns, the sea rises, the island
+   comes up out of it. Every change is a camera move or a tide, never a page load.
+3. **Emotional before functional.** Joining is arriving somewhere, not signing up; a print received is a gift held out, not a
+   notification.
+4. **Restraint.** One new visual idea: the archipelago. Islands are drawn as the rings and devices are now (ink, few lines,
+   dark-strange-clean), each island's shape grown from its own code so no two are alike.
+5. **Safety you can feel.** It is always plain which island you are on. Nothing from outside reaches you unless it is
+   signed. Leaving is one gesture, and quiet.
 
 ### The journey, mapped for joy
 
 | Moment | What the person feels | What they see | The joy |
 |---|---|---|---|
-| Hearing of an island | Curiosity | A printed slip passed hand to hand: an island's mark and a code | Holding something real before anything online |
-| Finding the hub | Anticipation | On the globe, the island glows; its hub shows a countdown and where it will be next | The countdown landing, being there when the printer appears |
-| Arriving | Welcome | The hub prints their passport: their mark, the island's mark, the charter's seal, a code | A certificate in the hand that no one else has |
-| Belonging | Recognition | The island's talk, each member by their kin mark; the jellyfish holds out prints sent to them | Being known by your mark, not your name |
-| Making | Pride | The same notice, W.I.S.H., make and print, now with the island's colours and seal on the poster | A poster that carries the island's stamp |
-| Receiving | Surprise | A print held by the jellyfish: tap to open, keep to the wall, or let it float away | Choosing what stays |
-| Leaving | Relief, never guilt | One gesture; their mark fades from the island's ring | Leaving is easy, so staying is a choice |
+| Hearing of an island | Curiosity | A printed slip passed hand to hand: an island's mark and a code | Something real before anything online |
+| Finding the hub | Anticipation | On the globe the island glows; its hub has a countdown and a ring where it will be | Being there when the countdown lands |
+| Arriving | Welcome | The hub prints the passport: their mark, the island's mark, the seal, a code | A certificate in the hand that no one else has |
+| Arriving at a full island | Patience, not rejection | Their place in the queue as a number on a small ring that fills; beside it, the seed of their own island | Being counted, and offered somewhere to begin |
+| Belonging | Recognition | The island's talk, each member by their kin mark; prints held out by the jellyfish | Being known by a mark, not a name |
+| Making | Pride | Notice, W.I.S.H., make and print, with the island's seal on the poster | A poster carrying the island's stamp |
+| Receiving | Surprise | A print held by the jellyfish: tap to open, keep it on the wall, or let it float away | Choosing what stays |
+| Keeping it alive | Care, not pressure | In the portfolio only: the days left as seven marks fading, one key to add seven | Tending something, like a plant |
+| Leaving | Relief | One gesture; their mark fades from the island's ring | Leaving is easy, so staying is a choice |
+
+## The engine, checked: what works, what is broken, what will not scale
+
+What works, and must not break: the aura's journey (seed, bang, globe, jellyfish, the four steps and their devices), the poster
+engine and the receipt as designed, the touch screen's approval at the printer, the Pi bridge, the approval page, the stage
+talk, R2, Turnstile, backups, and the automated checks (about 290 browser checks and 48 server checks).
+
+What is broken or costly, measured on 31 October 2026:
+
+| Finding | Why it matters | The fix |
+|---|---|---|
+| **Polling eats the free plan.** Each Pi asks for work every 3 seconds and each touch screen every 2: about 72,000 requests a day for one hub, against the Workers free plan's 100,000 | A second hub runs the whole site out of requests | Each island's Durable Object holds a hibernating WebSocket to its hub and pushes work the moment it exists; polling falls back to once a minute |
+| **Every rate limit and every count is a database write.** `tooMany` writes a row to D1 per guarded request; `tally` writes the traffic count on most requests | D1's free plan allows 100,000 writes a day; counting uses them up | Cloudflare's Rate Limiting binding for limits, and Workers Analytics Engine for counts (both free, neither touches D1) |
+| **Photographs are kept inside D1** (stories.photo and the portfolio covers as blobs) | D1 is 5 GB on the free plan, and slow to back up | Photographs to R2 (as the full-size ones already are); D1 keeps only a key |
+| **Two apps on one page.** The aura (base.js and aura.js, 385 KB) opens the studio in a frame with its own app (app.js, 524 KB), map, data and sound | Double memory, double fetching, and two audio engines on old phones; the source of stutters | One audio engine (the aura's) that the studio borrows; the studio's map and data loaded only when a device opens, and kept warm after |
+| **Three receipt makers:** the base's slip, the aura's poster and print sheet, and the studio's paper | Three places to fix one bug; prints that differ by where they were made | One poster engine (the aura's, now printing as designed) used by all three |
+| **The device keeps its world in localStorage** (pieces, notes, loops, the wall's JPEGs), which is small and fails when full | Lost work on phones with many posters | IndexedDB for pictures and sound; the server keeps what a code needs to come back |
+| **Database changes run at every cold start** as `ALTER TABLE` tries | Slow first requests, silent drift between the live and preview databases | Numbered D1 migrations run by `wrangler d1 migrations` at deploy |
+| **One 680-line Worker file** does everything | Hard to change one part safely | Split by area (stories, print queue, talk, islands, admin) behind the same routes; no behaviour change |
+| **Three-character codes** in one shared space (about 32,000 possible) | Fine for one island, too few and too guessable for an archipelago | A code is three characters within its island, and the passport's signature makes it whole; codes never cross islands unsigned |
+| **The checks take ten minutes** in one 2,200-line file | Fewer runs, slower fixes | Split by area, run in parallel; the API checks first, as now |
+
+## The new map of functionality
+
+Four layers, each with one job. Every feature lives in exactly one.
+
+| Layer | Its job | What lives there |
+|---|---|---|
+| **The experience** (aura, base, studio) | Feeling and making | The journey, the devices, the poster engine, one sound engine, the archipelago scene. No business rules |
+| **The island** (one Durable Object each) | Belonging | Roster of 160, the queue, the talk, prints held for members, the hub's socket, countdowns and alerts, the 7-day clock |
+| **The hub** (novel.global's Worker, D1, R2) | Certifying and connecting | The register of islands, charters, the master key, the approval page, backups, the build kit, the public map |
+| **The printer** (Pi, touch screen, radio) | The physical response | Printing passports and posters, approving at the printer, the local mesh, its own key |
 
 ## What to build
 
 ### 1. Islands of 160
 
-- **Each island is a Durable Object** (SQLite-backed, now on the Workers free plan): its roster (at most 160 codes), its talk,
-  its prints held for members, its hub's countdown and next place. Nothing of one island is in another's object, which is
-  what makes it self-contained.
-- **novel.global's D1 keeps only the register:** each island's id, mark, charter, hub, rough place and member count. It never
-  keeps another island's talk.
-- **The 161st person** is shown the island as full: the island glows but its door stays shut, with the nearest island that
-  has room glowing beside it.
-- A member belongs to one island at a time (to begin with). Moving is leaving one and arriving at another.
-- **The talk, the prints and the board are the island's own.** The stage talk built in 0.11 becomes per island.
+- **Each island is a Durable Object** (SQLite-backed, now on the Workers free plan). Nothing of one island is in another's
+  object, which is what makes it self-contained.
+- **novel.global's D1 keeps only the register:** each island's id, mark, charter, hub, rough place and member count.
+- **The queue:** someone who visits a full island takes the next number. The island shows them their number on a small ring
+  that fills as places open, and beside it the seed of their own island (BUILD A HUB). A place opening goes to the first in
+  the queue, who is told by a print held out by the jellyfish.
+- **Many islands, one person:** a person holds a passport for every island they have visited, and moves between them on the
+  archipelago. The stage talk built in 0.11 becomes each island's own.
 
-### 2. The certification layer
+### 2. The 7-day life of a code
 
-- **Keys, not accounts.** novel.global holds a master signing key (Ed25519, kept as a Cloudflare secret). It signs each
-  island's **charter**: its id, mark, hub key and member limit.
-- **Each hub has its own key**, made on the hub when it is set up and never leaving it. It signs each member's **passport**:
-  the member's code, the island id and a date.
-- **A passport prints as a receipt** with a QR code. Anyone can check it offline: the passport's signature leads to the hub,
-  and the hub's charter leads to novel.global. A forged or revoked passport fails the check without a network call.
-- A member code is still three characters typed from a print (never taken from a link), now carried inside a signed passport.
-- **Revoking:** the approval page and the hub's owner can strike a passport; the island's object refuses it from then on.
+- Every code has a clock of 7 days. A visit to any of its hubs, or the renew key, adds 7 more.
+- The renew key and the days left (seven marks, fading) are in the portfolio only, never in the main journey.
+- At zero the code is deleted from its islands and the site, and moved to the approval page's archive, where it can be
+  brought back. Its posters stay where they were printed.
 
-### 3. The hub kit: another printer joins the archipelago
+### 3. The certification layer
 
-The approval page gains **ISLANDS**, and novel.global gains a public **BUILD A HUB** page drawn as a parts sheet (no copy, as
-the build key already is).
+- **Keys, not accounts.** novel.global's master key (Ed25519, a Cloudflare secret) signs each island's **charter**: its id,
+  mark, hub key and the limit of 160.
+- **Each hub makes its own key** at setup, and it never leaves the hub. It signs each member's **passport**: their code, the
+  island and the date of the visit.
+- **A passport is a receipt** with a QR code that checks offline: the passport leads to the hub, the hub's charter to
+  novel.global. A forged, expired or struck passport fails without a network call.
+- **Striking a passport:** the hub's owner and the approval page can do it; the island refuses it from then on.
 
-- **Hardware list:** the solar thermal printer as built now (Pi, printer, panel, battery, the LilyGO touch screen, optional
-  Meshtastic radio), downloadable as the plain technical list, with core, mods, hacks and upgrades.
-- **One-click install:** a ready Raspberry Pi image built with Raspberry Pi's image tools, with the receiver, Wi-Fi setup and
-  touch screen pairing in it. Written to a card with Raspberry Pi Imager, the hub asks for nothing but power and Wi-Fi. The
-  one-line install stays for those who already have a Pi.
-- **Claim by print:** the new hub prints a claim slip with a code. The owner types it on novel.global, novel.global signs the
-  charter, and the hub prints the island's first page: its mark, its seal and its first passport (the owner's own).
-- **Their own version:** an island can stay on novel.global (the default: nothing to run), or the owner can run their own
-  copy of the site with a Deploy to Cloudflare button. That copy still registers its charter with novel.global, so it stays
-  part of the archipelago while being entirely theirs.
-- **Onboarding others:** a hub's owner can print a **builder's slip** for someone making the next printer: the parts list's
-  code and a claim code, so one hub seeds the next.
+### 4. The hub kit: every printer its own island
 
-### 4. Signals from the hub
+The approval page gains **ISLANDS**. novel.global gains **BUILD A HUB**, drawn as a parts sheet, and the queue links to it.
 
-- **A countdown and a place:** the owner sets when and roughly where the hub will appear next. Members see the countdown on
-  the island and the place on the map (a ring, not a pin, until the countdown ends).
-- **Alerts with codes:** the owner sends an alert. It is not an inbox: it arrives as a print held by the jellyfish, sealed
-  with the hub's key.
-- **Prints held, not messages kept:** anything sent to a member is a small print the jellyfish holds out. **Tap** opens it,
-  **keep** hangs it on the wall, and **float away** lets it drift off and fade, gone from the island's object too. Unopened
-  prints float away by themselves after a moon.
+- **Hardware list:** the printer as built now (Pi, printer, panel, battery, the LilyGO touch screen, an optional Meshtastic
+  radio), as the plain technical list: core, mods, hacks, upgrades.
+- **One-click install:** a ready Raspberry Pi card image with the bridge, Wi-Fi setup and touch-screen pairing inside. Written
+  with Raspberry Pi Imager, the hub asks only for power and Wi-Fi. The one-line install stays for those with a Pi already.
+- **Claim by print:** the new hub prints a claim code; the owner types it on novel.global; novel.global signs the charter; the
+  hub prints the island's first page and its owner's passport.
+- **Their own novel.global:** stay on novel.global (nothing to run), or deploy a copy with a Deploy to Cloudflare button. The
+  copy registers its charter with novel.global and stays part of the archipelago.
+- **One hub seeds the next:** an owner can print a builder's slip (the parts list and a claim code) for someone building the
+  next printer.
 
-### 5. Low resolution, as a choice
+### 5. Signals from the hub
 
-On the approval page, under DATA, a **LOW RES** switch, **off by default**. Off: full-size photographs are kept in R2 (as
-now). On: only the small print-sized picture is kept, to save storage. The receipt itself always prints the poster as
-designed.
+- **A countdown and a place:** the owner sets when, and roughly where, the hub appears next. Members see the countdown, and a
+  ring on the map (never a point) until it lands.
+- **Alerts as prints:** an alert arrives as a sealed print the jellyfish holds out. **Tap** opens it, **keep** hangs it on
+  the wall, **float away** lets it drift off and go from the island. Unopened prints float away after a moon.
+
+### 6. LOW RES, as a choice
+
+On the approval page under DATA, a **LOW RES** switch, **off by default**. Off: full-size photographs kept in R2 (as now). On:
+only the small print-sized picture is kept, to save storage. The receipt always prints the poster as designed.
 
 ## Cloudflare, used fully
 
 | Feature | What it does here | Plan |
 |---|---|---|
-| Durable Objects (SQLite) | One per island: its roster of 160, talk, held prints, countdown; live updates over hibernating WebSockets | Free plan, 5 GB per account (check the current limits page) |
-| D1 | novel.global's register of islands and charters | Free (as now) |
-| R2 | Full photographs, the hub image file, each island's printed archive; lifecycle rules to let old things go | Free to 10 GB (as now) |
-| Queues | Prints to many hubs and alerts to many members, retried until they land | Free plan, 24-hour retention |
-| Workflows | The long steps: claim, charter, first print; a countdown that wakes the island when it ends | Check free allowances |
-| Cron Triggers | Floating unopened prints away after a moon; tidying | Free |
-| Turnstile | Already guarding the talk; also claiming a hub and making a passport | Free (on) |
-| Image transformations | The archipelago's island cards and thumbnails from R2, at the size each screen needs | 5,000 unique a month free |
-| Cloudflare Tunnel | A hub reachable for its owner without opening ports | Free |
-| Workers for Platforms | Each island's own code, run on novel.global, only if islands are ever to run their own scripts | $25 a month; not needed to start |
+| Durable Objects (SQLite) | One per island: roster, queue, talk, held prints, the 7-day clocks, the hub's socket | Free, 5 GB per account (check the limits page) |
+| Hibernating WebSockets | The hub stays connected without being billed while quiet; replaces polling | Part of Durable Objects |
+| Durable Object alarms | The 7-day clock, countdowns landing, prints floating away | Part of Durable Objects |
+| D1 | The register of islands and charters; migrations at deploy | Free |
+| R2 | Every photograph, the hub image, island archives; lifecycle rules | Free to 10 GB |
+| Queues | Prints and alerts to many hubs and members, retried until they land | Free, 24-hour retention |
+| Workflows | Claim, charter, first print: steps that must all happen, in order | Check free allowances |
+| Rate Limiting binding | Limits without writing to D1 | Check plan |
+| Workers Analytics Engine | Counts of the journey without writing to D1 | Free allowance |
+| Turnstile | The talk (on); claiming a hub; joining a queue | Free |
+| Image transformations | Island cards and thumbnails from R2 at each screen's size | 5,000 unique a month free |
+| Cloudflare Tunnel | A hub reachable by its owner without opening ports | Free |
+| Workers for Platforms | Only if islands ever run their own code inside novel.global | $25 a month; not needed |
 
 ## GitHub projects to bring in
 
 | Project | Why |
 |---|---|
-| `cloudflare/agents` (Agents SDK) | Durable Objects with state, WebSockets and scheduling made simple: a natural shape for an island |
-| `cloudflare/workers-sdk` and Deploy to Cloudflare buttons | An owner's own copy of the site in one click |
-| `raspberrypi/rpi-image-gen` (or `RPi-Distro/pi-gen`) | The ready hub image for one-click install |
+| `cloudflare/agents` (Agents SDK) | Durable Objects with state, WebSockets, alarms and scheduling made simple: the shape of an island |
+| `cloudflare/workers-sdk`, Deploy to Cloudflare buttons | An owner's own novel.global in one click |
+| `raspberrypi/rpi-image-gen` (or `RPi-Distro/pi-gen`) | The ready hub image |
 | `paulmillr/noble-ed25519` | Small, audited signing and checking for charters and passports, in the browser and the Worker |
-| `markqvist/Reticulum` with LXMF | An offline, encrypted mesh with real identities: islands that still talk when the internet is gone |
-| `meshtastic/firmware` | Already used; the island's local radio |
-| `python-escpos/python-escpos` | A steady way to drive printers beyond the T88V from the hub |
+| `jakearchibald/idb-keyval` | A tiny way onto IndexedDB, so a phone's posters and sounds stop filling localStorage |
+| `markqvist/Reticulum` with LXMF | An offline, encrypted mesh with real identities, so islands still speak when the internet is gone |
+| `meshtastic/firmware` | Already used: the island's local radio |
+| `python-escpos/python-escpos` | Printers beyond the T88V |
 | `cloudflare/cloudflared` | Cloudflare Tunnel on the hub |
 
 ## Safety
 
-- No names, emails or addresses anywhere; a member is a code and a kin mark.
-- A hub's place is a ring, never a point, until its countdown ends.
-- Every island can be closed by its owner, and by the approval page.
-- Prints and talk stay inside the island's object; only what is signed and chosen goes to novel.global.
-- Minors and safeguarding: an island is closed to anyone under 16, said once on the passport print (to decide: see below).
-
-## Decisions for the owner
-
-1. Is 160 the hard ceiling, or 160 with a waiting ring for the next who come?
-2. One island per person, or a home island with visits to others?
-3. Should islands be able to see each other's posters on the archipelago map, or only their marks and glow?
-4. The age rule for islands, and who moderates an island's talk: its owner, novel.global, or both.
-5. Low res: is it the storage switch described above, or a print look (the older dotted receipt) to choose as well?
+- No names, emails or addresses anywhere; a person is a code and a kin mark.
+- A hub's place is a ring, never a point, until its countdown lands.
+- Every island can be closed by its owner and by the approval page.
+- The talk and prints stay inside the island's object; only what is signed and chosen reaches novel.global.
+- A code not tended for 7 days leaves the public side by itself.
 
 ## Stages, in order
 
+The engine first, without changing anything a person sees, so the islands rest on something that scales. Each stage keeps
+every existing check passing.
+
 | Stage | What | Done when |
 |---|---|---|
-| A | The archipelago drawn on the globe: island marks grown from codes, the scene moves without cuts; LOW RES switch | An island can be found, entered and left on staging without a jump |
-| B | The island as a Durable Object: roster of 160, its talk moved into it, the 161st turned to the nearest island | Two islands on staging cannot see each other |
-| C | Charters and passports: keys, signing, the passport receipt, offline check, revoking | A passport printed on staging checks with no network |
-| D | The hub kit: ISLANDS on the approval page, BUILD A HUB, claim by print, the Pi image | A second Pi claims an island from a fresh card |
-| E | Signals: countdown and place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
-| F | Their own version: Deploy to Cloudflare, registration with the master, Reticulum as the offline path | A copy on another account appears on the archipelago |
+| A | **The engine, made safe to grow:** D1 migrations; the Worker split by area; rate limits and counts off D1; photographs to R2; IndexedDB on the phone; the checks split and run in parallel | Every check passes, the journey looks the same, and a day's requests and writes for one hub fall by nine tenths |
+| B | **The island as a Durable Object:** roster of 160, the queue, the talk moved in, the hub's WebSocket replacing polling (Pi and touch screen) | Two islands on staging cannot see each other; a hub prints with no polling |
+| C | **Passports and the 7-day clock:** keys, signing, the passport receipt and its offline check, striking, deletion to the archive and bringing back, renew in the portfolio | A passport printed on staging checks with no network; a code left 7 days goes to the archive and comes back |
+| D | **The archipelago scene:** islands drawn from their codes on the globe, moving between them without a cut, the queue's ring and number, LOW RES | An island is found, entered, queued for and left on staging without a jump |
+| E | **The hub kit:** ISLANDS on the approval page, BUILD A HUB, claim by print, the Pi image, the builder's slip | A second Pi claims an island from a fresh card |
+| F | **Signals:** countdown and place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
+| G | **Their own novel.global:** Deploy to Cloudflare, registration with the master, Reticulum as the offline path | A copy on another account appears on the archipelago |
