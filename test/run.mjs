@@ -1823,9 +1823,10 @@ if (run('base')) try {
   await Promise.all([page.waitForNavigation({ timeout: 10000 }).catch(() => null), page.click('#s-wipe')]); await sleep(1200);
   const w2 = await page.evaluate(() => ({ keys: Object.keys(localStorage).filter(k => /^da\.base\./.test(k) && k !== 'da.base.theme'), hash: location.hash, start: (document.querySelector('#aura') ? !document.querySelector('#aura').hidden : getComputedStyle(document.querySelector('#home')).display !== 'none') }));
   check('wipe asks first (✓), then everything this device made is gone and the start returns', w1.sure && w1.notes > 0 && !w2.keys.filter(k => !/da\.base\.(packs|song|web)$/.test(k)).length && !w2.hash && w2.start, JSON.stringify({ w1, w2 }));
-  /* a studio link still opens the studio */
-  await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForURL(/\/studio#mix=/, { timeout: 8000 }).catch(() => {});
-  check('a link the studio made (#mix=…) goes on to the studio', /\/studio#mix=-37\.7712/.test(page.url()), page.url());
+  /* a radio song's link opens in the aura, in the radio's window, the song tuned in */
+  await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForFunction(() => /#mix=-37\.7712/.test((document.querySelector('.au-win iframe') || {}).src || ''), null, { timeout: 8000 }).catch(() => {});
+  const mxl = await page.evaluate(() => ({ url: location.pathname + location.hash, src: (document.querySelector('.au-win iframe') || {}).src || '', open: !!document.querySelector('.au-win:not([hidden])') }));
+  check('a link the studio made (#mix=…) opens in the radio\'s window on novel.global, not the bare studio', mxl.url === '/' && /\/studio\?from=aura.*#mix=-37\.7712/.test(mxl.src) && mxl.open, JSON.stringify(mxl));
   /* the booth: a printer's own page, reached by the QR sticker kept with SHOP's downloads */
   await page.goto('https://oan.test/?base'); await page.goto('https://oan.test/?base#shop'); await page.waitForSelector('#s-qr');
   const dq = page.waitForEvent('download', { timeout: 10000 }).catch(() => null); await page.click('#s-qr'); const qf = await dq;
@@ -2068,7 +2069,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   check(`aura (${tag}): printed, the round is over: the receipt rises up the print tentacle and the irukandji takes a bead`, rnd.round && rnd.piece.sent, JSON.stringify({ round: rnd.round, sent: rnd.piece.sent }));
   await page.waitForFunction(() => document.querySelector('#au-panel .au-wall .au-eslide.on img'), null, { timeout: 8000 }).catch(() => {}); await sleep(900); await shot(page, `${P}12e-wall.png`);
   const wl = await page.evaluate(() => ({ wall: !!document.querySelector('#au-panel .au-wall'), hero: !!document.querySelector('.au-eslide.now'), again: !!document.querySelector('#au-again'), clips: document.querySelectorAll('.au-eslide.on .au-clip').length, form: window.AURA.state().form, seed: (document.querySelector('#au-print') || { getAttribute: () => '' }).getAttribute('aria-label'), words: [...document.querySelectorAll('#au-panel .au-hint')].length }));
-  const rnd2 = await page.evaluate(() => [...document.querySelectorAll('#au-wpress .au-k')].map(b => { const r = b.getBoundingClientRect(), sm = b.matches('.au-sm:not(.au-nav)'), cs = getComputedStyle(b), bf = getComputedStyle(b, '::before');
+  const rnd2 = await page.evaluate(() => [...document.querySelectorAll('#au-wpress .au-k')].filter(b => b.getClientRects().length).map(b => { const r = b.getBoundingClientRect(), sm = b.matches('.au-sm:not(.au-nav)'), cs = getComputedStyle(b), bf = getComputedStyle(b, '::before');
     return Math.abs(r.width - r.height) < 1 && /flex/.test(cs.display) && (!sm || (cs.borderTopStyle === 'none' && /svg/.test(bf.backgroundImage) && Math.abs(parseFloat(bf.width) - r.width) < 1)); }));
   check(`aura (${tag}): the press's keys are round, never squeezed: fixed squares, the small ones ringed by a drawn circle of round dots (not a dotted border, which Safari draws uneven)`, rnd2.length >= 3 && rnd2.every(Boolean), JSON.stringify(rnd2));
   check(`aura (${tag}): printed, it goes up on the wall: hung by two clips on the line the print tentacle has become, a seed to begin again, a press to print it again, no words`, wl.wall && !wl.hero && wl.again && wl.clips === 2 && wl.form === 'line' && wl.seed === 'Begin a new piece' && wl.words === 0, JSON.stringify(wl));
@@ -2111,6 +2112,9 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   check(`aura (${tag}): print with nothing being made is the wall, a light carousel (Embla) of what was printed`, wall.img && wall.emb && wall.n >= 1 && wall.bring && wall.drop, JSON.stringify(wall));
   await tap(page, '.au-eslide.on'); await page.waitForFunction(() => window.AURA.state().showing, null, { timeout: 6000 }).catch(() => {}); const wsh = (await st()).showing; await sleep(500); await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.AURA.state().showing && !document.querySelector('.pswp'), null, { timeout: 5000 }).catch(() => {}); await sleep(300);
   check(`aura (${tag}): a touch on the one in front opens it full screen`, wsh, String(wsh));
+  /* the wall's long row folds behind dots: two keys, and the rest unfolded */
+  const fold = await page.evaluate(() => { const d = document.querySelector('#au-wpress .au-dots'), hid = [...document.querySelectorAll('#au-wpress .au-fold')].filter(b => !b.getClientRects().length).length; if (d) d.click(); return { dots: !!d, hid, open: [...document.querySelectorAll('#au-wpress .au-fold')].every(b => b.getClientRects().length) }; });
+  check(`aura (${tag}): the wall's long row of keys folds behind dots, which unfold the rest`, fold.dots && fold.hid > 0 && fold.open, JSON.stringify(fold));
   await tap(page, '#au-bring'); await sleep(1200); const br = await st();
   check(`aura (${tag}): a finished piece is brought back to be worked on, everything as it was`, br.stage === 2 && br.piece && br.piece.lines[0] === L4[0] && br.piece.caught.length === 4 && br.piece.folioId && !br.piece.sent, JSON.stringify({ stage: br.stage, lines: br.piece && br.piece.lines }));
   await tap(page, '.au-tab[data-s=\"3\"]', { force: true }); await sleep(800); await tap(page, '#au-reset'); await sleep(200); await tap(page, '#au-reset'); await sleep(600);

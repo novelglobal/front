@@ -219,17 +219,20 @@ async function kinOf(db, who) {
 /* the board: the latest of a section (or all), each by its maker's kin; written only with a code a print gave (a maker the site knows) */
 const SECS = ['notice', 'story', 'make', 'print'];
 const POSTER_SEC = /^p\.DA-[0-9A-HJKMNP-TV-Z]{4}$/;
-/* a talk's place: a step, or a poster shown on the site (never a private message, never one taken down) */
-async function secOf(db, s) {
+/* a talk's place: a step, or a poster shown on the site (never a private message, never one taken down); its own maker can
+   always talk on it, shown or still a draft */
+async function secOf(db, s, who) {
   if (SECS.includes(s)) return s;
-  if (!POSTER_SEC.test(s || '') || !(await madeOn(db))) return null;
+  if (!POSTER_SEC.test(s || '')) return null;
+  if (who && (await db.prepare("SELECT 1 AS k FROM stories WHERE code = ? AND who = ? AND gone IS NULL AND kind != 'message'").bind(s.slice(2), who).first())) return s;
+  if (!(await madeOn(db))) return null;
   return (await db.prepare("SELECT 1 AS k FROM stories WHERE code = ? AND status = 'shown' AND gone IS NULL AND quiet IS NULL AND kind != 'message'").bind(s.slice(2)).first()) ? s : null;
 }
 const TALK_K = ['swap', 'share'];
 async function talkList(db, env, req, url) {
   const s = url.searchParams.get('s'), who = url.searchParams.get('who') || ''; if (!WHO.test(who)) return fail(400, 'talk');
   if (await tooMany(db, env, req, 'talkr', 120, 10 * 60e3)) return fail(429, 'too many');
-  const sec = await secOf(db, s); if (!sec) return fail(400, 'talk');
+  const sec = await secOf(db, s, who); if (!sec) return fail(400, 'talk');
   if (!(await db.prepare('SELECT 1 AS k FROM makers WHERE who = ? AND printed IS NOT NULL').bind(who).first())) return fail(403, 'key');   // only for those a printer has given a code
   const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, t.k, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
   return json({ talk: results });
@@ -256,7 +259,7 @@ async function movePhotos(db, env, n = 10) {
 }
 async function talkSay(db, env, req) {
   const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
-  const sec = WHO.test(who) && text ? await secOf(db, b.s) : null; if (!sec) return fail(400, 'talk');
+  const sec = WHO.test(who) && text ? await secOf(db, b.s, who) : null; if (!sec) return fail(400, 'talk');
   if (levelOf() >= 2) return fail(503, 'resting');
   const mk = await kinOf(db, who); if (!mk || !mk.printed) return fail(403, 'key');   // a code no printer has given
   if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
