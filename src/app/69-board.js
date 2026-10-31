@@ -32,7 +32,7 @@ function saveBoard(say) {
 async function undoBoard() { if (!cv || !HIST.length || exLocked()) { tick(600); return; } const prev = HIST.pop(); histLast = prev; await new Promise(r => cv.loadFromJSON(JSON.parse(prev), r)); for (const l of cv.getObjects('line')) l.set({ selectable: false, evented: true, hoverCursor: 'pointer' }); tplFix(); cv.renderAll(); store.set('da.board.' + boardId, { v: BOARD_V, json: JSON.parse(prev) }); snd.tick(1100); }
 const saveSoon = debounce(() => saveBoard(false), 400);
 /* the board's keys, as on a piece of hardware: an icon, and its short word printed under it */
-const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['frame', 'base', 'FRAME'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
+const TOOLS = [['add', 'plus', 'ADD'], ['tpl', 'hide', 'W.I.S.H.'], ['zoom', 'search', 'ZOOM'], ['lock', 'anchor', 'LOCK'], ['note', 'note', 'NOTE'], ['section', 'base', 'SECT'], ['link', 'string', 'LINK'], ['pencil', 'pencil', 'PENCIL'], ['image', 'camera', 'IMG'], ['undo', 'undo', 'UNDO'], ['delete', 'close', 'DEL'], ['out', 'download', 'OUT'], ['save', 'check', 'SAVE'], ['exsend', 'share', 'SEND THE EXAMPLE FOR APPROVAL']];
 function boardTools() {
   const t = $('#board-tools'); if (t.childElementCount) return;
   t.innerHTML = TOOLS.map(([k, ic, w]) => `<button type="button" class="bt" data-bt="${k}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`).join('') + '<input type="file" id="board-file" accept="image/*" hidden>';
@@ -66,11 +66,9 @@ async function loadBoard() {
 /* the board's view: three sizes (the key, or the wheel between them); its bare ground dragged moves it about, the page never
    lost; LOCK holds everything on it still, so any drag moves the view */
 const BZ = [0.55, 1, 1.7]; let bzi = 1, bBase = 1, bLock = false, bPan = null;
-/* two locks: LOCK holds what one has put on the board; FRAME (on unless turned off) holds the template, the four W.I.S.H. squares and
-   their notes, where they are: they can still be chosen to join to and pasted over, never dragged, sized or rewritten */
-let fLock = prefs.frameLock !== false;
+/* LOCK holds what one has put on the board. The template, the four W.I.S.H. squares and their notes, is always held where it is,
+   shown or hidden with its key: it can still be chosen to join to and pasted over, never dragged, sized or rewritten, and never printed or saved */
 const tplHeld = o => o.set({ selectable: true, evented: true, lockMovementX: true, lockMovementY: true, lockScalingX: true, lockScalingY: true, lockRotation: true, hasControls: false, editable: false, hoverCursor: 'default' });
-const tplFree = (o, locked) => o.set({ selectable: !locked, evented: !locked, lockMovementX: false, lockMovementY: false, lockScalingX: false, lockScalingY: false, lockRotation: false, hasControls: true, editable: true, hoverCursor: locked ? 'grab' : 'move' });
 function boardZoomStep() { bzi = (bzi + 1) % BZ.length; boardZoomTo(bBase * BZ[bzi]); const b = $('#board [data-bt="zoom"]'); if (b) b.dataset.z = String(bzi); }
 function boardZoomTo(z, x, y) { if (!cv) return; cv.zoomToPoint(new window.fabric.Point(x == null ? cv.getWidth() / 2 : x, y == null ? cv.getHeight() / 2 : y), clamp(z, 0.25, 3)); cv.requestRenderAll(); }
 const ptOf = e => { const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; return { x: t.clientX, y: t.clientY }; };
@@ -87,8 +85,7 @@ function boardPanBind() {
 }
 function exFrame(keepView) {
   if (!cv) return; const ex = boardId === 'b00', locked = exLocked() || bLock; $('#board').classList.toggle('locked', exLocked()); $('#board').classList.toggle('ex-edit', ex && !exLocked());
-  cv.selection = false; for (const o of cv.getObjects()) { if (o.daKind === 'link') continue; if (o.daTpl) { if (exLocked()) o.set({ selectable: false, evented: false }); else if (fLock) tplHeld(o); else tplFree(o, bLock); continue; } o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' }); }
-  const fb = $('#board [data-bt="frame"]'); if (fb) fb.setAttribute('aria-pressed', String(fLock));
+  cv.selection = false; for (const o of cv.getObjects()) { if (o.daKind === 'link') continue; if (o.daTpl) { if (exLocked()) o.set({ selectable: false, evented: false }); else tplHeld(o); continue; }   /* the W.I.S.H. quadrant: always where it is, never moved or rewritten */ o.set({ selectable: !locked, evented: !locked, hoverCursor: locked ? 'grab' : 'move' }); }
   if (keepView) { cv.requestRenderAll(); return; }
   /* a board of one's own opens further out: all of it in view, never closer than 0.7 */
   bzi = 1; const own = !ex; if (own && !cv.getObjects().length) { bBase = 0.7; cv.setViewportTransform([0.7, 0, 0, 0.7, 0, 0]); return; }
@@ -232,7 +229,7 @@ async function addToBoard(url, kind = 'receipt', w = 220, pick = '') {
 /* any board as a picture, drawn apart from the page, on white: for the press */
 async function boardImage(id) {
   const f = await loadFabric().catch(() => null); if (id === boardId && cv) saveBoard(false); const kept = boardOf(id); if (!f || !kept || !kept.json || !(kept.json.objects || []).length) return null;
-  const sc = new f.StaticCanvas(null, { width: 10, height: 10 }); await new Promise(r => sc.loadFromJSON(kept.json, r)); const objs = sc.getObjects(); if (!objs.length) return null;
+  const sc = new f.StaticCanvas(null, { width: 10, height: 10 }); await new Promise(r => sc.loadFromJSON(kept.json, r)); sc.getObjects().filter(o => o.daTpl).forEach(o => sc.remove(o)); const objs = sc.getObjects(); if (!objs.length) return null;   /* saved without the quadrant */
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
   const pad = 24, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 1600 / Math.max(W, H)); sc.backgroundColor = '#FFFFFF';
   const url = sc.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); sc.dispose(); return url;
@@ -337,7 +334,6 @@ async function boardTool(k) {
   if (k === 'exsend') { sendExample(); return; }
   /* the template shown or hidden, and kept so for this board */
   if (k === 'tpl') { const c0 = await showBoard(true); if (!c0) return; if (!c0.getObjects().some(o => o.daTpl)) { tick(600); return; } if (TPLHIDE.has(boardId)) TPLHIDE.delete(boardId); else TPLHIDE.add(boardId); store.set('da.tplhide.v1', [...TPLHIDE]); c0.discardActiveObject(); tplFix(); c0.renderAll(); snd.tick(TPLHIDE.has(boardId) ? 900 : 1500); return; }
-  if (k === 'frame') { const c0 = await showBoard(true); if (!c0) return; fLock = !fLock; prefs.frameLock = fLock; savePrefs(); c0.discardActiveObject(); exFrame(true); tick(fLock ? 900 : 1500); return; }
   if (k === 'zoom' || k === 'lock') { const c0 = await showBoard(true); if (!c0) return; if (k === 'zoom') boardZoomStep(); else { bLock = !bLock; exFrame(true); $('#board').classList.toggle('pinned', bLock); const b = $('#board [data-bt="lock"]'); if (b) b.setAttribute('aria-pressed', String(bLock)); } tick(bLock ? 900 : 1500); return; }
   if (exLocked() && k !== 'out') { await workBoard(); }
   const c = await showBoard(true); if (!c) return; const f = window.fabric; const p = free(); const sel = c.getActiveObject();
@@ -357,11 +353,12 @@ async function boardTool(k) {
 /* ───────── the board out: everything on it, framed with a margin, on the drafting paper it lies on. A picture, or a PDF of one
    page holding that picture ───────── */
 async function boardPicture() {
-  const c = await showBoard(true); if (!c) return null; c.discardActiveObject(); c.renderAll(); const objs = c.getObjects(); if (!objs.length) return null;
+  /* printed or saved without the W.I.S.H. quadrant: it guides the making, it is not part of what is made */
+  const c = await showBoard(true); if (!c) return null; c.discardActiveObject(); const tpl = c.getObjects().filter(o => o.daTpl && o.visible !== false); tpl.forEach(o => o.set({ visible: false })); c.renderAll(); const objs = c.getObjects().filter(o => !o.daTpl); if (!objs.length) { tpl.forEach(o => o.set({ visible: true })); c.renderAll(); return null; }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const o of objs) { const r = o.getBoundingRect(true, true); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.left + r.width); y1 = Math.max(y1, r.top + r.height); }
   const pad = 48, W = x1 - x0 + pad * 2, H = y1 - y0 + pad * 2, k = Math.min(2, 4200 / Math.max(W, H));
-  const vt0 = c.viewportTransform.slice(); c.setViewportTransform([1, 0, 0, 1, 0, 0]); let png; try { png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); } finally { c.setViewportTransform(vt0); } const im = await loadImage(png, false);
+  const vt0 = c.viewportTransform.slice(); c.setViewportTransform([1, 0, 0, 1, 0, 0]); let png; try { png = c.toDataURL({ format: 'png', left: x0 - pad, top: y0 - pad, width: W, height: H, multiplier: k }); } finally { c.setViewportTransform(vt0); tpl.forEach(o => o.set({ visible: true })); c.requestRenderAll(); } const im = await loadImage(png, false);
   const out = document.createElement('canvas'); out.width = Math.round(W * k); out.height = Math.round(H * k); const x = out.getContext('2d'); const dark = true;   /* the blueprint, by day and by night */
   x.fillStyle = dark ? '#123A66' : '#F4F8F8'; x.fillRect(0, 0, out.width, out.height);
   const step = 26 * k; for (let gx = 0, i = 0; gx < out.width; gx += step, i++) { x.fillStyle = dark ? `rgba(220,235,255,${i % 5 ? 0.1 : 0.22})` : `rgba(40,120,140,${i % 5 ? 0.07 : 0.16})`; x.fillRect(gx, 0, 1, out.height); }
