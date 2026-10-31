@@ -33,7 +33,7 @@ from datetime import datetime
 SERVER = os.environ.get('DA_SERVER', 'https://novel.global').rstrip('/')
 PRINTER = os.environ.get('DA_PRINTER', '')
 TOKEN = os.environ.get('DA_TOKEN', '')
-VERSION = 'bridge 31 Oct'   # said to the site beside its Wi-Fi, for the approval page
+VERSION = 'bridge 31 Oct b'   # said to the site beside its Wi-Fi, for the approval page
 PRINTD = os.environ.get('PRINTD_URL', 'http://127.0.0.1:8080').rstrip('/')
 PRINTD_KEY = os.environ.get('PRINTD_API_KEY', '')
 MESH = os.environ.get('DA_MESH', '')        # '' for none; 'auto' (plugged in); a serial device such as /dev/ttyUSB0; tcp:auto (found
@@ -56,11 +56,19 @@ def stop(*_):
     running = False
 
 
+HINT = {'wait': None}  # how long the site asks this bridge to wait before asking again (quick while someone is on their way to print)
+
+
 def http(method, url, body=None, headers=None, timeout=35):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={'content-type': 'application/json', 'user-agent': 'da-pull/1', **(headers or {})})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         raw = r.read()
+        try:
+            w = float(r.headers.get('x-wait') or 0)
+            HINT['wait'] = w if 1 <= w <= 300 else None
+        except ValueError:
+            HINT['wait'] = None
         return r.status, (json.loads(raw) if raw else None)
 
 
@@ -242,7 +250,7 @@ def main():
     while running:
         try:
             j = next_job()
-            wait = POLL
+            wait = HINT['wait'] or POLL
             if j and j.get('wifi'):
                 try:
                     with open(WIFI_FILE, 'w') as f:

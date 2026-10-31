@@ -31,7 +31,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct 13"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "31 Oct 14"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
@@ -92,6 +92,7 @@ String askJob, askWhat; volatile bool setupOn = false; volatile int netErr = 1; 
 /* one secure connection to the site, kept open between asks (the handshake is the slow part, and the part that failed as -1) */
 WiFiClientSecure tls; bool tlsSet = false;
 WiFiClientSecure &site() { if (!tlsSet) { tls.setInsecure(); tls.setHandshakeTimeout(12); tlsSet = true; } return tls; }
+unsigned long pollMs = 2000;   // how long to wait between asks, as the site says: quick while someone is on their way to print, slow otherwise
 void poll() {
   WiFiClientSecure &c = site(); HTTPClient h; h.setReuse(true);
   h.setConnectTimeout(6000);
@@ -101,6 +102,7 @@ void poll() {
   h.addHeader("authorization", String("Bearer ") + token); int code = h.GET();
   if (code != 200) { h.end(); netErr = code == 401 ? 3 : 2; return; }
   String got = h.getString(); h.end(); JsonDocument d; if (deserializeJson(d, got)) { netErr = 2; return; }
+  { int w = d["wait"] | 0; if (w >= 1 && w <= 300) pollMs = (unsigned long)w * 1000UL; }
   Seen s; JsonArray held = d["held"].as<JsonArray>(); s.waiting = d["waiting"] | (int)held.size(); s.printing = d["printing"] | 0;
   if (held.size()) { JsonObject f = held[0]; s.first.job = f["job"].as<String>(); s.first.code = f["code"].as<String>(); s.first.say = f["say"].as<String>(); s.first.life = f["life"].as<String>(); s.first.paper = f["paper"] | true;
     s.first.img = f["img"] | "";
@@ -185,7 +187,7 @@ void netTask(void *) {
     if (job.length()) { int c = act(job, what); for (int i = 0; i < 4 && c != 200 && c != 400 && c != 401; i++) { site().stop(); vTaskDelay(pdMS_TO_TICKS(600 + 400 * i)); c = act(job, what); }
       if (c == 200) { xSemaphoreTake(lock, portMAX_DELAY); if (net.first.job == job) { net.first = Slip(); if (net.waiting > 0) net.waiting--; if (what == "print") net.printing++; net.ver++; } xSemaphoreGive(lock); }
       actCode = c; actionPending = false; actionFinished = true; last = 0; }   // three tries; the result is handled by the display loop
-    if (printerId.length() && millis() - last >= 2000) { last = millis(); poll(); }  // discover new jobs about four times faster
+    if (printerId.length() && (!last || millis() - last >= pollMs)) { last = millis(); poll(); }  // as often as the site asks
     vTaskDelay(pdMS_TO_TICKS(120));
   }
 }

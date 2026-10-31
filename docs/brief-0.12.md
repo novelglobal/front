@@ -79,8 +79,9 @@ What is broken or costly, measured on 31 October 2026:
 
 | Finding | Why it matters | The fix |
 |---|---|---|
-| **Polling eats the free plan.** Each Pi asks for work every 3 seconds and each touch screen every 2: about 72,000 requests a day for one hub, against the Workers free plan's 100,000 | A second hub runs the whole site out of requests | Each island's Durable Object holds a hibernating WebSocket to its hub and pushes work the moment it exists; polling falls back to once a minute |
-| **Every rate limit and every count is a database write.** `tooMany` writes a row to D1 per guarded request; `tally` writes the traffic count on most requests | D1's free plan allows 100,000 writes a day; counting uses them up | Cloudflare's Rate Limiting binding for limits, and Workers Analytics Engine for counts (both free, neither touches D1) |
+| **Polling ate the free plan.** Each Pi asked every 3 seconds and each touch screen every 2: about 72,000 requests a day for one hub, against the free plan's 100,000 | A second hub would have run the site out | **Done (da-v135):** the printers ask every 20 seconds when nothing is happening, and every 2 seconds from the moment someone reaches the make step, a slip waits, or a print is approved: about 9,000 a day for a hub. The print still lands within 2 seconds of the press |
+| **Every count was a database write** (the traffic count on most requests) | D1's free plan allows 100,000 rows written a day | **Done (da-v135):** counts are kept in memory and added once a minute. Rate limits still write a row, but only on sends, talk, places and the map |
+| **Nothing stopped the site running past the free allowances** | Cloudflare would stop answering, or R2 would start to charge, before anyone knew | **Done (da-v135):** a daily meter. Past 60% of the requests or rows written the printers ask less often; past 85% talk and new places wait for tomorrow while printing goes on. Full-size photographs stop at 8 GB of R2's free 10. The approval page's overview shows all three bars |
 | **Photographs are kept inside D1** (stories.photo and the portfolio covers as blobs) | D1 is 5 GB on the free plan, and slow to back up | Photographs to R2 (as the full-size ones already are); D1 keeps only a key |
 | **Two apps on one page.** The aura (base.js and aura.js, 385 KB) opens the studio in a frame with its own app (app.js, 524 KB), map, data and sound | Double memory, double fetching, and two audio engines on old phones; the source of stutters | One audio engine (the aura's) that the studio borrows; the studio's map and data loaded only when a device opens, and kept warm after |
 | **Three receipt makers:** the base's slip, the aura's poster and print sheet, and the studio's paper | Three places to fix one bug; prints that differ by where they were made | One poster engine (the aura's, now printing as designed) used by all three |
@@ -158,23 +159,19 @@ The approval page gains **ISLANDS**. novel.global gains **BUILD A HUB**, drawn a
 On the approval page under DATA, a **LOW RES** switch, **off by default**. Off: full-size photographs kept in R2 (as now). On:
 only the small print-sized picture is kept, to save storage. The receipt always prints the poster as designed.
 
-## Cloudflare, used fully
+## Cloudflare, only what is needed
+
+Everything stays inside the free allowances, and the meter (da-v135) keeps it there. Nothing is added that costs money or needs watching.
 
 | Feature | What it does here | Plan |
 |---|---|---|
 | Durable Objects (SQLite) | One per island: roster, queue, talk, held prints, the 7-day clocks, the hub's socket | Free, 5 GB per account (check the limits page) |
-| Hibernating WebSockets | The hub stays connected without being billed while quiet; replaces polling | Part of Durable Objects |
+| Hibernating WebSockets | Only if a hub ever needs to hear in under 2 seconds; the waking polls do the job for now | Part of Durable Objects |
 | Durable Object alarms | The 7-day clock, countdowns landing, prints floating away | Part of Durable Objects |
 | D1 | The register of islands and charters; migrations at deploy | Free |
 | R2 | Every photograph, the hub image, island archives; lifecycle rules | Free to 10 GB |
-| Queues | Prints and alerts to many hubs and members, retried until they land | Free, 24-hour retention |
-| Workflows | Claim, charter, first print: steps that must all happen, in order | Check free allowances |
-| Rate Limiting binding | Limits without writing to D1 | Check plan |
-| Workers Analytics Engine | Counts of the journey without writing to D1 | Free allowance |
 | Turnstile | The talk (on); claiming a hub; joining a queue | Free |
-| Image transformations | Island cards and thumbnails from R2 at each screen's size | 5,000 unique a month free |
 | Cloudflare Tunnel | A hub reachable by its owner without opening ports | Free |
-| Workers for Platforms | Only if islands ever run their own code inside novel.global | $25 a month; not needed |
 
 ## GitHub projects to bring in
 
@@ -205,10 +202,10 @@ every existing check passing.
 
 | Stage | What | Done when |
 |---|---|---|
-| A | **The engine, made safe to grow:** D1 migrations; the Worker split by area; rate limits and counts off D1; photographs to R2; IndexedDB on the phone; the checks split and run in parallel | Every check passes, the journey looks the same, and a day's requests and writes for one hub fall by nine tenths |
-| B | **The island as a Durable Object:** roster of 160, the queue, the talk moved in, the hub's WebSocket replacing polling (Pi and touch screen) | Two islands on staging cannot see each other; a hub prints with no polling |
+| A | **The engine, made safe to grow:** the meter and the waking polls (done, da-v135); then D1 migrations, photographs out of D1 into R2, IndexedDB on the phone, the checks split | Every check passes, the journey looks the same |
+| B | **The island as a Durable Object:** roster of 160, the queue, the talk moved in | Two islands on staging cannot see each other |
 | C | **Passports and the 7-day clock:** keys, signing, the passport receipt and its offline check, striking, deletion to the archive and bringing back, renew in the portfolio | A passport printed on staging checks with no network; a code left 7 days goes to the archive and comes back |
 | D | **The archipelago scene:** islands drawn from their codes on the globe, moving between them without a cut, the queue's ring and number, LOW RES | An island is found, entered, queued for and left on staging without a jump |
 | E | **The hub kit:** ISLANDS on the approval page, BUILD A HUB, claim by print, the Pi image, the builder's slip | A second Pi claims an island from a fresh card |
 | F | **Signals:** countdown and place, alerts as prints held by the jellyfish, keep or float away | A member receives, keeps and floats away a print |
-| G | **Their own novel.global:** Deploy to Cloudflare, registration with the master, Reticulum as the offline path | A copy on another account appears on the archipelago |
+| G | **Their own novel.global:** Deploy to Cloudflare and registration with the master | A copy on another account appears on the archipelago |

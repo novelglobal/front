@@ -76,6 +76,8 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE makers ADD COLUMN kin INTEGER').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
+    /* warm: when someone last set out towards a print (the make step), so the printers ask quickly for a while */
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN warm INTEGER').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE printers ADD COLUMN off INTEGER').run(); } catch (e) { /* already there */ }
     /* touch: the hash of a small touch screen's token; while set, that screen is where a held slip is printed or squashed */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN touch TEXT').run(); } catch (e) { /* already there */ }
@@ -89,7 +91,37 @@ function ready(db) {
   return readied.get(db);
 }
 /* a preview keeps to its own database, so testing never reaches real stories or a real printer */
-const dbOf = env => (PREVIEW && env.DB_PREVIEW) || env.DB;
+/* ───────── staying inside Cloudflare's free allowances. Each copy of the Worker counts its requests and the rows it writes, and adds
+   them to the day's count about once a minute (one write, not one a request). Past six tenths of a day's allowance the site goes
+   calm (the printers ask less often); past eight and a half it rests (talk and new places wait for tomorrow, printing goes on) ───────── */
+const CAP = { req: 100e3, w: 100e3, r2: 10e9 };   // the Workers free plan's requests a day, D1's rows written a day, R2's free storage
+const USE = { day: '', req: 0, w: 0, keys: {}, at: 0, sum: { req: 0, w: 0 }, level: 0, warmAt: 0 };
+const levelOf = () => { const r = Math.max((USE.sum.req + USE.req) / CAP.req, (USE.sum.w + USE.w) / CAP.w); return r >= 0.85 ? 2 : r >= 0.6 ? 1 : 0; };
+const metered = new WeakMap();
+function meterOf(db) {
+  if (!db) return db; if (metered.has(db)) return metered.get(db);
+  const add = r => { USE.w += (r && r.meta && r.meta.rows_written) || 0; return r; };
+  try { const SP = Object.getPrototypeOf(db.prepare('SELECT 1')); if (!SP.__ng) { const run = SP.run; SP.run = async function (...a) { return add(await run.apply(this, a)); }; SP.__ng = true; } } catch (e) { /* uncounted */ }
+  const m = new Proxy(db, { get(t, k) { if (k === 'batch') return async s => { const r = await t.batch(s); (r || []).forEach(add); return r; }; const v = t[k]; return typeof v === 'function' ? v.bind(t) : v; } });
+  metered.set(db, m); return m;
+}
+const dbOf = env => meterOf((PREVIEW && env.DB_PREVIEW) || env.DB);
+function settle(env, ctx, force) {
+  const db = dbOf(env), t = now(), day = new Date(t).toISOString().slice(0, 10);
+  if (USE.day !== day) { if (USE.day) force = true; }
+  if (!db || (!force && (!ctx || t - USE.at < 60e3))) return;
+  const d = USE.day || day, rows = { ...USE.keys, '~req': USE.req, '~w': USE.w }; USE.keys = {}; USE.req = 0; USE.w = 0; USE.at = t;
+  if (USE.day !== day) { USE.day = day; USE.sum = { req: 0, w: 0 }; }
+  const p = (async () => { try { await ready(db);
+    const up = Object.entries(rows).filter(([, n]) => n > 0).map(([k, n]) => db.prepare('INSERT INTO traffic (day, k, n) VALUES (?, ?, ?) ON CONFLICT(day, k) DO UPDATE SET n = n + excluded.n').bind(d, k, n));
+    if (up.length) await db.batch(up);
+    const { results } = await db.prepare("SELECT k, n FROM traffic WHERE day = ? AND k IN ('~req', '~w')").bind(day).all();
+    for (const r of results) USE.sum[r.k.slice(1)] = r.n; USE.level = levelOf();
+  } catch (e) { /* counted next time */ } })();
+  if (ctx) ctx.waitUntil(p); return p;
+}
+/* how long a printer or its screen waits before asking again: quick while someone is on their way to print (or a slip waits), slow otherwise */
+const waitOf = (p, busy) => { const L = Math.max(USE.level, levelOf()), warm = busy || (p.warm && now() - p.warm < 5 * 60e3); return warm ? [2, 4, 8][L] : [20, 60, 120][L]; };
 
 /* ───────── small tools ───────── */
 const enc = new TextEncoder();
@@ -179,6 +211,7 @@ const mediaKey = id => `${PREVIEW ? 'preview/' : ''}full/${id}.jpg`;
 async function talkSay(db, env, req) {
   const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
   if (!WHO.test(who) || !text || !SECS.includes(b.s)) return fail(400, 'talk');
+  if (levelOf() >= 2) return fail(503, 'resting');
   const mk = await kinOf(db, who); if (!mk) return fail(403, 'key');   // a code no print has given
   if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
   if (!(await human(env, req, b.cf))) return fail(403, 'human');
@@ -241,10 +274,11 @@ async function send(db, env, req) {
   }
   const lv = Math.max(0, Math.min(4, Math.round(+b.lv || 0)));
   if (who) ops.push(db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv, kin) VALUES (?, ?, ?, 1, ?, ?, (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers)) ON CONFLICT(who) DO UPDATE SET last = excluded.last, posts = posts + 1, stage = COALESCE(excluded.stage, stage), lv = max(COALESCE(lv, 0), excluded.lv)').bind(who, t, t, typeof b.stage === 'string' && b.stage ? b.stage.slice(0, 60) : null, lv));
+  if (dest && !toMesh) ops.push(db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(t, dest));
   await db.batch(ops);
   /* the full photograph, kept in R2 when it is bound; the print and the site never need it */
-  const full = env.MEDIA && b.full ? dataURL(b.full, LIMIT.full) : null;
-  if (full) { try { await env.MEDIA.put(mediaKey(id), full, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET full = 1 WHERE id = ?').bind(id).run(); } catch (e) { /* the story is kept without it */ } }
+  const full = env.MEDIA && b.full && !(await settingsOf(db)).lowRes ? dataURL(b.full, LIMIT.full) : null;
+  if (full && (await r2Bytes(db)) + full.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(mediaKey(id), full, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET full = ? WHERE id = ?').bind(full.length, id).run(); } catch (e) { /* the story is kept without it */ } }
   return json({ id, status: 'waiting', job }, 201);
 }
 /* the sender's receipt: where their story is, and where its print is in the queue */
@@ -256,12 +290,15 @@ async function receipt(db, id) {
 }
 /* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
-const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false };
+/* lowRes: keep only the print-sized photograph, never the full-size one (off: full size in R2) */
+const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false, lowRes: false };
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
    curations: the portfolio's twelve groups (JSON: [{ k, name, about }]) */
 /* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
 const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600 };
+/* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
+async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE full END), 0) AS b FROM stories WHERE full IS NOT NULL`).first(); return (r && r.b) || 0; }
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
@@ -291,12 +328,13 @@ async function next(db, req, id) {
      mesh alone waits until no print does, since the radio can take most of a minute to answer and a print should never wait on it */
   if (p.touch && (!p.touch_seen || t - p.touch_seen > 150e3)) await db.prepare("UPDATE jobs SET status = 'queued' WHERE printer = ? AND status = 'held' AND created < ?").bind(id, t - 20e3).run();
   const j = await db.prepare("SELECT * FROM jobs WHERE printer = ? AND (status = 'queued' OR (status = 'printing' AND lease < ?)) ORDER BY (escpos IS NULL), created LIMIT 1").bind(id, t).first();
-  if (!j) return new Response(null, { status: 204, headers: TEXT_H });
+  const hint = { 'x-wait': String(waitOf(p, !!j)) };
+  if (!j) return new Response(null, { status: 204, headers: { ...TEXT_H, ...hint } });
   if (j.tries >= 5) { await db.prepare("UPDATE jobs SET status = 'failed', error = 'tried five times', done = ? WHERE id = ?").bind(t, j.id).run(); return new Response(null, { status: 204, headers: TEXT_H }); }
   /* a slip with both paper and a mesh line: the line goes on as a job of its own, taken next, so a print that fails never keeps it off the mesh */
   if (j.escpos && j.mesh) { await db.batch([db.prepare("INSERT INTO jobs (id, printer, story, code, mesh, status, created) VALUES (?, ?, ?, ?, ?, 'queued', ?)").bind(rid(), id, j.story, j.code, j.mesh, j.created), db.prepare('UPDATE jobs SET mesh = NULL WHERE id = ?').bind(j.id)]); j.mesh = null; }
   await db.prepare("UPDATE jobs SET status = 'printing', lease = ?, tries = tries + 1 WHERE id = ?").bind(t + 60e3, j.id).run();
-  return json({ job: j.id, code: j.code, escpos: j.escpos || null, mesh: j.mesh || null });
+  const r = json({ job: j.id, code: j.code, escpos: j.escpos || null, mesh: j.mesh || null }); r.headers.set('x-wait', hint['x-wait']); return r;
 }
 /* ───────── a printer's touch screen: the slips held for it, each shown with the jellyfish; one press prints it, a long press squashes it ───────── */
 async function touchAuth(db, req, id) {
@@ -310,7 +348,7 @@ async function touchList(db, req, id) {
   { const tn = netOf(new URL(req.url)); if (tn) { const o = JSON.parse(tn), was = (() => { try { return JSON.parse(p0.touch_net || 'null'); } catch (e) { return null; } })(); if (!was || was.n !== o.n || Math.abs((was.rssi || 0) - (o.rssi || 0)) > 6 || o.at - was.at > 60e3) await db.prepare('UPDATE printers SET touch_net = ? WHERE id = ?').bind(tn, id).run(); } }
   const { results } = await db.prepare(`SELECT j.id, j.code, j.created, j.escpos IS NOT NULL AS paper, j.thumb, s.body FROM jobs j LEFT JOIN stories s ON s.id = j.story WHERE j.printer = ? AND j.status = 'held' ORDER BY j.created LIMIT 5`).bind(id).all();
   const c = await db.prepare("SELECT sum(status = 'held') AS w, sum(status IN ('queued', 'printing')) AS q FROM jobs WHERE printer = ?").bind(id).first();
-  return json({ waiting: (c && c.w) || 0, printing: (c && c.q) || 0, held: results.map((r, i) => { let b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) { /* none */ }
+  return json({ wait: waitOf(p0, !!(c && (c.w || c.q))), waiting: (c && c.w) || 0, printing: (c && c.q) || 0, held: results.map((r, i) => { let b = {}; try { b = JSON.parse(r.body || '{}'); } catch (e) { /* none */ }
     return { job: r.id, code: r.code || '', at: r.created, say: String(b.text || '').slice(0, 140), wish: (Array.isArray(b.wish) ? b.wish : []).map(w => String(w).slice(0, 90)).slice(0, 4), life: b.tx && b.tx.cn ? String(b.tx.cn).slice(0, 40) : '', paper: !!r.paper, ...(i === 0 && r.thumb ? { img: r.thumb } : {}) }; }) });
 }
 async function touchAct(db, req, id, job) {
@@ -318,7 +356,7 @@ async function touchAct(db, req, id, job) {
   const b = await body(req);
   /* the screen's hidden menu: the printer's Pi asked to turn off, as TURN OFF on the approval page does */
   if (job === 'off' && b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
-  if (b.action === 'print') { await db.batch([db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id), db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job)]); return json({ ok: true }); }
+  if (b.action === 'print') { await db.batch([db.prepare("UPDATE jobs SET status = 'queued' WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id), db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(now(), id)]); return json({ ok: true }); }
   if (b.action === 'squash') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = (SELECT story FROM jobs WHERE id = ?) AND status = 'waiting'").bind(now(), job), db.prepare("DELETE FROM jobs WHERE id = ? AND printer = ? AND status = 'held'").bind(job, id)]); return json({ ok: true }); }
   return fail(400, 'action');
 }
@@ -353,7 +391,7 @@ async function admin(db, env, req, parts) {
   }
   if (what === 'stories' && id && req.method === 'POST') {
     const b = await body(req); const t = now();
-    if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id)]); return json({ ok: true }); }
+    if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id), db.prepare('UPDATE printers SET warm = ? WHERE id IN (SELECT printer FROM jobs WHERE story = ?)').bind(t, id)]); return json({ ok: true }); }
     if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
     if (b.action === 'ungone') { await db.prepare('UPDATE stories SET gone = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }   // taken down by its maker, put back
     if (b.action === 'star' || b.action === 'unstar') { await db.prepare('UPDATE stories SET star = ? WHERE id = ?').bind(b.action === 'star' ? 1 : 0, id).run(); return json({ ok: true }); }
@@ -392,6 +430,8 @@ async function admin(db, env, req, parts) {
   if (what === 'settings' && req.method === 'GET') return json(await settingsOf(db));
   if (what === 'places' && id === 'import' && req.method === 'POST') return importPlaces(db, req);
   if (what === 'places') return adminPlaces(db, req, id);
+  /* the counts read here include this copy's, not yet added */
+  if ((what === 'overview' || what === 'traffic') && req.method === 'GET') await settle(env, null, true);
   if (what === 'overview' && req.method === 'GET') return overview(db);
   if (what === 'traffic' && req.method === 'GET') { const { results } = await db.prepare('SELECT day, k, n FROM traffic WHERE day >= ? ORDER BY day DESC, k').bind(new Date(now() - 60 * DAY).toISOString().slice(0, 10)).all(); return json({ traffic: results }); }
   if (what === 'export' && req.method === 'GET') return exportAll(db);
@@ -418,7 +458,7 @@ async function admin(db, env, req, parts) {
     if (b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'auto' || b.action === 'mesh' || b.action === 'live') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
     if (b.action === 'paper' && ['58', '80'].includes(String(b.paper))) { await db.prepare('UPDATE printers SET paper = ? WHERE id = ?').bind(String(b.paper), id).run(); return json({ ok: true }); }
-    if (b.action === 'test') { await db.prepare("INSERT INTO jobs (id, printer, code, mesh, status, created) VALUES (?, ?, 'DA-TEST', ?, 'queued', ?)").bind(rid(), id, 'DIRECT ACTION - test print', now()).run(); return json({ ok: true }); }
+    if (b.action === 'test') { await db.batch([db.prepare("INSERT INTO jobs (id, printer, code, mesh, status, created) VALUES (?, ?, 'DA-TEST', ?, 'queued', ?)").bind(rid(), id, 'DIRECT ACTION - test print', now()), db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(now(), id)]); return json({ ok: true }); }
     return fail(400, 'action');
   }
   return fail(404, 'not found');
@@ -501,6 +541,7 @@ async function listPlaces(db) {
   return new Response(JSON.stringify({ places: results }), { headers: { ...JSON_H, 'cache-control': 'public, max-age=300' } });
 }
 async function suggestPlace(db, env, req) {
+  if (levelOf() >= 2) return fail(503, 'resting');
   if (await tooMany(db, env, req, 'place', 6, 10 * 60e3)) return fail(429, 'too many places from one place in ten minutes');
   const p = placeOf(await body(req)); if (!p) return fail(400, 'place');
   const { n } = await db.prepare("SELECT count(*) AS n FROM places WHERE status = 'waiting'").first(); if (n >= 500) return fail(503, 'too many places waiting');
@@ -535,8 +576,9 @@ async function overview(db) {
   const [stories, places, posts, jobs] = await Promise.all([COUNT(db, 'stories'), COUNT(db, 'places'), COUNT(db, 'posts'), COUNT(db, 'jobs', `WHERE created > ${now() - 7 * DAY}`)]);
   const { results: pr } = await db.prepare('SELECT id, name, seen, token IS NOT NULL AS paired, mesh, auto, touch IS NOT NULL AS touch FROM printers ORDER BY id').all();
   const { results: tr } = await db.prepare('SELECT k, sum(n) AS n, max(day = ?) AS today FROM traffic WHERE day >= ? GROUP BY k').bind(day, wk).all();
-  const { results: td } = await db.prepare('SELECT k, n FROM traffic WHERE day = ?').bind(day).all();
-  return json({ stories, places, posts, jobs, printers: pr, week: Object.fromEntries(tr.map(r => [r.k, r.n])), today: Object.fromEntries(td.map(r => [r.k, r.n])), at: now() });
+  const { results: td } = await db.prepare('SELECT k, n FROM traffic WHERE day = ?').bind(day).all(); const today = Object.fromEntries(td.map(r => [r.k, r.n]));
+  const r2 = await r2Bytes(db), use = { req: (today['~req'] || 0) + USE.req, w: (today['~w'] || 0) + USE.w, r2, cap: CAP, level: levelOf() };
+  return json({ use, stories, places, posts, jobs, printers: pr, week: Object.fromEntries(tr.map(r => [r.k, r.n])), today, at: now() });
 }
 async function exportAll(db) {
   const q = async s => (await db.prepare(s).all()).results;
@@ -593,10 +635,7 @@ function trafficKey(url, m) {
   if (['inat', 'osm', 'img', 'places', 'stories', 'posts', 'receipts'].includes(p)) return p + (m === 'POST' ? ':sent' : '');
   return null;
 }
-function tally(env, ctx, url, m) {
-  const k = trafficKey(url, m), db = dbOf(env); if (!k || !db || !ctx) return;
-  ctx.waitUntil((async () => { try { await ready(db); await db.prepare('INSERT INTO traffic (day, k, n) VALUES (?, ?, 1) ON CONFLICT(day, k) DO UPDATE SET n = n + 1').bind(new Date().toISOString().slice(0, 10), k).run(); } catch (e) { /* a count missed */ } })());
-}
+function tally(url, m) { USE.req++; const k = trafficKey(url, m); if (k) USE.keys[k] = (USE.keys[k] || 0) + 1; }
 
 /* ───────── the portfolio: posts written on the approval page, drafts until published. Only published posts are read here ───────── */
 const POST_COLS = 'id, slug, title, summary, cat, day, status, cover IS NOT NULL AS has_cover, updated';
@@ -631,7 +670,7 @@ async function savePost(db, req) {
 
 /* ───────── the router ───────── */
 async function api(req, env, url, ctx) {
-  tally(env, ctx, url, req.method);
+  tally(url, req.method); settle(env, ctx);
   if (url.pathname === '/api/beat') return new Response(null, { status: 204, headers: TEXT_H });
   if (url.pathname === '/api/img' && req.method === 'GET') return imgThrough(url);
   if (url.pathname.startsWith('/api/inat/') && req.method === 'GET') return inatThrough(url);
@@ -653,8 +692,10 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'posts' && !p[1] && m === 'GET') return listPosts(db);
   if (p[0] === 'posts' && p[1] && p[2] === 'cover' && m === 'GET') return postCover(db, p[1], false);
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
-  if (p[0] === 'settings' && m === 'GET') return json({ ...(await settingsOf(db)), cfsite: env.TURNSTILE_SITE || '', media: !!env.MEDIA });
+  if (p[0] === 'settings' && m === 'GET') return json({ ...(await settingsOf(db)), cfsite: env.TURNSTILE_SITE || '', media: !!env.MEDIA, calm: levelOf() });
   if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
+  /* someone has set out towards a print: every printer asks quickly for the next few minutes (at most one write a minute from each copy) */
+  if (p[0] === 'warm' && !p[1] && m === 'POST') { if (now() - USE.warmAt > 60e3) { USE.warmAt = now(); await db.prepare('UPDATE printers SET warm = ? WHERE token IS NOT NULL OR touch IS NOT NULL').bind(now()).run(); } return new Response(null, { status: 204, headers: TEXT_H }); }
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
   if (p[0] === 'touch' && p[1] && !p[2] && m === 'GET') return touchList(db, req, p[1]);

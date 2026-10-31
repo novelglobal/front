@@ -1420,7 +1420,9 @@
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
     setMode('bang'); store.set('da.aura.seen', 1);
   }
-  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); if (!canStep(stage)) stage = 0; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.wline = FORM.from = LAST = null; S.stage = stage; if (stage === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); } S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
+  /* setting out towards a print (the make step on): the printers are told to ask quickly for a while, so the print lands at once */
+  var warmed = 0; function warm(i) { if (i < 2 || Date.now() - warmed < 90e3) return; warmed = Date.now(); try { fetch('/api/warm', { method: 'POST', keepalive: true }).catch(function () {}); } catch (e) { /* the printers ask at their own pace */ } }
+  function toIruk(stage) { if (S.mode !== 'globe' && S.mode !== 'bang') return; hintsQuiet(); if (stage !== 3 && done()) fresh(); if (!canStep(stage)) stage = 0; FORM.key = 'hang'; FORM.lines = FORM.rect = FORM.wline = FORM.from = LAST = null; S.stage = stage; warm(stage); if (stage === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); } S.deep = false; deep.hidden = true; paint(); setMode('morph'); bell(stage, 0.22); flashWords(1700); }
   function toGlobe() { if (S.mode !== 'iruk') return; S.deep = false; deep.hidden = true; setMode('unmorph'); bell(0, 0.18); }
   /* a printed piece is finished: the round is over. Going on (to any step but print, to the eye or to the catch) begins the next piece, clear;
      the finished one stays on the wall, to be brought back */
@@ -1437,7 +1439,7 @@
     if (i !== 3 && done()) fresh();
     var from = S.stage; if (i === S.stage && !S.deep) { paint(); keys(); return; }
     if (i === 2 && P && !P.briefed && NG.brief) { P.briefed = 1; P.adds = P.adds || []; P.adds.push({ k: 't', t: NG.brief(2), x: 0.08, y: 0.62, s: 0.62, tone: 'clear' }); changed(); }
-    if (i === 3) squirt(); beat('step-' + i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
+    if (i === 3) squirt(); beat('step-' + i); warm(i); S.stage = i; S.deep = false; S.sel = null; deep.hidden = true; deep.innerHTML = ''; cls(); paint(); keys(); bell(i); panel.scrollTop = 0; focusFirst(); flashWords();
     S.pass = { from: from, to: i, t0: performance.now() / 1000 }; if (L.tips) ripple(L.tips[i][0], L.tips[i][1] - 10);
   }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('#au-say, .au-wish textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };

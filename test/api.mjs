@@ -151,7 +151,7 @@ try {
   const tB = await call('/api/stories', { method: 'POST', ip: '10.0.0.8', body: { kind: 'record', code: 'DA-T0CB', body: JSON.stringify(WISH), lat: -37.77, lng: 144.96, dest: 'kines', escpos: 'G0A=' } });
   const tl = await call('/api/touch/kines', { token: TT }); const tlx = await call('/api/touch/kines', { token: 'nope' }); const tly = await call('/api/touch/pickles', { token: TT });
   const h0 = tl.json && tl.json.held.find(h => h.code === 'DA-T0CA');
-  check('a touch screen has its own token, shown once; with it on, slips wait and it sees them with their words; no other token or printer', tcx.status === 401 && typeof TT === 'string' && TT.length > 16 && tA.json.job.status === 'held' && tl.status === 200 && h0 && h0.say === 'to keep the creek cool' && h0.wish.length === 4 && h0.life === 'Noisy Miner' && h0.paper === true && tl.json.waiting === 2 && tl.json.printing >= 1 && tlx.status === 401 && tly.status === 401,
+  check('a touch screen has its own token, shown once; with it on, slips wait and it sees them with their words; no other token or printer', tcx.status === 401 && typeof TT === 'string' && TT.length > 16 && tA.json.job.status === 'held' && tl.status === 200 && h0 && h0.say === 'to keep the creek cool' && h0.wish.length === 4 && h0.life === 'Noisy Miner' && h0.paper === true && tl.json.waiting === 2 && tl.json.wait === 2 && tl.json.printing >= 1 && tlx.status === 401 && tly.status === 401,
     JSON.stringify({ tcx: tcx.status, tA: tA.json.job, tl: tl.status, waiting: tl.json && tl.json.waiting, printing: tl.json && tl.json.printing, h0, tlx: tlx.status, tly: tly.status }));
   const pr = await call(`/api/touch/kines/${tA.json.job.id}`, { method: 'POST', token: TT, body: { action: 'print' } });
   const sq = await call(`/api/touch/kines/${tB.json.job.id}`, { method: 'POST', token: TT, body: { action: 'squash' } });
@@ -206,6 +206,8 @@ try {
   await call('/api/beat?k=open-aura'); await call('/api/beat?k=begin'); await call('/api/beat?k=nonsense'); await new Promise(r => setTimeout(r, 400));
   const ov = await call('/api/admin/overview', { key: KEY }), tr = await call('/api/admin/traffic', { key: KEY }), ovNo = await call('/api/admin/overview', { ip: '10.6.6.6' });
   check('the overview counts what waits and what happened (things, never people), and only with the password', ov.status === 200 && ov.json.stories.waiting >= 1 && Array.isArray(ov.json.printers) && tr.json.traffic.some(r => r.k === 'open-aura') && !tr.json.traffic.some(r => r.k === 'nonsense') && ovNo.status === 401, JSON.stringify({ today: ov.json.today, n: tr.json.traffic.length }));
+  const wm = await call('/api/warm', { method: 'POST' });
+  check('the day is measured against the free allowances, and setting out towards a print wakes the printers', wm.status === 204 && ov.json.use && ov.json.use.req > 0 && ov.json.use.cap.req === 100e3 && ov.json.use.level === 0, JSON.stringify(ov.json.use));
   const im = await call('/api/admin/places/import', { method: 'POST', key: KEY, body: { places: [{ n: 'Imported One', lat: -37.77, lng: 144.96, cat: 'third' }, { n: 'Imported Two', lat: '-37.771', lng: '144.961' }, { n: '', lat: 1, lng: 1 }] } });
   const ex = await call('/api/admin/export', { key: KEY });
   check('everything comes away as one file (never a token), and places come in by the hundred', im.json.added === 2 && im.json.bad === 1 && ex.status === 200 && ex.json.places.some(p => p.n === 'Imported One') && ex.json.stories.length > 0 && !JSON.stringify(ex.json.printers).includes('token"'), JSON.stringify(im.json));
