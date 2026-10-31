@@ -3326,3 +3326,23 @@ html.in-aura #sec-set{display:none!important}
 .four .f4s{display:grid;place-items:center;color:var(--ink-k)}.four .f4s .i{width:18px;height:18px}.four .f4s small{left:50%;transform:translateX(-50%)}
 .four .f4s.rec{color:#FFFFFF;background:#C8341E;animation:shimbg 2s ease-in-out infinite}.four .f4s:disabled{opacity:.35;cursor:default}
 @media (max-width:420px){.four{grid-template-columns:repeat(6,44px);gap:6px}.four .f4{width:44px;height:44px}}
+/* the four-track as one of the radio's ink screens: the four tracks in it as ink on the glass, ALL, SAVE and SOUND small keys under it */
+.band.dev.radio .four{grid-template-columns:repeat(4,1fr);gap:6px;width:min(100%,300px);margin:10px auto 14px;padding:8px 8px 6px;box-sizing:border-box;border-radius:6px;background:#CBD4C3;box-shadow:inset 0 0 0 2px rgba(31,42,32,.55),inset 0 3px 10px rgba(0,0,0,.2)}
+.band.dev.radio .four .f4{width:100%;height:auto;aspect-ratio:1;border-radius:3px;background:transparent;box-shadow:inset 0 0 0 1px rgba(31,42,32,.3);color:#1F2A20}
+.band.dev.radio .four .f4 img{mix-blend-mode:multiply;filter:grayscale(1) contrast(1.7);opacity:.5}
+.band.dev.radio .four .f4.on{box-shadow:inset 0 0 0 2px #1F2A20}.band.dev.radio .four .f4.on img{opacity:.95;filter:grayscale(1) contrast(2)}
+.band.dev.radio .four .f4 small{left:4px;bottom:2px;font:400 15px/1 VT323,ui-monospace,monospace;color:#1F2A20}
+.band.dev.radio .four .f4.none{font:400 18px/1 VT323,ui-monospace,monospace;color:#1F2A20;opacity:.3}
+.band.dev.radio .four .f4p{display:grid;place-items:center;background:transparent;color:#1F2A20}.band.dev.radio .four .f4p .i{width:18px;height:18px}.band.dev.radio .four .f4p small{left:50%;transform:translateX(-50%)}
+.band.dev.radio .four .f4x{top:-6px;right:-6px;width:18px;height:18px;font-size:12px;background:#1F2A20;color:#CBD4C3;box-shadow:none}
+.band.dev.radio .four .f4k{grid-column:1/-1;display:flex;justify-content:center;gap:6px;padding-top:4px;border-top:1px dashed rgba(31,42,32,.3)}
+.band.dev.radio .four .f4m{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 9px;border:0;border-radius:12px;background:rgba(31,42,32,.08);color:#1F2A20;cursor:pointer}
+.band.dev.radio .four .f4m .i{width:14px;height:14px}.band.dev.radio .four .f4m small{font:400 15px/1 VT323,ui-monospace,monospace;letter-spacing:.04em}
+.band.dev.radio .four .f4m.on{background:#1F2A20;color:#CBD4C3}.band.dev.radio .four .f4m:disabled{opacity:.35;cursor:default}
+.band.dev.radio .four .f4m.ready{background:#0E8F84;color:#FFFFFF;animation:shimbg 1.6s ease-in-out infinite}.band.dev.radio .four .f4m.going{background:#C8341E;color:#FFFFFF}
+.songs .al-k .ib.ready{color:#FFFFFF;background:#0E8F84;border-radius:50%}
+/* the board's keys on a phone: those used most, and dots that unfold the rest */
+#board-tools .bt-dots{display:none}
+#board-tools .bt-dots i{display:block;width:4px;height:4px;border-radius:50%;background:currentColor}
+@media (max-width:760px){#board-tools .bt-dots{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:3px}
+  #board-tools:not(.unfold) .bt.fold{display:none}#board-tools.unfold .bt-dots i:nth-child(2){transform:scale(.5)}}

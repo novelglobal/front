@@ -189,6 +189,7 @@ $('#view').addEventListener('click', e => {
   if (e.target.closest('[data-t4all]')) { playFour(); return; }
   const fk = e.target.closest('[data-t4k]'); if (fk) { toggleTrack(fk.dataset.t4k); return; }
   if (e.target.closest('[data-t4save]')) { saveFour(); return; }
+  if (e.target.closest('[data-t4sound]')) { fourToSound(); return; }
   const fx = e.target.closest('[data-t4x]'); if (fx) { const id = fx.dataset.t4x; LOOP.ms = LOOP.ms.filter(t => t.of !== id); const j = LOOPS.findIndex(l => l.id === id); if (j >= 0) LOOPS.splice(j, 1); store.set('da.loops.v1', LOOPS); loopSync(false); refreshFour(); return; }
   const r = e.target.closest('[data-radio]'); if (r) { r.classList.add('press'); setTimeout(() => r.classList.remove('press'), 160); snd.tick(S.radio ? 900 : 2200); buzz(12); if (!S.radio && !S.started && !prefs.placed && EXK) { playExample(); return; } setRadio(!S.radio); return; }
   /* a layer's volume: quiet, half, full, round again */
@@ -365,11 +366,12 @@ function mixOf(parts) {
   return { v: MIX_V, id: 'mx' + Date.now().toString(36), at: Date.now(), loop: Math.max(...parts.map(p => +p.loop || 8)), where: { ...parts[0].where, place: place || 'RADIO' }, layers, parts: parts.map(p => { const q = { ...p }; delete q.parts; return q; }) };
 }
 function saveFour() {
+  if (FILED && FILED.four) { const f = FILED.file; FILED = null; fileReady(); giveFile(f); return; }
   let ms = LOOP.ms; if (!ms.length) ms = FOUR().flatMap(l => tracksOf(l));
   if (!ms.length) { toast('KEEP A SONG FIRST'); return; }
   const ids = [...new Set(ms.map(t => t.of))]; let song = ids.length === 1 ? LOOPS.find(l => l.id === ids[0]) : null;
   if (!song) { song = mixOf(ms.map(t => t.m)); if (!keepLoop(song)) { toast('NO ROOM ON THIS PHONE'); return; } made('song', 'mix'); snd.tick(1900); if (S.view !== 0) refreshPanel(); }
-  loopFile(song);
+  loopFile(song, true);
 }
 /* a song shared: the phone's own share (its link, which opens the radio where it was made), else its link copied */
 async function shareSong(l) {
@@ -379,16 +381,41 @@ async function shareSong(l) {
 }
 /* a song as a sound file: it plays alone from the top of its turn, one whole turn is recorded as it sounds (m4a on an iPhone,
    else webm) and saved; what played before comes back after */
-let filing = false;
-async function loopFile(l) {
+let filing = false, FILED = null;   // FILED: a loop recorded, waiting for the tap that saves it (a phone saves a file only inside a tap)
+/* a file handed over: on a phone the share sheet (Save to Files), elsewhere a download */
+async function giveFile(f) {
+  if (coarse() && navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: f.name }); toast('✓ SAVED'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  download(f.name, f); toast('✓ SAVED');
+}
+const fileReady = () => { $$('[data-t4save]').forEach(b => b.classList.toggle('ready', !!(FILED && FILED.four))); $$('[data-song-file]').forEach(b => b.classList.toggle('ready', !!FILED && FILED.id === b.dataset.songFile)); };
+async function loopFile(l, four) {
+  if (FILED && FILED.id === l.id) { const f = FILED.file; FILED = null; fileReady(); giveFile(f); return; }
   if (filing) return; filing = true; if (!prefs.sound) { prefs.sound = true; savePrefs(); } snd.wake();
   const ms = tracksOf(l), dur = Math.max(...ms.map(t => loopDur(t.m))), t0 = performance.now() + 150; for (const t of ms) { t.t0 = t0; t.step = null; }
-  startPlay(ms); $$('[data-t4save], [data-song-share]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 1200);
+  startPlay(ms); $$('[data-t4save], [data-song-file]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 1200);
   try { const b = await snd.record(dur + 1000); const nm = String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radio';
-    download(`novel-global-${nm}-loop.${/mp4/.test(b.type) ? 'm4a' : 'webm'}`, b); toast('✓ SAVED'); }
+    const f = new File([b], `novel-global-${nm}-loop.${/mp4/.test(b.type) ? 'm4a' : 'webm'}`, { type: b.type });
+    if (coarse()) { FILED = { id: l.id, file: f, four: !!four }; toast('READY · PRESS SAVE', 4000); } else giveFile(f); }
   catch (e) { toast('NOT SAVED · TRY AGAIN'); }
-  $$('[data-t4save], [data-song-share]').forEach(b => b.classList.remove('going')); if (LOOP.ms.length && LOOP.ms.every(t => t.of === l.id)) comeBack(); filing = false;
+  $$('[data-t4save], [data-song-file]').forEach(b => b.classList.remove('going')); fileReady(); if (LOOP.ms.length && LOOP.ms.every(t => t.of === l.id)) comeBack(); filing = false;
 }
+/* a song for the SOUND desk: its four layers as the desk's four tracks, each place on the step of the turn its bearing falls in,
+   its pitch from its own note, the strongest first (in danger, newly seen); the names go with it, so the desk shows what sounds and why */
+function deskOf(l) {
+  const ps = l.parts && l.parts.length ? l.parts : [l], N = 32, ks = ['life', 'water', 'community', 'pollution'], cap = [12, 8, 6, 6];
+  const rows = ks.map(() => Array(N).fill('.')), lab = ks.map(() => ({}));
+  ks.forEach((k, i) => { const cells = ps.flatMap(p => (((p.layers || {})[k] || {}).on ? p.layers[k].cells || [] : [])).sort((x, y) => ((y.dz ? 4 : 0) + (y.br ? 2 : 0) + (y.cur ? 1 : 0)) - ((x.dz ? 4 : 0) + (x.br ? 2 : 0) + (x.cur ? 1 : 0))); let n = 0;
+    for (const c of cells) { if (n >= cap[i]) break; let at = Math.floor(((((+c.b || 0) % 360) + 360) % 360) / 360 * N) % N; if (i > 1) at -= at % 2; if (rows[i][at] !== '.') continue; const p = +(c.p || partialOf(c.n || c.fam || 'x')) || 4; rows[i][at] = String(i === 3 ? p % 5 : p % 10); lab[i][at] = c.n || ''; n++; } });
+  return { code: 'v101' + rows.map(r => r.join('')).join('-'), lab };
+}
+function toSound(l) {
+  const { code, lab } = deskOf(l); if (!/\d/.test(code.slice(4))) { toast('NOTHING IN IT TO PLAY'); return; }
+  const kept = store.get('da.aura.songs', []) || []; if (!kept.some(q => q.code === code)) { kept.unshift({ code, at: Date.now(), lab, name: (l.where || {}).place || 'RADIO' }); kept.splice(24); store.set('da.aura.songs', kept); }
+  try { if (IN_AURA) parent.postMessage({ ng: 'sound', code }, location.origin); } catch (e) { /* alone */ }
+  toast(IN_AURA ? '✓ IN SOUND' : '✓ IN SOUND ON NOVEL.GLOBAL'); snd.tick(1900);
+}
+/* the four-track's SOUND key: what plays (none playing, the four) into the SOUND desk's playlist, as one song */
+function fourToSound() { const ms = LOOP.ms.length ? LOOP.ms : FOUR().flatMap(l => tracksOf(l)); if (!ms.length) { toast('KEEP A SONG FIRST'); return; } toSound({ ...mixOf(ms.map(t => t.m)), where: { place: [...new Set(ms.map(t => (t.m.where || {}).place).filter(Boolean))].slice(0, 2).join(' + ') || 'RADIO' } }); }
 /* a recording playing (a life's own call): what the radio plays waits under it, and comes back when it ends */
 function hush(on) { LOOP.hush = !!on; }
 /* the four-track on the radio: + keeps the sound now; the four songs kept last, each in or out of the mix; ALL; SHARE */
@@ -397,8 +424,9 @@ function fourHTML() {
   return `<ol class="four" role="group" aria-label="Four-track">${[0, 1, 2, 3].map(i => { const l = four[i]; if (!l) return i === four.length ? `<li><button type="button" class="f4 f4s f4p" data-song-keep aria-label="Keep the radar's sound now" data-tip="Keep the sound now">${icon('plus')}<small class="mono">keep</small></button></li>` : `<li><span class="f4 none mono" aria-hidden="true">${i + 1}</span></li>`;
     const on = going(l.id), nm = esc((l.where || {}).place || 'RADIO');
     return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}`
-    + `<li><button type="button" class="f4 f4s${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${four.length > 1 ? '' : ' disabled'}>${icon('loop')}<small class="mono">all</small></button></li>`
-    + `<li><button type="button" class="f4 f4s" data-t4save aria-label="Keep what plays as one song and save it as a sound file" data-tip="Save the whole loop"${four.length ? '' : ' disabled'}>${icon('save')}<small class="mono">save</small></button></li></ol>`;
+    + `<li class="f4k"><button type="button" class="f4m${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${four.length > 1 ? '' : ' disabled'}>${icon('loop', 'sm')}<small class="mono">all</small></button>`
+    + `<button type="button" class="f4m${FILED && FILED.four ? ' ready' : ''}" data-t4save aria-label="Save what plays as a sound file" data-tip="Save the whole loop"${four.length ? '' : ' disabled'}>${icon('download', 'sm')}<small class="mono">save</small></button>`
+    + `<button type="button" class="f4m" data-t4sound aria-label="Into the SOUND playlist" data-tip="Into SOUND"${four.length ? '' : ' disabled'}>${icon('sound', 'sm')}<small class="mono">sound</small></button></li></ol>`;
 }
 function refreshFour() { const f = $('#view .four'); if (f) f.outerHTML = fourHTML(); $$('[data-loop-next]').forEach(b => { b.disabled = !LOOPS.length; }); }
 /* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
@@ -410,14 +438,15 @@ const songCard = (l, i) => ({ id: 's:' + l.id, img: loopArt(l), kind: 'song', na
 const songsHTML = () => `<section class="sec songs" id="sec-songs"><div class="lab-row">${labI('sound', 'Songs', LOOPS.length)}<button type="button" class="pill sq" data-song-keep aria-label="Keep the radar's song as it is now" data-tip="Keep the radar's song">${icon('plus', 'sm')}</button></div>`
   + (LOOPS.length ? `<ol class="albums">${LOOPS.map((l, i) => `<li class="album"><button type="button" class="al-sleeve" data-loop-play="${esc(l.id)}" aria-label="Play ${esc((l.where || {}).place || 'this song')}"><img class="al-art" src="${loopArt(l)}" alt=""><img class="al-card" data-song-card="${i}" alt=""></button>`
     + `<span class="al-t"><b>${esc((l.where || {}).place || 'RADIO')}</b><small class="mono">${Math.round((l.where || {}).r || 0)} M · ${fmtStamp(l.at).split(' ')[0]}</small></span>`
-    + `<span class="al-k"><button type="button" class="ib${going(l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(going(l.id) ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-song-share="${esc(l.id)}" aria-label="Copy its link" data-tip="Copy its link">${icon('share', 'sm')}</button><button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
+    + `<span class="al-k"><button type="button" class="ib${going(l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(going(l.id) ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-song-file="${esc(l.id)}" aria-label="Save it as a sound file" data-tip="Save the loop">${icon('download', 'sm')}</button><button type="button" class="ib" data-song-sound="${esc(l.id)}" aria-label="Into the SOUND playlist" data-tip="Into SOUND">${icon('sound', 'sm')}</button><button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
     : '<p class="al-none mono">NO SONGS KEPT YET · + KEEPS THE RADAR\'S SONG</p>') + '</section>';
 async function fillSongs() { for (const im of $$('#view img[data-song-card]')) { const l = LOOPS[+im.dataset.songCard]; if (!l) continue; try { const c = await cardArt(songCard(l, +im.dataset.songCard), +im.dataset.songCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 $('#view').addEventListener('click', async e => {
   if (e.target.closest('[data-song-keep]')) { if (!here()) { toast('WHERE ARE YOU?'); return; } const m = mixNow(); const ok = keepLoop(m); snd.tick(ok ? 1900 : 700); toast(ok ? '✓ KEPT' : 'NO ROOM ON THIS PHONE'); if (ok) made('song', (m.where || {}).place || 'RADIO'); refreshFour(); if (S.view !== 0) refreshPanel(); return; }
   /* a kept track onto the poster: its card, in the aura's poster or on the strip */
   const sp = e.target.closest('[data-song-poster]'); if (sp) { const l = LOOPS.find(x => x.id === sp.dataset.songPoster); if (!l) return; const art = mixArt(l, mixURL(l)); if (IN_AURA) toAura(art, true); else { setView(2); setTimeout(() => placeOnPage(art, 'art', 240), 500); } snd.tick(1900); return; }
-  const sh = e.target.closest('[data-song-share]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songShare); if (l) loopFile(l); }
+  const sh = e.target.closest('[data-song-file]'); if (sh) { const l = LOOPS.find(x => x.id === sh.dataset.songFile); if (l) loopFile(l); return; }
+  const so = e.target.closest('[data-song-sound]'); if (so) { const l = LOOPS.find(x => x.id === so.dataset.songSound); if (l) toSound(l); }
 });
 /* ───────── the radio as a link: the place, its reach, and each layer's on, volume and mood, short enough for a code on a
    receipt. Opened, it tunes the radio there; a touch on play and it sounds ───────── */

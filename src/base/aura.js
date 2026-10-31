@@ -834,6 +834,7 @@
     return { m: mood, s: src, t: tracks, lab: lab };
   }
   var songCode = function (sg) { return 'v1' + sg.m + sg.s + sg.t.join('-'); };
+  var keptSong = function (q) { var sg = songOf(q.code); if (sg && q.lab) sg.lab = q.lab; return sg; };
   var songOf = function (code) { var m = String(code || '').match(/^v1([0-2])([0-3])([.0-9]{32})-([.0-9]{32})-([.0-9]{32})-([.0-9]{32})$/); return m ? { m: +m[1], s: +m[2], t: [m[3], m[4], m[5], m[6]] } : null; };
   var songsURL = function (codes) { var base = /localhost|\.test$|workers\.dev$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + '#songs=' + codes.join('~'); };
   var songURL = function (sg) { var base = /localhost|\.test$|workers\.dev$/.test(location.hostname) ? location.origin + '/' : (B.portal || location.origin + '/'); return base.replace(/#.*$/, '') + '#song=' + songCode(sg); };
@@ -870,13 +871,13 @@
   var layered = function () { return DESK.kept.filter(function (q) { return q.on; }).map(function (q) { return songOf(q.code); }).filter(function (q) { return q && !songEmpty(q); }); };
   function songPlay(on, list) {
     clearInterval(DESK.iv); DESK.iv = 0; DESK.list = !!on && !!list && DESK.kept.length > 0; DESK.step = -1;
-    if (DESK.list) { DESK.li = Math.min(DESK.li || 0, DESK.kept.length - 1); var s0 = songOf(DESK.kept[DESK.li].code); if (s0) { DESK.song = s0; DESK.mood = s0.m; DESK.src = s0.s; } }
+    if (DESK.list) { DESK.li = Math.min(DESK.li || 0, DESK.kept.length - 1); var s0 = keptSong(DESK.kept[DESK.li]); if (s0) { DESK.song = s0; DESK.mood = s0.m; DESK.src = s0.s; } }
     DESK.play = !!on && (!songEmpty(DESK.song) || (!list && layered().length > 0)); if (DESK.play && songEmpty(DESK.song)) DESK.song = layered()[0]; if (DESK.el) { DESK.el.classList.toggle('playing', DESK.play); DESK.el.classList.toggle('listing', DESK.list && DESK.play); deskSync(); }
     if (!DESK.play) { DESK.list = false; deskHeld = null; if (studioHeld) { studioHeld = false; studioTell(false); humSet(false); } else humSet(S.mode !== 'seed' && S.win == null); return; }
     /* one music at a time: the studio's radio, if it plays, waits under the desk's song and comes back when it stops */
     beat('desk-play'); txtRead(); deskHeld = null; if (studioOn && !studioHeld) { studioHeld = true; studioTell(true); } humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0, li = DESK.li || 0; DESK.t0 = next;
     DESK.iv = setInterval(function () { if (!DESK.play || (!DESK.list && DESK.song !== sg)) return; while (next < c.currentTime + 0.25) {
-      if (DESK.list && n === STEPS_N * 2) { li = (li + 1) % DESK.kept.length; DESK.li = li; setTimeout(deskKept, 0); var s2 = songOf((DESK.kept[li] || {}).code); if (s2) { sg = DESK.song = s2; DESK.mood = s2.m; DESK.src = s2.s; sd = stepDur(sg); DESK.t0 = next; deskSync(); } n = 0; }
+      if (DESK.list && n === STEPS_N * 2) { li = (li + 1) % DESK.kept.length; DESK.li = li; setTimeout(deskKept, 0); var s2 = keptSong(DESK.kept[li] || {}); if (s2) { sg = DESK.song = s2; DESK.mood = s2.m; DESK.src = s2.s; sd = stepDur(sg); DESK.t0 = next; deskSync(); } n = 0; }
       var st = n % STEPS_N, all = DESK.list ? [sg] : [sg].concat(layered()); all.forEach(function (g2) { g2.t.forEach(function (row, k) { var ch = row.charAt(st); if (ch !== '.') noteAt(c, out, g2, k, +ch, next); }); }); next += sd; n++; } }, 40);
   }
   /* the playlist as a card for the poster: each kept song a line of stars, its mood beside it, and one code that brings them all back */
@@ -920,6 +921,10 @@
     else { [[-4, -3], [3, -4], [0, 1], [-3, 5], [5, 4]].forEach(function (p2) { g.moveTo(p2[0] + 1, p2[1]); g.arc(p2[0], p2[1], 1, 0, 7); }); g.fill(); }
     g.restore();
   }
+  /* what sounds now, and why: its track and voice, the word or place it is, and what the song was made from */
+  var WHY = ['THE POSTER\'S WORDS', 'THE PLACES AND LIVES NEAR', 'THE POSTERS ON THE WALL', 'THE RADIUS\'S CONSTELLATIONS'];
+  function deskNow(k, w) { var n = DESK.el && DESK.el.querySelector('.sd-now'), sg = DESK.song; if (!n || !sg) return; var q = DESK.list ? DESK.kept[DESK.li] : null;
+    n.innerHTML = '<b>' + ('0' + (k + 1)) + ' ' + esc(MOODS[sg.m].ins[k].toUpperCase()) + '</b><span>' + esc(w.slice(0, 40)) + '</span><small>FROM ' + esc(q && q.name ? q.name.toUpperCase() + ' (RADIO)' : WHY[sg.s] || '') + '</small>'; }
   function deskDraw() {
     cancelAnimationFrame(DESK.raf); var cv = DESK.el && DESK.el.querySelector('canvas'); if (!cv || DESK.el.hidden) return; var g = cv.getContext('2d'), dp = Math.min(2, window.devicePixelRatio || 1), Wc = cv.clientWidth, Hc = cv.clientHeight;
     if (cv.width !== Wc * dp) { cv.width = Wc * dp; cv.height = Hc * dp; } g.setTransform(dp, 0, 0, dp, 0, 0); g.clearRect(0, 0, Wc, Hc);
@@ -927,13 +932,13 @@
     var M = MOODS[DESK.mood], ink = 'rgba(233,242,228,', x0 = 14, xv = Wc * 0.5, xw = Wc * 0.7, xe = Wc * 0.82, xy = Wc - 18, cy = Hc / 2, lane = function (k) { return 20 + k * (Hc - 40) / 3; };
     var F = function (al) { return ink + Math.max(0, Math.min(1, al)).toFixed(3) + ')'; }, font = function (px) { g.font = '500 ' + px + 'px "Departure Mono", ui-monospace, Menlo, monospace'; };
     var hit = [0, 0, 0, 0]; if (sg && st >= 0) for (var k0 = 0; k0 < 4; k0++) if (sg.t[k0].charAt(st) !== '.' && !DESK.mute[k0]) hit[k0] = 1 - ph;
-    var any = Math.max.apply(null, hit);
+    var any = Math.max.apply(null, hit); var vus = DESK.el.querySelectorAll('.sd-vu'); for (var v0 = 0; v0 < vus.length; v0++) vus[v0].style.setProperty('--v', hit[v0].toFixed(2));
     /* the lanes and the notes on their way: the next eight steps, nearer as they come */
     for (var k = 0; k < 4; k++) { var y = lane(k), off = DESK.mute[k], row = sg ? sg.t[k] : '';
       g.setLineDash(off ? [2, 4] : []); g.strokeStyle = F(off ? 0.18 : 0.22 + 0.6 * hit[k]); g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y); g.lineTo(xv - 12, y); g.stroke(); g.setLineDash([]);
       for (var j = 0; j < 8 && row; j++) { var s2 = ((st < 0 ? 0 : st) + j) % STEPS_N, ch = row.charAt(s2); if (ch === '.') continue; var fx = xv - 12 - (j + (st < 0 ? 0 : ph)) * (xv - 12 - x0) / 8, al = off ? 0.15 : 0.35 + 0.5 * (1 - j / 8);
         g.fillStyle = F(al); g.beginPath(); g.arc(fx, y - (+ch - 4.5) * 0.9, 1.6 + (+ch) * 0.18, 0, 7); g.fill();
-        if (j === 0 && st >= 0 && sg.lab && sg.lab[k][s2] && !off) { DESK.word = DESK.word || []; DESK.word[k] = { w: String(sg.lab[k][s2]).slice(0, 16), t: t }; } }
+        if (j === 0 && st >= 0 && sg.lab && sg.lab[k][s2] && !off) { DESK.word = DESK.word || []; DESK.word[k] = { w: String(sg.lab[k][s2]).slice(0, 16), t: t }; deskNow(k, String(sg.lab[k][s2])); } }
       /* the word that sounded on this lane, held until the next replaces it, fading after a few seconds */
       var dw = DESK.word && DESK.word[k]; if (dw && DESK.play && !off) { var age = t - dw.t; font(10); g.fillStyle = F(Math.max(0, 0.9 - Math.max(0, age - 3) * 0.3)); g.fillText(dw.w, x0, y - 6); }
       /* the tracks laid with it: one faint lane of dots each, above its own */
@@ -971,9 +976,9 @@
     [].forEach.call(ul.querySelectorAll('[data-ks]'), function (b) { b.addEventListener('click', function () { DESK.li = +b.dataset.ks; songPlay(true, true); deskKept(); }); });
     [].forEach.call(ul.querySelectorAll('[data-kx]'), function (b) { NG.sureTap(b, function () { DESK.kept.splice(+b.dataset.kx, 1); store.set('da.aura.songs', DESK.kept); deskKept(); }); }); }
   function saveWav(blob, name) { var a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); }
-  function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.classList.toggle('on', +b.dataset.mood === DESK.mood); }); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); DESK.el.querySelector('#sd-list').classList.toggle('on', DESK.list && DESK.play);
+  function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); var kn = DESK.el.querySelector('#sd-mood'); kn.setAttribute('data-fw', MOODS[DESK.mood].k); kn.style.setProperty('--a', (DESK.mood * 110 - 110) + 'deg'); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); DESK.el.querySelector('#sd-list').classList.toggle('on', DESK.list && DESK.play);
     [].forEach.call(DESK.el.querySelectorAll('[data-ly]'), function (b) { var q = +b.dataset.ly; b.setAttribute('aria-pressed', String(!DESK.mute[q])); b.classList.toggle('off', DESK.mute[q]); b.setAttribute('data-fw', MOODS[DESK.mood].ins[q]); });
-    DESK.el.querySelector('#sd-list').classList.toggle('none', !DESK.kept.length); DESK.el.querySelector('#sd-lcard').classList.toggle('none', !DESK.kept.length); }
+    DESK.el.querySelector('#sd-list').classList.toggle('none', !DESK.kept.length); DESK.el.querySelector('#sd-lcard').classList.toggle('none', !DESK.kept.length); DESK.el.querySelector('#sd-folio').classList.toggle('none', !DESK.kept.length); }
   /* which sources have anything in them, from what is here now */
   function deskAvail() { if (!DESK.el) return; [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('none', songEmpty(songMake(+b.dataset.src, DESK.mood))); }); }
   function deskOpen(given) {
@@ -981,20 +986,21 @@
     if (!DESK.el) {
       var k = function (cls, inner, attrs) { return '<button class="' + cls + '" ' + attrs + '>' + inner + '</button>'; };
       DESK.el = document.createElement('section'); DESK.el.className = 'au-desk'; DESK.el.setAttribute('role', 'dialog'); DESK.el.setAttribute('aria-label', 'Sound');
-      DESK.el.innerHTML = '<header><i class="led"></i><b>SOUND</b>' + k('sd-k sd-drone', svgI('hum'), 'id="sd-drone" data-fw="hum" aria-label="The hum on or off"') + k('au-wx', svgI('eyet'), 'aria-label="Back to novel.global"') + '</header><canvas aria-hidden="true"></canvas>' +
+      DESK.el.innerHTML = '<header><i class="led"></i><b>SOUND</b>' + k('sd-k sd-drone', svgI('hum'), 'id="sd-drone" data-fw="hum" aria-label="The hum on or off"') + k('au-wx', svgI('eyet'), 'aria-label="Back to novel.global"') + '</header><canvas aria-hidden="true"></canvas><p class="sd-now"></p>' +
         '<nav class="sd-row">' + SRCS.map(function (s2, i) { return k('sd-k', svgI(s2[1]), 'data-src="' + i + '" data-fw="' + s2[0] + '" aria-label="Made from: ' + s2[0] + '"'); }).join('') + '<i class="sd-gap"></i>' +
-        MOODS.map(function (m2, i) { return k('sd-k', svgI(['pxjelly', 'pxcoral', 'moon2'][i]), 'data-mood="' + i + '" data-fw="' + m2.k + '" aria-label="Mood: ' + m2.k + '"'); }).join('') + '</nav>' +
+        k('sd-k sd-knob', '<i class="kn"></i>', 'id="sd-mood" data-fw="' + MOODS[0].k + '" aria-label="Mood, turned: tide, bloom, doom"') + '</nav>' +
         '<nav class="sd-row sd-play">' + k('sd-k', svgI('again'), 'id="sd-new" data-fw="again" aria-label="Make it again"') + k('sd-big', '<i class="sd-tri"></i>', 'id="sd-go" aria-label="Play or stop"') + k('sd-k', svgI('plus'), 'id="sd-keep" data-fw="keep" aria-label="Keep it"') + k('sd-k', svgI('list'), 'id="sd-list" data-fw="playlist" aria-label="Play every kept song in turn, round and round"') + '</nav>' +
-        '<nav class="sd-row sd-layers" aria-label="The four layers">' + [0, 1, 2, 3].map(function (q) { return k('sd-k sd-ly', '<i class="ly ly' + q + '"></i>', 'data-ly="' + q + '" aria-pressed="true" data-fw="' + MOODS[0].ins[q] + '" aria-label="Layer ' + (q + 1) + ', on or off"'); }).join('') + '</nav>' +
-        '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="card" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('qrc'), 'id="sd-lcard" data-fw="list card" aria-label="The playlist onto my poster, with one code for all of it"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + '</nav>' +
+        '<nav class="sd-row sd-layers" aria-label="The four layers">' + [0, 1, 2, 3].map(function (q) { return k('sd-k sd-ly', '<i class="ly ly' + q + '"></i><span class="sd-vu" aria-hidden="true"><i></i></span>', 'data-ly="' + q + '" aria-pressed="true" data-fw="' + MOODS[0].ins[q] + '" aria-label="Layer ' + (q + 1) + ', on or off"'); }).join('') + '</nav>' +
+        '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="card" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('qrc'), 'id="sd-lcard" data-fw="list card" aria-label="The playlist onto my poster, with one code for all of it"') + k('sd-k', svgI('dfolio'), 'id="sd-folio" data-fw="portfolio" aria-label="The playlist as a mixtape, into the portfolio"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + '</nav>' +
         '<ul class="au-kept"></ul>';
       root.appendChild(DESK.el);
       var mk2 = function (go) { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
       [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; NG.db().then(function () { mk2(); }); }); });
-      [].forEach.call(DESK.el.querySelectorAll('[data-mood]'), function (b) { b.addEventListener('click', function () { DESK.mood = +b.dataset.mood; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); } else mk2(); }); });
+      DESK.el.querySelector('#sd-mood').addEventListener('click', function () { DESK.mood = (DESK.mood + 1) % MOODS.length; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); } else mk2(); bell(2 + DESK.mood, 0.1); });
       DESK.el.querySelector('#sd-new').addEventListener('click', function () { mk2(); });
       DESK.el.querySelector('#sd-go').addEventListener('click', function () { if (!DESK.song) mk2(); if (songEmpty(DESK.song) && !DESK.play) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } songPlay(!DESK.play); });
       DESK.el.querySelector('#sd-list').addEventListener('click', function () { if (!DESK.kept.length) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } songPlay(!(DESK.play && DESK.list), true); });
+      DESK.el.querySelector('#sd-folio').addEventListener('click', function () { if (!DESK.kept.length) return; keepCanvas(listCard(DESK.kept.map(function (q) { return q.code; })), 'A mixtape · ' + DESK.kept.length + (DESK.kept.length === 1 ? ' song' : ' songs')); made('song', 'mixtape'); harp([0, 4, 7]); NG.toast && NG.toast('✓ IN THE PORTFOLIO'); });
       DESK.el.querySelector('#sd-lcard').addEventListener('click', function () { if (!DESK.kept.length) return; var u = listCard(DESK.kept.map(function (q) { return q.code; })).toDataURL('image/png'); deskClose(); window.postMessage({ ng: 'piece', url: u, crisp: true }, location.origin); });
       DESK.el.querySelector('#sd-keep').addEventListener('click', function () { if (songEmpty(DESK.song)) return; beat('song'); beat('desk-keep'); lvUp(3); made('song', MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0]); var code = songCode(DESK.song); if (!DESK.kept.some(function (q) { return q.code === code; })) { DESK.kept.unshift({ code: code, at: Date.now() }); DESK.kept.splice(12); store.set('da.aura.songs', DESK.kept); } deskKept(); bubbles(3); });
       DESK.el.querySelector('#sd-loop').addEventListener('click', function () { var b = this; if (!DESK.song) return; b.classList.add('going'); var more = layered(); songLoop(DESK.song, more).then(function (r) { b.classList.remove('going'); if (!r) return; S.lastLoop = r.seconds; saveWav(r.blob, 'novel-global-' + MOODS[DESK.song.m].k + (more.length ? '-' + (more.length + 1) + '-tracks' : '') + '-loop.wav'); }); });
@@ -1063,11 +1069,13 @@
       WIN.innerHTML = '<header><i class="led"></i><b></b><nav>' + DEV_AT.map(function (j) { var q = DEVS[j]; return '<button data-wd="' + j + '" aria-label="' + q[1] + '">' + svgI(q[3]) + '</button>'; }).join('') + '</nav><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header><iframe title="The studio" allow="geolocation; camera; autoplay"></iframe>';
       root.appendChild(WIN); var fr = WIN.querySelector('iframe');
       /* the studio's own way home lands back here, not inside the window */
-      fr.addEventListener('load', function () { try { var lp = fr.contentWindow.location.pathname; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { /* not ours */ } });
+      fr.addEventListener('load', function () { try { var lp = fr.contentWindow.location.pathname; fr.dataset.ok = lp === '/studio' ? '1' : ''; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { fr.dataset.ok = ''; } });
       WIN.querySelector('.au-wx').addEventListener('click', closeDev);
       [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.addEventListener('click', function () { openDev(+b.dataset.wd); }); }); }
     var f = WIN.querySelector('iframe'), want = '/studio?from=aura&night=' + (DARK ? 1 : 0) + '&only=' + d[2] + (auto && auto !== 'mix' ? '&auto=' + auto : '') + '#' + (auto === 'mix' && MIX_IN ? 'mix=' + MIX_IN : d[2]);
-    if (f.getAttribute('src') !== want) f.setAttribute('src', want);
+    /* the studio already open turns to the device asked for (no reload, no flicker); loaded afresh only when it must be */
+    var base = function (u) { return String(u || '').split('#')[0].replace(/&only=[a-z]+/, ''); }, at = f.dataset.at || f.getAttribute('src') || '';
+    if (at !== want) { var live = !auto && f.dataset.ok === '1' && base(at) === base(want); if (live) { try { f.contentWindow.postMessage({ ng: 'only', d: d[2] }, location.origin); } catch (e) { live = false; } } if (!live) f.setAttribute('src', want); f.dataset.at = want; }
     WIN.classList.remove('away');
     WIN.className = 'au-win d-' + d[0]; WIN.querySelector('header b').textContent = d[1]; [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.classList.toggle('on', +b.dataset.wd === i); b.hidden = !devOpen(+b.dataset.wd); });
     talkShut(); deskDuck(true); beat('device'); beat('dev-' + i); WIN.hidden = false; WIN.classList.remove('away'); root.classList.add('win'); S.win = i; humSet(false); horn(i); try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) { /* none */ }
@@ -1077,7 +1085,7 @@
   function closeDev() { if (!WIN || WIN.hidden || WIN.classList.contains('away')) return; deskDuck(false); WIN.classList.add('away'); root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed' && !devOn()); bell(0, 0.16); }
   var devOn = function () { if (!WIN || !WIN.classList.contains('away')) return false; try { var d2 = WIN.querySelector('iframe').contentWindow.__da; return !!(d2 && d2.S.radio); } catch (e) { return false; } };
   /* let go for good: the desk's song is the one music now */
-  function devLetGo() { if (!WIN || !WIN.classList.contains('away')) return; WIN.querySelector('iframe').setAttribute('src', 'about:blank'); WIN.classList.remove('away'); WIN.hidden = true; }
+  function devLetGo() { if (!WIN || !WIN.classList.contains('away')) return; var fq = WIN.querySelector('iframe'); fq.setAttribute('src', 'about:blank'); fq.dataset.at = ''; fq.dataset.ok = ''; WIN.classList.remove('away'); WIN.hidden = true; }
   /* made, in a device or here: a light leaves where it was made and goes up into the jellyfish, which blinks as it takes it in */
   function made(kind, label, keep) {
     if (still || !L.bx) return; var r = { left: L.bx - 6, top: L.by + L.bh * 0.5 - 6, width: 12, height: 12 }, f = document.createElement('i'); f.className = 'au-fly';
@@ -1088,6 +1096,7 @@
   window.addEventListener('message', function (e) {
     if (e.origin === location.origin && e.data && e.data.ng === 'made') { made(e.data.kind, false); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'talk' && /^p\.DA-[0-9A-Z]{4}$/.test(e.data.sec || '')) { if (store.get('da.who.pass', 0)) talkOpen(e.data.sec); return; }
+    if (e.origin === location.origin && e.data && e.data.ng === 'sound') { DESK.kept = store.get('da.aura.songs', []) || []; if (DESK.el && !DESK.el.hidden) { deskKept(); deskSync(); } bell(5, 0.12); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'radio') { studioOn = !!e.data.on; studioHeld = false;
       if (studioOn) { if (DESK.play) { var was = { list: DESK.list }; songPlay(false); deskHeld = was; } humSet(false); }
       else if (deskHeld) { var h = deskHeld; deskHeld = null; songPlay(true, h.list); if (S.win != null) deskDuck(true); }
@@ -1195,7 +1204,7 @@
   var DEV_AT = [1, 0, 2, 3];
   /* what a word in a poster's talk can be for, each a mark: a swap or sharing */
   var TALK_K = [['swap', '⇄', 'A swap'], ['share', '↗', 'To share']], TKM = { swap: '⇄', share: '↗' };
-  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'INTENTION', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
+  var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'W.I.S.H.', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
   var STEPS = [['notice', 'hboard'], ['story', 'hradio'], ['make', 'hshop'], ['print', 'poster']];
   var ICON = {
     /* the irukandji's eye with its four tears: noticing, on the globe and on its tab; it blinks, its pupil breathes */

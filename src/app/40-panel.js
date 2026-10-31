@@ -90,6 +90,11 @@ const telOf = o => (o.tel ? o.tel : o.kind === 'injured' ? ((o.tags || []).inclu
 const alarmRow = o => { const tel = telOf(o); const act = o.kind === 'lost' ? `<button type="button" class="callb lostb" data-search="${esc(String(o.id))}">${icon('lost')}<small>SEARCH</small></button>` : tel ? `<a class="callb${o.kind === 'dead' ? ' deadb' : ''}" href="${tel}">${icon('phone')}<small>${o.kind === 'dead' ? 'REPORT' : 'CALL'}</small></a>` : '';
   return `<li class="alarm ${o.kind}"><button type="button" class="row" data-id="${esc(String(o.id))}"><img class="pg" src="${pinOf(o)}" alt=""><span class="nm"><b>${esc(nameOf(o))}</b><small>${o.kind === 'injured' ? 'HURT' : o.kind === 'dead' ? 'DEAD · DO NOT TOUCH' : 'LOST'} · ${since(o.at)}</small></span></button>${act}</li>`; };
 
+/* the aura's window turned to another device: the same studio laid out for it, at once, never loaded again */
+if (IN_AURA) addEventListener('message', e => {
+  if (e.origin !== location.origin || !e.data || e.data.ng !== 'only') return; const i = ({ radio: 0, wish: 1, print: 2, portfolio: 3 })[e.data.d]; if (i == null) return;
+  const h = document.documentElement; h.classList.remove('only-radio', 'only-wish', 'only-print', 'only-portfolio'); h.classList.add('only-' + e.data.d); AURA_ONLY = i; if (S.view !== i) setView(i);
+});
 /* ───────── the four destinations ───────── */
 function setView(i, keep, part) {
   if (AURA_ONLY != null && i !== AURA_ONLY) { i = AURA_ONLY; part = null; }
