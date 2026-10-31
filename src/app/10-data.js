@@ -310,7 +310,16 @@ async function fetchSightings(force) {
     else { S.offline = true; signalLost(); }
   }
 }
+/* every pull adds to the engine: the kinds of life this device meets for the first time are told to novel.global once (sixty at a
+   time, at most one telling a pull), so the approval page sees the kinds met grow, and which still have only their group's mark */
+function tellKinds(list) {
+  if (!navigator.onLine) return; const told = new Set(store.get('da.kinds.told', [])), fresh = [];
+  for (const o of list) { const t = o && o.tx; if (!t || !t.id || o.ext || o.user || o.hum || told.has(t.id)) continue; told.add(t.id); fresh.push({ id: t.id, n: t.n, cn: t.cn, ic: t.ic, g: glyphOf(o), ph: (o.ph && o.ph.u) || '' }); if (fresh.length >= 60) break; }
+  if (!fresh.length) return;
+  fetch('/api/species', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kinds: fresh }) }).then(r => { if (r.ok || r.status === 400) store.set('da.kinds.told', [...told].slice(-4000)); }).catch(() => {});
+}
 function useSightings(list, t, stale) {
+  if (!stale) setTimeout(() => tellKinds(list), 4000);
   const keep = S.obs.filter(o => o.ext);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const counts = new Map(); const key = o => o.tx.id || o.tx.n;

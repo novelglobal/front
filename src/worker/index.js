@@ -52,6 +52,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS places_status ON places(status, decided)`,
   /* traffic: how many of each thing happened on a day, nothing more (no addresses, no visitors told apart) */
   `CREATE TABLE IF NOT EXISTS traffic (day TEXT NOT NULL, k TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, k))`,
+  /* species: every kind of life the devices have met, told once by the first device to meet it (iNaturalist's id, names, group, mark, a photograph) */
+  `CREATE TABLE IF NOT EXISTS species (id INTEGER PRIMARY KEY, n TEXT NOT NULL, cn TEXT, ic TEXT, g TEXT, ph TEXT, first INTEGER NOT NULL)`,
 ];
 const readied = new WeakMap();
 function ready(db) {
@@ -288,6 +290,19 @@ async function receipt(db, id) {
   let ahead = 0; if (j && j.status === 'queued') ({ ahead } = await db.prepare("SELECT count(*) AS ahead FROM jobs WHERE printer = ? AND status IN ('queued', 'printing') AND created < ?").bind(j.printer, j.created).first());
   return json({ id, code: s.code, status: s.status, dest: s.dest || '', job: j ? { status: j.status, ahead, done: j.done || null, error: j.status === 'failed' ? String(j.error || '').slice(0, 60) : null } : null });
 }
+/* every pull adds to the engine: a device tells the kinds of life it has met for the first time, and those new here are kept (an
+   insert that finds one already kept writes nothing). Resting, they wait for the device's next pull */
+const PH_OK = /^https:\/\/(inaturalist-open-data\.s3\.amazonaws\.com|static\.inaturalist\.org)\/[\w./-]{1,240}$/;
+async function learnKinds(db, env, req) {
+  if (levelOf() >= 2) return fail(503, 'resting');
+  const b = await body(req), list = Array.isArray(b.kinds) ? b.kinds.slice(0, 60) : []; if (!list.length) return fail(400, 'kinds');
+  if (await tooMany(db, env, req, 'kinds', 12, 10 * 60e3)) return fail(429, 'too many');
+  const s = (v, n, re) => (typeof v === 'string' && v.length <= n && (!re || re.test(v)) ? v : ''), t = now();
+  const ok = list.filter(k => k && Number.isInteger(k.id) && k.id > 0 && k.id < 1e10 && s(k.n, 120));
+  if (!ok.length) return fail(400, 'kinds');
+  const r = await db.batch(ok.map(k => db.prepare('INSERT OR IGNORE INTO species (id, n, cn, ic, g, ph, first) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(k.id, s(k.n, 120), s(k.cn, 120), s(k.ic, 30, /^[A-Za-z]+$/), s(k.g, 24, /^[a-z-]+$/), s(k.ph, 300, PH_OK), t)));
+  return json({ added: r.reduce((n, x) => n + ((x && x.meta && x.meta.changes) || 0), 0) });
+}
 /* the site's own settings, for everyone: whether the nature station stays on for every visitor (lifeLock, on unless unlocked);
    whether BOARD 00, the example, can be rewritten and sent here for approval (exampleEdit, off unless switched on) */
 /* lowRes: keep only the print-sized photograph, never the full-size one (off: full size in R2) */
@@ -403,6 +418,8 @@ async function admin(db, env, req, parts) {
   }
   if (what === 'photos' && id) return photo(db, id, true);
   if (what === 'full' && id) { const o = env.MEDIA ? await env.MEDIA.get(mediaKey(id)) : null; if (!o) return fail(404, 'not found'); return new Response(o.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
+  if (what === 'species' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT * FROM species ORDER BY first DESC LIMIT 5000').all(); return json({ species: results }); }
+  if (what === 'species' && id && req.method === 'POST') { await db.prepare('DELETE FROM species WHERE id = ?').bind(+id || 0).run(); return json({ ok: true }); }
   if (what === 'talk' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT t.*, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who ORDER BY t.at DESC LIMIT 300').all(); return json({ talk: results }); }
   if (what === 'talk' && id && req.method === 'POST') { const b = await body(req); if (b.action === 'hide' || b.action === 'show') { await db.prepare('UPDATE talk SET hidden = ? WHERE id = ?').bind(b.action === 'hide' ? now() : null, id).run(); return json({ ok: true }); } if (b.action === 'delete') { await db.prepare('DELETE FROM talk WHERE id = ?').bind(id).run(); return json({ ok: true }); } return fail(400, 'action'); }
   /* one maker: everything they did (what they sent, in every state, and what they said on the board), and deleting them:
@@ -586,7 +603,7 @@ async function exportAll(db) {
     talk: await q('SELECT * FROM talk ORDER BY at DESC'), makers: await q('SELECT * FROM makers ORDER BY first'),
     stories: await q('SELECT id, code, kind, status, body, lat, lng, dest, created, decided, star, who, gone, origin, full, photo IS NOT NULL AS has_photo FROM stories ORDER BY created DESC'),
     places: await q(`SELECT ${PLACE_COLS} FROM places ORDER BY created DESC`), posts: await q('SELECT id, slug, title, summary, body, cat, links, day, status, created, updated FROM posts ORDER BY created DESC'),
-    printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
+    printers: await q('SELECT id, name, paper, mesh, auto, live, seen, token IS NOT NULL AS paired FROM printers ORDER BY id'), settings: await settingsOf(db), species: await q('SELECT * FROM species ORDER BY first'), traffic: await q('SELECT day, k, n FROM traffic ORDER BY day DESC, k') };
   return new Response(JSON.stringify(out, null, 1), { headers: { ...JSON_H, 'content-disposition': `attachment; filename="novel-global-${out.at.slice(0, 10)}.json"` } });
 }
 /* a backup brought back (the file DATA downloads): settings set as they were; places, posts, makers, the talk and the stories put back
@@ -694,6 +711,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'posts' && p[1] && !p[2] && m === 'GET') return onePost(db, p[1], false);
   if (p[0] === 'settings' && m === 'GET') return json({ ...(await settingsOf(db)), cfsite: env.TURNSTILE_SITE || '', media: !!env.MEDIA, calm: levelOf() });
   if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
+  if (p[0] === 'species' && !p[1] && m === 'POST') return learnKinds(db, env, req);
   /* someone has set out towards a print: every printer asks quickly for the next few minutes (at most one write a minute from each copy) */
   if (p[0] === 'warm' && !p[1] && m === 'POST') { if (now() - USE.warmAt > 60e3) { USE.warmAt = now(); await db.prepare('UPDATE printers SET warm = ? WHERE token IS NOT NULL OR touch IS NOT NULL').bind(now()).run(); } return new Response(null, { status: 204, headers: TEXT_H }); }
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
