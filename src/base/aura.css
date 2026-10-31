@@ -946,3 +946,6 @@ html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 .au-talkp .au-tks { display: flex; gap: 2px; align-items: center; } .au-talkp .au-tks button { width: 30px; height: 30px; border: 1px solid transparent; border-radius: 50%; background: none; color: inherit; font: 15px ui-monospace, Menlo, monospace; opacity: .5; cursor: pointer; padding: 0; }
 .au-talkp .au-tks button[aria-pressed="true"] { opacity: 1; border-color: currentColor; } .au-talkp:not(.poster) .au-tks { display: none; }
 .au-talkp li .tkm { font-style: normal; opacity: .9; } .au-talkp.poster header b { letter-spacing: .2em; }
+/* the dots that unfold the rest are the dots alone: no ring, no key's ground, so they never read as a feature of their own */
+#aura .au-morek::before { display: none; } #aura .au-morek { background: none !important; box-shadow: none !important; border: 0 !important; }
+#aura .au-morek b { opacity: .85; } #aura .au-morek[aria-expanded="true"] b { opacity: 1; }
