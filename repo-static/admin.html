@@ -137,6 +137,18 @@
     .hud { padding: 10px; } .hud .row { grid-template-columns: 1fr 1fr !important; gap: 8px; } .hud .cell { padding: 8px; min-width: 0; } .hud .rds { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
     .hud .act { grid-template-columns: 1fr 60px 52px; } .hud header { flex-wrap: wrap; } .hud .gauge { max-width: 110px; }
     table.makers { display: block; overflow-x: auto; white-space: nowrap; } .card { padding: 12px; }
+    /* held to the screen: the one column never wider than the phone (a long line, a link or a file picker once pushed it out), and every
+       field at 16px so the phone never zooms in on a tap and leaves the page off to one side */
+    html, body { max-width: 100%; overflow-x: clip; }
+    .shell { grid-template-columns: minmax(0, 1fr) !important; }
+    main, main > *, .ed, .printer, .card, .hud, section { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .note, .ed p, .card p, .lede, td, .insights { overflow-wrap: anywhere; word-break: break-word; }
+    table.makers td { white-space: normal; }
+    input, textarea, select { font-size: 16px !important; max-width: 100%; box-sizing: border-box; }
+    input[type=file] { width: 100%; }
+    .acts > * { max-width: 100%; } .acts a.note { white-space: normal; }
+    header { position: sticky; top: 0; }
+    nav#tabs { top: 0; }
   }
 </style>
 </head>

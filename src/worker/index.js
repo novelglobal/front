@@ -76,6 +76,15 @@ function ready(db) {
     try { await db.prepare('ALTER TABLE makers ADD COLUMN lv INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* kin: each maker's own species and mark, handed out in turn so no two share one (0, 1, 2 ...) */
     try { await db.prepare('ALTER TABLE makers ADD COLUMN kin INTEGER').run(); } catch (e) { /* already there */ }
+    /* printed: when a printer first printed something of this maker's. Only a code a printer has given opens the talk (a save never
+       does). Those already printed for, by what is still kept, keep it */
+    try { await db.prepare('ALTER TABLE makers ADD COLUMN printed INTEGER').run();
+      await db.prepare("UPDATE makers SET printed = last WHERE printed IS NULL AND who IN (SELECT s.who FROM stories s WHERE s.who IS NOT NULL AND (s.stage = 'booth' OR s.id IN (SELECT story FROM jobs WHERE status = 'printed') OR (s.dest != '' AND s.dest != 'mesh' AND s.status = 'shown')))").run(); } catch (e) { /* already there */ }
+    /* k: what a word in the talk is for: said, a swap, or sharing */
+    try { await db.prepare('ALTER TABLE talk ADD COLUMN k TEXT').run(); } catch (e) { /* already there */ }
+    /* art: the poster as designed, kept in R2 (its size), for the wall of posters; quiet: its talk closed on the approval page */
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN art INTEGER').run(); } catch (e) { /* already there */ }
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN quiet INTEGER').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     /* warm: when someone last set out towards a print (the make step), so the printers ask quickly for a while */
@@ -189,17 +198,26 @@ async function photo(db, id, any) {
    Taken down is off the site only: the approval page keeps it as it was. Asked too often from one place, it waits */
 /* a maker's kin, given if they have none yet (makers from before kin, or one only known by a code typed) */
 async function kinOf(db, who) {
-  let mk = await db.prepare('SELECT lv, kin FROM makers WHERE who = ?').bind(who).first(); if (!mk) return null;
-  if (mk.kin == null) { await db.prepare('UPDATE makers SET kin = (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers) WHERE who = ? AND kin IS NULL').bind(who).run(); mk = await db.prepare('SELECT lv, kin FROM makers WHERE who = ?').bind(who).first(); }
+  let mk = await db.prepare('SELECT lv, kin, printed FROM makers WHERE who = ?').bind(who).first(); if (!mk) return null;
+  if (mk.kin == null) { await db.prepare('UPDATE makers SET kin = (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers) WHERE who = ? AND kin IS NULL').bind(who).run(); mk = await db.prepare('SELECT lv, kin, printed FROM makers WHERE who = ?').bind(who).first(); }
   return mk;
 }
 /* the board: the latest of a section (or all), each by its maker's kin; written only with a code a print gave (a maker the site knows) */
 const SECS = ['notice', 'story', 'make', 'print'];
+const POSTER_SEC = /^p\.DA-[0-9A-HJKMNP-TV-Z]{4}$/;
+/* a talk's place: a step, or a poster shown on the site (never a private message, never one taken down) */
+async function secOf(db, s) {
+  if (SECS.includes(s)) return s;
+  if (!POSTER_SEC.test(s || '')) return null;
+  return (await db.prepare("SELECT 1 AS k FROM stories WHERE code = ? AND status = 'shown' AND gone IS NULL AND quiet IS NULL AND kind != 'message'").bind(s.slice(2)).first()) ? s : null;
+}
+const TALK_K = ['swap', 'share'];
 async function talkList(db, env, req, url) {
-  const s = url.searchParams.get('s'), who = url.searchParams.get('who') || ''; const sec = SECS.includes(s) ? s : null; if (!sec || !WHO.test(who)) return fail(400, 'talk');
+  const s = url.searchParams.get('s'), who = url.searchParams.get('who') || ''; if (!WHO.test(who)) return fail(400, 'talk');
   if (await tooMany(db, env, req, 'talkr', 120, 10 * 60e3)) return fail(429, 'too many');
-  if (!(await db.prepare('SELECT 1 AS k FROM makers WHERE who = ?').bind(who).first())) return fail(403, 'key');   // only for those a print has made
-  const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
+  const sec = await secOf(db, s); if (!sec) return fail(400, 'talk');
+  if (!(await db.prepare('SELECT 1 AS k FROM makers WHERE who = ? AND printed IS NOT NULL').bind(who).first())) return fail(403, 'key');   // only for those a printer has given a code
+  const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, t.k, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
   return json({ talk: results });
 }
 /* bot protection (Cloudflare Turnstile, free): a person's token checked once the TURNSTILE_SECRET secret is set; until then everyone passes */
@@ -212,13 +230,13 @@ async function human(env, req, tok) {
 const mediaKey = id => `${PREVIEW ? 'preview/' : ''}full/${id}.jpg`;
 async function talkSay(db, env, req) {
   const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
-  if (!WHO.test(who) || !text || !SECS.includes(b.s)) return fail(400, 'talk');
+  const sec = WHO.test(who) && text ? await secOf(db, b.s) : null; if (!sec) return fail(400, 'talk');
   if (levelOf() >= 2) return fail(503, 'resting');
-  const mk = await kinOf(db, who); if (!mk) return fail(403, 'key');   // a code no print has given
+  const mk = await kinOf(db, who); if (!mk || !mk.printed) return fail(403, 'key');   // a code no printer has given
   if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
   if (!(await human(env, req, b.cf))) return fail(403, 'human');
   const re = typeof b.re === 'string' && /^[a-z0-9]{6,24}$/.test(b.re) ? b.re : null, id = rid(), t = now();
-  await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, b.s, who, text, re, t), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
+  await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at, k) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, sec, who, text, re, t, TALK_K.includes(b.k) ? b.k : null), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
   return json({ id, kin: mk.kin, at: t }, 201);
 }
 async function mine(db, env, req, who, id) {
@@ -228,7 +246,7 @@ async function mine(db, env, req, who, id) {
   if (id) { const r = await db.prepare('UPDATE stories SET gone = ? WHERE id = ? AND who = ? AND gone IS NULL').bind(now(), id, who).run(); return r.meta && r.meta.changes ? json({ ok: true }) : fail(404, 'not found'); }
   const { results } = await db.prepare(`SELECT id, code, kind, status, body, created, decided, photo IS NOT NULL AS has_photo FROM stories WHERE who = ? AND gone IS NULL AND kind NOT IN ('example', 'message') ORDER BY created DESC LIMIT 100`).bind(who).all();
   const mk = await kinOf(db, who);
-  return json({ lv: (mk && mk.lv) || 0, kin: mk ? mk.kin : null, mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
+  return json({ lv: (mk && mk.lv) || 0, kin: mk ? mk.kin : null, printed: !!(mk && mk.printed), mine: results.map(r => ({ id: r.id, code: r.code, kind: r.kind, shown: r.status === 'shown', at: r.created, photo: r.status === 'shown' && !!r.has_photo, body: r.status === 'shown' ? r.body : '' })) });
 }
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
@@ -279,7 +297,8 @@ async function send(db, env, req) {
   if (dest && !toMesh) ops.push(db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(t, dest));
   await db.batch(ops);
   /* the full photograph, kept in R2 when it is bound; the print and the site never need it */
-  const full = env.MEDIA && b.full && !(await settingsOf(db)).lowRes ? dataURL(b.full, LIMIT.full) : null;
+  const lowRes = (await settingsOf(db)).lowRes, full = env.MEDIA && b.full && !lowRes ? dataURL(b.full, LIMIT.full) : null, art = env.MEDIA && b.art ? dataURL(b.art, LIMIT.full) : null;
+  if (art && (await r2Bytes(db)) + art.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(`art/${id}`, art, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET art = ? WHERE id = ?').bind(art.length, id).run(); } catch (e) { /* kept without it */ } }
   if (full && (await r2Bytes(db)) + full.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(mediaKey(id), full, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET full = ? WHERE id = ?').bind(full.length, id).run(); } catch (e) { /* the story is kept without it */ } }
   return json({ id, status: 'waiting', job }, 201);
 }
@@ -313,7 +332,17 @@ const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false, lowRes: fa
 /* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
 const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
-async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE full END), 0) AS b FROM stories WHERE full IS NOT NULL`).first(); return (r && r.b) || 0; }
+async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL`).first(); return (r && r.b) || 0; }
+/* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
+async function posters(db) {
+  const { results } = await db.prepare("SELECT s.id, s.code, s.created AS at, s.star, s.quiet IS NOT NULL AS quiet, m.kin, (SELECT count(*) FROM talk t WHERE t.sec = 'p.' || s.code AND t.hidden IS NULL) AS said FROM stories s LEFT JOIN makers m ON m.who = s.who WHERE s.status = 'shown' AND s.gone IS NULL AND s.art IS NOT NULL AND s.kind != 'message' ORDER BY s.star DESC, s.created DESC LIMIT 120").all();
+  return new Response(JSON.stringify({ posters: results.map(r => ({ ...r, star: !!r.star, quiet: !!r.quiet })) }), { headers: { ...JSON_H, 'cache-control': 'public, max-age=120' } });
+}
+async function posterArt(db, env, id, any) {
+  const s = await db.prepare(`SELECT id FROM stories WHERE id = ? AND art IS NOT NULL${any ? '' : " AND status = 'shown' AND gone IS NULL AND kind != 'message'"}`).bind(id).first(); if (!s || !env.MEDIA) return fail(404, 'not found');
+  const o = await env.MEDIA.get(`art/${id}`); if (!o) return fail(404, 'not found');
+  return new Response(o.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': any ? 'no-store' : 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
+}
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
@@ -379,6 +408,7 @@ async function report(db, req, id, job) {
   if (!(await printerAuth(db, req, id))) return fail(401, 'token');
   const b = await body(req); const ok = b.status === 'printed'; if (!ok && b.status !== 'failed') return fail(400, 'status');
   await db.prepare(`UPDATE jobs SET status = ?, error = ?, done = ?, escpos = NULL, mesh = NULL WHERE id = ? AND printer = ? AND status = 'printing'`).bind(ok ? 'printed' : 'failed', ok ? null : String(b.error || '').slice(0, 200), now(), job, id).run();
+  if (ok) await db.prepare('UPDATE makers SET printed = ? WHERE printed IS NULL AND who = (SELECT s.who FROM jobs j JOIN stories s ON s.id = j.story WHERE j.id = ?)').bind(now(), job).run();
   return json({ ok: true });
 }
 
@@ -394,7 +424,7 @@ async function admin(db, env, req, parts) {
   const [what, id] = parts;
   if (what === 'stories' && !id && req.method === 'GET') {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
-    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.full, s.star, s.who, s.gone, s.origin,
+    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, s.photo IS NOT NULL AS has_photo, s.full, s.star, s.who, s.gone, s.origin, s.art, s.quiet, (SELECT count(*) FROM talk t WHERE t.sec = 'p.' || s.code) AS said,
         (SELECT j.printer || ' ' || j.status || COALESCE(' ' || j.error, '') FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS jobat,
         (SELECT j.thumb FROM jobs j WHERE j.story = s.id AND j.thumb IS NOT NULL LIMIT 1) AS thumb,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 1000`).bind(st).all();
@@ -409,15 +439,18 @@ async function admin(db, env, req, parts) {
     if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id), db.prepare('UPDATE printers SET warm = ? WHERE id IN (SELECT printer FROM jobs WHERE story = ?)').bind(t, id)]); return json({ ok: true }); }
     if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
     if (b.action === 'ungone') { await db.prepare('UPDATE stories SET gone = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }   // taken down by its maker, put back
+    /* a poster's talk closed (nothing more said or read there) or opened again */
+    if (b.action === 'quiet' || b.action === 'unquiet') { await db.prepare('UPDATE stories SET quiet = ? WHERE id = ?').bind(b.action === 'quiet' ? now() : null, id).run(); return json({ ok: true }); }
     if (b.action === 'star' || b.action === 'unstar') { await db.prepare('UPDATE stories SET star = ? WHERE id = ?').bind(b.action === 'star' ? 1 : 0, id).run(); return json({ ok: true }); }
     /* deleted is archived: off the site and out of every queue, still here on the approval page, and brought back as waiting */
     if (b.action === 'delete') { await db.batch([db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE id = ?").bind(t, id)]); return json({ ok: true }); }
     if (b.action === 'restore') { await db.prepare("UPDATE stories SET status = 'waiting', decided = NULL WHERE id = ?").bind(id).run(); return json({ ok: true }); }
-    if (b.action === 'purge') { if (env.MEDIA) await env.MEDIA.delete(mediaKey(id)).catch(() => {}); await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare("DELETE FROM stories WHERE id = ? AND status = 'deleted'").bind(id)]); return json({ ok: true }); }
+    if (b.action === 'purge') { if (env.MEDIA) { await env.MEDIA.delete(mediaKey(id)).catch(() => {}); await env.MEDIA.delete(`art/${id}`).catch(() => {}); } await db.batch([db.prepare('DELETE FROM jobs WHERE story = ?').bind(id), db.prepare("DELETE FROM stories WHERE id = ? AND status = 'deleted'").bind(id)]); return json({ ok: true }); }
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, id, true);
   if (what === 'full' && id) { const o = env.MEDIA ? await env.MEDIA.get(mediaKey(id)) : null; if (!o) return fail(404, 'not found'); return new Response(o.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
+  if (what === 'art' && id && req.method === 'GET') return posterArt(db, env, id, true);
   if (what === 'species' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT * FROM species ORDER BY first DESC LIMIT 5000').all(); return json({ species: results }); }
   if (what === 'species' && id && req.method === 'POST') { await db.prepare('DELETE FROM species WHERE id = ?').bind(+id || 0).run(); return json({ ok: true }); }
   if (what === 'talk' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT t.*, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who ORDER BY t.at DESC LIMIT 300').all(); return json({ talk: results }); }
@@ -712,6 +745,8 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'settings' && m === 'GET') return json({ ...(await settingsOf(db)), cfsite: env.TURNSTILE_SITE || '', media: !!env.MEDIA, calm: levelOf() });
   if (p[0] === 'example' && m === 'GET') return exampleBoard(db);
   if (p[0] === 'species' && !p[1] && m === 'POST') return learnKinds(db, env, req);
+  if (p[0] === 'posters' && !p[1] && m === 'GET') return posters(db);
+  if (p[0] === 'posters' && p[1] && !p[2] && m === 'GET') return posterArt(db, env, p[1], false);
   /* someone has set out towards a print: every printer asks quickly for the next few minutes (at most one write a minute from each copy) */
   if (p[0] === 'warm' && !p[1] && m === 'POST') { if (now() - USE.warmAt > 60e3) { USE.warmAt = now(); await db.prepare('UPDATE printers SET warm = ? WHERE token IS NOT NULL OR touch IS NOT NULL').bind(now()).run(); } return new Response(null, { status: 204, headers: TEXT_H }); }
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);

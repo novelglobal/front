@@ -85,7 +85,7 @@ if (IN_AURA && new URLSearchParams(location.search).get('auto') === 'song') {
     snd.wake(); setRadio(true); };
   songGo();
 }
-applyShared(); loadShared(); loadExample(); flushOutbox(); checkSent(); loadPartners().then(() => { if (S.open && !S.mode && (S.view === 0 || S.view === 2)) refreshPanel(); }); loadSettings(); loadPlaces();
+applyShared(); loadShared(); loadSitePosters(); loadExample(); flushOutbox(); checkSent(); loadPartners().then(() => { if (S.open && !S.mode && (S.view === 0 || S.view === 2)) refreshPanel(); }); loadSettings(); loadPlaces();
 /* a first visit (43-journey.js): only what it has reached shows; a link someone was sent skips the bare map */
 jMarks(); if (simple() && prefs.journey < 1 && jLinked(pendingHash)) jGo(1, true);
 /* the landing page is NOW: a link to a page, or a part of one, lands there too; a link to a life, a story or a place opens it */

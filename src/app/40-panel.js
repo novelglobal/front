@@ -520,9 +520,9 @@ const wishesSection = () => { const ws = mineOf().filter(x => linesOf(x).length)
    on a strip that slides under a finger or the keys, one at a time (scroll snap: no library). Under the screen its number on a
    small display and the keys: back, close up, as a card, download, on ───────── */
 let galleryAt = 0, galleryFocus = null;
-const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2];
-const wallNo = x => (x.ex ? '000' : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
-const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}`;
+const wallOf = () => [...(EXK ? [{ id: 'ex', ex: true, img: EXZ.url, at: Date.parse((EXAMPLES[0] || {}).at) || 0 }] : []), ...POSTERS2, ...SITE_POSTERS];
+const wallNo = x => (x.ex ? '000' : x.site ? x.code.slice(3) : String(POSTERS2.length - POSTERS2.indexOf(x)).padStart(3, '0'));
+const wallCap = x => `№ ${wallNo(x)}${x.ex ? ' · EX' : ` · ${fmtStamp(x.at)}`}${x.site && x.said ? ` · ${x.said}` : ''}`;
 function showGallery(on) {
   const g = $('#gallery'); if (!g) return; g.hidden = !on; if (!on) { gzReset(); g.classList.remove('full'); document.body.classList.remove('gl-full'); return; } const ps = wallOf();
   /* what was just printed comes first */
@@ -544,7 +544,7 @@ function showGallery(on) {
   const pair = x => { const c = !x.ex && deck().find(v => v.id === 'p:' + x.id); return c ? `<div class="gl-pair">${cardBtn(c)}</div>` : ''; };
   const k = (gl, ic, w) => `<button type="button" class="gk" data-gl="${gl}" aria-label="${w}" data-tip="${w}">${icon(ic)}</button>`;
   g.innerHTML = `<div class="gl-deck"><div class="gl-screen"><ol class="gl-track" tabindex="0" aria-label="The wall">${ps.map((x, i) => `<li class="gl-slide" data-i="${i}"><figure class="gl-hero${x.ex ? ' ex' : ''}">${art(x)}${pair(x)}<figcaption class="vh">${wallCap(x)}</figcaption></figure></li>`).join('')}</ol></div>`
-    + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Closer')}${k('full', 'out', 'Full screen')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${k('next', 'next', 'On')}</div></div></div>`;
+    + `<div class="gl-bar"><p class="gl-vfd mono" aria-live="polite"></p><div class="gl-keys">${k('prev', 'back', 'Back')}${k('zoom', 'search', 'Closer')}${k('full', 'out', 'Full screen')}${k('card', 'stories', 'As a card')}${k('png', 'download', 'Download')}${IN_AURA ? k('talk', 'board', 'Its talk') : ''}${k('next', 'next', 'On')}</div></div></div>`;
   g.classList.toggle('with-cards', deck().some(c => c.kind !== 'poster')); galleryCards(); cardImgs();
   const tr = g.querySelector('.gl-track'); tr.scrollLeft = galleryAt * tr.clientWidth; galleryRead();
   /* slid to another: its number changes in place, its card slides with it; the screen itself is never drawn again while it moves */
@@ -580,7 +580,7 @@ function galleryRead() {
   const v = g.querySelector('.gl-vfd'); if (v) v.innerHTML = `<b>${sw ? `<i class="gl-st${done ? ' done' : ''}" aria-hidden="true"></i>` : ''}${sw && !done ? `№ ${wallNo(p)}` : wallCap(p)}</b>${sw && !done ? `<span class="gl-sw">${esc(sw.split(' · ')[0])}</span>` : ''}<span>${String(galleryAt + 1).padStart(2, '0')} / ${String(ps.length).padStart(2, '0')}</span>`;
   g.classList.toggle('waiting', !!sw && !done);
   const dis = (k, off) => { const b = g.querySelector(`[data-gl="${k}"]`); if (b) b.disabled = !!off; };
-  dis('prev', galleryAt === 0); dis('next', galleryAt >= ps.length - 1); dis('card', p.ex); dis('png', !p.img); dis('zoom', !p.img);
+  dis('prev', galleryAt === 0); dis('next', galleryAt >= ps.length - 1); dis('card', p.ex || p.site); dis('talk', !p.site || p.quiet); dis('png', !p.img); dis('zoom', !p.img);
 }
 function galleryGo(i) { const tr = $('#gallery .gl-track'); if (!tr) return; tr.scrollTo({ left: clamp(i, 0, wallOf().length - 1) * tr.clientWidth, behavior: reduced() ? 'auto' : 'smooth' }); }
 /* a poster or a zine, close up, at five sizes: half, three quarters, as wide as the screen allows, twice, three times, scrolled about; a press on it
@@ -617,8 +617,9 @@ document.addEventListener('click', e => {
   /* the close-up key: the piece closer where it is, twice, three times, and back; the full key: the pair full screen */
   if (a.dataset.gl === 'zoom') { const im = gzIm(); if (im && p.img) { const s1 = GZ.im === im && GZ.s > 2.5 ? 1 : GZ.im === im && GZ.s > 1.5 ? 3 : 2; if (s1 === 1) gzReset(true); else gzTo(im, s1, null, null, true); a.setAttribute('aria-pressed', String(s1 > 1)); tick(1200 + s1 * 200); } return; }
   if (a.dataset.gl === 'full') { galleryFull(); tick(1600); return; }
-  if (a.dataset.gl === 'card' && !p.ex) openPosterCard(p.id);
-  if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
+  if (a.dataset.gl === 'talk' && p.site) { try { parent.postMessage({ ng: 'talk', sec: 'p.' + p.code }, location.origin); } catch (e2) { /* alone */ } tick(1500); return; }
+  if (a.dataset.gl === 'card' && !p.ex && !p.site) openPosterCard(p.id);
+  if (a.dataset.gl === 'png' && p.img) { const l = document.createElement('a'); l.href = p.img; l.download = p.ex ? 'novel-global-example-zine.png' : p.site ? `novel-global-${p.code}.jpg` : `poster-${isoDay(new Date(p.at))}.jpg`; l.click(); tick(1800); }
 });
 /* close up inside the same screen, never a second window: the wheel or a pinch scales the piece about where it points,
    dragged it moves, a press or the close-up key takes it to twice its size and back; sliding to another lets it go */

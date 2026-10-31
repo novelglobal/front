@@ -200,7 +200,6 @@
     c.height = H; paper(x, W, H);
     if (P.wm) { var wh = aw * 0.42; x.save(); x.globalAlpha = 0.12; ngMark(x, (W - wh * 2.36) / 2, H * 0.46, wh, ink(), CORAL); x.restore(); }
     x.fillStyle = ink(); x.textBaseline = 'top'; var mw = ngMark(x, pad + 1, pad + 17, 20, ink(), PRINTMODE ? 'rgb(128,128,128)' : CORAL); x.font = '500 23px "Helvetica Neue", Helvetica, Arial, sans-serif'; if ('letterSpacing' in x) x.letterSpacing = '0.5px'; x.fillText('novel.global', pad + mw + 13, pad + 5); if ('letterSpacing' in x) x.letterSpacing = '0px'; x.font = '22px ' + FONT;
-    if (n.code) { var cw2 = x.measureText(n.code).width; x.fillText(n.code, W - pad - cw2, pad + 4);  }
     /* the picture, then the words under it; or, turned (wtop), the words first and the picture under them */
     var ay = pad + 54, y = ay + 10, ax = 0;
     var art = function () { if (!a) return; ax = pad + (aw - a.width) / 2; x.drawImage(a, ax, ay); handRect(x, ax - 6, ay - 6, a.width + 12, a.height + 12, 1.6, 0.85, 7);
@@ -430,6 +429,9 @@
     if (need > 4 && (P.len || 0) < 3000 && !(P.photo && !P.img) && !(P.spPhoto && !P.spImg && !P.img)) { P.len = Math.min(3000, (P.len || 0) + Math.ceil(need / 60) * 60); return posterNow(P); }
     return { c: c, boxes: boxes };
   }
+  /* the poster as designed, for the wall of posters on the site: a JPEG at most 1080 wide, small enough to send */
+  function artOf(P) { try { var c = posterNow(P).c, k = Math.min(1, 1080 / c.width), o = document.createElement('canvas'); o.width = Math.round(c.width * k); o.height = Math.round(c.height * k); var g = o.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, o.width, o.height);
+    for (var q = 0.84; q > 0.4; q -= 0.12) { var u = o.toDataURL('image/jpeg', q); if (u.length < 1.5e6) return u; } } catch (e) { /* none */ } return ''; }
   function poster(P) { return fontReady().then(function () { return posterNow(P).c; }); }
   function keepCanvas(c, cap, codeT) {
     var src = c.toDataURL('image/jpeg', 0.86), item = { id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: src, cap: cap || '', code: codeT || '' };
@@ -1076,6 +1078,7 @@
   }
   window.addEventListener('message', function (e) {
     if (e.origin === location.origin && e.data && e.data.ng === 'made') { made(e.data.kind, false); return; }
+    if (e.origin === location.origin && e.data && e.data.ng === 'talk' && /^p\.DA-[0-9A-Z]{4}$/.test(e.data.sec || '')) { if (store.get('da.who.pass', 0)) talkOpen(e.data.sec); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'radio') { if (NG.lite) humSet(!e.data.on); return; }   // an old device: one sound at a time
     if (e.origin !== location.origin || !e.data || e.data.ng !== 'piece' || typeof e.data.url !== 'string' || !/^data:image\/(png|jpeg|webp);base64,/.test(e.data.url)) return;
     closeDev(); var p = piece(); p.blank = 1; var crisp = !!e.data.crisp;
@@ -1177,6 +1180,8 @@
      poster printed, and rides the ring under the eye with the catch; all three are in the intel */
   /* the devices, and the order the steps hold them out: the intention device at notice, the radio and its constellations at W.I.S.H. */
   var DEV_AT = [1, 0, 2, 3];
+  /* what a word in a poster's talk can be for, each a mark: a swap or sharing */
+  var TALK_K = [['swap', '⇄', 'A swap'], ['share', '↗', 'To share']], TKM = { swap: '⇄', share: '↗' };
   var DEVS = [['radio', 'RADIO', 'radio', 'dradio'], ['board', 'INTENTION', 'wish', 'dboard'], ['shop', 'DESIGN', 'print', 'dshop'], ['folio', 'PORTFOLIO', 'portfolio', 'dfolio']];
   var STEPS = [['notice', 'hboard'], ['story', 'hradio'], ['make', 'hshop'], ['print', 'poster']];
   var ICON = {
@@ -1337,7 +1342,7 @@
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
     [[0, 'go', 'notice', svgI('hboard')], [1, 'wish', 'story', svgI('hradio')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
-    '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
+    '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><span class="au-tks">' + TALK_K.map(function (k) { return '<button type="button" data-tk="' + k[0] + '" aria-label="' + k[2] + '" aria-pressed="false">' + k[1] + '</button>'; }).join('') + '</span><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -1934,7 +1939,7 @@
     (toWall ? Promise.resolve('kept') : NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, P.photo || ''); });
+      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, P.photo || '', artOf(P)); });
     })).then(function (s) {
       st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going');
       if (!toWall && s !== 'failed') { squirt(); lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
@@ -2008,23 +2013,26 @@
   /* one's own three characters: printed on what one prints (never on what the site shows), typed on another phone to carry on there;
      what was sent with them, each taken down from the site here (it is all still kept on the approval page) */
   /* each step's talk: only that step's, read and written with a code from a print; a reply under what it answers */
-  var TK = { re: null }, TSECS = ['notice', 'story', 'make', 'print'];
-  function talkOpen() {
-    var p = $('#au-talkp'), sec = TSECS[S.stage] || 'notice'; TK.re = null; p.hidden = false; p.querySelector('header b').textContent = STEPS[S.stage] ? STEPS[S.stage][0] : sec;
+  /* and each poster shared on the site has its own: to talk about it, swap it, share it (a mark, never a word) */
+  var TK = { re: null, sec: null, k: null }, TSECS = ['notice', 'story', 'make', 'print'];
+  function talkOpen(psec) {
+    if (psec !== undefined) TK.sec = psec || null;
+    var p = $('#au-talkp'), sec = TK.sec || TSECS[S.stage] || 'notice'; TK.re = null; p.hidden = false; p.classList.toggle('poster', !!TK.sec); p.querySelector('header b').textContent = TK.sec ? TK.sec.slice(2) : STEPS[S.stage] ? STEPS[S.stage][0] : sec;
     var ol = p.querySelector('ol'); talkFill(ol, store.get('da.talk.' + sec, []) || []);
     fetch('/api/talk?s=' + sec + '&who=' + encodeURIComponent(NG.me())).then(function (r) { return r.json(); }).then(function (j) { var l = (j && j.talk) || []; store.set('da.talk.' + sec, l.slice(0, 40)); if (!p.hidden) talkFill(ol, l); }).catch(function () {});
   }
   function talkFill(ol, l) {
     var top = l.filter(function (t) { return !t.re; }), kids = function (id) { return l.filter(function (t) { return t.re === id; }).reverse(); };
-    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + esc(NG.moonsAgo(t.at)) + '</small><span>' + esc(t.text) + '</span></li>'; };
+    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + (TKM[t.k] ? '<i class="tkm">' + TKM[t.k] + '</i> ' : '') + esc(NG.moonsAgo(t.at)) + '</small><span>' + esc(t.text) + '</span></li>'; };
     ol.innerHTML = top.length ? top.map(function (t) { return li(t) + kids(t.id).map(function (c) { return li(c, 1); }).join(''); }).join('') : '<li class="none">·</li>';
     [].forEach.call(ol.querySelectorAll('li[data-id]:not(.sub)'), function (e) { e.addEventListener('click', function () { TK.re = TK.re === e.dataset.id ? null : e.dataset.id; [].forEach.call(ol.querySelectorAll('li'), function (q) { q.classList.toggle('re', q.dataset.id === TK.re); }); var i = $('#au-talkp input'); i.placeholder = TK.re ? '↳' : '…'; i.focus(); }); });
   }
-  $('#au-chat').addEventListener('click', function () { beat('talk'); if ($('#au-talkp').hidden) talkOpen(); else $('#au-talkp').hidden = true; bell(3, 0.1); });
+  $('#au-chat').addEventListener('click', function () { beat('talk'); if ($('#au-talkp').hidden || TK.sec) talkOpen(null); else $('#au-talkp').hidden = true; bell(3, 0.1); });
+  [].forEach.call(document.querySelectorAll('#au-talkp [data-tk]'), function (b) { b.addEventListener('click', function () { TK.k = TK.k === b.dataset.tk ? null : b.dataset.tk; [].forEach.call(document.querySelectorAll('#au-talkp [data-tk]'), function (q) { q.setAttribute('aria-pressed', String(q.dataset.tk === TK.k)); }); bell(TK.k ? 5 : 2, 0.08); }); });
   $('#au-talkp .x').addEventListener('click', function () { $('#au-talkp').hidden = true; });
   $('#au-talkp form').addEventListener('submit', function (e) { e.preventDefault(); var i = this.querySelector('input'), t = i.value.trim(); if (!t) return; i.disabled = true;
-    (NG.human ? NG.human() : Promise.resolve('')).then(function (cf) { return fetch('/api/talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: TSECS[S.stage] || 'notice', who: NG.me(), text: t, re: TK.re, cf: cf }) }); })
-      .then(function (r) { i.disabled = false; if (r.status === 201) { i.value = ''; TK.re = null; i.placeholder = '…'; made('talk', t); talkOpen(); } else bell(1, 0.1); }).catch(function () { i.disabled = false; }); });
+    (NG.human ? NG.human() : Promise.resolve('')).then(function (cf) { return fetch('/api/talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: TK.sec || TSECS[S.stage] || 'notice', who: NG.me(), text: t, re: TK.re, k: TK.k, cf: cf }) }); })
+      .then(function (r) { i.disabled = false; if (r.status === 201) { i.value = ''; TK.re = null; TK.k = null; [].forEach.call(document.querySelectorAll('#au-talkp [data-tk]'), function (q) { q.setAttribute('aria-pressed', 'false'); }); i.placeholder = '…'; made('talk', t); talkOpen(); } else bell(1, 0.1); }).catch(function () { i.disabled = false; }); });
   function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = !!on && !root.classList.contains('keyon'); }
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
@@ -2050,7 +2058,7 @@
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
-      (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
+      (f.code && !f.wall && store.get('da.who.pass', 0) && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
@@ -2064,6 +2072,7 @@
       var nk = $('#au-newk'); if (nk) nk.addEventListener('click', function () { letGo(); });
     } else {
       var sd = $('#au-print'); if (sd) sd.addEventListener('click', function () { letGo(); });
+      var pt = $('#au-ptalk'); if (pt) pt.addEventListener('click', function () { beat('talk'); var tp = $('#au-talkp'), sec = 'p.' + f.code; if (!tp.hidden && TK.sec === sec) tp.hidden = true; else talkOpen(sec); bell(3, 0.1); });
       var nm = 'novel-global-' + (f.code || 'poster') + '.jpg', wf = null; fetch(f.src).then(function (r) { return r.blob(); }).then(function (b) { wf = new File([b], nm, { type: b.type || 'image/jpeg' }); }).catch(function () {});
       var ws = $('#au-wsave'); if (ws) ws.addEventListener('click', function () { saveImg(wf, function () { return NG.loadImg(f.src).then(function (im) { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); return c; }); }, nm); });
       /* printed again: it comes forward as the piece in hand, goes to the printer, and takes its own place on the wall again */

@@ -262,16 +262,27 @@ try {
     wdrop.status === 200 && !wpub2.json.stories.some(x => x.code === 'DA-3WHY') && wone.status === 404 && wl2.json.mine.length === 0 && kept.who === 'K7Q' && !!kept.gone && wpub3.json.stories.some(x => x.code === 'DA-3WHY'),
     JSON.stringify({ wl: wl.json, wo: wo.json, wbad: wbad.status, wnot: wnot.status, wdrop: wdrop.status, wone: wone.status, kept: { who: kept.who, gone: kept.gone } }));
   /* the board: written only with a code a print gave, read by anyone by kin (never the code), a reply under what it answers, hidden from the approval page */
+  /* a code opens the talk only once a printer has printed for it: a save or a send never does */
+  const kPre = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'too soon' } });
+  const kp = await call('/api/stories', { method: 'POST', body: story('DA-4PQR', { dest: 'pickles', who: 'K7Q', escpos: Buffer.from([0x1B, 0x40, 66, 10]).toString('base64') }) });
+  await call(`/api/admin/stories/${kp.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  for (let i = 0; i < 12; i++) { const nj = await call('/api/printers/pickles/next', { token: T }); if (nj.status !== 200) break; await call(`/api/printers/pickles/jobs/${nj.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } }); }
+  const kMine = await call('/api/mine/K7Q');
+  check('only a code a printer has printed for can talk', kPre.status === 403 && kMine.json.printed === true, JSON.stringify([kPre.status, kMine.json.printed]));
   const kNo = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'ZZ8', text: 'hello' } });
   const kA = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'a lorikeet by the creek' } });
   const kB = await call('/api/talk', { method: 'POST', ip: '198.51.100.11', body: { s: 'notice', who: 'K7Q', text: 'and its parents', re: kA.json.id } });
   const kL = await call('/api/talk?s=notice&who=K7Q'), kS = await call('/api/talk?s=story&who=K7Q'), kAnon = await call('/api/talk?s=notice'), kGuess = await call('/api/talk?s=notice&who=ZZ8');
   await call(`/api/admin/talk/${kB.json.id}`, { method: 'POST', key: KEY, body: { action: 'hide' } }); const kL2 = await call('/api/talk?s=notice&who=K7Q'), kAd = await call('/api/admin/talk', { key: KEY });
+  const pA = await call('/api/talk', { method: 'POST', ip: '198.51.100.12', body: { s: 'p.DA-4PQR', who: 'K7Q', text: 'swap for a magpie one?', k: 'swap' } }), pL = await call('/api/talk?s=p.DA-4PQR&who=K7Q'), pNx = await call('/api/talk?s=p.DA-ZZZZ&who=K7Q');
+  check('each poster shown on the site has its own talk, a word marked as a swap or a share', pA.status === 201 && pL.json.talk.length === 1 && pL.json.talk[0].k === 'swap' && pNx.status === 400, JSON.stringify([pA.status, pL.json, pNx.status]));
   check('the board: a code no print gave cannot write; a maker can, shown by their kin and never their code; a reply sits under what it answers; hidden, it leaves the board but stays on the approval page',
     kNo.status === 403 && kAnon.status === 400 && kGuess.status === 403 && kA.status === 201 && kB.status === 201 && Number.isInteger(kA.json.kin) && kL.json.talk.length === 2 && kL.json.talk.every(t => !('who' in t) && t.kin === kA.json.kin) && kL.json.talk.some(t => t.re === kA.json.id) && kS.json.talk.length === 0 && kL2.json.talk.length === 1 && kAd.json.talk.length === 2 && kAd.json.talk.some(t => t.hidden && t.who === 'K7Q'),
     JSON.stringify({ no: kNo.status, a: kA.json, l: kL.json, ad: (kAd.json.talk || []).length }));
   /* a maker on the approval page: everything they did; deleted, their stories go to the archive and their posts and record go */
-  const qA = await call('/api/stories', { method: 'POST', ip: '198.51.100.21', body: story('DA-4QXA', { who: 'Q4X' }) });
+  const qA = await call('/api/stories', { method: 'POST', ip: '198.51.100.21', body: story('DA-4QXA', { who: 'Q4X', dest: 'pickles', escpos: Buffer.from([0x1B, 0x40, 67, 10]).toString('base64') }) });
+  await call(`/api/admin/stories/${qA.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
+  for (let i = 0; i < 12; i++) { const nj = await call('/api/printers/pickles/next', { token: T }); if (nj.status !== 200) break; await call(`/api/printers/pickles/jobs/${nj.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } }); }
   await call('/api/talk', { method: 'POST', ip: '198.51.100.21', body: { s: 'make', who: 'Q4X', text: 'a kelp forest of paper' } });
   const qM = await call('/api/admin/makers/Q4X', { key: KEY }), qMx = await call('/api/admin/makers/Q4X');
   const qD = await call('/api/admin/makers/Q4X', { method: 'POST', key: KEY, body: { action: 'delete' } });
