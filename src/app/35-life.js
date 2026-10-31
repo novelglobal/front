@@ -171,7 +171,7 @@ const life = (() => {
     /* WATER: each drinking fountain and body of water the hand passes, a drop */
     if (TRK.on.water) for (const c of climateIn()) { let a = c.sb; if (a < b0) a += 360; if (a > b0 && a <= b1 && pingClimate(c)) pings.push({ lat: c.lat, lng: c.lng, t: now, c: '123,189,245' }); }
     /* the constellations in the radar join the mix: each plays as the hand passes its life */
-    if (S.radio && prefs.sound && !LOOP.on) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
+    if (S.radio && prefs.sound && !LOOP.on && !LOOP.hush) for (const c of strings.list()) { const o = c.o; if (!o || !inScan(o.lat, o.lng)) continue; let a = bearing(S.scan.lat, S.scan.lng, o.lat, o.lng); if (a < b0) a += 360; if (a > b0 && a <= b1 && strings.playFig(c.id)) { flashLayer('figs'); pings.push({ lat: o.lat, lng: o.lng, t: now, c: '127,209,194' }); } }
     if (pings.length > 80) pings = pings.slice(-80);
   }
   let pings = [];
@@ -676,9 +676,10 @@ const life = (() => {
   });
   function play(url, btn) {
     if (!prefs.sound) { toast('SOUND OFF'); return; }
-    if (playing === url && !audio.paused) { audio.pause(); if (btn) btn.innerHTML = icon('play'); return; }
-    playing = url; audio.src = url; audio.play().then(() => { if (btn) btn.innerHTML = icon('pause'); }).catch(() => toast('NO SOUND HERE'));
-    audio.onended = () => { if (btn) btn.innerHTML = icon('play'); };
+    /* a life's own call: the radio and its songs wait under it, and come back when it ends or is paused */
+    if (playing === url && !audio.paused) { audio.pause(); hush(false); if (btn) btn.innerHTML = icon('play'); return; }
+    playing = url; audio.src = url; audio.play().then(() => { hush(true); if (btn) btn.innerHTML = icon('pause'); }).catch(() => { hush(false); toast('NO SOUND HERE'); });
+    audio.onended = audio.onpause = () => { hush(false); if (btn) btn.innerHTML = icon('play'); };
   }
   return {
     start, data, resize, tempo, sweepAt: () => sweepB, moved: () => { dirty = true; }, redraw: () => { fxDirty = true; }, hover, retag, play, hit, badgeOf, offer, searchOf, blob, inScan, moveScan, setScan, findStart, replay,
