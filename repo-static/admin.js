@@ -51,7 +51,7 @@
     const top = Math.max(1, ...PATH.map(([k]) => sum(k, wk)));
     const path = el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['STEP', '7 DAYS', '30 DAYS', 'OF THE STEP BEFORE', ''].map(h => el('th', { text: h })))), el('tbody', {}, ...PATH.map(([k, w], i) => { const n = sum(k, wk), p = i ? sum(PATH[i - 1][0], wk) : 0;
       return el('tr', {}, el('td', { text: w }), el('td', { class: 'mono', text: String(n) }), el('td', { text: String(sum(k)) }), el('td', { class: 'soft', text: i && p ? Math.round(100 * n / p) + '%' : '' }), el('td', {}, el('i', { class: 'bar', style: `display:block;height:6px;background:var(--teal);width:${Math.round(100 * n / top)}%` }))); })));
-    const keys = [...new Set(rows.map(r => r.k))].sort((x, y) => sum(y, wk) - sum(x, wk));
+    const keys = [...new Set(rows.map(r => r.k))].filter(k => k[0] !== '~').sort((x, y) => sum(y, wk) - sum(x, wk));
     const all = el('table', { class: 'makers' }, el('thead', {}, el('tr', {}, ...['WHAT', 'TODAY', '7 DAYS', '30 DAYS'].map(h => el('th', { text: h })))), el('tbody', {}, ...keys.map(k => el('tr', {}, el('td', { text: (TRAFFIC[k] || k).toUpperCase() }), el('td', { text: String(sum(k, new Date().toISOString().slice(0, 10))) }), el('td', { text: String(sum(k, wk)) }), el('td', { text: String(sum(k)) })))));
     /* what the counts say, in a few plain lines: where people stop, what is growing, what is never touched */
     const pct = (n, d) => d ? Math.round(100 * n / d) : 0, prev = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10), sumR = (k, a2, b2) => rows.filter(r => r.k === k && r.day >= a2 && r.day < b2).reduce((n, r) => n + r.n, 0);
@@ -207,6 +207,9 @@
     const r = await api('settings'); const st = await r.json(); const card = el('section', { class: 'printer' });
     card.append(el('h3', { text: 'LIVING' }), el('div', { class: 'note', text: st.lifeLock ? 'ALWAYS ON THE MAP FOR EVERY VISITOR. THEY CAN MUTE IT.' : 'UNLOCKED: VISITORS CAN TAKE IT OFF THE MAP.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.lifeLock ? 'on' : '', text: st.lifeLock ? 'LOCKED ON' : 'UNLOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ lifeLock: !st.lifeLock }) }); show('stations'); } })));
+    /* LOW RES: only the print-sized photograph kept, to save storage (off: the full-size one too, in R2, up to 8 GB) */
+    const lr = el('section', { class: 'printer' }); lr.append(el('h3', { text: 'PHOTOGRAPHS' }), el('div', { class: 'note', text: st.lowRes ? 'LOW RES: ONLY THE PRINT-SIZED PICTURE IS KEPT.' : 'FULL SIZE: EACH PHOTOGRAPH IS ALSO KEPT FULL SIZE IN R2 (UP TO 8 GB, THEN SMALL ONLY).' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: st.lowRes ? 'on' : '', text: st.lowRes ? 'LOW RES ON' : 'LOW RES OFF', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ lowRes: !st.lowRes }) }); show('stations'); } })));
     /* BOARD 00, the example: as everyone sees it, or open to rewriting in the W.I.S.H. tab and sending here */
     const ex = el('section', { class: 'printer' }); ex.append(el('h3', { text: 'BOARD 00 · THE EXAMPLE' }), el('div', { class: 'note', text: st.exampleEdit ? 'OPEN TO EDITING: CHANGE IT IN W.I.S.H. → BOARD 00, PRESS SEND, THEN SHOW IT HERE UNDER WAITING.' : 'LOCKED: EVERY VISITOR SEES IT AS IT IS.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: st.exampleEdit ? 'on' : '', text: st.exampleEdit ? 'EDITING ON' : 'LOCKED', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ exampleEdit: !st.exampleEdit }) }); show('stations'); } })));
@@ -217,7 +220,7 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(...head('Words and boards'), card, ex, tp, wordsCard(st), citiesCard(st));
+    main.replaceChildren(...head('Words and boards'), card, lr, ex, tp, wordsCard(st), citiesCard(st));
   }
   /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
      or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
@@ -356,6 +359,11 @@
     const hud = el('section', { class: 'hud' },
       el('header', {}, el('b', { text: 'NOVEL.GLOBAL // STATUS' }), el('span', { text: 'SYNC ' + new Date(o.at).toLocaleTimeString('en-AU') }),
         el('button', { type: 'button', text: 'SAVE SNAPSHOT', onclick: () => { const a = el('a', { href: URL.createObjectURL(new Blob([JSON.stringify({ ...o, traffic: tr }, null, 1)], { type: 'application/json' })), download: `novel-global-status-${new Date().toISOString().slice(0, 16).replace(':', '')}.json` }); document.body.append(a); a.click(); a.remove(); } })),
+      /* today against Cloudflare's free allowances: calm past 60%, resting past 85% (talk and new places wait for tomorrow; printing goes on) */
+      (() => { const U = o.use || { req: 0, w: 0, r2: 0, cap: { req: 1, w: 1, r2: 1 }, level: 0 }, bar = (n, cap, label, txt) => el('div', { class: 'act' }, el('span', { text: label }), el('i', { class: 'bar', style: `width:${Math.min(100, Math.round(100 * n / cap))}%${n / cap >= 0.85 ? ';background:#E25C40' : n / cap >= 0.6 ? ';background:#F2C14E' : ''}` }), el('b', { text: txt }));
+        return el('div', { class: 'cell' }, el('i', { class: 'cap', text: 'FREE ALLOWANCE · TODAY · ' + ['ALL CLEAR', 'CALM: PRINTERS ASK LESS OFTEN', 'RESTING: TALK AND NEW PLACES WAIT FOR TOMORROW'][U.level || 0] }),
+          bar(U.req, U.cap.req, 'REQUESTS', `${U.req.toLocaleString()} / ${U.cap.req.toLocaleString()}`), bar(U.w, U.cap.w, 'ROWS WRITTEN', `${U.w.toLocaleString()} / ${U.cap.w.toLocaleString()}`),
+          bar(U.r2, U.cap.r2 * 0.8, 'FULL-SIZE PHOTOS (R2)', `${(U.r2 / 1e9).toFixed(2)} / ${(U.cap.r2 * 0.8 / 1e9).toFixed(0)} GB`)); })(),
       el('div', { class: 'row' },
         el('div', { class: 'cell g' }, gauge([[S.waiting, '#E25C40'], [S.shown, '#7FE3D3'], [S.refused, '#5F6B7A'], [S.deleted, '#2A3542']], 'SENT')),
         el('div', { class: 'cell g' }, gauge([[Pl.waiting, '#E25C40'], [Pl.shown, '#7FE3D3'], [Pl.deleted, '#2A3542']], 'PLACES')),
