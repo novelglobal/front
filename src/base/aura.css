@@ -412,7 +412,11 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-hung img { max-width: 100% !important; }
 .au-clip { top: -12px; }
 .au-clip.l { left: 18%; } .au-clip.r { right: 18%; }
-#aura .au-seedk { border-style: solid; }
+/* a poster sent: begin again, in submarine yellow, with a small wiggle every few seconds until pressed */
+#aura .au-seedk { border-style: solid; border-color: #F2C230; background: #F2C230; color: #0C1E3C; box-shadow: 0 0 0 4px rgba(242, 194, 48, .28); animation: au-wig 3.2s ease-in-out .6s infinite; }
+#aura .au-seedk svg { stroke: #0C1E3C; }
+@keyframes au-wig { 0%, 72%, 100% { transform: rotate(0); } 76% { transform: rotate(-12deg) scale(1.08); } 80% { transform: rotate(10deg) scale(1.08); } 84% { transform: rotate(-7deg); } 88% { transform: rotate(4deg); } 92% { transform: rotate(0); } }
+@media (prefers-reduced-motion: reduce) { #aura .au-seedk { animation: none; } }
 /* on a phone the poster being made is as wide as the screen allows, scrolled rather than shrunk; the tools for the thing in hand sit at
    the foot of the screen, never over what is being worked on, also when zoomed in */
 @media (max-width: 759px) {

@@ -1802,9 +1802,9 @@
     var go2 = function () { fontReady().then(function () { var g = panel.querySelector(sel); if (!g || !P) return; var o = posterNow(P); lastBoxes = o.boxes; g.width = o.c.width; g.height = o.c.height; g.getContext('2d').drawImage(o.c, 0, 0); selBox(); if (S.stage === 3) { saveSoon(o.c, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); printPreview(); } }); };
     if (P.photo && !P.img) NG.loadImg(P.photo).then(function (im) { P.img = im; P._base = null; go2(); }).catch(go2); else go2();
   }
-  /* at print, the piece shown as the paper will have it: the very sheet the printer is sent, dots and all */
+  /* at print, the sheet the printer will be sent is made ahead (its size known); the piece on screen stays the poster as designed */
   var PV = 0;
-  function printPreview() { var my = ++PV; posterPrint(512, true).then(function (sh) { if (my !== PV || !sh || S.stage !== 3) return; var g = panel.querySelector('.au-eslide.now canvas'); if (!g) return; g.width = sh.width; g.height = sh.height; var x2 = g.getContext('2d'); x2.imageSmoothingEnabled = false; x2.drawImage(sh, 0, 0); g.classList.add('sheet'); }); }
+  function printPreview() { var my = ++PV; posterPrint(512, true).then(function (sh) { if (my !== PV || !sh || S.stage !== 3) return; var g = panel.querySelector('.au-eslide.now canvas'); if (!g) return; g.classList.remove('sheet'); }); }
   api.redraw = function () { redraw(); };
   /* saving a poster to the phone. An iPhone opens a data link and then does nothing with it, so the poster is made into a file ahead of
      time and the tap hands it straight to the share sheet (Save Image). Elsewhere it downloads as a file */
@@ -1858,93 +1858,52 @@
      as line work, crisp. The code is set large, a whole number of dots to each module, with clear paper round it.
      Light paper prints black on white; dark paper prints the head and the four lines reversed, white out of black */
   function printSheet(W, D) {
-    /* the receipt is always black on white: reversed blocks print as white on white */
-    var keep = P.paper, dark = false; P.paper = 'white'; P._base = null; PRINTMODE = true; var pc = posterNow(P), B0 = P._base;
-    var gl = document.createElement('canvas'); gl.width = B0.W; gl.height = B0.H; drawItems(gl.getContext('2d'), P, B0, true);
-    /* the pieces alone on white paper, as they print: what reaches up over the line under the words is taken from here, never the words */
-    var io = document.createElement('canvas'); io.width = B0.W; io.height = B0.H; var iog = io.getContext('2d'); iog.fillStyle = '#fff'; iog.fillRect(0, 0, B0.W, B0.H); var w1 = WHITE; usePaper(true); drawItems(iog, P, B0); usePaper(w1); PRINTMODE = false; P.paper = keep; P._base = null;
-    var src = pc.c, k = W / B0.W, m = 14, parts = [], PS = '"Archivo Narrow", "Arial Narrow", Arial, sans-serif';
+    /* the receipt is the poster as designed: drawn by the same engine at full size on the printer's paper (its colours turned for ink on
+       paper, so nothing is ever white on white or black on black), then brought to the printer's width and made dots: photographs
+       dithered after their tones are stretched, everything else crisp (faint lines kept), the code drawn again to scan */
+    var keep = P.paper, pc, B0; P.paper = 'white'; P._base = null; PRINTMODE = true;
+    try { pc = posterNow(P); B0 = P._base; } finally { PRINTMODE = false; P.paper = keep; P._base = null; }
+    var k = W / B0.W, H = Math.max(1, Math.round(pc.c.height * k));
     var mk = function (h) { var c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round(h)); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, c.height); return c; };
-    /* every dot black or white: words and lines only, never the photograph */
-    var hard = function (c, inv) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data; for (var i = 0; i < d.length; i += 4) { var v = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) < 150 ? 0 : 255; if (inv) v = 255 - v; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } g.putImageData(im, 0, 0); return c; };
-    var crop = function (y0, y1, x0, x1, from) { x0 = Math.max(0, Math.round(x0 || 0)); x1 = Math.min(B0.W, Math.round(x1 || B0.W)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1)); if (y1 - y0 < 4 || x1 - x0 < 4) return null; var kk = W / (x1 - x0), h = Math.round((y1 - y0) * kk), c = mk(h), g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(from || src, x0, y0, x1 - x0, y1 - y0, 0, 0, W, h); return c; };
-    /* words placed over the picture: not dithered with it but laid over it whole, black on a white halo (white on black, turned) */
-    var lay = function (dc, y0, y1, x0, x1) { x0 = Math.max(0, Math.round(x0)); x1 = Math.min(B0.W, Math.round(x1)); y0 = Math.max(0, Math.round(y0)); y1 = Math.min(B0.H, Math.round(y1));
-      var gc = document.createElement('canvas'); gc.width = dc.width; gc.height = dc.height; var gg = gc.getContext('2d'); gg.imageSmoothingQuality = 'high'; gg.drawImage(gl, x0, y0, x1 - x0, y1 - y0, 0, 0, dc.width, Math.round((y1 - y0) * W / (x1 - x0)));
-      var a = gg.getImageData(0, 0, gc.width, gc.height).data, dx = dc.getContext('2d'), im = dx.getImageData(0, 0, dc.width, dc.height), d = im.data;
-      for (var i = 0; i < d.length; i += 4) if (a[i + 3] > 110) { var v = (a[i] * 0.299 + a[i + 1] * 0.587 + a[i + 2] * 0.114) < 128 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
-      dx.putImageData(im, 0, 0); };
+    var out = mk(H), o = out.getContext('2d'); o.imageSmoothingEnabled = true; o.imageSmoothingQuality = 'high';
+    /* down in halves, so fine lines and small words keep their weight */
+    var step = pc.c; while (step.width / 2 > W) { var hc = document.createElement('canvas'); hc.width = Math.round(step.width / 2); hc.height = Math.round(step.height / 2); var hg = hc.getContext('2d'); hg.imageSmoothingQuality = 'high'; hg.drawImage(step, 0, 0, hc.width, hc.height); step = hc; }
+    o.drawImage(step, 0, 0, W, H);
+    /* where the photographs are: the picture, and any photograph put on (line work and codes stay crisp) */
+    var pm = mk(H), pg = pm.getContext('2d'); pg.fillStyle = '#000';
+    if (B0.art) pg.fillRect(B0.art[0] * k, B0.art[1] * k, B0.art[2] * k, B0.art[3] * k);
+    items(P, B0).forEach(function (it) { var a2 = it.key.charAt(0) === 'a' && it.key.length > 1 ? P.adds[+it.key.slice(1)] : null; if (!a2 || a2.k !== 'im' || a2.crisp) return;
+      var s2 = it.tf.s || 1; pg.save(); pg.translate((it.X + it.w * s2 / 2) * k, (it.Y + it.h * s2 / 2) * k); pg.rotate((it.tf.r || 0) * Math.PI / 180); pg.scale(s2 * k, s2 * k); pg.fillRect(-it.w / 2, -it.h / 2, it.w, it.h); pg.restore(); });
+    var md = pg.getImageData(0, 0, W, H).data, anyPic = false; for (var i0 = 0; i0 < md.length; i0 += 64) if (md[i0] < 128) { anyPic = true; break; }
     /* a photograph's tones stretched to the full range and lifted a little in the dark, so it neither washes out nor sinks in the dither */
-    var levels = function (c) { var g = c.getContext('2d'), im = g.getImageData(0, 0, c.width, c.height), d = im.data, h = new Array(256).fill(0), n = d.length / 4;
-      for (var i = 0; i < d.length; i += 4) h[Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114)]++;
-      var lo = 0, hi = 255, acc = 0; while (lo < 255 && (acc += h[lo]) < n * 0.02) lo++; acc = 0; while (hi > 0 && (acc += h[hi]) < n * 0.02) hi--; if (hi - lo < 20) return;
-      for (var j = 0; j < d.length; j += 4) for (var k = 0; k < 3; k++) { var v = Math.max(0, Math.min(1, (d[j + k] - lo) / (hi - lo))); d[j + k] = Math.round(Math.pow(v, 0.85) * 255); }
-      g.putImageData(im, 0, 0); };
-    var blank = function (c) { var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0; for (var i = 0; i < d.length; i += 16) if (d[i] < 150) n++; return n < 12; };
-    /* the head: the mark, the name, the code */
-    /* the head, a quarter smaller and never crowded: the mark and the name at the left; the code at the right; under them, small, the
-       day and its maker's code (on paper only: on the screen's preview, dots). Whatever does not fit is left off, never overlapped */
-    var hd = mk(64), hx = hd.getContext('2d'); hx.fillStyle = '#000'; hx.textBaseline = 'middle';
-    var hmw = ngMark(hx, m + 1, 24, 19, '#000', dotFill(hx, 2)); hx.font = '700 25px "Helvetica Neue", Helvetica, Arial, sans-serif'; var nx = m + hmw + 10; hx.fillText('novel.global', nx, 25); var nEnd = nx + hx.measureText('novel.global').width;
-    var code = (P.note && P.note.code) || ''; if (code) { hx.font = '700 19px ' + PS; var cw = hx.measureText(code).width; if (W - m - cw > nEnd + 16) hx.fillText(code, W - m - cw, 25); }
-    var day = NG.when(P.at || Date.now()).slice(0, 6) + (P.who ? ' · by ' + (S.preview ? '· · ·' : P.who) : ''); hx.font = '500 14px ' + PS; hx.fillText(day, nx, 49);
-    if (!dark) hx.fillRect(m, 61, W - m * 2, 2); parts.push(hard(hd, dark));
-    /* the picture, edge to edge, with everything laid over it */
-    var picP = null; if (B0.art) { var ac = crop(B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); if (ac) { levels(ac); var dc = NG.forPrint(ac, W, D); lay(dc, B0.art[1] - 2, B0.art[1] + B0.art[3] + 2, B0.art[0] - 2, B0.art[0] + B0.art[2] + 2); picP = dc; } }
-    if (picP) picP._pic = 1; if (picP && !P.wtop) parts.push(picP);
-    /* the words, at the printer's size */
-    var tw = mk(10), tx = tw.getContext('2d'), lines = P.lines || [], rows = [], said = P.say && lines.indexOf(P.say) < 0 ? P.say : '';
-    tx.font = '600 40px ' + PS; var tl = said ? wrap(tx, said, W - m * 2).slice(0, 4) : [];
-    tx.font = '600 32px ' + PS; lines.forEach(function (l) { if (l) wrap(tx, l, W - m * 2).forEach(function (w, j) { rows.push([j ? '' : '·', w]); }); });
-    if (tl.length || rows.length) {
-      tw = mk(20 + tl.length * 48 + (tl.length && rows.length ? 12 : 0) + rows.length * 42 + lines.filter(Boolean).length * 10 + 16); tx = tw.getContext('2d'); tx.fillStyle = '#000'; tx.textBaseline = 'top'; var y = 16;
-      tx.font = '600 40px ' + PS; tl.forEach(function (l) { tx.fillText(l, m, y); y += 48; }); if (tl.length && rows.length) y += 12;
-      rows.forEach(function (r, i) { if (r[0] && i) y += 10; tx.font = '600 32px ' + PS; tx.fillText(r[1], m, y + 1); y += 42; });
-      parts.push(hard(tw, dark));
+    var im = o.getImageData(0, 0, W, H), d = im.data;
+    if (anyPic) {
+      var h = new Array(256).fill(0), n = 0; for (var i = 0; i < d.length; i += 4) if (md[i] < 128) { h[Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114)]++; n++; }
+      var lo = 0, hi = 255, acc = 0; while (lo < 255 && (acc += h[lo]) < n * 0.02) lo++; acc = 0; while (hi > 0 && (acc += h[hi]) < n * 0.02) hi--;
+      var pic = mk(H), pd = pic.getContext('2d').getImageData(0, 0, W, H), pdd = pd.data;
+      for (var j = 0; j < d.length; j += 4) { var v0 = d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114, v = hi - lo >= 20 ? Math.max(0, Math.min(1, (v0 - lo) / (hi - lo))) : v0 / 255; pdd[j] = pdd[j + 1] = pdd[j + 2] = md[j] < 128 ? Math.round(Math.pow(v, 0.85) * 255) : 255; pdd[j + 3] = 255; }
+      pic.getContext('2d').putImageData(pd, 0, 0); var dt = NG.forPrint(pic, W, D), dd = dt.getContext('2d').getImageData(0, 0, W, H).data;
+      for (var q0 = 0; q0 < d.length; q0 += 4) if (md[q0] < 128) d[q0] = d[q0 + 1] = d[q0 + 2] = dd[q0] < 128 ? 0 : 255;
     }
-    if (picP && P.wtop) parts.push(picP);
-    /* what was caught or added below the words, as line work */
-    /* pictures placed there are photographs, not line work: they are dithered as the main picture is, the rest kept crisp */
-    /* everything below the words to the foot, beside the code too; the code's own place left clear, as it is set again crisp below */
-    /* the band below the words, as the poster lays it out: its pieces where they are, and the code in its own place in the same row.
-       A piece reaching up over the line under the words comes through whole (only the pieces themselves, never the words beside them) */
-    var boxes = items(P, B0).map(function (it) { var s2 = it.tf.s || 1; return [it.X - 10, it.Y - 10, it.X + it.w * s2 + 10, it.Y + it.h * s2 + 10]; });
-    var line0 = B0.band - 16, top0 = line0, floor0 = B0.art ? B0.art[1] + B0.art[3] + 4 : 0;
-    boxes.forEach(function (bq) { if (bq[3] > B0.band && bq[1] < line0) top0 = Math.max(floor0, Math.min(top0, bq[1])); });
-    var bx = [top0, B0.H - 2, B0.pad - 8, B0.W - B0.pad + 8], bd = crop(bx[0], bx[1], bx[2], bx[3]), bk = W / (bx[3] - bx[2]);
-    var clearQR = function (c) { if (!B0.qr) return; var g4 = c.getContext('2d'); g4.fillStyle = '#fff'; g4.fillRect((B0.qr.x - 16 - bx[2]) * bk, (B0.qr.y - 16 - bx[0]) * bk, (B0.qr.s + 32) * bk, (B0.qr.s + 32) * bk); };
-    var aboveLine = function (c) { if (top0 >= line0) return; var hh = Math.round((line0 - top0) * bk), pc2 = crop(top0, line0, bx[2], bx[3], io); if (pc2) { var g5 = c.getContext('2d'); g5.fillStyle = '#fff'; g5.fillRect(0, 0, W, hh); g5.drawImage(pc2, 0, 0, W, hh); } };
-    if (bd) { clearQR(bd); aboveLine(bd); var ln = mk(bd.height); ln.getContext('2d').drawImage(bd, 0, 0); hard(ln); var anyPic = false, md = null;
-      if (!blank(ln)) { var pm = document.createElement('canvas'); pm.width = B0.W; pm.height = B0.H; var pg = pm.getContext('2d'); pg.fillStyle = '#000';
-        items(P, B0).forEach(function (it) { var a2 = it.key.charAt(0) === 'a' && it.key.length > 1 ? P.adds[+it.key.slice(1)] : null; if (!a2 || a2.k !== 'im' || a2.crisp) return; anyPic = true;
-          var s2 = it.tf.s || 1, w2 = it.w * s2, h2 = it.h * s2; pg.save(); pg.translate(it.X + w2 / 2, it.Y + h2 / 2); pg.rotate((it.tf.r || 0) * Math.PI / 180); pg.scale(s2, s2); pg.fillRect(-it.w / 2 - 8, -it.h / 2 - 8, it.w + 16, it.h + 16); pg.restore(); });
-        if (anyPic) { var mc2 = crop(bx[0], bx[1], bx[2], bx[3], pm); md = mc2.getContext('2d').getImageData(0, 0, W, mc2.height).data; levels(bd); var dt = NG.forPrint(bd, W, D), dd = dt.getContext('2d').getImageData(0, 0, W, dt.height).data, lx = ln.getContext('2d'), li = lx.getImageData(0, 0, W, ln.height), l2 = li.data;
-          for (var i3 = 0; i3 < l2.length && i3 < dd.length; i3 += 4) if (md[i3] < 128) { var v3 = dd[i3] < 128 ? 0 : 255; l2[i3] = l2[i3 + 1] = l2[i3 + 2] = v3; } lx.putImageData(li, 0, 0); } }
-      /* the code where the poster has it, right-aligned to its place and as large as a phone needs (a whole number of dots to every
-         square, four at least), its quiet paper round it; the band grows if the code needs more room than the poster gave it */
-      var Q = window.qrcode, qk = null; if (Q && P.note && P.note.code && B0.qr) { try {
-        var q = Q(0, 'M'); q.addData(NG.noteURL(P.note)); q.make(); var mc = q.getModuleCount(), want = Math.max(B0.qr.s * bk, 200), cell = Math.floor(Math.min(260, want) / mc);
-        if (cell < 4) { q = Q(0, 'L'); q.addData(NG.noteURL(P.note)); q.make(); mc = q.getModuleCount(); cell = Math.max(4, Math.floor(Math.min(260, want) / mc)); }
-        var side = cell * mc, quiet = cell * 2, qx = Math.round(Math.min(W - m - side, (B0.qr.x + B0.qr.s - bx[2]) * bk - side)), qy = Math.round(Math.max(quiet, (B0.qr.y - bx[0]) * bk));
-        if (qy + side + quiet > ln.height) { var big = mk(qy + side + quiet + 6); big.getContext('2d').drawImage(ln, 0, 0); ln = big; }
-        var qg = ln.getContext('2d'); qg.fillStyle = '#fff'; qg.fillRect(qx - quiet, qy - quiet, side + quiet * 2, side + quiet * 2); qg.fillStyle = '#000';
-        for (var a = 0; a < mc; a++) for (var b = 0; b < mc; b++) if (q.isDark(a, b)) qg.fillRect(qx + b * cell, qy + a * cell, cell, cell);
-        qk = [qx - quiet, qy - quiet, side + quiet * 2, side + quiet * 2]; } catch (e) { qk = null; } }
-      /* no empty paper under the last mark */
-      var ld = ln.getContext('2d').getImageData(0, 0, W, ln.height).data, last = 0; for (var yy3 = ln.height - 1; yy3 >= 0 && !last; yy3--) for (var xx3 = 0; xx3 < W; xx3 += 2) if (ld[(yy3 * W + xx3) * 4] < 128) { last = yy3; break; }
-      if (last) { var lt = mk(Math.min(ln.height, last + 18)); lt.getContext('2d').drawImage(ln, 0, 0); if (md) lt._mask = md; if (qk) lt._keep = qk; parts.push(lt); } }
-    /* blue paper prints as a night slip: the paper a fine dark shade (five dots in eight, in a regular weave, so it reads as a polished
-       grey rather than a solid black the head would labour over), every word, line, mark and icon white with a thin dark edge to hold
-       it. Photographs stay as they are; the code keeps a white tile of its own, so it always scans */
+    /* everything else black or white; a faint line still prints */
+    for (var t = 0; t < d.length; t += 4) { if (anyPic && md[t] < 128) { d[t + 3] = 255; continue; } var lum = d[t] * 0.299 + d[t + 1] * 0.587 + d[t + 2] * 0.114; d[t] = d[t + 1] = d[t + 2] = lum < 200 ? 0 : 255; d[t + 3] = 255; }
+    o.putImageData(im, 0, 0);
+    /* the code where the poster has it, a whole number of dots to every square (four at least, so a phone reads it), its quiet paper round it */
+    var Q = window.qrcode, qk = null; if (Q && P.note && P.note.code && B0.qr) { try {
+      var q = Q(0, 'M'); q.addData(NG.noteURL(P.note)); q.make(); var mc = q.getModuleCount(), cell = Math.max(4, Math.floor(B0.qr.s * k / mc));
+      var side = cell * mc, quiet = cell * 2, qx = Math.round(Math.max(quiet, (B0.qr.x + B0.qr.s) * k - side)), qy = Math.round(Math.max(quiet, (B0.qr.y + B0.qr.s) * k - side));
+      if (qy + side + quiet > out.height) { var big = mk(qy + side + quiet + 6); big.getContext('2d').drawImage(out, 0, 0); out = big; o = out.getContext('2d'); H = out.height; }
+      o.fillStyle = '#fff'; o.fillRect(qx - quiet, qy - quiet, side + quiet * 2, side + quiet * 2); o.fillStyle = '#000';
+      for (var qa = 0; qa < mc; qa++) for (var qb = 0; qb < mc; qb++) if (q.isDark(qa, qb)) o.fillRect(qx + qb * cell, qy + qa * cell, cell, cell);
+      qk = [qx - quiet, qy - quiet, side + quiet * 2, side + quiet * 2]; } catch (e) { qk = null; } }
+    /* blue paper prints as a night slip, as the poster looks: the paper a fine dark shade, every word, line, mark and icon white with a thin
+       dark edge to hold it; photographs as they are, and the code on a white tile of its own so it always scans */
     var night = P.pnight != null ? !!P.pnight : START.printNight === 'day' ? false : START.printNight === 'night' ? true : keep !== 'white';
-    if (night) parts = parts.map(function (c) { return c._pic ? c : nightOf(c, c._keep, c._mask); });
-    /* one strip of paper; a little run-out at the end for the tear */
-    var H = parts.reduce(function (s2, c) { return s2 + c.height; }, 0) + 40, out = mk(H), o = out.getContext('2d'), yy = 0;
-    parts.forEach(function (c) { o.drawImage(c, 0, yy); yy += c.height; });
-    var dk = night; if (dk) { o.fillStyle = '#000'; for (var ry = yy; ry < H; ry++) for (var rx = 0; rx < W; rx++) if (BAYER[(ry & 3) * 4 + (rx & 3)] < 10) o.fillRect(rx, ry, 1, 1); }
-    if (P.wm) { var wc = mk(H), wx = wc.getContext('2d'), wh2 = (W - m * 2) * 0.42, top = H - 40; ngMark(wx, (W - wh2 * 2.36) / 2, Math.min(top - wh2, H * 0.46), wh2, dotFill(wx, 4), dotFill(wx, 7));
-      var wd = wx.getImageData(0, 0, W, top).data, oi = o.getImageData(0, 0, W, top), od = oi.data; for (var i5 = 0; i5 < od.length; i5 += 4) if (wd[i5] < 128 && (dk ? od[i5] < 128 : od[i5] > 128)) { od[i5] = od[i5 + 1] = od[i5 + 2] = dk ? 255 : 0; } o.putImageData(oi, 0, 0); }
-    return out;
+    if (night) { var mask = md.length === W * out.height * 4 ? md : null; if (!mask && anyPic) { var m2 = mk(out.height); m2.getContext('2d').drawImage(pm, 0, 0); mask = m2.getContext('2d').getImageData(0, 0, W, out.height).data; } nightOf(out, qk, anyPic ? mask : null); }
+    /* a little run-out at the end for the tear */
+    var fin = mk(out.height + 40), fo = fin.getContext('2d'); fo.drawImage(out, 0, 0);
+    if (night) { fo.fillStyle = '#000'; for (var ry = out.height; ry < fin.height; ry++) for (var rx = 0; rx < W; rx++) if (BAYER[(ry & 3) * 4 + (rx & 3)] < 10) fo.fillRect(rx, ry, 1, 1); }
+    return fin;
   }
   var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
   /* a part of the receipt turned to night: ink to white, paper to the shade, a dark edge round every white mark; keep (a rectangle)
@@ -2086,7 +2045,7 @@
     var pm = pmode();
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : 'Print') + '"') +
       hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
-      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + nav(1);
+      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
       (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete" aria-label="Delete it from here"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
@@ -2100,6 +2059,7 @@
       $('#au-pnight').addEventListener('click', function () { P.pnight = !printNight(); changed(); paint(); bell(P.pnight ? 2 : 5, 0.16); });
       $('#au-paper').addEventListener('click', function () { P.paper = P.paper === 'white' ? 'blue' : 'white'; changed(); redraw(); this.setAttribute('aria-pressed', String(P.paper === 'white')); bell(5, 0.16); });
       NG.sureTap($('#au-reset'), function () { letGo(); });
+      var nk = $('#au-newk'); if (nk) nk.addEventListener('click', function () { letGo(); });
     } else {
       var sd = $('#au-print'); if (sd) sd.addEventListener('click', function () { letGo(); });
       var nm = 'novel-global-' + (f.code || 'poster') + '.jpg', wf = null; fetch(f.src).then(function (r) { return r.blob(); }).then(function (b) { wf = new File([b], nm, { type: b.type || 'image/jpeg' }); }).catch(function () {});
