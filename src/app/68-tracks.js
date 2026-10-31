@@ -148,7 +148,9 @@ function markTweak() { if (S.tweaked) return; S.tweaked = true; if (S.open && S.
 let auraHeld = false;
 if (IN_AURA) addEventListener('message', e => {
   if (e.origin !== location.origin || !e.data || e.data.ng !== 'hush') return;
-  if (e.data.on && S.radio) { auraHeld = true; setRadio(false, true); } else if (!e.data.on && auraHeld) { auraHeld = false; setRadio(true, true); }
+  /* the SOUND desk plays: everything here waits (the radio, the songs on the four-track, a recording), and comes back when it stops */
+  if (e.data.on) { if (auraHeld) return; const loop = !S.radio && LOOP.ms.length ? snapOf().ms : null; if (!S.radio && !loop && !REC) return; auraHeld = { radio: S.radio, loop }; recStop(); if (S.radio) setRadio(false, true); else if (loop) { LOOP.ms = []; loopSync(false); } }
+  else if (auraHeld) { const h = auraHeld; auraHeld = false; if (h.radio) setRadio(true, true); else if (h.loop) { LOOP.ms = rebeat(h.loop); loopSync(true); } }
 });
 function setRadio(on, quiet) {
   if (on && !S.started) { startRadio(true); return; }
@@ -163,7 +165,7 @@ function setRadio(on, quiet) {
 }
 /* the radio's VU meter, on its studio side: the needle kicks with every cell the sweep plays and falls back */
 let vuT = 0, vuV = 0;
-function vuKick() { const n = document.querySelector('#view .vu'); if (!n) return; vuV = Math.min(1, vuV * 0.6 + 0.42); n.style.setProperty('--v', vuV.toFixed(2)); clearTimeout(vuT); vuT = setTimeout(() => { vuV = 0; n.style.setProperty('--v', '0'); }, 160); }
+function vuKick() { eqWake(); if (eqRaf) return; const n = document.querySelector('#view .vu'); if (!n) return; vuV = Math.min(1, vuV * 0.6 + 0.42); n.style.setProperty('--v', vuV.toFixed(2)); clearTimeout(vuT); vuT = setTimeout(() => { vuV = 0; n.style.setProperty('--v', '0'); }, 160); }
 /* a layer's meter moves as the sweep plays it */
 function flashLayer(k) {
   vuKick();
@@ -310,7 +312,8 @@ const inFour = () => LOOP.ms.length > 0 && LOOP.ms.every(t => !t.live && FOUR().
 const snapOf = () => ({ radio: S.radio, ms: LOOP.ms.map(t => ({ m: t.m, live: t.live, of: t.of })) });
 const rebeat = ms => { let t0 = null; return ms.map(x => { const tr = { ...trackOf(x.m, t0), live: x.live, of: x.of }; if (t0 == null) t0 = tr.t0; return tr; }); };
 /* something new plays: what played is kept to come back to */
-function startPlay(ms) { LOOP.back.push(snapOf()); if (LOOP.back.length > 6) LOOP.back.shift(); LOOP.paused = null; LOOP.ms = ms; loopSync(true); }
+/* songs played without the radio still tell the aura, so its SOUND desk waits under them */
+function startPlay(ms) { auraHeld = false; try { if (IN_AURA && !S.radio && ms.length) window.parent.postMessage({ ng: 'radio', on: true }, location.origin); } catch (e) { /* alone */ } LOOP.back.push(snapOf()); if (LOOP.back.length > 6) LOOP.back.shift(); LOOP.paused = null; LOOP.ms = ms; loopSync(true); }
 /* what played stops: what it replaced comes back, as it was (songs, the radio alone, or quiet) */
 function comeBack() {
   const s = LOOP.back.pop(); LOOP.ms = s ? rebeat(s.ms) : []; loopSync(!!LOOP.ms.length);
@@ -383,18 +386,19 @@ async function shareSong(l) {
   if (navigator.share) { try { await navigator.share({ title, url }); toast('✓ SHARED'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60));
 }
-/* a song as a sound file: it plays alone from the top of its turn, one whole turn is recorded as it sounds (m4a on an iPhone,
-   else webm), and kept on this phone with its song (IndexedDB, rec:<id>), to be heard again in SONGS and saved at any time. A
+/* a song as a sound file: it plays alone from the top of its turn, one turn is taken as it sounds, its tail folded over its head, a WAV that loops on itself without a seam, and kept on this phone with its song (IndexedDB, rec:<id>), to be heard again in SONGS and saved at any time. A
    computer downloads it at once; a phone saves a file only from a tap, so the four-track shows a link to it, ready to press */
 let filing = false, FILED = null;   // FILED: the last loop the four-track recorded, its link waiting: { id, url, name }
-const recName = (l, type) => `novel-global-${String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radio'}-loop.${/mp4/.test(type || '') ? 'm4a' : 'webm'}`;
+const recName = (l, type) => `novel-global-${String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radio'}-loop.${/wav/.test(type || '') ? 'wav' : /mp4/.test(type || '') ? 'm4a' : 'webm'}`;
 async function loopFile(l, four) {
   if (filing) return; filing = true; if (!prefs.sound) { prefs.sound = true; savePrefs(); } snd.wake(); recStop();
   const ms = tracksOf(l), dur = Math.max(...ms.map(t => loopDur(t.m))), t0 = performance.now() + 150; for (const t of ms) { t.t0 = t0; t.step = null; }
-  startPlay(ms); $$('[data-t4save], [data-song-file]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 1200);
-  try { const b = await snd.record(dur + 1000); await big.set('rec:' + l.id, b); l.rec = { at: Date.now(), type: b.type, s: Math.round(dur / 1000) }; store.set('da.loops.v1', LOOPS);
+  startPlay(ms); $$('[data-t4save], [data-song-file]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 4200);
+  try { await new Promise(r => setTimeout(r, 150)); const b = await snd.record(dur, 3000); await big.set('rec:' + l.id, b); l.rec = { at: Date.now(), type: b.type, s: Math.round(dur / 1000) }; store.set('da.loops.v1', LOOPS);
     const name = recName(l, b.type); FILED = { id: l.id, url: URL.createObjectURL(b), name, four: !!four }; RECURL.set(l.id, FILED.url);
-    if (!coarse()) download(name, b); toSound(l, l.id); toast(coarse() ? '✓ IN SONGS + SOUND · ↓ SAVES IT' : '✓ SAVED · IN SONGS + SOUND', 3600); made('song', 'loop'); }
+    /* in the aura's window the page itself saves it (a phone saves nothing from inside a window); alone, a computer downloads at once */
+    let up = false; if (IN_AURA) { try { parent.postMessage({ ng: 'file', blob: b, name }, location.origin); up = true; } catch (e) { up = false; } }
+    if (!up && !coarse()) download(name, b); toSound(l, l.id); toast(up || coarse() ? '✓ IN SONGS + SOUND · ↓ SAVES IT' : '✓ SAVED · IN SONGS + SOUND', 3600); made('song', 'loop'); }
   catch (e) { toast('NOT SAVED · TRY AGAIN'); }
   $$('[data-t4save], [data-song-file]').forEach(b => b.classList.remove('going')); if (LOOP.ms.length && LOOP.ms.every(t => t.of === l.id)) comeBack(); filing = false;
   refreshFour(); if (S.view !== 0) refreshPanel();

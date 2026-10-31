@@ -539,18 +539,35 @@ const snd = (() => {
     let t = t0; for (const [s2, dur] of d.notes) { INST[d.inst](qn(semi(f, s2)), t, dur, (GAIN[d.inst] || 0.06) * v, pan); t += dur; }
     return d.len;
   }
+  /* the turn made 32 kHz round its own circle (a short windowed sinc, its taps wrapping from the end to the start, so the join stays
+     unbroken), then written as 16-bit WAV */
+  function wavLoop(chans, sr) {
+    const R = Math.min(sr, 32000), N = chans[0].length, M = Math.round(N * R / sr), st = N / M, fc = R < sr ? 0.45 * R / sr : 0.5, W = R < sr ? 8 : 0;
+    const out = chans.map(x => { if (!W) return x; const y = new Float32Array(M); for (let k = 0; k < M; k++) { const p = k * st, i0 = Math.floor(p); let s = 0;
+      for (let j = i0 - W + 1; j <= i0 + W; j++) { const t = p - j, w = 0.5 + 0.5 * Math.cos(Math.PI * t / W), h = t ? Math.sin(2 * Math.PI * fc * t) / (Math.PI * t) : 2 * fc; s += x[((j % N) + N) % N] * h * w; }
+      y[k] = s; } return y; });
+    const n = out[0].length, ch = out.length, ab = new ArrayBuffer(44 + n * ch * 2), v = new DataView(ab), str = (p, s) => { for (let i = 0; i < s.length; i++) v.setUint8(p + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * ch * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+    v.setUint32(24, R, true); v.setUint32(28, R * ch * 2, true); v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * ch * 2, true);
+    for (let k = 0, o = 44; k < n; k++) for (let j = 0; j < ch; j++, o += 2) { const x = Math.max(-1, Math.min(1, out[j][k])); v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7FFF, true); }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
   return {
     describe,
     /* woken inside a touch itself, as phones require: true once sound can play */
     lite: LITE,
-    /* what reaches the speaker for ms milliseconds, as a sound file: m4a where the phone makes it (Safari), else webm */
-    record(ms) {
-      const c = ready(); if (!c || !tap || !window.MediaRecorder || !c.createMediaStreamDestination) return Promise.reject(new Error('none'));
-      const type = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
-      const dst = c.createMediaStreamDestination(); tap.connect(dst); const rec = new MediaRecorder(dst.stream, type ? { mimeType: type } : {}), parts = [];
-      return new Promise((ok, no) => { rec.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
-        rec.onstop = () => { try { tap && tap.disconnect(dst); } catch (e) { /* gone */ } const b = new Blob(parts, { type: rec.mimeType || type || 'audio/webm' }); b.size ? ok(b) : no(new Error('empty')); };
-        rec.onerror = e => no(e.error || new Error('record')); rec.start(500); setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, ms); });
+    /* one turn of what reaches the speaker, as a WAV that loops on itself: the mix taken sample by sample (no encoder, so no gap at
+       either end), one turn and its tail, the tail (echo, hall) laid back over the head as it would ring into the next turn, cut to the
+       turn exactly; no fade. 32 kHz stereo, 16-bit: about a megabyte for an eight-second turn */
+    record(ms, tail = 3000) {
+      const c = ready(); if (!c || !tap || !c.createScriptProcessor) return Promise.reject(new Error('none'));
+      const sr = c.sampleRate, N = Math.round(ms / 1000 * sr), want = N + Math.round(tail / 1000 * sr), L = [], R = []; let got = 0;
+      const sp = c.createScriptProcessor(4096, 2, 2);
+      return new Promise((ok, no) => {
+        sp.onaudioprocess = e => { if (got >= want) return; const ib = e.inputBuffer, l = ib.getChannelData(0), r = ib.numberOfChannels > 1 ? ib.getChannelData(1) : l; L.push(new Float32Array(l)); R.push(new Float32Array(r)); got += l.length;
+          if (got < want) return; try { tap.disconnect(sp); sp.disconnect(); } catch (er) { /* gone */ }
+          try { ok(wavLoop([L, R].map(parts => { const o = new Float32Array(N); let k = 0; for (const p of parts) for (let i = 0; i < p.length && k < want; i++, k++) o[k % N] += p[i]; return o; }), sr)); } catch (er) { no(er); } };
+        tap.connect(sp); sp.connect(c.destination); setTimeout(() => { if (got < want) { try { tap.disconnect(sp); sp.disconnect(); } catch (er) { /* gone */ } no(new Error('record')); } }, ms + tail + 4000); });
     },
     wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
     /* El Niño: the same tempo, more heat: the mix opened and driven harder */

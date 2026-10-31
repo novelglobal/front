@@ -470,7 +470,7 @@ async function sendSignal() {
   Object.assign(WDRAFT, { w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT);
   tie(1); snd.printer(900); buzz([10, 40, 10]); toast('✓');
   slipCanvas(sig, 384, 2, false, false).then(c => thumbOf(c.toDataURL('image/png'), 240)).then(u => addToBoard(u, 'receipt', 200)).catch(() => {});
-  PRESS.story = ev.key; setView(2); return sig;
+  PRESS.story = ev.key; goDev(2); return sig;
 }
 /* ───────── the book: the boards, the signals and constellations under each, and the field notes ───────── */
 const LAYER_W = Object.fromEntries(LAYERS.map(L => [L.k, L.w]));

@@ -470,7 +470,7 @@ async function jMake() {
     JR.sel = null; JR.want = ''; JR.acts = []; jrOpen = false; jrFold = false; clearK = ''; saveJR();
     PRESS.story = ev.key; PRESS.fmt = 'r80'; PRESS.zl = phone() ? 1 : 0; jFresh = true; if (!simple()) setFace(2, 'front');
     if (first) jGo(3); if (im) flyToTab(2, im);
-    setTimeout(() => { setView(2); if (phone()) setPane('page'); }, reduced() ? 0 : 560);
+    setTimeout(() => { goDev(2); if (phone()) setPane('page'); }, reduced() ? 0 : 560);
   } finally { jMaking = false; }
 }
 

@@ -20,10 +20,10 @@ const flipBtn = () => { const f = faceOf(S.view); return FACED.includes(S.view) 
 function flip() {
   const i = S.view; if (!FACED.includes(i) || S.mode || simple()) return; const to = faceOf(i) === 'front' ? 'back' : 'front'; snd.tick(to === 'back' ? 1250 : 1750);
   prefs.flipped = { ...(prefs.flipped || {}), [i]: 1 };
-  const go = () => { setFace(i, to); headBar(); renderView(); viewEl.scrollTop = 0; };
-  if (reduced()) { go(); return; }
-  /* the other face at once, settling in one short turn: never faded out and back. The page's own fade (.in) is taken off first: left on, it ran again from nothing as the turn ended, and the device strobed */
-  viewEl.classList.remove('flip-in', 'flip-out', 'in'); go(); void viewEl.offsetWidth; viewEl.classList.add('flip-in'); setTimeout(() => viewEl.classList.remove('flip-in'), 280);
+  /* the other face in the same frame, where the device already stands: no fade and no turn (on a phone each strobed), and the rail
+     set before the face is painted, never a frame later where the ResizeObserver would have moved it */
+  viewEl.classList.remove('flip-in', 'flip-out', 'in'); setFace(i, to); headBar(); renderView(); viewEl.scrollTop = 0;
+  if (railOn()) { RAIL.key = `${i}|${to}`; railFit(); }
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-flip]')) flip(); });
 /* ───────── on a phone the device rides a rail: up from the foot over the big screen, and a finger slides it up and down, never
