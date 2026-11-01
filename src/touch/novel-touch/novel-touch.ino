@@ -31,7 +31,7 @@
 #define NG_PRINTER "printer id"
 #define NG_TOKEN   "touch token"
 #define NG_BUZZ    -1   // a small vibration motor on a free pin (43 or 44) for a felt tap; -1 for none
-#define NG_VERSION "31 Oct 14"   // shown on the setup and joining screens, to know which sketch is on the board
+#define NG_VERSION "1 Nov 15"   // shown on the setup and joining screens, to know which sketch is on the board
 #define NG_AUTOPRINT 30  // seconds a slip waits before it prints by itself; 0: never, every slip waits for a press (the screen as the approval)
 #define NG_CODE    "888" // the three numbers for the hidden menu (hold, hold again, then these)
 #define NG_TURN    1    // which way up: 1, or 3 to turn the picture round (the USB socket on the other side)
@@ -274,7 +274,9 @@ float PY(float y) { return (y - cam.y) * cam.z + H / 2 + shy; }
 
 /* ───────── the irukandji, drawn as the site draws it ───────── */
 struct Jelly { float x = W / 2, y = 20, bw = 96, a = 0, sq = 0, jit = 0, len = 1, run = -1, look = 0, tp = 0, rate = 1, glow = 0; int eye = 0; bool cue = false; } J;
-// eye: 0 open, 1 squeezed shut (> <), 2 asleep, 3 wide
+// eye: 0 open, 1 squeezed shut (> <), 2 asleep, 3 wide, 4 a cheeky closed smile (^)
+/* how it is actually moving (the spring's speed), how far it leans or turns, and a strand waved */
+float Jvx = 0, Jvy = 0, Jroll = 0, Jwave = 0;
 float tX[4][44], tY[4][44]; const int NT = 44, NR = 48;
 float bellX[NR], bellY[NR], bTop, bBot, bW, eyeX, eyeY, pupR;
 float pulse(float t) { float p = fmodf(t, 3.6f) / 3.6f; return p < 0.28f ? sinf(p / 0.28f * PI / 2) : cosf((p - 0.28f) / 0.72f * PI / 2); }
@@ -287,11 +289,11 @@ void drawJelly(float t) {
   float z = cam.z, p = pulse(J.tp), sq = J.sq, bw = J.bw, bh = bw * 0.58f, A = J.a;
   float w = bw * (1 - 0.07f * p) / 2 * (1 + 0.55f * sq), h = bh * (1 + 0.045f * p) * (1 - 0.72f * sq);
   /* Deterministic, continuous micro-motion: never randomise the body position frame-to-frame. */
-  float jx = J.jit * (sinf(t * 17.0f) * 0.34f + sinf(t * 9.3f) * 0.18f),
-        jy = J.jit * 0.6f * (sinf(t * 13.1f + 0.7f) * 0.28f + sinf(t * 6.7f) * 0.16f),
+  float jx = J.jit * (sinf(t * 8.5f) * 0.34f + sinf(t * 5.1f) * 0.18f),
+        jy = J.jit * 0.6f * (sinf(t * 7.3f + 0.7f) * 0.28f + sinf(t * 3.9f) * 0.16f),
         cx = J.x + jx, top = J.y + jy + (bh - h) * (0.3f + 0.7f * sq), bot = top + h;
-  /* A slow, continuous full turn: upright, upside-down, and back without a pose reset. */
-  float roll = jellyRollEnabled ? (2.0f * PI * (0.5f - 0.5f * cosf(t * 0.11f)) + 0.16f * sinf(t * 0.47f)) : 0.0f;
+  /* upright, leaning into where it swims (the loop sets it); a whole turn only as a cheeky somersault */
+  float roll = jellyRollEnabled ? Jroll : 0.0f;
   float rollCx = cx, rollCy = top + h * 0.42f;
   bTop = top; bBot = bot; bW = w;
   /* its light: not a glow but a scatter of fine dots round the bell, thinning outward and breathing with it, like the site's paper grain */
@@ -303,22 +305,13 @@ void drawJelly(float t) {
   for (int i = 0; i < 4; i++) {
     float rx = cx + (i - 1.5f) / 1.5f * w * 0.82f, ry = bot - 1;
     for (int j = 0; j < NT; j++) { float s = j / (NT - 1.0f), env = fminf(1, s * 5) * sinf(PI * (0.15f + 0.85f * s));
-      float drift = env * (sinf(s * (11 + i * 1.5f) - t * 1.3f + i * 1.7f) * 2.4f * writhe + (sinf(t * 0.66f + i * 3.3f + s * 2.2f) * 0.6f + sinf(t * 0.5f + i + s * 3) * 0.4f) * 14 + J.look * s * 10);
+      float drift = env * (sinf(s * (11 + i * 1.5f) - t * 1.3f + i * 1.7f) * 2.4f * writhe + (sinf(t * 0.66f + i * 3.3f + s * 2.2f) * 0.6f + sinf(t * 0.5f + i + s * 3) * 0.4f) * 8 + J.look * s * 7);
       float naturalX = rx + (i - 1.5f) * s * bw * 0.14f + drift;
-      /* Outer tentacles curl to the bezel and lightly hold it; inner ones reach toward the corners. */
-      float gu = fmaxf(0.0f, fminf(1.0f, (s - 0.68f) / 0.32f));
-      float grip = gu * gu * (3.0f - 2.0f * gu);
-      /* Each strand has its own tide: grip, release, curl and reach are deliberately out of phase. */
-      float tide = 0.5f + 0.5f * sinf(t * (0.16f + i * 0.013f) + i * 2.2f);
-      float release = fmaxf(0.0f, sinf(t * 0.23f + i * 2.1f + 0.8f));
-      float edgeX = (i < 2) ? 4.0f + 13.0f * tide : (W - 4.0f - 13.0f * tide);
-      float edgeY = 12.0f + (i % 2) * 20.0f + sinf(t * 0.37f + i * 1.9f) * 9.0f;
-      float freeGrip = grip * (0.30f + 0.70f * tide) * (1.0f - 0.72f * release);
-      float curl = sinf(s * 10.0f + t * 0.9f + i * 2.7f) * s * s * 12.0f;
-      tX[i][j] = (naturalX + curl) * (1.0f - freeGrip) + edgeX * freeGrip;
-      tY[i][j] = (ry + s * Lt + env * sinf(t * 0.54f + i * 7.1f + s * 3) * 4) * (1.0f - freeGrip) + edgeY * freeGrip;
-      /* The distal tip lifts away from the bezel in a slow wave, then catches it again. */
-      tY[i][j] -= release * s * s * 24.0f;
+      /* a lazy curl at the tips; the strands trail the swim, a beat behind; the last one lifted and waggled for a wave */
+      float curl = sinf(s * 7.0f + t * 0.9f + i * 2.7f) * s * s * 6.0f;
+      float lagX = -Jvx * s * s * 0.16f, lagY = -Jvy * s * s * 0.10f, wv = i == 3 ? Jwave * s * s : 0;
+      tX[i][j] = naturalX + curl + lagX + wv * (14.0f + sinf(t * 7.0f - s * 5.0f) * 9.0f);
+      tY[i][j] = ry + s * Lt + env * sinf(t * 0.54f + i * 7.1f + s * 3) * 4 + lagY - wv * Lt * 0.55f;
     }
     for (int j = 1; j < NT; j++) { float s = j / (NT - 1.0f); seg(jellyPX(tX[i][j - 1], tY[i][j - 1], rollCx, rollCy, roll), jellyPY(tX[i][j - 1], tY[i][j - 1], rollCx, rollCy, roll), jellyPX(tX[i][j], tY[i][j], rollCx, rollCy, roll), jellyPY(tX[i][j], tY[i][j], rollCx, rollCy, roll), (1.1f - 0.6f * s) * z, INK, A * (0.62f - 0.3f * s), false); }
     for (int j = 4; j < NT - 1; j += 3) { float tw = 0.5f + 0.5f * sinf(t * 2.2f - j * 0.5f + i), run = J.run >= 0 ? fmaxf(0, 1 - fabsf(J.run - (float)j / NT) * 8) : 0;
@@ -338,6 +331,9 @@ void drawJelly(float t) {
     float a2 = ew * 0.42f, b = (bot - top) * 0.2f;
     seg(jellyPX(ex - a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPY(ex - a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPX(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), 1.5f * z, INK, A, true); seg(jellyPX(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex - a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPX(ex - a2 * 1.4f, ey + b, rollCx, rollCy, roll), jellyPY(ex - a2 * 1.4f, ey + b, rollCx, rollCy, roll), 1.5f * z, INK, A, true);
     seg(jellyPX(ex + a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPY(ex + a2 * 1.4f, ey - b, rollCx, rollCy, roll), jellyPX(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), 1.5f * z, INK, A, true); seg(jellyPX(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPY(ex + a2 * 0.5f, ey, rollCx, rollCy, roll), jellyPX(ex + a2 * 1.4f, ey + b, rollCx, rollCy, roll), jellyPY(ex + a2 * 1.4f, ey + b, rollCx, rollCy, roll), 1.5f * z, INK, A, true);
+  } else if (J.eye == 4) {  // cheeky: shut in a smile, an arch of dots
+    float ah = (bot - top) * 0.2f;
+    for (int k = 0; k < 14; k++) { float u = k / 13.0f * 2 - 1; dotA(jellyPX(ex + u * ew * 0.8f, ey + ah * 0.4f - (1 - u * u) * ah, rollCx, rollCy, roll), jellyPY(ex + u * ew * 0.8f, ey + ah * 0.4f - (1 - u * u) * ah, rollCx, rollCy, roll), 0.95f * z, INK, 0.9f * A); }
   } else if (J.eye == 2) {  // asleep: the lid's line, gently curved
     for (int k = 0; k < 14; k++) { float u = k / 13.0f * 2 - 1; dotA(jellyPX(ex + u * ew, ey + (1 - u * u) * eh * 0.5f + 1, rollCx, rollCy, roll), jellyPY(ex + u * ew, ey + (1 - u * u) * eh * 0.5f + 1, rollCx, rollCy, roll), 0.8f * z, INK, 0.7f * A); }
   } else {
@@ -440,9 +436,9 @@ void drawParts(float k) {
   }
 }
 
-/* ───────── codes to scan, built in: novel.global, and the setup Wi-Fi (NOVEL TOUCH, password novelglobal) ───────── */
-const uint32_t QR_SITE[25] = { 0x01FD017F, 0x01056F41, 0x0174B05D, 0x0174755D, 0x0175CE5D, 0x01052041, 0x01FD557F, 0x00011100, 0x01A5C0ED, 0x0089280D, 0x000515CD, 0x0076B8A7, 0x01D68B49,
-  0x011DEB3A, 0x00D357F6, 0x01193421, 0x01FF8C7C, 0x01513700, 0x01D51B7F, 0x00911341, 0x00BF385D, 0x01F6F55D, 0x00D7B95D, 0x00520041, 0x01FE517F };
+/* ───────── codes to scan, built in: novel.global/t (the photo booth, or the start, as the approval page says), and the setup Wi-Fi (NOVEL TOUCH, password novelglobal) ───────── */
+const uint32_t QR_SITE[25] = { 0x01FD187F, 0x0105BE41, 0x01750F5D, 0x01747F5D, 0x0175055D, 0x01048F41, 0x01FD557F, 0x0001DD00, 0x007C627D, 0x00893915, 0x01B3DCF6, 0x011B0D1B, 0x01D6A3D7,
+  0x00AB3037, 0x01BEE6ED, 0x011957A1, 0x005F704D, 0x0031C500, 0x01D55A7F, 0x00318B41, 0x01DF8B5D, 0x01F6B55D, 0x0161635D, 0x013FB641, 0x01FE577F };
 const uint32_t QR_JOIN[29] = { 0x1FCE717F, 0x10521641, 0x174B395D, 0x1754745D, 0x174C5A5D, 0x10515D41, 0x1FD5557F, 0x00198200, 0x149552C5, 0x0477ED0B, 0x143DD66A, 0x1055510D, 0x114B4DF3, 0x0495EB35,
   0x121ED065, 0x0B41D29C, 0x0C5DEDF1, 0x020FBE32, 0x171D87F3, 0x18712904, 0x11F12C4F, 0x0D139D00, 0x1358E37F, 0x03194241, 0x0DF9F65D, 0x122BDE5D, 0x1951B55D, 0x0225B841, 0x15B0FF7F };
 void drawQR(const uint32_t *q, int n, int cx, int cy, int m) {   // chalk plate, blueprint modules, two modules of quiet round them
@@ -562,7 +558,7 @@ bool printAwaiting = false;
 int sel = 0, digits[3], nDig = 0, curDig = 0, wrongs = 0; bool holdFired = false; unsigned long lastTouchMs = 0; float menuAt = 0; String offSaid;
 String autoPrintJob = ""; unsigned long jobSeenAt = 0; bool autoPrintFired = false;
 uint8_t thumbBits[12 * 160]; int thumbW = 0, thumbH = 0; String thumbFor;   // the waiting print, small, one bit a dot
-float fleeAt = -100.0f, fleeX = 0, fleeY = 0; bool qrWasVisible = false; unsigned long wifiReadyAt = 0;
+float fleeAt = -100.0f, fleeX = 0, fleeY = 0, lastPressT = -9.0f, cheekAt = -9.0f; int taps = 0; bool qrWasVisible = false; unsigned long wifiReadyAt = 0;
 void loop() {
   float t = millis() / 1000.0f, dt = fminf(0.05f, fmaxf(0.001f, t - lastT)); lastT = t; float k = t - modeAt;
   if (setupOn) { dns.processNextRequest(); web.handleClient(); if (mode != SETUP) go(SETUP, t); }
@@ -596,6 +592,10 @@ void loop() {
     /* A little creature startled by a finger: dart away, then cautiously drift back. */
     fleeX = (J.x < W * 0.5f ? -1.0f : 1.0f) * (42.0f + random(30));
     fleeY = (J.y < H * 0.5f ? -1.0f : 1.0f) * (18.0f + random(22));
+    J.tp = ceilf(J.tp / 3.6f) * 3.6f;   // the bell closes now: the dart is a real push
+    /* three quick touches and it stops being shy: a somersault, a wink, a wave */
+    if (t - lastPressT < 1.2f) taps++; else taps = 1; lastPressT = t;
+    if (taps >= 3) { cheekAt = t; taps = 0; fleeAt = -100.0f; }
   }
   if (down) held = (millis() - downAt) / 1000.0f;
   if (!now && down) { down = false; tap = held < 0.45f; }
@@ -607,7 +607,7 @@ void loop() {
   /* the camera eases to where it is meant to be, and a hand holds it */
   float e = 1 - expf(-dt * 2.6f); cam.x += (camT.x - cam.x) * e; cam.y += (camT.y - cam.y) * e; cam.z += (camT.z - cam.z) * e;
   float hand = cam.z - 1; cam.x += sinf(t * 0.9f) * 0.25f * hand; cam.y += sinf(t * 0.7f) * 0.2f * hand;
-  J.tp += dt * J.rate; J.cue = false; J.glow = 0; J.run = -1; J.jit = 0; J.len = 1; J.look = sinf(t * 0.37f) * 0.6f; J.eye = 0; J.rate = 1; if (mode != HELD) J.sq = 0;
+  J.tp += dt * J.rate; J.cue = false; J.glow = 0; J.run = -1; J.jit = 0; Jwave = 0; J.len = 1; J.look = sinf(t * 0.37f) * 0.6f; J.eye = 0; J.rate = 1; if (mode != HELD) J.sq = 0;
   float blT = 255; bool draw = true;
 
   if (hold && (mode == ASLEEP || mode == AWAKE || mode == QUIET || mode == CONNECTING || (mode == HELD && !cfgTouch))) { go(QRUP, t); menuAt = t; hold = false; }
@@ -678,19 +678,12 @@ void loop() {
           } else if (act > 0.43f && act < 0.57f) {
             float q = sinf((act - 0.43f) / 0.14f * PI);
             J.x += sinf(q * PI) * 28.0f; J.y += q * 8.0f; J.eye = q > 0.4f ? 3 : 0;
-          } else if (act > 0.62f && act < 0.68f) {
-            float q = ease((act - 0.62f) / 0.06f);
-            J.x = baseX + (W + 95.0f - baseX) * q;
-            J.y = baseY - 18.0f * sinf(q * PI);
-            J.a *= 1.0f - 0.94f * q; J.eye = 3;
-          } else if (act >= 0.68f && act < 0.75f) {
-            float q = ease((act - 0.68f) / 0.07f);
-            J.x = -75.0f + (baseX + 75.0f) * q;
-            J.y = baseY + sinf(q * PI) * 22.0f;
-            J.a = fmaxf(J.a, 0.18f + 0.72f * q); J.eye = 3;
-          } else if (act > 0.80f && act < 0.88f) {
-            float q = sinf((act - 0.80f) / 0.08f * PI);
-            J.bw *= 1.0f - 0.42f * q; J.y += 18.0f * q; J.len = 0.82f + 0.20f * q;
+          } else if (act > 0.62f && act < 0.72f) {   // shy: it slips to the edge, half hidden, and peeks back in
+            float q = sinf((act - 0.62f) / 0.10f * PI), qq = fminf(1.0f, q * 1.6f);
+            J.x = baseX + (W - J.bw * 0.22f - baseX) * qq; J.y = baseY - 10.0f * q; J.look = -qq; J.eye = q > 0.5f ? 3 : 0;
+          } else if (act > 0.80f && act < 0.86f) {   // cheeky: a wink and a strand waved
+            float q = sinf((act - 0.80f) / 0.06f * PI);
+            J.eye = q > 0.35f ? 4 : 0; Jwave = q; J.y -= 6.0f * q;
           }
           /* The creature's path always keeps moving, even while the camera settles. */
           if (!(act > 0.15f && act < 0.23f)) camT = {W / 2 + sinf(t * 0.16f) * 7, H / 2 + sinf(t * 0.19f) * 4, 1.0f + 0.05f * sinf(t * 0.21f)};
@@ -709,7 +702,6 @@ void loop() {
       else { J.x = 70 + sinf(u) * 35; J.y = 84 + sinf(u * 1.4f) * 58; camT = {W / 2, H / 2, 1}; }
       J.look = sinf(u * 0.7f);
       /* It startles, darts, and then floats back into the current. */
-      if (t - fleeAt < 1.5f) { float f = 1.0f - fmaxf(0, t - fleeAt) / 1.5f; J.x += fleeX * f; J.y += fleeY * f; J.jit = 1.2f * f; J.rate = 1.8f + f; J.eye = 3; }
       if (k > 10) go(ASLEEP, t);
       break; }
     case ARRIVE:       // something to print: it swims up, the camera goes close to its eye, then draws back
@@ -757,8 +749,32 @@ void loop() {
       break;
   }
 
-  if (mode != SETUP && t - fleeAt >= 0 && t - fleeAt < 1.35f && mode != HELD && mode != SQUISH && mode != PRINTING && mode != BURST) {
-    float f = 1.0f - (t - fleeAt) / 1.35f; J.x += fleeX * f; J.y += fleeY * f; J.jit += 1.8f * f; J.rate += 1.4f * f; J.eye = 3;
+  /* shy: touched, it squeezes its eye shut and darts off, hides a moment looking back at the finger, then creeps home wide-eyed.
+     Three quick touches and it is cheeky instead: a somersault, the smile shut tight, a strand waved */
+  if (mode != SETUP && mode != HELD && mode != SQUISH && mode != PRINTING && mode != BURST && mode != ARRIVE) {
+    float ft = t - fleeAt;
+    if (ft >= 0 && ft < 2.8f) { float g = ft < 1.7f ? 1.0f : 1.0f - ease((ft - 1.7f) / 1.1f);
+      J.x += fleeX * g; J.y += fleeY * g; J.bw *= 1.0f - 0.12f * g;
+      J.eye = ft < 0.45f ? 1 : ft < 1.7f ? 0 : 3; J.look = ft < 0.45f ? 0 : (fleeX > 0 ? -0.9f : 0.9f); J.rate = ft < 0.6f ? 2.2f : 0.8f; }
+    float ck = t - cheekAt;
+    if (ck >= 0 && ck < 1.6f) { J.eye = 4; Jwave = sinf(fminf(1.0f, ck / 1.4f) * PI); J.y -= 6.0f * sinf(ck / 1.6f * PI); }
+  }
+  /* the body follows where each mood means it to be: a soft spring that swims in pulses (a push as the bell closes, a glide as it
+     opens), so a change of mood is never a jump; stretched a little as it goes, leaning into the turn. Where the slip feeds out of
+     it, or it pops, it is placed exactly */
+  { static float sx = W / 2, sy = 60, sbw = 56, slk = 0, lean = 0; static bool sOn = false;
+    bool exact = mode == SQUISH || mode == PRINTING || mode == SETUP || mode == BURST;
+    if (!sOn || exact || (fabsf(J.x - sx) > W * 0.6f && J.a < 0.3f)) { sx = J.x; sy = J.y; Jvx = Jvy = 0; sbw = J.bw; slk = J.look; sOn = true; }
+    else {
+      float p = pulse(J.tp), stiff = (mode == HELD || mode == ARRIVE) ? 26.0f : 7.0f, damp = 2.0f * sqrtf(stiff) * 0.85f, gate = 0.35f + 0.9f * p;
+      Jvx += ((J.x - sx) * stiff * gate - Jvx * damp) * dt; Jvy += ((J.y - sy) * stiff * gate - Jvy * damp) * dt;
+      sx += Jvx * dt; sy += Jvy * dt; sbw += (J.bw - sbw) * (1 - expf(-dt * 5.0f)); slk += (J.look - slk) * (1 - expf(-dt * 3.0f));
+      J.x = sx; J.y = sy; J.bw = sbw; J.look = slk;
+      if (mode != HELD) J.sq -= fminf(0.16f, sqrtf(Jvx * Jvx + Jvy * Jvy) * 0.0016f);
+    }
+    float ck = t - cheekAt, spin = (ck >= 0 && ck < 1.2f) ? 2 * PI * ease(ck / 1.2f) : 0;
+    lean += (fmaxf(-0.32f, fminf(0.32f, Jvx * 0.004f)) - lean) * fminf(1.0f, dt * 4);
+    Jroll = lean + 0.05f * sinf(t * 0.47f) + spin;
   }
   if (cfgSleep && !has && (mode == ASLEEP || mode == AWAKE || mode == QUIET) && millis() - lastTouchMs > 120000UL) { draw = false; blT = 0; }
   if (bootAt >= 0) { blT = 255; draw = true; }
