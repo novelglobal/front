@@ -22,7 +22,9 @@ const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) retu
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
 const CODE = /^DA-[0-9A-HJKMNP-TV-Z]{4}$/;
 /* a maker's own three characters (no I, O, 0 or 1), printed on what they make: with it they find and take down their own things */
-const WHO = /^[A-HJ-NP-Z2-9]{3}$/;
+/* a maker's code; 888 is the master's, the main board's, reserved on every island: it opens the showcase on a phone and is never
+   anyone's (no phone makes it, since every code mixes letters and numbers, and none may talk, post or claim with it) */
+const SHOWCASE = '888', WHO0 = /^[A-HJ-NP-Z2-9]{3}$/, WHO = { test: s => WHO0.test(s) && s !== SHOWCASE };
 
 /* ───────── the database: made on first use, the same in a preview's database and the live one ───────── */
 const SCHEMA = [
@@ -729,7 +731,7 @@ async function resetSite(db, req) {
 /* traffic: a day's count of each kind of thing, added after the answer has gone */
 const BEATS = ['open-aura', 'open-studio', 'open-portfolio', 'begin', 'print', 'wall', 'song', 'device'];
 /* the journey, counted step by step (never who): levels reached, discs and the eye pressed, steps opened, devices, the booth, the desk */
-const JOURNEY = /^(lv[1-6]|disc-[0-2]|eye|step-[0-3]|dev-[0-3]|booth-(open|print|save)|desk-(open|play|keep)|yours|talk|plain-(asked|ddg|still))$/;
+const JOURNEY = /^(lv[1-6]|disc-[0-2]|eye|step-[0-3]|dev-[0-3]|booth-(open|print|save)|desk-(open|play|keep)|yours|talk|plain-(asked|ddg|still)|showcase)$/;
 function trafficKey(url, m) {
   const p = url.pathname.replace(/^\/api\//, '').split('/')[0];
   if (p === 'beat') { const k = url.searchParams.get('k'); return BEATS.includes(k) || JOURNEY.test(k || '') ? k : null; }

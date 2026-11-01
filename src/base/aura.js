@@ -1065,9 +1065,11 @@
      the research board), art and print. 4: a poster with art printed: the wave's ring (design and the print shop). What is not reached
      yet is not there at all */
   var LVN = +store.get('da.lv', 0) || 0;
-  var LV = function () { if (GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 6; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
+  var LV = function () { if (SHOWN || GATES.mode === 'open' || ROUNDS >= MARK_ORDER.length) return 6; return Math.max(LVN, ROUNDS > 0 ? 4 : 0); };
   var NEED = { music: 1, intention: 1, wish: 2, radio: 3, print: 3, design: 4, desk: 4, folio: 5, talk: 6 }, ORB_LV = [1, 3, 4], TAB_LV = [1, 2, 3, 3], DEV_LV = [3, 2, 4, 5];   // by device: the intention device (1) is earned first, then the radio (0)
-  var earned = function (k) { if (ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
+  /* 888, the master's code, typed where a print's code goes: the whole site opened as a showcase on this phone, every device and step */
+  var SHOWN = !!store.get('da.showcase', 0);
+  var earned = function (k) { if (SHOWN || ROUNDS >= MARK_ORDER.length || GATES.mode === 'open') return true; if (GATES.mode === 'closed') return gateAt(k) <= 0; return LV() >= (NEED[k] || 0) || (gateAt(k) > 0 && ROUNDS >= gateAt(k)); };
   function lvUp(n) { var was = LV(); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); }
   /* the booth (on the same page, or another visit) says a photo was taken: level one */
   function lvSync() { var was = LV(), n = Math.max(+store.get('da.lv', 0) || 0, store.get('da.who.pass', 0) || store.get('da.aura.printed', 0) ? 1 : 0, ROUNDS >= 3 ? 6 : ROUNDS >= 2 ? 5 : 0); if (n > LVN) { for (var q = LVN + 1; q <= n; q++) beat('lv' + q); LVN = n; store.set('da.lv', n); } var now = LV(); if (now > was) unlocked(was, now); else applyGates(); keyName(); }
@@ -1409,7 +1411,7 @@
     '<label id="au-eyec" role="button" tabindex="0" aria-label="Print a photo"><input type="file" accept="image/*" hidden><small class="au-ow" aria-hidden="true">print photo</small></label>' +
     [[0, 'go', 'notice', svgI('hboard')], [1, 'wish', 'story', svgI('hradio')], [2, 'art', 'make', svgI('hshop')]].map(function (o, i) { return '<button class="au-orb" data-s="' + o[0] + '" data-go="' + o[1] + '" aria-label="' + o[2] + '"><i class="pt"></i>' + (i === 0 ? '<i class="au-ring"></i>' : '') + o[3] + '<small class="au-ow" aria-hidden="true">' + o[2] + '</small></button>'; }).join('') +
     '<button id="au-theme" aria-label="Dark or light" aria-pressed="' + DARK + '"><i></i><b></b></button>' +
-    '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><span class="au-tks">' + TALK_K.map(function (k) { return '<button type="button" data-tk="' + k[0] + '" aria-label="' + k[2] + '" aria-pressed="false">' + k[1] + '</button>'; }).join('') + '</span><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form><p class="au-tkst" aria-live="polite"></p></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"></label>' + '<button id="au-todo" class="gone" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
+    '<button class="au-dev au-chatk" id="au-chat" aria-label="This step\'s talk" hidden>' + svgI('xtalk') + '</button><section class="au-talkp" id="au-talkp" hidden aria-label="Talk"><header><b></b><button class="x" aria-label="Close">×</button></header><ol></ol><form><span class="au-tks">' + TALK_K.map(function (k) { return '<button type="button" data-tk="' + k[0] + '" aria-label="' + k[2] + '" aria-pressed="false">' + k[1] + '</button>'; }).join('') + '</span><input maxlength="280" autocomplete="off" aria-label="Say something" placeholder="…"><button aria-label="Send">↑</button></form><p class="au-tkst" aria-live="polite"></p></section>' + '<button id="au-yours" aria-label="Your code"><i></i>' + svgI('key') + '<b></b></button><label class="au-keyin" id="au-keyin" hidden><input maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="The code on your print" placeholder="· · ·"><button type="button" id="au-keyout" aria-label="Log out" data-fw="log out" hidden>×</button></label>' + '<button id="au-todo" class="gone" aria-label="Things to do" aria-expanded="false"><i></i><b></b></button><section class="au-todo" id="au-todol" hidden aria-label="Things to do"><i class="au-tent"></i><ol></ol></section>' +
     '<div id="au-base"><button id="au-open" aria-label="Open everything">' + svgI('key') + '</button><a id="au-admin" href="/admin" aria-label="novel.global"><svg viewBox="0 0 237 112" aria-hidden="true"><rect x="10" y="10" width="91.6" height="92" transform="rotate(-0.34 56 56)" style="fill:var(--ink);stroke:none"/><circle cx="178.3" cy="56.5" r="48.8" style="fill:#E25C40;stroke:none"/></svg></a></div>' +
     '<label id="au-bell" aria-label="The eye: a photograph of what you have noticed"><input type="file" accept="image/*" id="au-file" hidden></label>' +
     '<button id="au-up" aria-label="Back up to the globe"><i></i></button>' +
@@ -1424,7 +1426,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev:not(.au-chatk)')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); }
+  function setMode(m) { /* plain: the moves between the places are the drawing's, so there they are made at once */ if (S.plain) { if (m === 'bang' || m === 'unmorph') m = 'globe'; else if (m === 'morph') { m = 'iruk'; S.fade = 1; setTimeout(regrow, 30); } } if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); if (typeof keyName === 'function') keyName(); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
   /* the moon tonight, beside SOUND in the dark: as it looks from the city chosen (lit on the left in the south while it waxes),
@@ -1455,7 +1457,7 @@
     raf = 0; if (asleep || document.hidden) return; S.frames = (S.frames || 0) + 1;
     /* the next frame is asked for first: one bad frame never stops the creature */
     raf = requestAnimationFrame(frame);
-    try { draw1(now); } catch (e) { if (!frame.told) { frame.told = 1; console.error('aura frame: ' + (e && e.stack || e)); } }
+    try { draw1(now); } catch (e) { S.ferr = (S.ferr || 0) + 1; if (!frame.told) { frame.told = 1; console.error('aura frame: ' + (e && e.stack || e)); } }
   }
   var FX = store.get('da.aura.fx', 'base'), PHREAK = !!store.get('da.aura.phreak', false), FXM = { calm: [0.45, 0.6], base: [1, 1], chaos: [2.4, 1.9] };
   /* the phreak: lines of base64, the shape a poster travels in, drifting faintly across under the stars */
@@ -1508,12 +1510,12 @@
   }
   function go() { if (!raf && !asleep) raf = requestAnimationFrame(frame); }
   /* plain: where the creature cannot move (a browser that holds back animation and drawing, as DuckDuckGo's app can), its keys are
-     laid out still and whole, each with its word, so every way in is there to press. Asked for by the browser's name, or found when
-     the drawing has not run three seconds in; ?plain=1 or ?plain=0 to try it either way */
-  (function () { var q = /[?&]plain=([01])/.exec(location.search), on = function (why) { if (S.plain) return; S.plain = 1; root.classList.add('au-plain'); setTimeout(function () { beat('plain-' + why); }, 0); };
+     laid out still and whole, each with its word, so every way in is there to press. Only where the drawing has not run three seconds
+     in, or has failed: a browser that draws keeps the creature as it is, whatever its name (DuckDuckGo's is counted apart). ?plain=1 or
+     ?plain=0 to try it either way */
+  (function () { var q = /[?&]plain=([01])/.exec(location.search), on = function (why) { if (S.plain) return; S.plain = 1; root.classList.add('au-plain'); /* found frozen: the drawing's last picture, stuck, is put away */ if (why !== 'asked') document.documentElement.classList.add('au-frozen'); if (/^(bang|morph|unmorph)$/.test(S.mode)) setMode(S.mode); setTimeout(function () { beat('plain-' + why); }, 0); };
     if (q) { if (q[1] === '1') on('asked'); return; }
-    if (/DuckDuckGo\/|\bDdg\//.test(navigator.userAgent || '')) { on('ddg'); return; }
-    var look = function () { if (document.hidden) { setTimeout(look, 3000); return; } var f0 = S.frames || 0; setTimeout(function () { if (!document.hidden && ((S.frames || 0) - f0 < 4 || frame.told)) on('still'); }, 3000); };
+    var look = function () { if (document.hidden) { setTimeout(look, 3000); return; } var f0 = S.frames || 0, e0 = S.ferr || 0; setTimeout(function () { var df = (S.frames || 0) - f0, de = (S.ferr || 0) - e0; if (!document.hidden && (df < 4 || de > df / 2)) on(/DuckDuckGo\/|\bDdg\//.test(navigator.userAgent || '') ? 'ddg' : 'still'); }, 3000); };
     setTimeout(look, 1500); })();
 
   /* ───────── moving between them ───────── */
@@ -2154,9 +2156,12 @@
           var ol = $('#au-talkp ol'); talkFill(ol, l); var me = ol.querySelector('li[data-id="' + j.id + '"]'); if (me) { me.classList.add('mine'); me.scrollIntoView({ block: 'nearest' }); }
           talkSays('✓', true); made('talk', t); bell(5, 0.12); }); })
       .catch(function () { i.disabled = false; talkSays('⌁'); }); });
-  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = !!on && !root.classList.contains('keyon'); }
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = !!(on || SHOWN) && S.mode === 'iruk' && !root.classList.contains('keyon'); if (b && SHOWN && !on) b.textContent = '888'; var ko = $('#au-keyout'); if (ko) ko.hidden = !(on || SHOWN); }
+  /* logged out: this phone's code and the showcase let go; a new code is made the next time one is needed, and another typed in at any time */
+  $('#au-keyout').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); store.set('da.who', ''); store.set('da.who.pass', 0); store.set('da.kin', null); store.set('da.showcase', 0); SHOWN = false; $('#au-keyin').hidden = true; root.classList.remove('keyon'); keyName(); applyGates(); if (S.mode === 'iruk') paint(); bell(1, 0.12); NG.toast && NG.toast('OUT'); });
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
   $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
+    if (v === '888') { SHOWN = true; store.set('da.showcase', 1); i.value = ''; $('#au-keyin').hidden = true; root.classList.remove('keyon'); keyName(); applyGates(); if (S.mode === 'iruk') paint(); beat('showcase'); harp([0, 4, 7, 12, 16]); NG.toast && NG.toast('888 · OPEN'); return; }
     i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); keyName(); }, 4000); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
   var WALL = 0, EMB = null;
