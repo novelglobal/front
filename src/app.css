@@ -3370,3 +3370,7 @@ html.in-aura #sec-set{display:none!important}
 #board-tools .bt-dots i{display:block;width:4px;height:4px;border-radius:50%;background:currentColor}
 @media (max-width:760px){#board-tools .bt-dots{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:3px}
   #board-tools:not(.unfold) .bt.fold{display:none}#board-tools.unfold .bt-dots i:nth-child(2){transform:scale(.5)}}
+
+/* the moon a word was said under, the day and month beside it */
+.mtag{display:inline-flex;align-items:center;gap:3px;font-size:10px;letter-spacing:.08em}
+.mtag svg{width:11px;height:11px;flex:none}

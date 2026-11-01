@@ -1100,7 +1100,7 @@
       WIN.innerHTML = '<header><i class="led"></i><b></b><nav>' + DEV_AT.map(function (j) { var q = DEVS[j]; return '<button data-wd="' + j + '" aria-label="' + q[1] + '">' + svgI(q[3]) + '</button>'; }).join('') + '</nav><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header><iframe title="The studio" allow="geolocation; camera; autoplay; web-share; clipboard-write"></iframe>';
       root.appendChild(WIN); var fr = WIN.querySelector('iframe');
       /* the studio's own way home lands back here, not inside the window */
-      fr.addEventListener('load', function () { try { var lp = fr.contentWindow.location.pathname; fr.dataset.ok = lp === '/studio' ? '1' : ''; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { fr.dataset.ok = ''; } });
+      fr.addEventListener('load', function () { setTimeout(function () { if (hasWords()) wordsTo(); }, 900); try { var lp = fr.contentWindow.location.pathname; fr.dataset.ok = lp === '/studio' ? '1' : ''; if (lp === '/' || lp === '/index.html') closeDev(); } catch (e) { fr.dataset.ok = ''; } });
       WIN.querySelector('.au-wx').addEventListener('click', closeDev);
       [].forEach.call(WIN.querySelectorAll('[data-wd]'), function (b) { b.addEventListener('click', function () { openDev(+b.dataset.wd); }); }); }
     var f = WIN.querySelector('iframe'), want = '/studio?from=aura&night=' + (DARK ? 1 : 0) + '&only=' + d[2] + (auto && auto !== 'mix' ? '&auto=' + auto : '') + '#' + (auto === 'mix' && MIX_IN ? 'mix=' + MIX_IN : d[2]);
@@ -1113,6 +1113,22 @@
   }
   /* closed, the studio is put away, not let go: kept its size and drawing, only unseen and untouchable, so a radio left on goes on
      playing under the aura, whatever step or device is open. Opened again, it is as it was left */
+  /* one set of words with the studio's window: the intention and the four lines go there as they are typed here, and come here as
+     they are typed there (the piece in hand, or a new one begun with them); printed, they let go there too */
+  var hasWords = function () { return !!(P && !P.sent && ((P.say || '').trim() || (P.lines || []).some(Boolean))); };
+  function wordsTo(extra) { var f = WIN && WIN.querySelector('iframe'); if (!f || !f.contentWindow) return; try { f.contentWindow.postMessage(extra || { ng: 'words', say: P && !P.sent ? P.say || '' : '', lines: P && !P.sent ? (P.lines || []).slice(0, 4) : ['', '', '', ''] }, location.origin); } catch (e) { /* not yet */ } }
+  function wordsFrom(d) {
+    if (d.boot && hasWords()) { wordsTo(); return; }
+    var any = (d.say || '').trim() || (d.lines || []).some(Boolean); if (!any && !hasWords()) return;
+    var p = piece(); p.say = String(d.say || ''); p.lines = [0, 1, 2, 3].map(function (i) { return String((d.lines || [])[i] || ''); });
+    if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); }
+    changed();
+    var sy = $('#au-say'); if (sy && document.activeElement !== sy) { sy.value = p.say; grow(sy); }
+    [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var v = p.lines[+ta.dataset.i] || ''; if (document.activeElement !== ta && ta.value !== v) { ta.value = v; grow(ta); } });
+  }
+  /* the devices earned and El Niño, alive: each breathes, leans and glows on a beat of its own, drawn anew on every page, so no two
+     are the same twice (CSS only, on the icon inside: the frame still places the key) */
+  function alive() { (devK || []).concat(catchK ? [catchK] : []).forEach(function (el) { el.style.setProperty('--ad', (3.6 + Math.random() * 3.4).toFixed(2) + 's'); el.style.setProperty('--adl', (-Math.random() * 6).toFixed(2) + 's'); el.style.setProperty('--ar', ((Math.random() - 0.5) * 14).toFixed(1) + 'deg'); el.style.setProperty('--as', (1.04 + Math.random() * 0.06).toFixed(3)); el.classList.add('alive'); }); }
   function fileKey(blob, name) {
     var old = $('#au-file'); if (old) old.remove(); var f = new File([blob], name, { type: blob.type }), u = URL.createObjectURL(blob), k = document.createElement('div'); k.id = 'au-file';
     k.innerHTML = '<a href="' + u + '" download="' + esc(name) + '" aria-label="Save the loop">' + svgI('save') + '<b>' + esc(/\.wav$/.test(name) ? 'WAV' : /\.m4a$/.test(name) ? 'M4A' : 'WEBM') + '</b></a><button aria-label="Not now">×</button>'; document.body.appendChild(k);
@@ -1136,6 +1152,7 @@
        inside a window. A key comes up for it; pressed, the phone's own sheet (Save to Files) or a download */
     if (e.origin === location.origin && e.data && e.data.ng === 'file' && e.data.blob instanceof Blob) { fileKey(e.data.blob, String(e.data.name || 'novel-global-loop')); return; }
     /* the studio's window asking for another of its devices (W.I.S.H.'s make hands the receipt to DESIGN): opened, if it is earned */
+    if (e.origin === location.origin && e.data && e.data.ng === 'words') { wordsFrom(e.data); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'go') { for (var gi = 0; gi < DEVS.length; gi++) if (DEVS[gi][2] === e.data.d) { openDev(gi); break; } return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'wall') { closeDev(); if (S.mode === 'iruk') step(3); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'made') { made(e.data.kind, false); return; }
@@ -1311,7 +1328,7 @@
     /* the portfolio: a poster hung on its line, the sheets kept behind it */
     xfolio: '<path d="M3.5 6c8.2-1.2 16.8-1.2 25 0" class="d"/><path d="M8.2 11.6v15.4h12" class="d"/><path d="M11.5 8.8h12.5v16H11.5z"/><circle cx="17.7" cy="14.6" r="3" class="f"/><path d="M14.4 20.6h6.6" class="d"/>',
     /* talk: a ring of voices, three dots in a bubble with a tail */
-    xtalk: '<path d="M6 8.5h20v13H14l-5 4.5v-4.5H6z" class="d"/><circle cx="11" cy="15" r="1.6" class="f"/><circle cx="16" cy="15" r="1.6" class="f"/><circle cx="21" cy="15" r="1.6" class="f"/>',
+    xtalk: '<circle class="f sw" cx="6.00" cy="8.50" r="0.85" style="--dx:2.66px;--dy:0.00px;--dl:-0.29s"/><circle class="f sw" cx="9.28" cy="8.50" r="0.85" style="--dx:0.57px;--dy:2.24px;--dl:-0.72s"/><circle class="f sw" cx="12.57" cy="8.50" r="0.85" style="--dx:-1.12px;--dy:2.07px;--dl:-1.14s"/><circle class="f sw" cx="15.85" cy="8.50" r="0.85" style="--dx:-2.15px;--dy:-0.59px;--dl:-1.21s"/><circle class="f sw" cx="19.13" cy="8.50" r="0.85" style="--dx:0.58px;--dy:-1.31px;--dl:-1.13s"/><circle class="f sw" cx="22.42" cy="8.50" r="0.85" style="--dx:-0.59px;--dy:-2.18px;--dl:-1.00s"/><circle class="f sw" cx="25.70" cy="8.50" r="0.85" style="--dx:-0.74px;--dy:-1.69px;--dl:-2.06s"/><circle class="f sw" cx="26.00" cy="11.48" r="0.85" style="--dx:0.43px;--dy:-1.14px;--dl:-1.84s"/><circle class="f sw" cx="26.00" cy="14.76" r="0.85" style="--dx:1.98px;--dy:-1.04px;--dl:-2.16s"/><circle class="f sw" cx="26.00" cy="18.05" r="0.85" style="--dx:-2.34px;--dy:-1.24px;--dl:-2.62s"/><circle class="f sw" cx="26.00" cy="21.33" r="0.85" style="--dx:-1.11px;--dy:1.15px;--dl:-2.74s"/><circle class="f sw" cx="22.89" cy="21.50" r="0.85" style="--dx:-0.63px;--dy:1.11px;--dl:-2.39s"/><circle class="f sw" cx="19.60" cy="21.50" r="0.85" style="--dx:-1.38px;--dy:0.67px;--dl:-3.22s"/><circle class="f sw" cx="16.32" cy="21.50" r="0.85" style="--dx:-2.16px;--dy:-0.82px;--dl:-3.35s"/><circle class="f sw" cx="13.28" cy="22.14" r="0.85" style="--dx:1.39px;--dy:0.54px;--dl:-3.22s"/><circle class="f sw" cx="10.84" cy="24.34" r="0.85" style="--dx:-1.76px;--dy:-0.10px;--dl:-3.04s"/><circle class="f sw" cx="9.00" cy="25.20" r="0.85" style="--dx:0.92px;--dy:-0.59px;--dl:-3.41s"/><circle class="f sw" cx="9.00" cy="21.92" r="0.85" style="--dx:-1.22px;--dy:1.82px;--dl:-4.15s"/><circle class="f sw" cx="6.13" cy="21.50" r="0.85" style="--dx:-1.29px;--dy:-0.12px;--dl:-3.83s"/><circle class="f sw" cx="6.00" cy="18.35" r="0.85" style="--dx:-0.35px;--dy:1.62px;--dl:-4.03s"/><circle class="f sw" cx="6.00" cy="15.07" r="0.85" style="--dx:-0.97px;--dy:1.70px;--dl:-4.41s"/><circle class="f sw" cx="6.00" cy="11.78" r="0.85" style="--dx:0.28px;--dy:2.62px;--dl:-4.45s"/><circle class="f sw" cx="11.00" cy="15.00" r="1.5" style="--dx:1.40px;--dy:-1.63px;--dl:-4.81s"/><circle class="f sw" cx="16.00" cy="15.00" r="1.5" style="--dx:-1.90px;--dy:-0.19px;--dl:-5.06s"/><circle class="f sw" cx="21.00" cy="15.00" r="1.5" style="--dx:1.59px;--dy:-0.64px;--dl:-5.27s"/>',
     dshop: '<path d="M15.6 16.4c0-2 2.5-2.6 3.6-1.1s.4 4.5-2.6 5-6.1-1.6-5.6-5.6 4.1-7 8.2-6.5 7.6 4.1 7.1 8.6-4.6 7.6-9.1 7.1"/><circle cx="25.4" cy="7.4" r="1.4" class="f"/>',
     hum: '<path d="M3 16c2.4-6 4.8-6 7.2 0s4.8 6 7.2 0 4.8-6 7.2 0 3.6 4.5 4.4 3"/>',
     key: '<circle cx="11" cy="16" r="5.5"/><path d="M16.5 16H28M24 16v4M27.5 16v3"/>',
@@ -1426,7 +1443,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev:not(.au-chatk)')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { /* plain: the moves between the places are the drawing's, so there they are made at once */ if (S.plain) { if (m === 'bang' || m === 'unmorph') m = 'globe'; else if (m === 'morph') { m = 'iruk'; S.fade = 1; setTimeout(regrow, 30); } } if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); if (typeof keyName === 'function') keyName(); }
+  function setMode(m) { /* plain: the moves between the places are the drawing's, so there they are made at once */ if (S.plain) { if (m === 'bang' || m === 'unmorph') m = 'globe'; else if (m === 'morph') { m = 'iruk'; S.fade = 1; setTimeout(regrow, 30); } } if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); if (typeof keyName === 'function') keyName(); alive(); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
   /* the moon tonight, beside SOUND in the dark: as it looks from the city chosen (lit on the left in the south while it waxes),
@@ -1438,8 +1455,10 @@
   moonSync(); setInterval(moonSync, 6e5);
   /* PRINT's keys say what they are under a mouse: its word, small, over the key a moment after the pointer rests on it */
   var hovT = 0, hov = document.createElement('div'); hov.id = 'au-hov'; hov.hidden = true; document.body.appendChild(hov);
+  /* a moon touched: its name for a moment */
+  document.addEventListener('click', function (e) { var mt = e.target.closest && e.target.closest('[data-moon]'); if (!mt) return; e.stopPropagation(); var r = mt.getBoundingClientRect(); hov.textContent = mt.dataset.moon.toUpperCase(); hov.hidden = false; hov.style.left = Math.round(r.left + r.width / 2) + 'px'; hov.style.top = Math.round(r.top - 8) + 'px'; clearTimeout(hovT); hovT = setTimeout(function () { hov.hidden = true; }, 2200); }, true);
   document.addEventListener('pointerover', function (e) { if (e.pointerType !== 'mouse') return; var b = e.target.closest && e.target.closest('#au-panel button, #au-panel a, #au-panel label'); clearTimeout(hovT); hov.hidden = true;
-    if (!b || S.stage !== 3 || S.mode !== 'iruk') return; var w = b.getAttribute('aria-label'); if (!w) return;
+    var mt = e.target.closest && e.target.closest('[data-moon]'); if (mt) { b = mt; } else if (!b || S.stage !== 3 || S.mode !== 'iruk') return; var w = mt ? mt.dataset.moon : b.getAttribute('aria-label'); if (!w) return;
     hovT = setTimeout(function () { var r = b.getBoundingClientRect(); hov.textContent = w.toUpperCase(); hov.hidden = false; hov.style.left = Math.round(r.left + r.width / 2) + 'px'; hov.style.top = Math.round(r.top - 8) + 'px'; }, 350); });
   /* the keys at the top hang on their lines like a line cast: each let down for five seconds, then drawn up and away for ten,
      taking turns (the moon stays). A hand near the top (or a touch there) lets them all down for a while; SOUND stays down while its desk is open.
@@ -1735,7 +1754,7 @@
       var un = $('#au-unph'); if (un) un.addEventListener('click', function (e) { e.stopPropagation(); P.photo = P.thumb = ''; P.img = P.eye = null; if (P.spImg) eyeFrom(P, P.spImg); if (P.note) delete NG.PHOTOS[P.note.id]; changed(); paint(); bell(1, 0.16); });
       var say = $('#au-say'), lab = say.parentNode; if (P) say.value = P.say || '';
       /* kept as it is typed: changing step never loses a word */
-      var keep = function () { var v = say.value.trim(); if (!v && !P) return; var p = piece(); p.say = v; changed(); goGate(); clearTimeout(thinkT); thinkT = setTimeout(think, 300); };
+      var keep = function () { var v = say.value.trim(); if (!v && !P) return; var p = piece(); p.say = v; changed(); goGate(); clearTimeout(thinkT); thinkT = setTimeout(think, 300); wordsTo(); };
       say.addEventListener('input', function () { lab.classList.toggle('has', !!say.value); keep(); });
       say.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); keep(); think(); if (goReady(0)) step(1); } });
       starLine();
@@ -1745,7 +1764,7 @@
       /* a letter tapped says what goes on its line, there on the line, for a few seconds, and hands one the line */
       [].forEach.call(panel.querySelectorAll('.au-wish b'), function (bb) { bb.addEventListener('click', function () { var li = bb.parentNode; li.classList.add('tip'); clearTimeout(li.__t); li.__t = setTimeout(function () { li.classList.remove('tip'); }, 6000); var ta = li.querySelector('textarea'); if (ta) ta.focus(); }); });
       [].forEach.call(panel.querySelectorAll('textarea[data-i]'), function (ta) { var i = +ta.dataset.i; ta.addEventListener('input', function () { ta.parentNode.classList.toggle('empty', !ta.value); });
-        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; goGate(); if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); };
+        var keep = function () { var v = ta.value.trim(); if (!v && !P) return; var p = piece(); p.lines[i] = v; goGate(); if (p.note) { p.note.wishText = p.lines.slice(); p.note.wish = p.lines.some(Boolean); NG.saveNotes(); } changed(); wordsTo(); };
         ta.addEventListener('input', keep);
         ta.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; e.preventDefault(); keep(); bell(i + 1, 0.16); var nx = panel.querySelector('textarea[data-i="' + (i + 1) + '"]'); if (nx) nx.focus(); else if (ready() && goReady(1)) step(2); }); });
     }
@@ -2055,6 +2074,7 @@
       return poster(P).then(function (c) {
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
+        if (n.code) { store.set('da.done.v1', { code: n.code, at: Date.now() }); wordsTo({ ng: 'done' }); }
         if (NG.meUsed) NG.meUsed(); made('poster', titleOf(P));
         if (first) { ROUNDS++; store.set('da.aura.rounds', ROUNDS); if (ROUNDS >= 2) lvUp(ROUNDS >= 3 ? 6 : 5); applyGates(); var have = marksHave(); if (have.length > 4 && ROUNDS + 4 <= MARK_ORDER.length) S.newMark = have[have.length - 1]; }
         S.round = performance.now() / 1000; S.sting = S.round;
@@ -2139,7 +2159,7 @@
   }
   function talkFill(ol, l) {
     var top = l.filter(function (t) { return !t.re; }), kids = function (id) { return l.filter(function (t) { return t.re === id; }).reverse(); };
-    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + (TKM[t.k] ? '<i class="tkm">' + TKM[t.k] + '</i> ' : '') + esc(NG.moonsAgo(t.at)) + '</small><span>' + esc(t.text) + '</span></li>'; };
+    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + (TKM[t.k] ? '<i class="tkm">' + TKM[t.k] + '</i> ' : '') + NG.moonTag(t.at, hereOf().lat) + '</small><span>' + esc(t.text) + '</span></li>'; };
     ol.innerHTML = top.length ? top.map(function (t) { return li(t) + kids(t.id).map(function (c) { return li(c, 1); }).join(''); }).join('') : '<li class="none">·</li>';
     [].forEach.call(ol.querySelectorAll('li[data-id]:not(.sub)'), function (e) { e.addEventListener('click', function () { TK.re = TK.re === e.dataset.id ? null : e.dataset.id; [].forEach.call(ol.querySelectorAll('li'), function (q) { q.classList.toggle('re', q.dataset.id === TK.re); }); var i = $('#au-talkp input'); i.placeholder = TK.re ? '↳' : '…'; i.focus(); }); });
   }
@@ -2156,7 +2176,7 @@
           var ol = $('#au-talkp ol'); talkFill(ol, l); var me = ol.querySelector('li[data-id="' + j.id + '"]'); if (me) { me.classList.add('mine'); me.scrollIntoView({ block: 'nearest' }); }
           talkSays('✓', true); made('talk', t); bell(5, 0.12); }); })
       .catch(function () { i.disabled = false; talkSays('⌁'); }); });
-  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = !!(on || SHOWN) && S.mode === 'iruk' && !root.classList.contains('keyon'); if (b && SHOWN && !on) b.textContent = '888'; var ko = $('#au-keyout'); if (ko) ko.hidden = !(on || SHOWN); }
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'); if (yk) yk.hidden = false; if (S.mode === 'iruk' || S.mode === 'morph') { var ki = $('#au-keyin'); if (ki && !ki.hidden) { ki.hidden = true; root.classList.remove('keyon'); } } var ko = $('#au-keyout'); if (ko) ko.hidden = !(on || SHOWN); }
   /* logged out: this phone's code and the showcase let go; a new code is made the next time one is needed, and another typed in at any time */
   $('#au-keyout').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); store.set('da.who', ''); store.set('da.who.pass', 0); store.set('da.kin', null); store.set('da.showcase', 0); SHOWN = false; $('#au-keyin').hidden = true; root.classList.remove('keyon'); keyName(); applyGates(); if (S.mode === 'iruk') paint(); bell(1, 0.12); NG.toast && NG.toast('OUT'); });
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });

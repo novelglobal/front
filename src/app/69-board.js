@@ -450,6 +450,27 @@ const WDRAFT = store.get('da.wish.v1', { mix: '', w: '', i: '', s: '', h: '', by
 /* the form itself is the handheld (42-faces.js): its front asks for the intention, its back, modded, holds the whole poem */
 $('#view').addEventListener('input', e => { if (!e.target.closest('#wish-form')) return; for (const k of [...WKEYS, 'by']) { const el = $('#wf-' + k); if (el) WDRAFT[k] = el.value; } const fr = $('#wf-for'); if (fr) WDRAFT.for = fr.value; store.set('da.wish.v1', WDRAFT); });
 $('#view').addEventListener('change', e => { if (e.target.id === 'wf-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); } });
+/* in the aura's window, one set of words: the intention and the four lines typed here are the aura's piece's, and the aura's come
+   here, forward and back, whichever is typed in first; a poster printed lets them go, and its research board keeps its code */
+const wordsOut = boot => { if (!IN_AURA) return; const say = String(WDRAFT.for || JR.want || '').replace(/^[lce]:/, '').trim(), lines = WKEYS.map(k => String(WDRAFT[k] || ''));
+  if (boot && !say && !lines.some(Boolean)) return; try { parent.postMessage({ ng: 'words', say, lines, boot: !!boot }, location.origin); } catch (e) { /* alone */ } };
+$('#view').addEventListener('input', e => { if (e.target.closest('#wish-form')) wordsOut(); else if (e.target.id === 'jw-for') { WDRAFT.for = e.target.value; store.set('da.wish.v1', WDRAFT); wordsOut(); } });
+function wordsIn(d) {
+  if (typeof d.say === 'string') { WDRAFT.for = d.say; JR.want = d.say; saveJR(); }
+  if (Array.isArray(d.lines)) WKEYS.forEach((k, i) => { WDRAFT[k] = String(d.lines[i] || ''); });
+  store.set('da.wish.v1', WDRAFT);
+  const put = (id, v) => { const el = $('#' + id); if (el && document.activeElement !== el && el.value !== v) { el.value = v; if (el.tagName === 'TEXTAREA') growTA(el); } };
+  put('wf-for', WDRAFT.for || ''); put('jw-for', JR.want || ''); WKEYS.forEach(k => put('wf-' + k, WDRAFT[k] || ''));
+}
+/* a poster printed in the aura (kept as da.done.v1 until the studio is here to see it): the words let go, and the board its research
+   was gathered on takes the poster's code for its name, a fresh one opened for the next */
+function takeDone() {
+  const d = store.get('da.done.v1', null); if (!d || !d.code) return; store.set('da.done.v1', null);
+  Object.assign(WDRAFT, { for: '', w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT); JR.want = ''; saveJR(); wordsIn({ say: '', lines: ['', '', '', ''] });
+  const b = BOARDS.find(x => x.id === boardId), k = boardOf(boardId); if (b && !b.ex && k && ((k.json || {}).objects || []).length) { b.n = String(d.code).slice(0, 24); store.set('da.boards.v1', BOARDS); newBoard(); }
+}
+window.addEventListener('message', e => { if (e.origin !== location.origin || !e.data) return; if (e.data.ng === 'words') wordsIn(e.data); else if (e.data.ng === 'done') takeDone(); });
+setTimeout(() => { takeDone(); wordsOut(true); }, 1200);
 $('#view').addEventListener('submit', e => {
   if (e.target.id !== 'wish-form') return; e.preventDefault();
   if (faceOf(1) === 'back') { const empty = ['for', ...WKEYS].map(k => $('#wf-' + k)).filter(el => el && !el.value.trim()); if (empty.length) { empty.forEach(el => el.classList.add('need')); nudge(empty[0]); tick(600); return; } }
@@ -467,7 +488,7 @@ async function sendSignal() {
   const sig = { v: 1, code: codeFor(`${at}|${pin.lat}|${pin.lng}|${L.h}|${S.me.dev}`), at, pin, threat: '', when: '', deg: 0, lines: L, nodes: [], edges: [], who, ...(fr ? { for: fr } : {}), ...(m ? { mix: m.id } : {}), note: [forN, ...((m && m.figs) || []).map(g => g.name)].filter(Boolean).join(' · ') };
   if (WDRAFT.photo) { OWN[sig.code] = WDRAFT.photo; saveOwn(); sig.img = { k: 'own', a: '' }; }
   const ev = await ledgerAdd({ type: 'signal', lat: pin.lat, lng: pin.lng, who, data: sig });
-  Object.assign(WDRAFT, { w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT);
+  Object.assign(WDRAFT, { w: '', i: '', s: '', h: '', auto: {}, photo: '' }); store.set('da.wish.v1', WDRAFT); wordsOut();
   tie(1); snd.printer(900); buzz([10, 40, 10]); toast('✓');
   slipCanvas(sig, 384, 2, false, false).then(c => thumbOf(c.toDataURL('image/png'), 240)).then(u => addToBoard(u, 'receipt', 200)).catch(() => {});
   PRESS.story = ev.key; goDev(2); return sig;

@@ -916,7 +916,7 @@ html.au-frozen #au-cv { visibility: hidden; }
 
 /* the key of one's own, hanging at the top beside the list of what was done */
 #au-yours { position: absolute; left: 86px; top: 0; width: 30px; height: calc(66px + var(--sat)); display: none; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); }
-#aura.m-globe #au-yours, #aura.m-iruk #au-yours { display: block; }
+#aura.m-globe #au-yours { display: block; }
 #aura #au-yours[hidden] { display: none !important; }
 #au-yours i { position: absolute; left: 12.5px; top: 0; width: 4px; height: calc(28px + var(--sat)); background: radial-gradient(circle, var(--faint) 1px, transparent 1.45px) 50% 100% / 4px 5px repeat-y; }
 #au-yours svg { position: absolute; left: 4px; top: calc(28px + var(--sat)); width: 22px; height: 22px; }
@@ -926,8 +926,9 @@ html.au-frozen #au-cv { visibility: hidden; }
 .au-me .au-made li small { flex: none; }
 
 /* the key beside day and night: its name beside it once a print's code is in; tapped, a small place to type the three */
-#aura #au-yours { display: block; left: 52px; }
-#aura.m-seed #au-yours, #aura.m-globe #au-yours, #aura.m-iruk #au-yours, #aura.m-bang #au-yours { display: block; }
+#aura #au-yours { display: none; left: 52px; }
+/* only on the first pages, where day and night are: there to type a code, change it or log out; never on a step, its code never shown */
+#aura.m-seed #au-yours, #aura.m-globe #au-yours, #aura.m-bang #au-yours { display: block; }
 #au-yours b { position: absolute; left: 30px; top: calc(31px + var(--sat)); font: 600 13px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .14em; white-space: nowrap; }
 #aura #au-todo { left: 120px; }
 .au-keyin { position: absolute; left: 50px; top: calc(60px + var(--sat)); z-index: 31; }
@@ -954,7 +955,7 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 #aura #au-yours { left: 86px; }
 .au-keyin { left: 84px; }
 #au-yours b { display: none; }
-#aura.keyon #au-yours b, #aura.m-globe #au-yours b, #aura.m-bang #au-yours b { display: block; }
+#aura #au-yours b { display: none !important; }
 #au-keyout { margin-left: 6px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(10, 30, 60, .7); color: var(--ink); font-size: 18px; cursor: pointer; vertical-align: middle; } #au-keyout[hidden] { display: none; }
 /* done, ticked */
 .au-todo li.done::before { content: '✓'; margin-right: 8px; opacity: .8; }
@@ -990,6 +991,19 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 .au-talkp { position: fixed; left: 50%; bottom: calc(66px + var(--sab, 0px)); transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); max-height: min(64vh, 520px); z-index: 32; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(12, 32, 62, .96); box-shadow: 0 10px 40px rgba(0, 0, 0, .4); color: #F4F1E8; font-family: "Architects Daughter", "Comic Sans MS", cursive; }
 html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 .au-talkp[hidden] { display: none; }
+/* the moon a word was said under, the day and month beside it */
+.mtag { display: inline-flex; align-items: center; gap: 3px; font: 600 9.5px/1 "Departure Mono", ui-monospace, monospace; letter-spacing: .08em; cursor: default; }
+.mtag svg { width: 11px; height: 11px; flex: none; }
+/* the talk's swarm: each dot drifts off on its own beat and comes home, the bubble loosening and gathering again */
+.au-i .sw { transform-box: fill-box; transform-origin: center; animation: au-sw 7.2s ease-in-out infinite; animation-delay: var(--dl, 0s); }
+@keyframes au-sw { 0%, 52%, 100% { transform: none; } 66% { transform: translate(var(--dx), var(--dy)) scale(.62); } 80% { transform: translate(calc(var(--dx) * -.25), calc(var(--dy) * -.25)) scale(1.12); } 90% { transform: scale(.94); } }
+/* alive: the devices earned and El Niño breathe and lean, each to its own beat */
+.alive .au-i { animation: au-alive var(--ad, 5s) ease-in-out infinite; animation-delay: var(--adl, 0s); transform-origin: 50% 60%; }
+@keyframes au-alive { 0%, 100% { transform: none; } 28% { transform: rotate(var(--ar, 4deg)) scale(var(--as, 1.05)); } 54% { transform: translateY(-.8px) scale(.97); } 76% { transform: rotate(calc(var(--ar, 4deg) * -.5)) scale(1.02); } }
+.au-dev.alive .led { animation: au-led var(--ad, 5s) ease-in-out infinite; animation-delay: var(--adl, 0s); }
+@keyframes au-led { 0%, 100% { opacity: .55; } 40% { opacity: 1; } }
+#aura.au-plain .alive .au-i, #aura.au-plain .au-i .sw { animation: none; }
+@media (prefers-reduced-motion: reduce) { .alive .au-i, .au-dev.alive .led, .au-i .sw { animation: none !important; } }
 /* to the island: the big key, its word under it; once live, lit and still */
 .au-live { position: relative; } .au-live .au-lw { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); font: 600 8.5px "Departure Mono", ui-monospace, monospace; letter-spacing: .14em; white-space: nowrap; opacity: .75; }
 .au-live.on { opacity: 1; box-shadow: 0 0 0 2px #39FF6A; } .au-live.sure { box-shadow: 0 0 0 2px currentColor; }
