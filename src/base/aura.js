@@ -57,7 +57,13 @@
     if (NG.minePiece && NG.minePiece(f.id)) { NG.dropPiece(f.id); return Promise.resolve(); }
     return folioDrop(f.id);
   };
-  var slides = function () { return FOLIO.concat(NG.pieces().map(function (p) { return { id: p.id, at: p.at, src: p.src, cap: 'A piece' + (p.at ? ', ' + NG.when(p.at).slice(0, 6) : '') }; })).concat(studioPosters()).sort(function (a, b) { return (b.at || 0) - (a.at || 0); }); };
+  /* the island's: every poster live on novel.global, from every phone (one's own, kept here, already on the wall), asked for now
+     and again; each its talk, none deletable from here */
+  var ISLAND = [], islandAt = 0;
+  function islandLoad() { if (Date.now() - islandAt < 90e3) return; islandAt = Date.now(); fetch('/api/posters').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (!j) return; var mine = {}; FOLIO.forEach(function (f) { if (f.code) mine[f.code] = 1; });
+    var nx = (j.posters || []).filter(function (p) { return p.code && !mine[p.code]; }).slice(0, 48).map(function (p) { return { id: 'i' + p.id, at: p.at, src: '/api/posters/' + encodeURIComponent(p.id), cap: p.code, code: p.code, island: 1 }; });
+    if (nx.map(function (q) { return q.id; }).join() !== ISLAND.map(function (q) { return q.id; }).join()) { ISLAND = nx; if (S.stage === 3 && !making()) paint(); } }).catch(function () { /* the wall as it was */ }); }
+  var slides = function () { islandLoad(); return FOLIO.concat(ISLAND).concat(NG.pieces().map(function (p) { return { id: p.id, at: p.at, src: p.src, cap: 'A piece' + (p.at ? ', ' + NG.when(p.at).slice(0, 6) : '') }; })).concat(studioPosters()).sort(function (a, b) { return (b.at || 0) - (a.at || 0); }); };
 
   /* ───────── the colour poster: the picture in full on blueprint paper (or white paper, the ink turned to the blue), the life, the
      four lines, what was caught and what was added, each placed, turned, sized and toned by hand; a small code back to the site ───────── */
@@ -788,7 +794,7 @@
     if (!catchK || !L.hrx) return; if (dt && !S.hHalo && !S.deep && !still) S.halo = (S.halo || 1.2) + dt * 2 * Math.PI / 54; var a2 = S.halo || 1.2, front = Math.sin(a2);
     var px = L.bx + Math.cos(a2) * L.hrx, py = L.gy + front * L.hry, tr = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px) scale(' + (0.86 + 0.14 * (front + 1) / 2).toFixed(3) + ')';
     catchK.style.setProperty('--at', tr); catchK.style.transform = tr; catchK.style.zIndex = front > 0 ? 3 : 1; catchK.style.opacity = (S.fade * (0.72 + 0.28 * (front + 1) / 2)).toFixed(2);
-    var tk = $('#au-chat'); if (tk) { var ton = S.mode === 'iruk' && !S.deep && earned('talk') && !!store.get('da.who.pass', 0); tk.hidden = !ton;
+    var tk = $('#au-chat'); if (tk) { var ton = S.mode === 'iruk' && !S.deep && earned('talk'); tk.hidden = !ton;
       if (ton) { var at2 = a2 + Math.PI * 0.5, ft = Math.sin(at2); tk.style.transform = 'translate(' + (L.bx + Math.cos(at2) * L.hrx).toFixed(1) + 'px,' + (L.gy + ft * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (ft + 1) / 2).toFixed(3) + ')'; tk.style.zIndex = ft > 0 ? 3 : 1; tk.style.opacity = (S.fade * (0.6 + 0.4 * (ft + 1) / 2)).toFixed(2); } }
     var want = S.deep ? -1 : DEV_AT[S.stage]; devK.forEach(function (b, i) { var on = devOpen(i) && i === want; b.hidden = !on; if (!on) return; var an = a2 + Math.PI, fr = Math.sin(an);
       b.style.transform = 'translate(' + (L.bx + Math.cos(an) * L.hrx).toFixed(1) + 'px,' + (L.gy + fr * L.hry).toFixed(1) + 'px) scale(' + (0.8 + 0.2 * (fr + 1) / 2).toFixed(3) + ')'; b.style.zIndex = fr > 0 ? 3 : 1; b.style.opacity = (S.fade * (0.6 + 0.4 * (fr + 1) / 2)).toFixed(2); });
@@ -1131,7 +1137,7 @@
     if (e.origin === location.origin && e.data && e.data.ng === 'go') { for (var gi = 0; gi < DEVS.length; gi++) if (DEVS[gi][2] === e.data.d) { openDev(gi); break; } return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'wall') { closeDev(); if (S.mode === 'iruk') step(3); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'made') { made(e.data.kind, false); return; }
-    if (e.origin === location.origin && e.data && e.data.ng === 'talk' && /^p\.DA-[0-9A-Z]{4}$/.test(e.data.sec || '')) { if (store.get('da.who.pass', 0)) talkOpen(e.data.sec); return; }
+    if (e.origin === location.origin && e.data && e.data.ng === 'talk' && /^p\.DA-[0-9A-Z]{4}$/.test(e.data.sec || '')) { talkOpen(e.data.sec); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'sound') { DESK.kept = store.get('da.aura.songs', []) || []; if (DESK.el && !DESK.el.hidden) { deskKept(); deskSync(); } bell(5, 0.12); return; }
     if (e.origin === location.origin && e.data && e.data.ng === 'radio') { studioOn = !!e.data.on; studioHeld = false;
       if (studioOn) { if (DESK.play) { var was = { list: DESK.list }; songPlay(false); deskHeld = was; } humSet(false); }
@@ -1260,6 +1266,7 @@
     again: '<path d="M8 9a10 10 0 1 1-2 9"/><path d="M8 3.5V9h5.5"/>',
     back: '<path d="M25 9H12a7 7 0 0 0 0 14h10"/><path d="M17 4l-5 5 5 5"/>',
     bin: '<path d="M7 9h18M13 9V6h6v3M9 9l1.2 17h11.6L23 9"/><path d="M14 13v9M18 13v9" class="d"/>',
+    live: '<circle cx="16" cy="16" r="9.5"/><path d="M6.5 16h19M16 6.5c3.2 3 3.2 16 0 19M16 6.5c-3.2 3-3.2 16 0 19" class="d"/>',
     offsite: '<circle cx="16" cy="16" r="9.5"/><path d="M6.5 16h19M16 6.5c3.2 3 3.2 16 0 19M16 6.5c-3.2 3-3.2 16 0 19" class="d"/><path d="M6 26L26 6"/>',
     text: '<path d="M6 25L13 6h2l7 19M9 18h10"/><path d="M23 25c0-3 1.5-5 4-5s3 2 3 5" class="d"/>',
     eye: '<path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z"/><circle cx="16" cy="16" r="4.5"/><circle cx="16" cy="16" r="1.4" class="f"/>',
@@ -2106,6 +2113,8 @@
      what was sent with them, each taken down from the site here (it is all still kept on the approval page) */
   /* each step's talk: only that step's, read and written with a code from a print; a reply under what it answers */
   /* and each poster shared on the site has its own: to talk about it, swap it, share it (a mark, never a word) */
+  /* the codes of one's own posters put live on the island from this phone */
+  var LIVE = store.get('da.live', []) || [];
   var TK = { re: null, sec: null, k: null, st: 0 }, TSECS = ['notice', 'story', 'make', 'print'];
   /* what became of a word sent, or why the talk is closed, as a mark under it: the key (a code from a print opens it), wait, rest, gone */
   var TK_WHY = { 400: '∅', 403: '🗝', 429: '…', 503: '☾' };
@@ -2156,13 +2165,13 @@
   function wallPress() {
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
-    var pm = pmode();
+    var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : 'Print') + '"') +
       hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
-    else pr.innerHTML = nav(-1) + (f.piece ? hand('au-big', svgI('print'), 'id="au-again" data-fw="print again" aria-label="Print it again"') : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
+    else pr.innerHTML = nav(-1) + (canLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
-      (f.code && !f.wall && store.get('da.who.pass', 0) && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
+      (f.code && !f.wall && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
@@ -2180,7 +2189,15 @@
       var nm = 'novel-global-' + (f.code || 'poster') + '.jpg', wf = null; fetch(f.src).then(function (r) { return r.blob(); }).then(function (b) { wf = new File([b], nm, { type: b.type || 'image/jpeg' }); }).catch(function () {});
       var ws = $('#au-wsave'); if (ws) ws.addEventListener('click', function () { saveImg(wf, function () { return NG.loadImg(f.src).then(function (im) { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); return c; }); }, nm); });
       /* printed again: it comes forward as the piece in hand, goes to the printer, and takes its own place on the wall again */
-      var ag = $('#au-again'); if (ag) NG.sureTap(ag, function () { P = unpack(f.piece); P.sent = 0; think(); WALL = 0; paint(); fontReady().then(function () { setTimeout(function () { if ($('#au-print')) printNow(); }, 400); }); bell(5, 0.2); });
+      /* to the island: the first touch says plainly what it does (live, everyone, novel.global), the second puts it there */
+      var gl = $('#au-golive'); if (gl && !gl.disabled) gl.addEventListener('click', function (ev) { ev.stopPropagation(); var say = $('#au-livesay');
+        if (!gl.classList.contains('sure')) { gl.classList.add('sure'); gl.querySelector('.au-lw').textContent = '✓ ?'; if (!say) { say = document.createElement('p'); say.id = 'au-livesay'; say.className = 'au-livesay'; pr.parentNode.insertBefore(say, pr); } say.textContent = 'LIVE FOR EVERYONE ON NOVEL.GLOBAL'; bell(3, 0.12);
+          clearTimeout(gl.__t); gl.__t = setTimeout(function () { gl.classList.remove('sure'); gl.querySelector('.au-lw').textContent = 'ISLAND'; if (say) say.remove(); }, 5000); return; }
+        clearTimeout(gl.__t); gl.disabled = true; gl.querySelector('.au-lw').textContent = '…';
+        fetch('/api/live', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ who: NG.me(), code: f.code }) }).then(function (r) {
+          if (say) say.remove(); if (!r.ok) { NG.toast(r.status === 503 ? 'THE ISLAND IS CLOSED' : r.status === 409 ? 'NO PICTURE OF IT · PRINT IT AGAIN' : r.status === 404 ? 'NOT ON NOVEL.GLOBAL' : 'NOT LIVE · TRY AGAIN'); paint(); return; }
+          LIVE = [f.code].concat(LIVE.filter(function (c) { return c !== f.code; })).slice(0, 60); store.set('da.live', LIVE); NG.toast('LIVE · EVERYONE ON NOVEL.GLOBAL'); squirt(); harp([0, 4, 7, 12]); made('live', f.code); paint(); })
+          .catch(function () { if (say) say.remove(); NG.toast('NOT LIVE · TRY AGAIN'); paint(); }); });
       var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { dropSlide(f).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
       /* taken down from novel.global by one's own code: off the map and the wall for everyone, kept on the approval page and on this phone */

@@ -972,6 +972,10 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 .au-talkp { position: fixed; left: 50%; bottom: calc(66px + var(--sab, 0px)); transform: translateX(-50%); width: min(420px, calc(100vw - 24px)); max-height: min(64vh, 520px); z-index: 32; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(12, 32, 62, .96); box-shadow: 0 10px 40px rgba(0, 0, 0, .4); color: #F4F1E8; font-family: "Architects Daughter", "Comic Sans MS", cursive; }
 html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 .au-talkp[hidden] { display: none; }
+/* to the island: the big key, its word under it; once live, lit and still */
+.au-live { position: relative; } .au-live .au-lw { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); font: 600 8.5px "Departure Mono", ui-monospace, monospace; letter-spacing: .14em; white-space: nowrap; opacity: .75; }
+.au-live.on { opacity: 1; box-shadow: 0 0 0 2px #39FF6A; } .au-live.sure { box-shadow: 0 0 0 2px currentColor; }
+.au-livesay { margin: 0 0 6px; text-align: center; font: 600 11px "Departure Mono", ui-monospace, monospace; letter-spacing: .16em; color: #39FF6A; }
 #aura .au-press:not(.unfold) .au-fold { display: none; }
 #aura .au-dots { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
 #aura .au-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; transition: transform .2s; }

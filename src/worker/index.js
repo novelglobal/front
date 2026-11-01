@@ -233,7 +233,6 @@ async function talkList(db, env, req, url) {
   const s = url.searchParams.get('s'), who = url.searchParams.get('who') || ''; if (!WHO.test(who)) return fail(400, 'talk');
   if (await tooMany(db, env, req, 'talkr', 120, 10 * 60e3)) return fail(429, 'too many');
   const sec = await secOf(db, s, who); if (!sec) return fail(400, 'talk');
-  if (!(await db.prepare('SELECT 1 AS k FROM makers WHERE who = ? AND printed IS NOT NULL').bind(who).first())) return fail(403, 'key');   // only for those a printer has given a code
   const { results } = await db.prepare(`SELECT t.id, t.sec, t.text, t.re, t.at, t.k, m.kin FROM talk t LEFT JOIN makers m ON m.who = t.who WHERE t.hidden IS NULL${sec ? ' AND t.sec = ?' : ''} ORDER BY t.at DESC LIMIT 80`).bind(...(sec ? [sec] : [])).all();
   return json({ talk: results });
 }
@@ -261,12 +260,28 @@ async function talkSay(db, env, req) {
   const b = await body(req); const who = typeof b.who === 'string' ? b.who : '', text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
   const sec = WHO.test(who) && text ? await secOf(db, b.s, who) : null; if (!sec) return fail(400, 'talk');
   if (levelOf() >= 2) return fail(503, 'resting');
-  const mk = await kinOf(db, who); if (!mk || !mk.printed) return fail(403, 'key');   // a code no printer has given
   if (await tooMany(db, env, req, 'talk', 20, 10 * 60e3)) return fail(429, 'too many');
   if (!(await human(env, req, b.cf))) return fail(403, 'human');
+  /* anyone with a code may talk (kept in check by the limits, the hours and the approval page, which can hide a word); a code
+     the site has not met yet is met here */
+  await db.prepare('INSERT INTO makers (who, first, last, posts, stage, lv, kin) VALUES (?, ?, ?, 0, NULL, 0, (SELECT COALESCE(MAX(kin), -1) + 1 FROM makers)) ON CONFLICT(who) DO NOTHING').bind(who, now(), now()).run();
+  const mk = await kinOf(db, who); if (!mk) return fail(400, 'talk');
   const re = typeof b.re === 'string' && /^[a-z0-9]{6,24}$/.test(b.re) ? b.re : null, id = rid(), t = now();
   await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at, k) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, sec, who, text, re, t, TALK_K.includes(b.k) ? b.k : null), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
   return json({ id, kin: mk.kin, at: t }, 201);
+}
+/* one's own printed poster put live by its maker's code: shown on the site's wall for everyone at once, no approval first (the
+   approval page can still take it down); never one refused or taken down, never a message */
+async function live(db, env, req) {
+  const b = await body(req), who = typeof b.who === 'string' ? b.who : '';
+  if (!WHO.test(who) || !CODE.test(b.code || '')) return fail(400, 'live');
+  if (await tooMany(db, env, req, 'live', 12, 10 * 60e3)) return fail(429, 'too many');
+  if (!(await madeOn(db))) return fail(503, 'closed');
+  const s = await db.prepare("SELECT id, status, art FROM stories WHERE code = ? AND who = ? AND gone IS NULL AND kind NOT IN ('message', 'example') ORDER BY created DESC LIMIT 1").bind(b.code, who).first();
+  if (!s || ['refused', 'deleted', 'expired'].includes(s.status)) return fail(404, 'not found');
+  if (!s.art) return fail(409, 'no picture');
+  if (s.status !== 'shown') await db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(now(), s.id).run();
+  return json({ ok: true, id: s.id });
 }
 async function mine(db, env, req, who, id) {
   if (!WHO.test(who || '')) return fail(400, 'who');
@@ -773,6 +788,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'receipts' && p[1] && m === 'GET') return receipt(db, p[1]);
   if (p[0] === 'talk' && !p[1] && m === 'GET') return talkList(db, env, req, url);
   if (p[0] === 'talk' && !p[1] && m === 'POST') return talkSay(db, env, req);
+  if (p[0] === 'live' && !p[1] && m === 'POST') return live(db, env, req);
   if (p[0] === 'mine' && p[1] && !p[3] && (m === 'GET' && !p[2] || m === 'POST' && p[2])) return mine(db, env, req, p[1], p[2]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, env, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);
