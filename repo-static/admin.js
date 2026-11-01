@@ -466,6 +466,13 @@
     const boxes = R.map(k => { const c = el('input', { type: 'checkbox' }); c.dataset.k = k; return el('label', { class: 'check' }, c, RL[k]); });
     const reset = el('section', { class: 'ed' }, el('h3', { text: 'BACK TO THE BASE VERSION' }), el('p', { class: 'note', text: 'CHOOSE WHAT GOES BACK. STORIES AND PLACES GO TO THE ARCHIVE, WHERE THEY CAN BE BROUGHT BACK. THE PRINTERS, THEIR TOKENS AND THE PASSWORD ARE NEVER TOUCHED, SO EVERYTHING KEEPS WORKING.' }), hint('Tick each thing to put back, press RESET WHAT IS TICKED, then type RESET in capitals to confirm. Stories and places move to the Archive section (bring any back from there). Posts become drafts. Words, BOARD 00 and these settings return to how the site was built. The counts start again from zero. What visitors made on their own phones stays with them.'), ...boxes,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'RESET WHAT IS TICKED', onclick: async () => { const o = {}; boxes.forEach(b => { const c = b.querySelector('input'); if (c.checked) o[c.dataset.k] = true; }); if (!Object.keys(o).length) return; if (prompt('Type RESET to go back to the base version for what is ticked.') !== 'RESET') return; await api('reset', { method: 'POST', body: JSON.stringify(o) }); show('overview'); badges(); } })),
+      el('h3', { text: 'DRAFTS IN THIS BROWSER' }), el('p', { class: 'note', text: 'THE QUICKEST WIPE. CLEARS THE PIECE BEING MADE, THE W.I.S.H. AND INTENTION BEING WRITTEN, KEPT SONGS AND LOOPS, MIXES, TAPES, RECORDINGS AND CONSTELLATIONS. KEEPS EVERY FINISHED POSTER, THE WALL, THE BOARDS, THE CODE AND HOW FAR THE JOURNEY HAS COME.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'CLEAR DRAFTS', onclick: async () => { if (!confirm('Clear the drafts in this browser? Finished posters stay.')) return;
+        ['da.wish.v1', 'da.done.v1', 'da.figs.v1', 'da.aura.songs', 'da.base.song', 'da.base.songs', 'da.loops.v1', 'da.mixes.v1', 'da.tapes.v1'].forEach(k => localStorage.removeItem(k));
+        const idb = (name, v, fn) => new Promise(r => { try { const q = indexedDB.open(name, v); q.onupgradeneeded = () => { try { q.transaction.abort(); } catch (e) { /* new */ } r(); }; q.onerror = q.onblocked = () => r(); q.onsuccess = () => { const d = q.result; try { fn(d, r); } catch (e) { d.close(); r(); } }; } catch (e) { r(); } });
+        await idb('novelglobal', 2, (d, r) => { if (!d.objectStoreNames.contains('piece')) { d.close(); return r(); } const t = d.transaction('piece', 'readwrite'); t.objectStore('piece').clear(); t.oncomplete = t.onerror = () => { d.close(); r(); }; });
+        await idb('novelglobal-kept', 1, (d, r) => { if (!d.objectStoreNames.contains('kv')) { d.close(); return r(); } const t = d.transaction('kv', 'readwrite'), s = t.objectStore('kv'), c = s.openCursor(); c.onsuccess = () => { const k = c.result; if (k) { if (/^rec:/.test(k.key)) k.delete(); k.continue(); } }; t.oncomplete = t.onerror = () => { d.close(); r(); }; });
+        alert('Drafts cleared. Finished posters stay.'); } })),
       el('h3', { text: 'THIS BROWSER' }), el('p', { class: 'note', text: 'CLEARS WHAT HAS BEEN MADE IN THIS BROWSER ON NOVEL.GLOBAL: POSTERS ON ITS WALL, THE PIECE BEING MADE, KEPT SONGS, BOARDS AND THE STUDIO\'S POSTERS. NOTHING ON THE SERVER, AND THIS PAGE STAYS OPEN.' }),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'no', text: 'CLEAR THIS BROWSER', onclick: async () => { if (!confirm('Clear everything made in this browser on novel.global?')) return; Object.keys(localStorage).filter(k => /^da\./.test(k)).forEach(k => localStorage.removeItem(k)); await new Promise(r => { try { const q = indexedDB.deleteDatabase('novelglobal'); q.onsuccess = q.onerror = q.onblocked = r; } catch (e) { r(); } }); alert('Cleared. novel.global opens as new in this browser.'); } })));
     /* the start and the booth: the discs' words, the checklist, how a print starts, the booth's timing */
@@ -490,7 +497,16 @@
       el('label', {}, 'HEADING', nth), hint('One line above the words, in capitals. Empty: the site\'s own. A single dash (-): no heading.'),
       el('label', {}, 'WORDS', ntx),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ notice: JSON.stringify({ off: !$('#nt-on').checked, head: nth.value.trim() === '-' ? '' : nth.value.trim() || null, text: ntx.value.trim() }) }) })));
-    main.replaceChildren(...head('Settings'), gates, start, notice, motion, cur, reset);
+    /* the Country over El Niño's map, once on each phone */
+    let co = {}; try { co = st.country ? JSON.parse(st.country) : {}; } catch (e) { co = {}; }
+    const coh = el('input', { type: 'text', maxlength: 120, placeholder: 'EMPTY: THE COUNTRY FROM CONFIG.JS' }); coh.value = co.head == null ? '' : co.head === '' ? '-' : co.head;
+    const cot = el('textarea', { rows: 3, maxlength: 450, placeholder: 'EMPTY: SOVEREIGNTY HAS NEVER BEEN CEDED.' }); cot.value = co.text || '';
+    const country = el('section', { class: 'ed' }, el('h3', { text: 'COUNTRY' }),
+      chk('co-on', !co.off, 'SHOWN THE FIRST TIME EL NIÑO\'S MAP OPENS'), hint('Ticked: the first time someone opens the El Niño key on a phone, with a code or without, a dark veil with these lines comes over the map for a few moments (or until touched), then never again on that phone.'),
+      el('label', {}, 'HEADING', coh), hint('One line, in capitals. Empty: the Country from config.js. A single dash (-): no heading.'),
+      el('label', {}, 'WORDS', cot), hint('Set in capitals. A blank line starts a new line of its own. Empty: Sovereignty has never been ceded.'),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ country: JSON.stringify({ off: !$('#co-on').checked, head: coh.value.trim() === '-' ? '' : coh.value.trim() || null, text: cot.value.trim() }) }) })));
+    main.replaceChildren(...head('Settings'), gates, start, notice, country, motion, cur, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */

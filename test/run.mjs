@@ -40,6 +40,8 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
   if (!plain) await ctx.addInitScript(() => { try { localStorage.setItem('da.devices.v2', '1'); } catch (e) { /* no storage */ } });
   /* a code printed at a printer on this phone (proof of presence: the devices open), unless a check is about a phone without one */
   if (!nocode) await ctx.addInitScript(() => { try { if (localStorage.getItem('da.who.ok') == null) localStorage.setItem('da.who.ok', '1'); } catch (e) { /* no storage */ } });
+  /* the Country's veil over El Niño's map already seen (it holds the screen a few moments the first time) */
+  await ctx.addInitScript(() => { try { if (localStorage.getItem('da.aura.sov') == null) localStorage.setItem('da.aura.sov', '1'); } catch (e) { /* no storage */ } });
   await ctx.route('**/*', async route => {
     const url = route.request().url(); let u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -1918,6 +1920,9 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
       const shut = !document.querySelector('.au-win:not(.away)'); localStorage.setItem('da.who.ok', '1'); window.AURA.dev(0); await new Promise(r => setTimeout(r, 600));
       return { seen: ks.length, locked: ks.every(k => k.classList.contains('locked')), shut, open: !!document.querySelector('.au-win:not(.away)') }; });
     check('aura: without a printed code the devices are seen with a lock and open nothing; a printed code opens them', n0.seen > 0 && n0.locked && n0.shut && n0.open, JSON.stringify(n0));
+    const n1 = await np.evaluate(async () => { localStorage.removeItem('da.aura.sov'); document.querySelector('#au-catch').click(); await new Promise(r => setTimeout(r, 900)); const v = document.querySelector('#au-map #au-sov'), inMap = !!(v && v.closest('#au-map')), b = document.querySelector('.au-brief'), t0 = b && b.textContent; if (b) b.click(); const t1 = b && b.textContent; if (v) v.click(); await new Promise(r => setTimeout(r, 900));
+      return { veil: !!v, inMap, words: v ? v.textContent : '', cycled: !!t0 && t0 !== t1, gone: !document.querySelector('#au-sov'), seen: localStorage.getItem('da.aura.sov') }; });
+    check('aura: the first time El Niño opens, the Country veils its map alone until touched, then never again; its tip changes with each touch', n1.veil && n1.inMap && /sovereignty/i.test(n1.words) && n1.cycled && n1.gone && n1.seen === '1', JSON.stringify(n1));
     await nc.close(); }
   await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.lv')) localStorage.setItem('da.lv', '4'); } catch (e) { /* no storage */ } });
   const page = await ctx.newPage(); watch(page, 'aura-' + tag);

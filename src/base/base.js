@@ -1022,8 +1022,8 @@ var BRIEFS = [
   ['shift', 'Make one cool room, know one neighbour, keep one plan. That is a refuge.'],
   ['shift', 'Notice first. Every good plan is built on something someone saw.']];
 /* one brief, the same for everyone on a given day (and step), leaning to heat and fire in an El Niño, to flood in a La Niña */
-function brief(step) {
-  var d = Math.floor(Date.now() / 864e5) + (step || 0) * 7, o = window.NG && NG.outlookNow ? NG.outlookNow() : null, ph = o && o.phase ? String(o.phase) : '';
+function brief(step, k) {
+  var d = Math.floor(Date.now() / 864e5) + (step || 0) * 7 + (k || 0), o = window.NG && NG.outlookNow ? NG.outlookNow() : null, ph = o && o.phase ? String(o.phase) : '';
   var pool = /ni[nñ]o/i.test(ph) && !/la/i.test(ph) ? BRIEFS.filter(function (b) { return b[0] !== 'flood'; }) : /la ni/i.test(ph) ? BRIEFS.filter(function (b) { return b[0] !== 'fire'; }) : BRIEFS;
   return pool[d % pool.length][1];
 }

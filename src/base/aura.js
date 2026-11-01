@@ -1552,6 +1552,18 @@
     if (!el) { el = document.createElement('aside'); el.id = 'au-notice'; el.className = 'au-notice'; el.setAttribute('role', 'note'); el.addEventListener('click', function () { bang(); }); root.appendChild(el); }
     var t = String(o.text || '').trim() || NOTICE0, h = o.head != null ? String(o.head).trim() : NOTICEH; el.innerHTML = (h ? '<b>' + esc(h) + '</b>' : '') + t.split(/\n\s*\n/).map(function (p) { return '<p>' + p.split('\n').map(esc).join('<br>') + '</p>'; }).join(''); }
   noticeSet(store.get('da.aura.notice', null));
+  /* the Country: the first time El Niño's map opens on a phone, a dark veil over it with the Country and its sovereignty in the notice's
+     lines, over the map alone (the rest still to hand); the map only once it is touched, then never veiled again on that phone. So an
+     island's first owners name their places before the map is opened to anyone. Shown or not, and its words, from the approval page */
+  var COUNTRYO = store.get('da.aura.country', null);
+  function sovShow() {
+    var o = COUNTRYO || {}, C = window.DA_CONFIG || {}; var m = $('#au-map'); if (!m || o.off || store.get('da.aura.sov', 0) || $('#au-sov')) return;
+    var h = o.head != null ? String(o.head).trim() : String(C.COUNTRY || 'WURUNDJERI WOI-WURRUNG COUNTRY'), t = String(o.text || '').trim() || 'Sovereignty has never been ceded.';
+    var v = document.createElement('div'); v.id = 'au-sov'; v.className = 'au-sov'; v.setAttribute('role', 'note');
+    v.innerHTML = '<div class="au-term">' + (h ? '<b>' + esc(h) + '</b>' : '') + t.split(/\n\s*\n/).map(function (p) { return '<p>' + p.split('\n').map(esc).join('<br>') + '</p>'; }).join('') + '</div>';
+    var go = function (e) { if (e) { e.stopPropagation(); e.preventDefault(); } if (v.classList.contains('off')) return; store.set('da.aura.sov', 1); v.classList.add('off'); bell(3, 0.12); setTimeout(function () { v.remove(); }, 700); };
+    ['pointerdown', 'touchstart', 'wheel'].forEach(function (k) { v.addEventListener(k, function (e) { e.stopPropagation(); }, { passive: true }); }); v.addEventListener('click', go); m.appendChild(v);
+  }
   function bang() {
     if (S.mode !== 'seed') return; window.__auraSound = 1; humStart(); try { boom(); } catch (e) { /* no sound */ }
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
@@ -2304,9 +2316,10 @@
   /* ───────── the catch: the one thing it holds. The ground, the life, the readings, El Niño, all in one place, with no words over
      them; whatever is touched is caught onto the piece, and only that ever shows ───────── */
   var MAPV = { z: 16, lat: 0, lng: 0, draw: null };
+  var BRIEFK = 0;
   function openDeep() {
     if (S.stage === 3) return; S.deep = true; deep.hidden = false; cls(); var p = piece(); think();
-    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' + (NG.brief ? '<p class="au-brief">' + esc(NG.brief(1)) + '</p>' : '') +
+    deep.innerHTML = '<button class="au-back" id="au-dx" aria-label="Back"><i></i></button>' + (NG.brief ? '<p class="au-brief" role="button" tabindex="0" aria-label="Another">' + esc(NG.brief(1, BRIEFK)) + '</p>' : '') +
       '<div class="au-c">' + (CITIES.length ? '<nav class="au-cities">' + '<button data-city="-1" data-fw="here" aria-label="Where I am">' + svgI('pin') + '</button>' + CITIES.map(function (c, i) { return '<button data-city="' + i + '">' + esc(c.name) + '</button>'; }).join('') + '</nav>' : '') + '<nav class="au-devs">' + DEV_AT.map(function (i) { var d = DEVS[i]; return devOpen(i) ? '<button data-dv="' + i + '" data-fw="' + d[1].toLowerCase() + '" aria-label="' + d[1] + '">' + svgI(d[3]) + '<i class="led"></i></button>' : ''; }).join('') + '</nav><div class="au-cmap' + (p.catch.map ? ' on' : '') + '" id="au-cmap"><div class="au-map" id="au-map"><div class="au-tiles"></div><canvas></canvas></div><button class="au-me" id="au-me" aria-label="Find where I am"><i></i></button><button class="au-mback" id="au-mback" aria-label="Back to the card" hidden>' + svgI('back') + '</button></div><p class="au-locno" id="au-locno"' + (S.locNo ? '' : ' hidden') + '>Location is off. Turn it on in Settings, Privacy, Location Services.</p>' + hint(SAY.map) +
       '<details class="au-near" id="au-near"><summary aria-label="What is near here">' + svgI('near') + '<i></i></summary><ul id="au-nearl"></ul></details>' + hint(SAY.near) +
       '<label class="au-find"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l8 8"/></svg><input id="au-q" type="search" autocomplete="off" aria-label="Find a life"></label>' + hint(SAY.find) + '<ul class="au-names" id="au-names"></ul><ul class="au-spots" id="au-spots"></ul>' +
@@ -2320,7 +2333,9 @@
       '<ul class="au-acts" id="au-acts" hidden>' + ACTS.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul><ul class="au-sea" id="au-sea" hidden></ul>' +
       '<nav class="au-kinds" id="au-kinds">' + KINDS.map(function (k) { return '<button data-k="' + k[0] + '" class="' + (SPW.kind === k[0] ? 'on' : '') + '" aria-label="' + k[0] + '"><svg class="au-i" viewBox="0 0 32 32" aria-hidden="true">' + KIND_I[k[0]] + '</svg></button>'; }).join('') + '</nav>' +
       '<div class="au-spw" id="au-spw"></div><i class="au-spend" id="au-spend"></i></div>';
-    $('#au-dx').addEventListener('click', closeDeep);
+    $('#au-dx').addEventListener('click', closeDeep); sovShow();
+    /* the tip at the top: another with each touch */
+    var bf = deep.querySelector('.au-brief'); if (bf) bf.addEventListener('click', function () { BRIEFK++; bf.classList.remove('nx'); void bf.offsetWidth; bf.textContent = NG.brief(1, BRIEFK); bf.classList.add('nx'); bell(2 + BRIEFK % 4, 0.1); });
     /* a city chosen: the map goes there and the piece with it, its places now near, found and sung; where I am brings it home */
     var sf = $('#au-sform'); if (sf) sf.addEventListener('submit', function (e) { e.preventDefault(); var p2 = piece(), at = MAPV.pin || { lat: p2.lat, lng: p2.lng }, st2 = $('#au-sst'), btn2 = sf.querySelector('button');
       var o = { n: sf.n.value.trim(), what: sf.what.value.trim(), url: sf.url.value.trim(), lat: at.lat, lng: at.lng, cat: 'service' }; if (!o.n) return; btn2.disabled = true; st2.innerHTML = NG.pips('sending');
@@ -2542,6 +2557,7 @@
   fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (!st) return; var o = null; try { o = st.words ? JSON.parse(st.words) : {}; } catch (e) { o = {}; }
     var gt = null; try { gt = st.gates ? JSON.parse(st.gates) : null; } catch (e) { gt = null; } GATES = gt && gt.mode ? gt : { mode: 'earn', at: GATE_AT }; store.set('da.aura.gates', GATES); applyGates();
     var nt = null; try { nt = st.notice ? JSON.parse(st.notice) : null; } catch (e) { nt = null; } store.set('da.aura.notice', nt); noticeSet(nt);
+    var co = null; try { co = st.country ? JSON.parse(st.country) : null; } catch (e) { co = null; } COUNTRYO = co; store.set('da.aura.country', co);
     var so = null; try { so = st.start ? JSON.parse(st.start) : null; } catch (e) { so = null; } START = so || {}; store.set('da.aura.start', START); todoCheck();
     FX = FXM[st.fx] ? st.fx : 'base'; store.set('da.aura.fx', FX); PHREAK = !!st.phreak; store.set('da.aura.phreak', PHREAK); PH = null;
     store.set('da.aura.words', o); wordsSet(o); store.set('da.aura.cities', st.cities || ''); citiesSet(st.cities || ''); NG.db().then(function () { citiesSet(st.cities || ''); }); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
