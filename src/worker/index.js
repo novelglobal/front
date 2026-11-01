@@ -381,7 +381,8 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
    curations: the portfolio's twelve groups (JSON: [{ k, name, about }]) */
 /* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600 };
+/* notice: the words above the rings on a first visit (JSON: off, text; empty: the site's own) */
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
 async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
@@ -723,7 +724,7 @@ async function resetSite(db, req) {
   if (b.places) ops.push(db.prepare("UPDATE places SET status = 'deleted', decided = ? WHERE status != 'deleted'").bind(t));
   if (b.posts) ops.push(db.prepare("UPDATE posts SET status = 'draft', updated = ? WHERE status = 'published'").bind(t));
   if (b.words) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('template', 'words', 'cities')"));
-  if (b.settings) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('lifeLock', 'exampleEdit', 'phreak', 'gates', 'fx', 'start')"));
+  if (b.settings) ops.push(db.prepare("DELETE FROM settings WHERE k IN ('lifeLock', 'exampleEdit', 'phreak', 'gates', 'fx', 'start', 'notice')"));
   if (b.traffic) ops.push(db.prepare('DELETE FROM traffic'));
   if (!ops.length) return fail(400, 'nothing');
   await db.batch(ops); return json({ ok: true });

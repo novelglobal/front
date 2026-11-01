@@ -481,7 +481,16 @@
       el('div', { class: 'three' }, el('label', {}, 'BOOTH: THE PASS SHOWS FOR (SECONDS)', bh, hint('After a booth print or save, a ring closes with "your code is on the paper" for this long, then the phone goes back to novel.global. 1 to 60, halves allowed. As built: 15.')),
         el('label', {}, 'BOOTH: MINUTES BETWEEN PRINTS FROM ONE PHONE', bg, hint('After printing, the same phone can print again after this many minutes. Until then the print button counts down; save still works. Whole minutes, 0 to 240; 0 means no wait. As built: 10. Counted on each phone, so another phone can print straight away.'))),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 15)), boothGap: Math.max(0, Math.min(240, Math.round(+bg.value || 0))) }) }) })));
-    main.replaceChildren(...head('Settings'), gates, start, motion, cur, reset);
+    /* the notice on a first visit: shown or not, and its words (empty: the site's own) */
+    let nt = {}; try { nt = st.notice ? JSON.parse(st.notice) : {}; } catch (e) { nt = {}; }
+    const ntx = el('textarea', { rows: 8, maxlength: 1300, placeholder: 'EMPTY: THE SITE\'S OWN WORDS' }); ntx.value = nt.text || '';
+    const nth = el('input', { type: 'text', maxlength: 120, placeholder: 'SOLAR THERMAL PRINT ARCHIPELAGO · ISLAND COMMUNITY PATCH Nº 01' }); nth.value = nt.head == null ? '' : nt.head === '' ? '-' : nt.head;
+    const notice = el('section', { class: 'ed' }, el('h3', { text: 'NOTICE' }),
+      chk('nt-on', !nt.off, 'SHOWN ON A FIRST VISIT'), hint('Ticked: the words below are shown once, to someone opening novel.global for the first time, until they touch the screen. A blank line starts a new paragraph; the last paragraph is set in capitals.'),
+      el('label', {}, 'HEADING', nth), hint('One line above the words, in capitals. Empty: the site\'s own. A single dash (-): no heading.'),
+      el('label', {}, 'WORDS', ntx),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ notice: JSON.stringify({ off: !$('#nt-on').checked, head: nth.value.trim() === '-' ? '' : nth.value.trim() || null, text: ntx.value.trim() }) }) })));
+    main.replaceChildren(...head('Settings'), gates, start, notice, motion, cur, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */

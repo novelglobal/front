@@ -1543,6 +1543,15 @@
     setTimeout(look, 1500); })();
 
   /* ───────── moving between them ───────── */
+  /* the notice: on the very first visit only, above the rings wound tight, until the first touch; its words and whether it shows are
+     the approval page's (empty: these) */
+  var NOTICE0 = 'NOVEL is a shared work of fiction. Stories of dissent and alternative futures are welcome, including ideas about peaceful civil disobedience or climate direct action.\n\nFiction does not exempt anyone from Australian law. Violence, threats, incitement and targeted harassment are prohibited.\n\nImagine an alternative.\nThe intention is More Life.';
+  var NOTICEH = 'SOLAR THERMAL PRINT ARCHIPELAGO · ISLAND COMMUNITY PATCH Nº 01';
+  var FIRSTV = !store.get('da.aura.seen', 0);
+  function noticeSet(o) { var el = $('#au-notice'); if (!FIRSTV) { if (el) el.remove(); return; } o = o || {}; if (o.off) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('aside'); el.id = 'au-notice'; el.className = 'au-notice'; el.setAttribute('role', 'note'); el.addEventListener('click', function () { bang(); }); root.appendChild(el); }
+    var t = String(o.text || '').trim() || NOTICE0, h = o.head != null ? String(o.head).trim() : NOTICEH; el.innerHTML = (h ? '<b>' + esc(h) + '</b>' : '') + t.split(/\n\s*\n/).map(function (p) { return '<p>' + p.split('\n').map(esc).join('<br>') + '</p>'; }).join(''); }
+  noticeSet(store.get('da.aura.notice', null));
   function bang() {
     if (S.mode !== 'seed') return; window.__auraSound = 1; humStart(); try { boom(); } catch (e) { /* no sound */ }
     SNOW.forEach(function (s, i) { if (i % 2) return; var a = Math.random() * 7, v = 0.25 + Math.random() * 0.6; s.x = 0.5; s.y = 0.5; s.vx = Math.cos(a) * v * L.W; s.vy = Math.sin(a) * v * L.H; s.burst = 1.6; });
@@ -2181,7 +2190,7 @@
           var ol = $('#au-talkp ol'); talkFill(ol, l); var me = ol.querySelector('li[data-id="' + j.id + '"]'); if (me) { me.classList.add('mine'); me.scrollIntoView({ block: 'nearest' }); }
           talkSays('✓', true); made('talk', t); bell(5, 0.12); }); })
       .catch(function () { i.disabled = false; talkSays('⌁'); }); });
-  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'), ki = $('#au-keyin'), first = S.mode !== 'iruk' && S.mode !== 'morph'; if (NG.proof && store.get('da.who', '') && !SHOWN) NG.proof().then(function (ok) { if (ok !== !!(yk && yk.classList.contains('on'))) { keyName(); applyGates(); } }); if (yk) { yk.hidden = false; yk.classList.toggle('on', !!keyed()); } if (ki) { if (!first) { if (!ki.hidden) { ki.hidden = true; root.classList.remove('keyon'); } } else if (!keyed() && ki.hidden) ki.hidden = false; } var ko = $('#au-keyout'); if (ko) ko.hidden = !(keyed() || store.get('da.who.pass', 0)) || !first; }
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'), ki = $('#au-keyin'), first = S.mode !== 'iruk' && S.mode !== 'morph'; if (NG.proof && store.get('da.who', '') && !SHOWN) NG.proof().then(function (ok) { if (ok !== !!(yk && yk.classList.contains('on'))) { keyName(); applyGates(); } }); if (yk) { yk.hidden = false; yk.classList.toggle('on', !!keyed()); } if (ki) { if (!first) { if (!ki.hidden) { ki.hidden = true; root.classList.remove('keyon'); } } else if (!keyed() && ki.hidden && !(FIRSTV && S.mode === 'seed')) ki.hidden = false; } var ko = $('#au-keyout'); if (ko) ko.hidden = !(keyed() || store.get('da.who.pass', 0)) || !first; }
   /* logged out: this phone's code and the showcase let go; a new code is made the next time one is needed, and another typed in at any time */
   $('#au-keyout').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); store.set('da.who', ''); store.set('da.who.pass', 0); store.set('da.who.ok', 0); store.set('da.kin', null); store.set('da.showcase', 0); SHOWN = false; root.classList.remove('keyon'); closeDev(); keyName(); applyGates(); if (S.mode === 'iruk') paint(); bell(1, 0.12); NG.toast && NG.toast('OUT'); });
   $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
@@ -2532,6 +2541,7 @@
   fetch('/api/places').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (!j || !j.places) return; store.set('da.aura.places', j.places); NG.db().then(function () { placesSet(j.places); }); }).catch(function () {});
   fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (st) { if (!st) return; var o = null; try { o = st.words ? JSON.parse(st.words) : {}; } catch (e) { o = {}; }
     var gt = null; try { gt = st.gates ? JSON.parse(st.gates) : null; } catch (e) { gt = null; } GATES = gt && gt.mode ? gt : { mode: 'earn', at: GATE_AT }; store.set('da.aura.gates', GATES); applyGates();
+    var nt = null; try { nt = st.notice ? JSON.parse(st.notice) : null; } catch (e) { nt = null; } store.set('da.aura.notice', nt); noticeSet(nt);
     var so = null; try { so = st.start ? JSON.parse(st.start) : null; } catch (e) { so = null; } START = so || {}; store.set('da.aura.start', START); todoCheck();
     FX = FXM[st.fx] ? st.fx : 'base'; store.set('da.aura.fx', FX); PHREAK = !!st.phreak; store.set('da.aura.phreak', PHREAK); PH = null;
     store.set('da.aura.words', o); wordsSet(o); store.set('da.aura.cities', st.cities || ''); citiesSet(st.cities || ''); NG.db().then(function () { citiesSet(st.cities || ''); }); tabs.forEach(function (b, i) { if (i < 2) b.setAttribute('data-fw', wd(i ? 'wish.tab' : 'intention.tab')); }); if (S.mode === 'iruk' && !S.deep && S.stage < 2 && !panel.contains(document.activeElement)) paint(); }).catch(function () {});
