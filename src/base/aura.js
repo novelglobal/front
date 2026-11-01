@@ -1424,7 +1424,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev:not(.au-chatk)')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : ''); }
+  function setMode(m) { if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
   /* the moon tonight, beside SOUND in the dark: as it looks from the city chosen (lit on the left in the south while it waxes),
@@ -1507,6 +1507,14 @@
     panel.style.opacity = deep.style.opacity = a;
   }
   function go() { if (!raf && !asleep) raf = requestAnimationFrame(frame); }
+  /* plain: where the creature cannot move (a browser that holds back animation and drawing, as DuckDuckGo's app can), its keys are
+     laid out still and whole, each with its word, so every way in is there to press. Asked for by the browser's name, or found when
+     the drawing has not run three seconds in; ?plain=1 or ?plain=0 to try it either way */
+  (function () { var q = /[?&]plain=([01])/.exec(location.search), on = function (why) { if (S.plain) return; S.plain = 1; root.classList.add('au-plain'); setTimeout(function () { beat('plain-' + why); }, 0); };
+    if (q) { if (q[1] === '1') on('asked'); return; }
+    if (/DuckDuckGo\/|\bDdg\//.test(navigator.userAgent || '')) { on('ddg'); return; }
+    var look = function () { if (document.hidden) { setTimeout(look, 3000); return; } var f0 = S.frames || 0; setTimeout(function () { if (!document.hidden && ((S.frames || 0) - f0 < 4 || frame.told)) on('still'); }, 3000); };
+    setTimeout(look, 1500); })();
 
   /* ───────── moving between them ───────── */
   function bang() {

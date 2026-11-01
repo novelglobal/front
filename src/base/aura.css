@@ -790,6 +790,22 @@ html.aura-dark .au-pswp .au-x { background: #2B2C31; }
 #aura .au-orb:not([style*="transform"]), #aura .au-tab:not([style*="transform"]), #aura .au-dev:not([style*="transform"]) { visibility: hidden; }
 /* each disc's words, said once in plain words under it, then gone; again on a hover */
 .au-orb { overflow: visible; }
+/* plain: the keys held still where they can always be seen, each with its word, nothing waiting on the creature to move */
+#aura.au-plain #au-seed { position: fixed; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 1.5px solid var(--ink); transform: none !important; opacity: 1 !important; visibility: visible !important; }
+#aura.au-plain.m-globe #au-eyec, #aura.au-plain.m-bang #au-eyec { position: fixed; left: 50%; top: 50%; width: 140px !important; height: 140px !important; margin: -70px 0 0 -70px; border: 1.5px solid var(--ink); transform: none !important; opacity: 1 !important; }
+#aura.au-plain #au-eyec .au-ow { opacity: .9; }
+#aura.au-plain .au-orb { position: fixed; top: auto; bottom: calc(26vh + var(--sab, 0px)); left: 50%; transform: none !important; opacity: 1 !important; visibility: visible !important; z-index: 6 !important; }
+#aura.au-plain .au-orb[data-s="0"] { margin-left: -133px; } #aura.au-plain .au-orb[data-s="2"] { margin-left: 87px; }
+#aura.au-plain .au-orb .au-ow { opacity: .9; }
+#aura.au-plain .au-orb .au-i, #aura.au-plain .au-orb .au-ring { animation: none !important; }
+#aura.au-plain:not(.deep) #au-panel, #aura.au-plain.deep #au-deep { opacity: 1 !important; }
+#aura.au-plain .au-tab::after { content: attr(aria-label); position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 13px/1 "Architects Daughter", "Comic Sans MS", cursive; color: var(--ink); opacity: .9; }
+#aura.au-plain .au-tab.on::after { text-decoration: underline; text-underline-offset: 4px; }
+#aura.au-plain .au-tab { position: fixed; top: auto; bottom: calc(62px + var(--sab, 0px)); left: 50%; transform: none !important; opacity: 1 !important; visibility: visible !important; z-index: 6 !important; }
+#aura.au-plain .au-tab[data-s="0"] { margin-left: -118px; } #aura.au-plain .au-tab[data-s="1"] { margin-left: -58px; } #aura.au-plain .au-tab[data-s="2"] { margin-left: 2px; } #aura.au-plain .au-tab[data-s="3"] { margin-left: 62px; }
+#aura.au-plain .au-dev:not([hidden]) { position: fixed; top: auto; bottom: calc(14px + var(--sab, 0px)); left: 50%; transform: none !important; opacity: 1 !important; visibility: visible !important; z-index: 6 !important; }
+#aura.au-plain .au-dev[data-dev="0"] { margin-left: -110px; } #aura.au-plain .au-dev[data-dev="1"] { margin-left: -54px; } #aura.au-plain .au-dev[data-dev="2"] { margin-left: 2px; } #aura.au-plain .au-dev[data-dev="3"] { margin-left: 58px; }
+#aura.au-plain .au-chatk:not([hidden]) { position: fixed; top: auto; bottom: calc(14px + var(--sab, 0px)); left: auto; right: 16px; margin: 0; transform: none !important; opacity: 1 !important; visibility: visible !important; }
 .au-orb .au-ow { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font: 15px/1.2 "Architects Daughter", "Comic Sans MS", cursive; color: var(--ink); opacity: 0; transition: opacity 1.2s; pointer-events: none; }
 .au-orb .au-ow.say, .au-orb:hover .au-ow, .au-orb:focus-visible .au-ow { opacity: .9; }
 .au-orb svg.au-i path:not(.f) { fill: none; }

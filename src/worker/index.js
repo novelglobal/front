@@ -729,7 +729,7 @@ async function resetSite(db, req) {
 /* traffic: a day's count of each kind of thing, added after the answer has gone */
 const BEATS = ['open-aura', 'open-studio', 'open-portfolio', 'begin', 'print', 'wall', 'song', 'device'];
 /* the journey, counted step by step (never who): levels reached, discs and the eye pressed, steps opened, devices, the booth, the desk */
-const JOURNEY = /^(lv[1-6]|disc-[0-2]|eye|step-[0-3]|dev-[0-3]|booth-(open|print|save)|desk-(open|play|keep)|yours|talk)$/;
+const JOURNEY = /^(lv[1-6]|disc-[0-2]|eye|step-[0-3]|dev-[0-3]|booth-(open|print|save)|desk-(open|play|keep)|yours|talk|plain-(asked|ddg|still))$/;
 function trafficKey(url, m) {
   const p = url.pathname.replace(/^\/api\//, '').split('/')[0];
   if (p === 'beat') { const k = url.searchParams.get('k'); return BEATS.includes(k) || JOURNEY.test(k || '') ? k : null; }
