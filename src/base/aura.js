@@ -1548,8 +1548,11 @@
   var NOTICE0 = 'NOVEL is a shared work of fiction. Stories of dissent and alternative futures are welcome, including ideas about peaceful civil disobedience or climate direct action.\n\nFiction does not exempt anyone from Australian law. Violence, threats, incitement and targeted harassment are prohibited.\n\nImagine an alternative.\nThe intention is More Life.';
   var NOTICEH = 'SOLAR THERMAL PRINT ARCHIPELAGO · ISLAND COMMUNITY PATCH Nº 01';
   var FIRSTV = !store.get('da.aura.seen', 0);
+  /* the notice clear of a browser's own bar at the foot of the screen, whichever browser */
+  function vvFit() { var vv = window.visualViewport; if (!vv) return; var r = root.getBoundingClientRect(), b = Math.max(0, Math.round(r.bottom - (vv.offsetTop + vv.height))); root.style.setProperty('--vvb', b + 'px'); }
+  if (window.visualViewport) { visualViewport.addEventListener('resize', vvFit); visualViewport.addEventListener('scroll', vvFit); } addEventListener('resize', vvFit);
   function noticeSet(o) { var el = $('#au-notice'); if (!FIRSTV) { if (el) el.remove(); return; } o = o || {}; if (o.off) { if (el) el.remove(); return; }
-    if (!el) { el = document.createElement('aside'); el.id = 'au-notice'; el.className = 'au-notice'; el.setAttribute('role', 'note'); el.addEventListener('click', function () { bang(); }); root.appendChild(el); }
+    if (!el) { el = document.createElement('aside'); el.id = 'au-notice'; el.className = 'au-notice'; el.setAttribute('role', 'note'); root.appendChild(el); vvFit(); }
     var t = String(o.text || '').trim() || NOTICE0, h = o.head != null ? String(o.head).trim() : NOTICEH; el.innerHTML = (h ? '<b>' + esc(h) + '</b>' : '') + t.split(/\n\s*\n/).map(function (p) { return '<p>' + p.split('\n').map(esc).join('<br>') + '</p>'; }).join(''); }
   noticeSet(store.get('da.aura.notice', null));
   /* the Country: the first time El Niño's map opens on a phone, a dark veil over it with the Country and its sovereignty in the notice's
@@ -1594,7 +1597,7 @@
   }
   var focusFirst = function () { if ('ontouchstart' in window) return; var f = panel.querySelector('#au-say, .au-wish textarea'); if (f) setTimeout(function () { f.focus(); }, 60); };
   $('#au-seed').addEventListener('click', bang);
-  root.addEventListener('pointerdown', function (e) { if (S.mode === 'seed' && e.target === cv) bang(); });
+  root.addEventListener('pointerdown', function (e) { if (S.mode !== 'seed' || e.target !== cv) return; var r = root.getBoundingClientRect(), dx = e.clientX - r.left - L.cx, dy = e.clientY - r.top - L.cy, k = Math.max(72, L.R0 * 0.9); if (dx * dx + dy * dy <= k * k) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); var go = o.dataset.go;
     beat('disc-' + o.dataset.s); toIruk(+o.dataset.s); }); });
   /* the eye in the middle: the photo booth, one tap */
@@ -1694,8 +1697,11 @@
     if (!P) return; P.spId = P.catch.life || null; P.r = NG.read(P); P.data = NG.context(P); P.dirty = true;
     if (!P.wx && !P.wxAsked) { P.wxAsked = 1; NG.weather(P.lat, P.lng).then(function (w) { if (P && w) { P.wx = w; P.data = NG.context(P); } }); }
   }
+  /* each piece's photograph as it came, this visit only: sent to the approval page as the original */
+  var ORIG = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function fullOf(p) { var o = ORIG && ORIG.get(p); return o && o.size <= 10e6 && /^image\/(jpeg|png|webp|heic|heif|gif|avif)$/.test(o.type) ? o : p.photo || ''; }
   function intake(file) {
-    if (!file) return; var p = piece(), url = URL.createObjectURL(file);
+    if (!file) return; var p = piece(), url = URL.createObjectURL(file); if (ORIG) ORIG.set(p, file);
     panel.classList.add('busy');
     var exP = new Promise(function (res) { try { var fr = new FileReader(); fr.onload = function () { res(NG.exif(fr.result)); }; fr.onerror = function () { res({}); }; fr.readAsArrayBuffer(file.slice(0, 256 * 1024)); } catch (e) { res({}); } });
     var imP = NG.loadImg(url).catch(function () { return window.createImageBitmap ? createImageBitmap(file).then(function (bm) { var c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); return c; }) : null; }).catch(function () { return null; });
@@ -2092,10 +2098,10 @@
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
     var art = P.photo ? 'photo' : 'net', photo = NG.PHOTOS[n.id] || P.photo || P.spPhoto || '', show2 = { line: 1, life: !!lifeOf(P), facts: 0, links: 0, code: 1 };
     var toWall = S.pmode === 'wall', toSend = S.pmode === 'send'; beat(toWall ? 'wall' : toSend ? 'send' : 'print');
-    (toWall ? Promise.resolve('kept') : toSend ? NG.sendNote(n, null, '', n.wish, null, P.photo || '', posterJPEG(P)) : NG.printers().then(function (list) {
+    (toWall ? Promise.resolve('kept') : toSend ? NG.sendNote(n, null, '', n.wish, null, fullOf(P), posterJPEG(P)) : NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
-      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, P.photo || '', posterJPEG(P)); });
+      return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, fullOf(P), posterJPEG(P)); });
     })).then(function (s) {
       st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going');
       if (toSend && s !== 'failed') { squirt(); NG.toast && NG.toast(s === 'shown' ? 'LIVE · EVERYONE ON NOVEL.GLOBAL' : s === 'outbox' ? 'SENDS WHEN THERE IS SIGNAL' : 'SENT · WAITING'); }
@@ -2188,7 +2194,7 @@
   }
   function talkFill(ol, l) {
     var top = l.filter(function (t) { return !t.re; }), kids = function (id) { return l.filter(function (t) { return t.re === id; }).reverse(); };
-    var li = function (t, sub) { var kk = NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + (TKM[t.k] ? '<i class="tkm">' + TKM[t.k] + '</i> ' : '') + NG.moonTag(t.at, hereOf().lat) + '</small><span>' + esc(t.text) + '</span></li>'; };
+    var li = function (t, sub) { var kk = t.k === 'ng' ? { n: 'novel.global', m: 0 } : NG.kin(t.kin) || { n: '', m: 0 }; return '<li data-id="' + esc(t.id) + '" class="' + (sub ? 'sub' : '') + '"><i class="kin">' + markI(MARK_ORDER[kk.m]) + '</i><b>' + esc(kk.n) + '</b><small>' + (TKM[t.k] ? '<i class="tkm">' + TKM[t.k] + '</i> ' : '') + NG.moonTag(t.at, hereOf().lat) + '</small><span>' + esc(t.text) + '</span></li>'; };
     ol.innerHTML = top.length ? top.map(function (t) { return li(t) + kids(t.id).map(function (c) { return li(c, 1); }).join(''); }).join('') : '<li class="none">·</li>';
     [].forEach.call(ol.querySelectorAll('li[data-id]:not(.sub)'), function (e) { e.addEventListener('click', function () { TK.re = TK.re === e.dataset.id ? null : e.dataset.id; [].forEach.call(ol.querySelectorAll('li'), function (q) { q.classList.toggle('re', q.dataset.id === TK.re); }); var i = $('#au-talkp input'); i.placeholder = TK.re ? '↳' : '…'; i.focus(); }); });
   }
@@ -2205,11 +2211,15 @@
           var ol = $('#au-talkp ol'); talkFill(ol, l); var me = ol.querySelector('li[data-id="' + j.id + '"]'); if (me) { me.classList.add('mine'); me.scrollIntoView({ block: 'nearest' }); }
           talkSays('✓', true); made('talk', t); bell(5, 0.12); }); })
       .catch(function () { i.disabled = false; talkSays('⌁'); }); });
-  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'), ki = $('#au-keyin'), first = S.mode !== 'iruk' && S.mode !== 'morph'; if (NG.proof && store.get('da.who', '') && !SHOWN) NG.proof().then(function (ok) { if (ok !== !!(yk && yk.classList.contains('on'))) { keyName(); applyGates(); } }); if (yk) { yk.hidden = false; yk.classList.toggle('on', !!keyed()); } if (ki) { if (!first) { if (!ki.hidden) { ki.hidden = true; root.classList.remove('keyon'); } } else if (!keyed() && ki.hidden && !(FIRSTV && S.mode === 'seed')) ki.hidden = false; } var ko = $('#au-keyout'); if (ko) ko.hidden = !(keyed() || store.get('da.who.pass', 0)) || !first; }
+  function keyName() { var b = $('#au-yours b'); if (!b) return; var on = store.get('da.who.pass', 0) && NG.me, kk = on && NG.kin ? NG.kin(store.get('da.kin', null)) : null; b.innerHTML = on ? esc(NG.me()) + (kk ? markI(MARK_ORDER[kk.m]) : '') : ''; if (kk) b.title = kk.n; var yk = $('#au-yours'), ki = $('#au-keyin'), first = S.mode !== 'iruk' && S.mode !== 'morph'; if (NG.proof && store.get('da.who', '') && !SHOWN) NG.proof().then(function (ok) { if (ok !== !!(yk && yk.classList.contains('on'))) { keyName(); applyGates(); } }); if (yk) { yk.hidden = false; yk.classList.toggle('on', !!keyed()); } if (ki && !ki.hidden && (!first || keyed() || store.get('da.who.pass', 0))) kiShut(); var ko = $('#au-keyout'); if (ko) ko.hidden = !(keyed() || store.get('da.who.pass', 0)) || !first; }
   /* logged out: this phone's code and the showcase let go; a new code is made the next time one is needed, and another typed in at any time */
   $('#au-keyout').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); store.set('da.who', ''); store.set('da.who.pass', 0); store.set('da.who.ok', 0); store.set('da.kin', null); store.set('da.showcase', 0); SHOWN = false; root.classList.remove('keyon'); closeDev(); keyName(); applyGates(); if (S.mode === 'iruk') paint(); bell(1, 0.12); NG.toast && NG.toast('OUT'); });
-  $('#au-yours').addEventListener('click', function () { beat('yours'); var k = $('#au-keyin'), i = k.querySelector('input'); k.hidden = !k.hidden; root.classList.toggle('keyon', !k.hidden); if (!k.hidden) { i.value = ''; setTimeout(function () { i.focus(); }, 30); } bell(2, 0.1); });
-  $('#au-keyin input').addEventListener('input', function () { var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
+  var KIT = 0;
+  function kiShut() { clearTimeout(KIT); var k = $('#au-keyin'); if (k) k.hidden = true; root.classList.remove('keyon'); }
+  function kiIdle() { clearTimeout(KIT); KIT = setTimeout(function () { var i = $('#au-keyin input'); if (i && !i.value && !i.disabled) kiShut(); else if (i && !$('#au-keyin').hidden) kiIdle(); }, 5000); }
+  $('#au-yours').addEventListener('click', function () { beat('yours'); bell(2, 0.1); if (keyed() || store.get('da.who.pass', 0)) { kiShut(); return; } var k = $('#au-keyin'), i = k.querySelector('input'); if (!k.hidden) { kiShut(); return; } k.hidden = false; root.classList.add('keyon'); i.value = ''; setTimeout(function () { i.focus(); }, 30); kiIdle(); });
+  $('#au-keyin input').addEventListener('blur', function () { if (!this.value) kiIdle(); });
+  $('#au-keyin input').addEventListener('input', function () { kiIdle(); var i = this, v = i.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 3); i.value = v; if (v.length < 3) return;
     if (v === '888') { SHOWN = true; store.set('da.showcase', 1); i.value = ''; $('#au-keyin').hidden = true; root.classList.remove('keyon'); keyName(); applyGates(); if (S.mode === 'iruk') paint(); beat('showcase'); harp([0, 4, 7, 12, 16]); NG.toast && NG.toast('888 · OPEN'); return; }
     i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); applyGates(); if (!store.get('da.who.ok', 0)) NG.toast && NG.toast('IN · NOT PRINTED YET'); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); keyName(); }, 4000); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
@@ -2574,6 +2584,8 @@
   api.state = function () { return { mode: S.mode, stage: S.stage, deep: S.deep, sel: S.sel || null, piece: P ? { say: P.say, lat: P.lat, lng: P.lng, photo: !!P.photo, eye: !!P.eye, art: P.art, lines: P.lines, code: P.note && P.note.code, sent: !!P.sent, caught: caught(P), pos: P.pos, adds: P.adds, cn: P.note ? P.note.cn : '', folioId: P.folioId || '', tf: P.tf, paper: P.paper, ptone: P.ptone, spPhoto: !!P.spPhoto } : null, boxes: lastBoxes, halo: S.halo || 0, slip: !!MINI.c, round: !!S.round, form: FORM.key, frames: S.frames || 0, me: S.me || null, folio: slides().length, zoom: SH.pswp && SH.pswp.currSlide ? SH.pswp.currSlide.currZoomLevel / SH.pswp.currSlide.zoomLevels.initial : 1, showing: !!SH.pswp, shows: [SH.n || 0, SH.d || 0], pix: { sub: PIX.sub, tone: PIX.tone }, print: S.lastPrint || null, hum: window.__auraHum || 0, layers: window.__auraLayers || 0, pf: !!PF, noise: !!N3 }; };
   /* the last receipt as it went to the printer, for a look at it */
   /* the receipt as it would print, drawn without sending it (for checking it against the poster) */
+  /* back to the very start, the notice with it: where the booth leaves someone once their print is made */
+  api.home = function () { try { closeDev(); } catch (e) { /* none open */ } if (S.deep) { S.deep = false; deep.hidden = true; } FIRSTV = true; noticeSet(store.get('da.aura.notice', null)); S.stage = 0; setMode('seed'); };
   api.pixSubs = ['jelly', 'coral', 'trash', 'st0', 'st1', 'st3'];
   api.pix = function (sub) { usePaper(true); var c = pixArt(sub, 24, 0, 'ink', null, 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
   api.receipt = function (w) { return P ? posterPrint(w || 512).then(function (c) { return c ? c.toDataURL('image/png') : null; }) : Promise.resolve(null); };

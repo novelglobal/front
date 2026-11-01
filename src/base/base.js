@@ -938,6 +938,8 @@ function human() {
       if (window.turnstile) return go(); var sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true; sc.onload = go; sc.onerror = function () { ok(''); }; document.head.appendChild(sc);
     }); });
 }
+/* an upload's original file, as a data URL to send (up to 10 MB, a photograph of the usual kinds), else nothing */
+function fileURL(f) { return new Promise(function (res) { if (!f || !f.size || f.size > 10e6 || !/^image\/(jpeg|png|webp|heic|heif|gif|avif)$/.test(f.type)) return res(''); try { var fr = new FileReader(); fr.onload = function () { res(String(fr.result || '')); }; fr.onerror = function () { res(''); }; fr.readAsDataURL(f); } catch (e) { res(''); } }); }
 function sendNote(n, cv, dest, wishOn, mesh, full, art) {
   var r = read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx });
   var body = { type: 'noticed', lat: +n.lat.toFixed(4), lng: +n.lng.toFixed(4), text: n.say || '' };
@@ -947,9 +949,9 @@ function sendNote(n, cv, dest, wishOn, mesh, full, art) {
   var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
   if (cv) { payload.escpos = raster(cv); payload.thumb = thumbOf(cv); } if (mesh) payload.mesh = String(mesh).slice(0, 200);
   if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
-  var tries = 0, ask = (full || art) && (cv || !dest) ? siteOf().then(function (s) { if (s && s.media) { if (full) payload.full = full; if (art) payload.art = art; } }) : Promise.resolve(), go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
+  var tries = 0, ask = (full || art) && (cv || !dest) ? Promise.all([siteOf(), full && full.size != null ? fileURL(full) : full]).then(function (g) { var s = g[0], fu = g[1]; if (s && s.media) { if (fu) payload.full = fu; if (art) payload.art = art; } }) : Promise.resolve(), go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
   return ask.then(go).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
-    if (e.status) { n.sent = { s: 'failed', why: e.status + ' ' + (e.message || '') }; saveNotes(); return 'failed'; } OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
+    if (e.status) { n.sent = { s: 'failed', why: e.status + ' ' + (e.message || '') }; saveNotes(); return 'failed'; } delete payload.full; delete payload.art; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
   });
 }
 /* a line for the local mesh alone: no print, sent on to every printer whose radio is on, which says it over Meshtastic. Resolves to its status */
@@ -2089,19 +2091,41 @@ function boothOn(dest) {
     $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
   boothStart(el);
 }
+/* the Irukandji, drawn by hand: a small clear box of a bell, four strings of beads trailing, one eye. It pulses,
+   drifts, looks about and follows a finger; blinks; jets up when touched */
+function boothJel(cls) {
+  var T = [[-30, 10], [-11, 15], [11, 15], [30, 10]], al = 'M-17 0C-10 -10 10 -10 17 0C10 10 -10 10 -17 0Z';
+  return '<svg class="bt-jel' + (cls ? ' ' + cls : '') + '" viewBox="-80 -80 160 250" aria-hidden="true"><defs><filter id="bt-ro" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".07" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter><clipPath id="bt-al"><path d="' + al + '"/></clipPath></defs>' +
+    '<g class="sw"><g class="tn" filter="url(#bt-ro)">' + T.map(function (t, i) { var x = t[0], y = t[1], s = i % 2 ? 1 : -1; return '<path class="t t' + i + '" d="M' + x + ' ' + y + 'C' + (x + s * 10) + ' ' + (y + 40) + ' ' + (x - s * 12) + ' ' + (y + 80) + ' ' + (x + s * 4) + ' ' + (y + 150) + '"/>'; }).join('') + '</g>' +
+    '<g class="bl" filter="url(#bt-ro)"><path class="b" d="M-38 10C-41 -28 -24 -58 0 -58C24 -58 41 -28 38 10C26 15 14 13 0 16C-14 13 -26 15 -38 10Z"/><path class="r" d="M-17 -52C-22 -28 -22 -6 -19 13M17 -52C22 -28 22 -6 19 13"/></g>' +
+    '<g class="ey" transform="translate(0 -22)"><g class="lid"><g clip-path="url(#bt-al)"><g class="ir"><circle class="i" r="7"/><circle class="p" r="3.6"/><circle class="gl" cx="2.4" cy="-2.4" r="1.2"/></g></g><path class="al" d="' + al + '"/></g><path class="hp" d="M-15 -1C-8 8 8 8 15 -1"/></g></g></svg>';
+}
+/* its eye alive: it follows a finger or the pointer, and left alone looks about and blinks now and then */
+function boothEye(el) {
+  var sv = el && el.querySelector('.bt-jel'); if (!sv || !BTH) return; var ir = sv.querySelector('.ir'), lid = sv.querySelector('.lid'), pu = sv.querySelector('.p');
+  var live = function () { return BTH && document.body.contains(sv); }, look = function (x, y) { ir.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; };
+  var blink = function () { lid.classList.add('shut'); setTimeout(function () { lid.classList.remove('shut'); }, 170); };
+  var idle = function () { if (!live()) return; if (Date.now() - (BTH.moved || 0) > 1800) { if (Math.random() < 0.25) blink(); else look((Math.random() * 2 - 1) * 8, (Math.random() * 2 - 1) * 3); } BTH.eyeT = setTimeout(idle, 1300 + Math.random() * 2400); };
+  el.__eye = function (e) { if (!live()) return; var r = sv.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.24, dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 160); look(dx / d * 8 * k, dy / d * 3.4 * k); pu.setAttribute('r', d < r.width * 0.4 ? 4.8 : 3.6); BTH.moved = Date.now(); };
+  if (!el.__eyeOn) { el.__eyeOn = 1; addEventListener('pointermove', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); addEventListener('pointerdown', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); }
+  clearTimeout(BTH.eyeT); BTH.eyeT = setTimeout(idle, 900);
+}
+function boothJet(j) { if (!j) return; var l = j.querySelector('.lid'); j.classList.remove('jet'); void j.getBoundingClientRect(); j.classList.add('jet'); if (l) { l.classList.add('shut'); setTimeout(function () { l.classList.remove('shut'); }, 180); } }
 function boothStart(el) {
-  el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
+  el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.big = null; BTH.file = null; BTH.px = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
   clearTimeout(BTH.t);
-  /* one touch: the eye. A phone then offers its camera or its photos; a computer, a file */
-  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo"><pre class="art" aria-hidden="true">' + (/[?&]base/.test(location.search) ? esc(EYE_ASCII) : '') + '</pre><input type="file" accept="image/*" hidden></label>' +
-    '<small class="cap">Tap the eye for a photo</small><nav class="bp" aria-label="Which printer"></nav>';
+  /* one touch: the jellyfish's eye. A phone then offers its camera or its photos; a computer, a file */
+  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo">' + boothJel() + '<input type="file" accept="image/*" hidden></label><nav class="bp" aria-label="Which printer"></nav>';
   $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
+  var lb = $('.eye', el); lb.addEventListener('click', function () { boothJet($('.bt-jel', lb)); });
+  boothEye(el);
 }
 function boothPic(file) {
   document.body.classList.add('busy'); var url = URL.createObjectURL(file);
   loadImg(url).catch(function () { return window.createImageBitmap ? createImageBitmap(file) : Promise.reject(); }).then(function (im) {
     document.body.classList.remove('busy'); var w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height, k = Math.min(1, 1600 / Math.max(w0, h0));
-    var c = document.createElement('canvas'); c.width = Math.round(w0 * k); c.height = Math.round(h0 * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); BTH.im = c; boothEdit();
+    var c = document.createElement('canvas'); c.width = Math.round(w0 * k); c.height = Math.round(h0 * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); BTH.im = c; BTH.file = file;
+    var k2 = Math.min(1, 3200 / Math.max(w0, h0)), g = document.createElement('canvas'); g.width = Math.round(w0 * k2); g.height = Math.round(h0 * k2); g.getContext('2d').drawImage(im, 0, 0, g.width, g.height); BTH.big = g; boothEdit();
   }).catch(function () { document.body.classList.remove('busy'); toast('×'); });
 }
 /* the photograph made ready for the printer's dots: stretched to its own darkest and lightest, lifted for the spread of a hot dot,
@@ -2136,13 +2160,15 @@ function boothEdit() {
   var el = $('#booth'); BTH.code = code('b' + Date.now().toString(36) + '|' + Date.now());
   /* the whole receipt as it will print, at the printer's own dots; a sticker tapped lands on the photo, the photo tapped moves it there */
   var px = window.AURA && AURA.pix ? AURA.pixSubs : null; BTH.art = px ? px.map(function (q) { return AURA.pix(q); }) : null;
+  /* no choices set out: the print as it will be, and under it one thing at a time, words, then marks; the jellyfish, swum down from the
+     middle, takes it on each time it is touched, and at the last it prints. A dot of colour beside it saves it in colour */
   el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div>' +
-    '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + (px ? px.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '</div>' +
-    '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…">' +
-    '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button><button id="bt-dl" aria-label="Save">save</button></div>';
+    '<div class="bt-pn" data-pn="s" hidden><div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + (px ? px.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div><div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div></div>' +
+    '<div class="bt-pn" data-pn="w"><input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…" enterkeyhint="next"></div>' +
+    '<div class="bt-foot"><i class="bt-dots" aria-hidden="true"><b class="on"></b><b></b><b></b></i><button id="bt-go" class="bt-on" aria-label="On">' + boothJel() + '</button><button id="bt-dl" class="hq" aria-label="Save it in full colour"></button></div>';
   if (px) $$('#bt-st [data-k]').forEach(function (b, i) { var c = BTH.art[i], im = new Image(); im.alt = ''; im.src = c.toDataURL(); b.appendChild(im); });
   var cv = $('#bt-pv canvas'), pending = 0, paint = function () {
-    clearTimeout(pending); pending = setTimeout(function () { BTH.blob = null; ditherLib().then(function (D) { return boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); return boothSlip(D, BTH.code, true); }); }).then(function (r) { if (r && BTH) r.toBlob(function (b) { if (BTH) BTH.blob = b; }, 'image/png'); }); }, 120);
+    clearTimeout(pending); pending = setTimeout(function () { if (!BTH) return; ditherLib().then(function (D) { return BTH && boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); }); }); }, 120);
   };
   /* shown at a whole number of screen dots to each printer dot, so it reads as sharp as it prints */
   var crisp = function () { var dpr = window.devicePixelRatio || 1, room = Math.min(el.clientWidth - 32, 420) * dpr, k = Math.max(1, Math.floor(room / cv.width)); cv.style.width = Math.min(cv.width * k / dpr, el.clientWidth - 32) + 'px'; };
@@ -2158,14 +2184,27 @@ function boothEdit() {
   $('#bt-undo').addEventListener('click', function () { if (BTH.st.length) { BTH.st.pop(); paint(); } });
   $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { BTH.pick = +b.dataset.k; BTH.st.push(BTH.art ? { img: BTH.art[BTH.pick], x: 0.25 + Math.random() * 0.5, y: 0.25 + Math.random() * 0.5 } : { t: STICKERS[BTH.pick], x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 }); paint(); }); });
   var w = $('#bt-w'); w.value = BTH.words; w.addEventListener('input', function () { BTH.words = w.value; paint(); });
-  $('#bt-go').addEventListener('click', function () { if (boothLeft() <= 0) boothPrint(); });
-  /* printed a little while ago from this phone: print counts down to when it can again; save works all the while */
-  var gb = $('#bt-go'), tick = function () { var l = boothLeft(); if (!$('#bt-go')) return; gb.disabled = l > 0; var sec = Math.ceil(l / 1000); gb.textContent = l > 0 ? Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) : 'print'; if (l > 0) BTH.t = setTimeout(tick, 1000); };
+  /* the jellyfish takes it on: words, then marks, then the print. Printed a little while ago from this phone, it dozes, eyes shut, until
+     it can print again (never a countdown); saving works all the while */
+  var gb = $('#bt-go'), dots = $$('.bt-dots b', el), step = 'w', show = function (k) { step = k; $$('.bt-pn', el).forEach(function (p) { var on = p.dataset.pn === k; if (on && p.hidden) { p.hidden = false; p.classList.remove('in'); void p.offsetWidth; p.classList.add('in'); } else if (!on) p.hidden = true; }); dots.forEach(function (d, i) { d.classList.toggle('on', i === (k === 'w' ? 0 : 1)); }); gb.setAttribute('aria-label', k === 'w' ? 'On' : 'Print'); };
+  var tick = function () { if (!$('#bt-go')) return; var l = boothLeft(); gb.classList.toggle('doze', l > 0); if (l > 0) BTH.t = setTimeout(tick, 1000); };
   clearTimeout(BTH.t); tick();
-  /* saved, not printed: the slip as it would print, to keep or share; then back to novel.global */
-  $('#bt-dl').addEventListener('click', function () { var done = function () { beatK('booth-save'); boothPass(el, 15, false); };
-    if (BTH.blob) { saveBlob(BTH.blob, 'novel-global-photo.png'); done(); return; }
-    ditherLib().then(function (D) { return boothSlip(D, BTH.code, false); }).then(function (c2) { if (!c2) return; download(c2, 'novel-global-photo.png'); done(); }); });
+  gb.addEventListener('click', function () { boothJet($('.bt-jel', gb)); if (step === 'w') { show('s'); $('#bt-w').blur(); return; } if (boothLeft() > 0) return; dots.forEach(function (d) { d.classList.add('on'); }); setTimeout(function () { if (BTH && $('#bt-go')) boothPrint(); }, 420); });
+  $('#bt-w').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); show('s'); this.blur(); } });
+  /* the pixel maker, kept with the stamps: twelve by twelve, a touch sets a dot (or clears it) and a drag goes on doing the same; + puts it on the photo */
+  var pc = $('#bt-px'), pw = $('.bt-pix', el), N = 12, Z = 14, px0 = BTH.px || (BTH.px = new Uint8Array(N * N)), pen = -1;
+  var pxDraw = function () { var g = pc.getContext('2d'); g.fillStyle = '#F4F1E8'; g.fillRect(0, 0, N * Z, N * Z); for (var i = 0; i < N * N; i++) { g.fillStyle = px0[i] ? '#111' : 'rgba(23, 69, 127, .1)'; g.fillRect((i % N) * Z + 1, Math.floor(i / N) * Z + 1, Z - 2, Z - 2); } };
+  var cell = function (e) { var r = pc.getBoundingClientRect(), cx = Math.floor((e.clientX - r.left) / r.width * N), cy = Math.floor((e.clientY - r.top) / r.height * N); return cx >= 0 && cy >= 0 && cx < N && cy < N ? cy * N + cx : -1; };
+  pc.addEventListener('pointerdown', function (e) { var i = cell(e); if (i < 0) return; pen = px0[i] ? 0 : 1; px0[i] = pen; pxDraw(); try { pc.setPointerCapture(e.pointerId); } catch (er) { /* fine */ } e.preventDefault(); });
+  pc.addEventListener('pointermove', function (e) { if (pen < 0) return; var i = cell(e); if (i >= 0 && px0[i] !== pen) { px0[i] = pen; pxDraw(); } });
+  pc.addEventListener('pointerup', function () { pen = -1; }); pc.addEventListener('pointercancel', function () { pen = -1; });
+  $('#bt-pxo').addEventListener('click', function () { pw.hidden = !pw.hidden; this.classList.toggle('on', !pw.hidden); });
+  $('#bt-pxc').addEventListener('click', function () { px0.fill(0); pxDraw(); });
+  $('#bt-pxa').addEventListener('click', function () { var any = false, i; for (i = 0; i < N * N; i++) if (px0[i]) any = true; if (!any) return; var o = document.createElement('canvas'); o.width = o.height = N; var g = o.getContext('2d'); g.fillStyle = '#000'; for (i = 0; i < N * N; i++) if (px0[i]) g.fillRect(i % N, Math.floor(i / N), 1, 1); BTH.st.push({ img: o, x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }); paint(); });
+  pxDraw();
+  /* save: the photograph in full colour, as well as the print or instead of it; the booth stays where it is */
+  $('#bt-dl').addEventListener('click', function () { boothHQ(this); });
+  boothEye($('.bt-foot', el));
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
@@ -2197,6 +2236,19 @@ function boothSlip(D, code, real) {
     return c;
   });
 }
+/* saved, as well as or instead of a print: the photograph in full colour as large as it came (to 3200), its stamps on, and under it
+   the mark, the words and the moon, on paper */
+function boothHQ(btn) {
+  if (!BTH || !BTH.im) return; var im = BTH.big || BTH.im, W = im.width, H = im.height, s = W / 1000, wd = BTH.words.trim(), pad = Math.round(40 * s), fh = Math.round((wd ? 190 : 120) * s);
+  var c = document.createElement('canvas'); c.width = W + pad * 2; c.height = H + pad + fh; var x = c.getContext('2d');
+  x.fillStyle = '#F4F1E8'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, pad, pad, W, H); x.save(); x.translate(pad, pad); drawStickers(x, W, H, '#111'); x.restore();
+  var y = pad + H + Math.round(44 * s); x.fillStyle = '#111'; x.fillRect(pad, y, Math.round(26 * s), Math.round(26 * s)); x.fillStyle = '#E25C40'; x.beginPath(); x.arc(pad + Math.round(48 * s), y + Math.round(13 * s), Math.round(14 * s), 0, 7); x.fill();
+  x.fillStyle = '#111'; x.textBaseline = 'middle'; x.font = '700 ' + Math.round(28 * s) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(74 * s), y + Math.round(14 * s));
+  var dt = when(Date.now()); x.font = Math.round(24 * s) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText(dt, c.width - pad - x.measureText(dt).width, y + Math.round(14 * s));
+  if (wd) { x.font = 'bold ' + Math.round(44 * s) + 'px ui-monospace, Menlo, monospace'; x.fillText(wd, pad, y + Math.round(84 * s), W); }
+  c.toBlob(function (b) { if (b) saveBlob(b, 'novel-global-' + Date.now().toString(36) + '.jpg'); }, 'image/jpeg', 0.93); beatK('booth-save');
+  if (btn) { btn.classList.add('ok'); setTimeout(function () { btn.classList.remove('ok'); }, 1600); }
+}
 /* the photograph kept for the site's gallery: in colour, its stickers on, as large as the server takes */
 function boothPhoto() {
   var im = BTH.im, N = 1280, out = '';
@@ -2207,25 +2259,28 @@ function boothPhoto() {
   }
   return out.length < 400e3 ? out : '';
 }
-/* after a print or a save: the print is the pass (its code on the paper, never on the screen). The aura's eye takes it in, a while, then novel.global */
+/* after a print: the print is the pass (its code on the paper, never on the screen). The jellyfish, pleased, a while; then the very start of
+   the journey, the notice with it, already in */
 function boothPass(el, s0, printed) {
   if (!BTH) return;   // already gone back to novel.global
   if (/^#booth/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
   var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; if (printed) store.set('da.who.pass', 1); meUsed(); if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1);
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept"><i></i></div>' + (printed && BTH.gave ? '<small class="cap">your code is on the paper</small>' : '') + '<i class="pt" style="animation-duration:' + t + 'ms"></i>';
-  clearTimeout(BTH.home); BTH.home = setTimeout(boothClose, t);
+  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel('happy') + '</div><i class="pt" style="animation-duration:' + t + 'ms"></i>';
+  clearTimeout(BTH.home); BTH.home = setTimeout(function () { boothClose(); if (window.AURA && AURA.home && store.get('da.who.pass', 0)) AURA.home(); }, t);
 }
 function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
 function boothLeft() { return Math.max(0, (+store.get('da.booth.next', 0) || 0) - Date.now()); }
 function boothPrint() {
-  var el = $('#booth'), id = 'b' + Date.now().toString(36), cd = BTH.code || code(id + '|' + Date.now());
+  var el = $('#booth'), id = 'b' + Date.now().toString(36), cd = BTH.code || code(id + '|' + Date.now()), orig = BTH.file;
   var gave = !store.get('da.who.given', 0); BTH.gave = gave;
   ditherLib().then(function (D) { return boothSlip(D, cd, gave); }).then(function (slipCv) {
     var lat = map.lat, lng = map.lng, words = BTH.words.trim(), photo = boothPhoto();
-    el.innerHTML = BHEAD + '<div class="pv slip"></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
-      '<div class="am" id="bt-on"><button id="bt-again" aria-label="Again" title="Again" hidden>[ ↺ ]</button><button id="bt-save" aria-label="Save it" title="Save it">[ ↓ ]</button><a href="' + esc(siteURL()) + '" id="bt-site" aria-label="novel.global">[ novel.global ]</a></div>';
-    $('.pv.slip', el).appendChild(slipCv); $('#bt-save').addEventListener('click', function () { ditherLib().then(function (D) { return boothSlip(D, cd, false); }).then(function (c3) { if (c3) download(c3, 'novel-global-' + cd + '.png'); }); });
+    /* the jellyfish over a slot, the paper fed out of it a line at a time: on the screen the print without its code (the code is on the paper alone) */
+    el.innerHTML = BHEAD + '<i class="bt-top">' + boothJel() + '</i><div class="feed"><i class="mouth"></i><div class="win"><div class="pv slip"></div></div></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
+      '<div class="am" id="bt-on"><button id="bt-save" class="hq" aria-label="Save it in full colour"></button><button id="bt-again" aria-label="Again" hidden>↺</button></div>';
+    ditherLib().then(function (D) { return BTH && boothSlip(D, cd, false); }).then(function (sc) { var w = $('.pv.slip', el); if (w && sc) w.appendChild(sc); });
+    $('#bt-save').addEventListener('click', function () { boothHQ(this); }); boothEye(el);
     var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
     if (photo) PHOTOS[id] = photo; NOTES.unshift(n); saveNotes();
     var body = { type: 'booth', lat: +lat.toFixed(4), lng: +lng.toFixed(4), text: words };
@@ -2234,8 +2289,9 @@ function boothPrint() {
     /* done: once the printer has it (or it waits safely for a signal), a moment to see it, then straight back to novel.global */
     var home = boothClose;
     var soon = function () { if (!BTH) return; clearTimeout(BTH.home); el.classList.add('done'); BTH.home = setTimeout(function () { boothPass(el, 15, true); }, 1600); };
-    send(payload).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); if (s !== 'failed') { store.set('da.aura.printed', 1); if (gave) store.set('da.who.given', 1); } soon(); })
-      .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); soon(); } });
+    /* its original photograph goes with it, for the approval page */
+    fileURL(orig).then(function (u) { if (u) payload.full = u; return send(payload); }).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: BTH.dest, s: s }; saveNotes(); pip.innerHTML = pips(s); follow(n, pip); if (s !== 'failed') { store.set('da.aura.printed', 1); if (gave) store.set('da.who.given', 1); store.set('da.who.pass', 1); setTimeout(function () { try { proof(); } catch (er) { /* asked again later */ } }, 9000); } soon(); })
+      .catch(function (e) { n.sent = { s: e.status ? 'failed' : 'outbox' }; saveNotes(); pip.innerHTML = pips(n.sent.s); if (!e.status) { delete payload.full; OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); soon(); } });
     /* the next print from this phone after a while (ten minutes unless set otherwise), so the printer stays free for everyone */
     var next = Date.now() + boothGap() * 60e3; store.set('da.booth.next', next);
     var ag = $('#bt-again'); ag.addEventListener('click', function () { clearTimeout(BTH.home); boothStart(); }); clearTimeout(BTH.t); BTH.t = setTimeout(function () { ag.hidden = false; }, next - Date.now());

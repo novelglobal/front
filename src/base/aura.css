@@ -6,7 +6,7 @@
 html.aura-on #home { display: none !important; }
 /* the notice, a first visit's only: small at the foot of the screen like a terminal's lines, in the mark's sans, each line coming in
    after the last; touched (or the rings), the journey begins */
-#aura .au-notice { display: none; position: absolute; left: 16px; right: 16px; bottom: calc(20px + var(--sab)); max-width: 42ch; margin: 0; padding: 0; z-index: 5; cursor: pointer;
+#aura .au-notice { display: none; position: absolute; left: 16px; right: 16px; bottom: calc(14px + var(--sab) + var(--vvb, 0px)); max-width: 42ch; max-height: calc(48% - var(--vvb, 0px)); overflow-y: auto; scrollbar-width: none; margin: 0; padding: 0; z-index: 5; cursor: default;
   color: var(--ink); text-align: left; font: 500 10.5px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .01em; opacity: .9; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
 #aura.m-seed .au-notice { display: block; }
 #aura .au-notice p { margin: 0; opacity: 0; animation: au-in .5s ease forwards; }
@@ -30,7 +30,7 @@ html.aura-on #home { display: none !important; }
 #aura .au-sov p:last-child::after { content: ''; display: inline-block; width: .55em; height: 1.05em; margin-left: .35em; vertical-align: -.15em; background: currentColor; animation: au-caret 1.1s steps(1) infinite; }
 @media (min-width: 760px) { #aura .au-sov .au-term { left: 18px; bottom: 16px; } #aura .au-sov b { font-size: 9.5px; } #aura .au-sov p { font-size: 10.5px; } }
 @media (prefers-reduced-motion: reduce) { #aura .au-sov, #aura .au-sov b, #aura .au-sov p { animation: none; opacity: 1; } #aura .au-sov p:last-child::after { animation: none; } }
-@media (min-width: 760px) { #aura .au-notice { left: 24px; bottom: calc(22px + var(--sab)); font-size: 11.5px; } #aura .au-notice b { font-size: 9.5px; } #aura .au-notice p:last-child { font-size: 10.5px; } }
+@media (min-width: 760px) { #aura .au-notice { left: 24px; bottom: calc(22px + var(--sab) + var(--vvb, 0px)); font-size: 11.5px; } #aura .au-notice b { font-size: 9.5px; } #aura .au-notice p:last-child { font-size: 10.5px; } }
 @media (prefers-reduced-motion: reduce) { #aura .au-notice p { animation: none; opacity: 1; } #aura .au-notice p:last-child::after { animation: none; } }
 html.aura-on body { background: var(--blue, #17457F); }
 #aura { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --ink: #F4F1E8; --line: rgba(244, 241, 232, .85); --faint: rgba(244, 241, 232, .5);
@@ -939,7 +939,7 @@ html.au-frozen #au-cv { visibility: hidden; }
 .au-todo li.done { text-decoration: none; }
 
 /* the discs' words: small, close under their icon, no line under them */
-#aura .au-orb .au-ow, #au-eyec .au-ow { top: calc(100% - 2px); font-size: 12px; letter-spacing: .02em; text-decoration: none; border: 0; box-shadow: none; background: none; }
+#aura .au-orb .au-ow, #au-eyec .au-ow { right: auto; text-align: center; top: calc(100% - 2px); font-size: 12px; letter-spacing: .02em; text-decoration: none; border: 0; box-shadow: none; background: none; }
 #aura .au-orb .au-ow::after, #aura .au-orb .au-ow::before, #au-eyec .au-ow::after { display: none !important; }
 
 /* the key of one's own, hanging at the top beside the list of what was done */
@@ -998,7 +998,8 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 /* done, ticked */
 .au-todo li.done::before { content: '✓'; margin-right: 8px; opacity: .8; }
 
-#aura .au-keyin input { width: 4.6em !important; max-width: 4.6em; border: 0 !important; border-bottom: 1.5px solid var(--ink) !important; background: rgba(10, 30, 60, .7) !important; padding: 6px 4px !important; }
+#aura .au-keyin input { width: 4.6em !important; max-width: 4.6em; border: 0 !important; border-bottom: 1.5px solid var(--ink) !important; background: rgba(244, 241, 232, .05) !important; border-bottom-color: rgba(244, 241, 232, .55) !important; border-radius: 0 !important; padding: 6px 4px !important; }
+#aura .au-keyin input:focus { background: rgba(244, 241, 232, .09) !important; border-bottom-color: var(--ink) !important; }
 #aura #au-yours[hidden] { display: none !important; }
 
 /* today's brief at the head of the intel: one line, read like a headline */

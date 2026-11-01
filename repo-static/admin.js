@@ -4,6 +4,8 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s);
+  /* an original upload's file ending, by its kind */
+  const extOf = t => ({ 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'image/gif': 'gif', 'image/avif': 'avif' })[String(t || '').split(';')[0]] || 'jpg';
   const main = $('#main'); let KEY = sessionStorage.getItem('da.admin') || ''; let tab = 'overview';
   /* each cell of a table carries its column's heading, so on a phone (headings hidden, cells in a row) a number still says what it is */
   new MutationObserver(() => { for (const t of main.querySelectorAll('table.makers:not([data-h])')) { t.dataset.h = '1'; const hs = [...t.querySelectorAll('thead th')].map(th => th.textContent); if (hs.length) for (const tr of t.querySelectorAll('tbody tr')) [...tr.children].forEach((td, i) => { if (hs[i]) td.dataset.h = hs[i]; }); } }).observe(main, { childList: true, subtree: true });
@@ -162,7 +164,7 @@
       /* the poster as designed, and its own talk: read it, close it (nothing more said there) or open it again */
       x.art ? el('button', { type: 'button', text: 'POSTER ↓', onclick: async () => { const r = await api('art/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}-poster.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null,
       x.status === 'shown' && x.code ? el('button', { type: 'button', class: x.quiet ? 'on' : '', text: x.quiet ? 'TALK CLOSED' : 'CLOSE ITS TALK', onclick: async () => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: x.quiet ? 'unquiet' : 'quiet' }) }); show(tab); } }) : null,
-      x.full ? el('button', { type: 'button', text: 'FULL SIZE ↓', onclick: async () => { const r = await api('full/' + x.id); const a = el('a', { href: URL.createObjectURL(await r.blob()), download: `novel-global-${x.code}-full.jpg` }); document.body.append(a); a.click(); a.remove(); } }) : null);
+      x.full ? el('button', { type: 'button', text: 'ORIGINAL ↓', onclick: async () => { const r = await api('full/' + x.id); const bl = await r.blob(); const a = el('a', { href: URL.createObjectURL(bl), download: `novel-global-${x.code}-original.${extOf(bl.type)}` }); document.body.append(a); a.click(); a.remove(); } }) : null);
     const img = x.photo ? el('img', { alt: '' }) : null; if (img) photoOf(x.id, img); const tc = thumbCanvas(x.thumb);
     const [title, full, ...rest] = body; if (full) full.className = 'meta full';
     const brief = el('div', { class: 'meta', text: [x.code, x.kind.toUpperCase(), when(x.created), x.who ? 'BY ' + x.who : '', x.gone ? 'TAKEN DOWN' : '', x.quiet ? 'TALK CLOSED' : ''].filter(Boolean).join(' · ') });
@@ -175,6 +177,54 @@
     const pic = el('button', { type: 'button', class: 'pics', 'aria-label': 'More', onclick: () => { drop.open = !drop.open; } }, img || tc || el('div', { class: 'nopic' }));
     card.append(pic, el('div', { class: 'body' }, title, brief, acts, drop));
     return card;
+  }
+  /* ───────── the gallery: a tile for each piece, and a piece opened on its own to answer it ───────── */
+  const wordsOf = x => { if (x.kind === 'story' || x.kind === 'message') { const j = unpack(x.body) || {}; return typeof j.s === 'string' ? j.s : ((j.p || [])[3] || ''); } try { const j = JSON.parse(x.body) || {}; return j.text || (j.tx && j.tx.cn) || j.title || ''; } catch (e) { return ''; } };
+  function galTile(x, onOpen) {
+    const img = x.photo ? el('img', { alt: '', loading: 'lazy' }) : null; if (img) photoOf(x.id, img);
+    return el('button', { type: 'button', class: 'tile s-' + x.status, onclick: onOpen }, el('span', { class: 'tp' }, img || thumbCanvas(x.thumb) || el('i', { class: 'nopic', text: (wordsOf(x) || x.kind).slice(0, 60) })),
+      el('span', { class: 'tm' }, el('b', { text: x.code || '—' }), el('small', { text: [x.kind.toUpperCase(), when(x.created)].join(' · ') })), x.grp ? el('em', { class: 'tg', text: x.grp.toUpperCase() }) : null);
+  }
+  function galOpen(list, i, st, groups) {
+    const old = $('#gal'); if (old) old.remove(); const x = list[i]; if (!x) return;
+    const go = d => { const n = i + d; if (n >= 0 && n < list.length) galOpen(list, n, st, groups); else shut(); };
+    const done = (text, gone) => { badges(); say.textContent = text; say.className = 'said on'; if (gone) { list.splice(i, 1); setTimeout(() => { if (list[i]) galOpen(list, i, st, groups); else { shut(); show(st); } }, 650); } };
+    const post = async (b) => { await api('stories/' + x.id, { method: 'POST', body: JSON.stringify(b) }); };
+    const shut = () => { box.remove(); document.removeEventListener('keydown', keys); if (!list.length) show(st); };
+    const pic = el('div', { class: 'gp' }); if (x.photo) { const im = el('img', { alt: '' }); photoOf(x.id, im); pic.append(im); } else { const tc = thumbCanvas(x.thumb); if (tc) pic.append(tc); else pic.append(el('p', { class: 'gw', text: wordsOf(x) || x.kind.toUpperCase() })); }
+    if (x.art) { const a = el('img', { alt: '', class: 'art' }); api('art/' + x.id).then(r => r.blob()).then(b => { a.src = URL.createObjectURL(b); pic.append(a); }).catch(() => {}); }
+    const say = el('span', { class: 'said' }), words = el('p', { class: 'gw', text: wordsOf(x) });
+    let o = {}; try { o = JSON.parse(x.origin || '{}'); } catch (e) { o = {}; }
+    const meta = el('p', { class: 'note', text: [x.code, x.kind.toUpperCase(), when(x.created), x.who ? 'BY ' + x.who : '', x.dest ? 'TO ' + x.dest.toUpperCase() : 'NO PRINTER', o.city || o.country ? [o.city, o.country].filter(Boolean).join(', ').toUpperCase() : '', x.jobat ? 'PRINT ' + String(x.jobat).toUpperCase() : ''].filter(Boolean).join(' · ') });
+    /* the one place to write: its words (EDIT) or a reply (REPLY), sent with the same key */
+    const ta = el('textarea', { rows: 3, maxlength: 280, hidden: true }), send = el('button', { type: 'button', class: 'on', hidden: true }); let mode = '';
+    const write = m => { mode = m; ta.hidden = send.hidden = false; ta.value = m === 'edit' ? wordsOf(x) : ''; ta.placeholder = m === 'edit' ? 'ITS WORDS' : 'A REPLY FROM NOVEL.GLOBAL, IN ITS TALK'; send.textContent = m === 'edit' ? 'SAVE ITS WORDS' : 'SEND THE REPLY'; ta.focus(); };
+    send.onclick = async () => { const t = ta.value.trim(); if (mode === 'reply' && !t) return; send.disabled = true; try { await post({ action: mode, text: t }); if (mode === 'edit') { words.textContent = t; try { const j = JSON.parse(x.body); j.text = t; x.body = JSON.stringify(j); } catch (e) { /* packed */ } } ta.hidden = send.hidden = true; done(mode === 'edit' ? 'WORDS SAVED' : 'REPLIED IN ITS TALK', false); } catch (e) { done('NOT SAVED', false); } send.disabled = false; };
+    const canEdit = x.kind !== 'story' && x.kind !== 'message';
+    const A = [
+      st !== 'shown' ? ['accept', x.kind === 'message' ? 'PRINT' : 'ACCEPT', 'A', async () => { await post({ action: st === 'deleted' ? 'restore' : 'show' }); if (st === 'deleted') await post({ action: 'show' }); done(x.kind === 'message' ? 'SENT TO PRINT' : 'ON NOVEL.GLOBAL', true); }] : null,
+      canEdit ? ['edit', 'EDIT', 'E', () => write('edit')] : null,
+      x.code && x.kind !== 'message' ? ['reply', 'REPLY', 'R', () => write('reply')] : null,
+      st !== 'deleted' ? ['archive', 'ARCHIVE', 'X', async () => { await post({ action: 'delete' }); done('IN THE ARCHIVE', true); }] : null,
+      st !== 'refused' && st !== 'deleted' ? ['decline', 'DECLINE', 'D', async () => { await post({ action: 'refuse' }); done('DECLINED', true); }] : null,
+    ].filter(Boolean);
+    const acts = el('div', { class: 'ga' }, ...A.map(([k, t, key, fn]) => el('button', { type: 'button', class: 'g-' + k, title: key, onclick: fn }, el('b', { text: t }), el('kbd', { text: key }))));
+    /* filed under a portfolio group: kept here only, until the portfolio shows its groups */
+    const gs = el('select', { 'aria-label': 'Group' }, el('option', { value: '', text: 'NO GROUP' }), ...groups.map(g => el('option', { value: g, text: g.toUpperCase() })), el('option', { value: '+', text: '+ A NEW GROUP' }));
+    gs.value = x.grp && groups.includes(x.grp) ? x.grp : ''; if (x.grp && !groups.includes(x.grp)) { gs.insertBefore(el('option', { value: x.grp, text: x.grp.toUpperCase() }), gs.lastChild); gs.value = x.grp; }
+    gs.onchange = async () => { let g = gs.value; if (g === '+') { g = (prompt('THE NEW GROUP\'S NAME') || '').trim().slice(0, 40); if (!g) { gs.value = x.grp || ''; return; } groups.push(g); await api('settings', { method: 'POST', body: JSON.stringify({ groups: groups.join('\n') }) }); gs.insertBefore(el('option', { value: g, text: g.toUpperCase() }), gs.lastChild); gs.value = g; }
+      await post({ action: 'group', grp: g }); x.grp = g || null; done(g ? 'IN ' + g.toUpperCase() : 'IN NO GROUP', false); };
+    const keys = e => { if (e.target === ta) { if (e.key === 'Escape') { ta.hidden = send.hidden = true; } return; } if (e.key === 'Escape') shut(); else if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1); else { const a = A.find(r => r[2] === e.key.toUpperCase()); if (a) { e.preventDefault(); a[3](); } } };
+    document.addEventListener('keydown', keys);
+    const box = el('div', { id: 'gal', role: 'dialog', 'aria-label': 'A piece' },
+      el('div', { class: 'gtop' }, el('button', { type: 'button', class: 'gx', 'aria-label': 'Close', text: '×', onclick: shut }), el('span', { class: 'note', text: (i + 1) + ' / ' + list.length }), say,
+        el('span', { class: 'gnav' }, el('button', { type: 'button', text: '←', 'aria-label': 'Before', onclick: () => go(-1) }), el('button', { type: 'button', text: '→', 'aria-label': 'Next', onclick: () => go(1) }))),
+      el('div', { class: 'gbody' }, pic, el('div', { class: 'gside' }, words, meta, el('label', { class: 'gg' }, 'GROUP', gs), acts, ta, send,
+        el('div', { class: 'acts' }, x.full ? el('button', { type: 'button', text: 'ORIGINAL ↓', onclick: async () => { const r = await api('full/' + x.id); const bl = await r.blob(); const a = el('a', { href: URL.createObjectURL(bl), download: `novel-global-${x.code}-original.${extOf(bl.type)}` }); document.body.append(a); a.click(); a.remove(); } }) : null,
+          x.status === 'shown' && x.code ? el('button', { type: 'button', text: `ITS TALK (${x.said || 0})`, onclick: () => { shut(); talkSec = 'p.' + x.code; show('talk'); } }) : null))));
+    /* a swipe on a phone: left for the next, right for the one before */
+    let sx = null; box.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); box.addEventListener('touchend', e => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 70 && !e.target.closest('textarea, select')) go(dx < 0 ? 1 : -1); });
+    document.body.append(box);
   }
   /* what people make, on the site or not: off, everything shown here is a draft that only this page sees */
   async function madeSwitch() {
@@ -193,14 +243,25 @@
     const box = el('div', { class: 'list' }), count = el('span', { class: 'cnt' }), bulk = el('button', { type: 'button', class: 'no' });
     const hay = x => [x.code, x.kind, x.who, x.dest, x.body, x.origin, x.jobat].join(' ').toLowerCase();
     let shown = list;
-    const draw = () => { const w = q.value.trim().toLowerCase(); shown = list.filter(x => !w || hay(x).includes(w)).slice();
+    let draw = () => { const w = q.value.trim().toLowerCase(); shown = list.filter(x => !w || hay(x).includes(w)).slice();
       const by = { new: (p, n) => n.created - p.created, old: (p, n) => p.created - n.created, kind: (p, n) => String(p.kind).localeCompare(n.kind) || n.created - p.created, who: (p, n) => String(p.who || '~').localeCompare(n.who || '~') || n.created - p.created, pic: (p, n) => (!!(n.photo || n.thumb) - !!(p.photo || p.thumb)) || n.created - p.created }[so.value]; shown.sort(by);
       count.textContent = shown.length + ' OF ' + list.length; bulk.textContent = st === 'deleted' ? 'DELETE THESE ' + shown.length + ' FOR GOOD' : 'TAKE THESE ' + shown.length + ' OFF NOVEL.GLOBAL'; bulk.hidden = !shown.length || !w;
       box.replaceChildren(...(shown.length ? shown.map(storyCard) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })])); };
     bulk.onclick = async () => { const n = shown.length, act2 = st === 'deleted' ? 'purge' : 'delete'; if (!confirm((act2 === 'purge' ? 'Delete for good ' : 'Archive ') + n + ' shown by this search?')) return; bulk.disabled = true;
       for (const x of shown) await api('stories/' + x.id, { method: 'POST', body: JSON.stringify({ action: act2 }) }).catch(() => {}); bulk.disabled = false; show(st); badges(); };
-    q.oninput = draw; so.onchange = draw; draw();
-    main.replaceChildren(...head(T[0]), ...(st === 'waiting' || st === 'shown' ? [await madeSwitch()] : []), ...clear, el('div', { class: 'tools' }, q, so, count, bulk), box, ...extra);
+    q.oninput = draw; so.onchange = draw;
+    /* the gallery (as built): every piece a tile, its picture large; touched, it opens on its own with the five ways to answer it.
+       LIST is the long view, as before */
+    let groups = []; try { groups = String((await (await api('settings')).json()).groups || '').split('\n').map(s => s.trim()).filter(Boolean); } catch (e) { groups = []; }
+    const gf = el('select', {}, el('option', { value: '', text: 'EVERY GROUP' }), el('option', { value: '-', text: 'NO GROUP' }), ...groups.map(g => el('option', { value: g, text: g.toUpperCase() })));
+    const asGal = () => (localStorage.getItem('da.admin.view') || 'gallery') === 'gallery';
+    const vw = el('button', { type: 'button', class: 'on' }); const setVw = () => { vw.textContent = asGal() ? 'GALLERY · LIST' : 'LIST · GALLERY'; box.classList.toggle('gal', asGal()); };
+    vw.onclick = () => { localStorage.setItem('da.admin.view', asGal() ? 'list' : 'gallery'); setVw(); draw(); };
+    const draw0 = draw; const byG = x => !gf.value || (gf.value === '-' ? !x.grp : x.grp === gf.value);
+    draw = () => { draw0(); shown = shown.filter(byG); if (!asGal()) { if (gf.value) box.replaceChildren(...(shown.length ? shown.map(storyCard) : [el('p', { class: 'empty', text: 'NONE' })])); return; }
+      box.replaceChildren(...(shown.length ? shown.map((x, i) => galTile(x, () => galOpen(shown, i, st, groups))) : [el('p', { class: 'empty', text: st === 'waiting' ? 'NOTHING WAITING' : 'NONE' })])); };
+    gf.onchange = draw; setVw(); draw();
+    main.replaceChildren(...head(T[0]), ...(st === 'waiting' || st === 'shown' ? [await madeSwitch()] : []), ...clear, el('div', { class: 'tools' }, q, so, gf, vw, count, bulk), box, ...extra);
   }
 
   /* ───────── printers: paired with a token shown once; printing with or without approval; a test print ───────── */
@@ -539,7 +600,7 @@
     const zipAll = async () => { const j = await all0(); const files = [{ name: 'novel-global.json', data: new TextEncoder().encode(JSON.stringify(j, null, 1)) }];
       const pics = j.stories.filter(s => s.has_photo || s.full); let i = 0;
       for (const s of pics) { i++; out.textContent = `PHOTOGRAPHS ${i} OF ${pics.length}…`;
-        for (const [k, p] of [['photos', s.has_photo], ['full', s.full]]) if (p) { try { files.push({ name: `${k}/${s.code}-${s.id}.jpg`, data: new Uint8Array(await (await api(`${k}/${s.id}`)).arrayBuffer()) }); } catch (e) { /* gone */ } } }
+        for (const [k, p] of [['photos', s.has_photo], ['full', s.full]]) if (p) { try { const r = await api(`${k}/${s.id}`); files.push({ name: `${k}/${s.code}-${s.id}.${extOf(r.headers.get('content-type'))}`, data: new Uint8Array(await r.arrayBuffer()) }); } catch (e) { /* gone */ } } }
       const a = el('a', { href: URL.createObjectURL(zip(files)), download: `novel-global-backup-${j.at.slice(0, 10)}.zip` }); document.body.append(a); a.click(); a.remove(); out.textContent = `SAVED · ${files.length} FILES`; };
     const back = async () => { const f = file.files[0]; if (!f) { out.textContent = 'CHOOSE THE BACKUP (.JSON) FIRST'; return; } if (!confirm('BRING THIS BACKUP BACK? WHAT IS MISSING IS PUT BACK AND THE SETTINGS ARE SET AS THEY WERE. NOTHING ELSE IS CHANGED.')) return;
       try { const r = await (await api('restore', { method: 'POST', body: await f.text() })).json(); out.textContent = `BACK · ${['stories', 'places', 'posts', 'makers', 'talk'].map(k => `${r[k] || 0} ${k.toUpperCase()}`).join(' · ')}`; badges(); } catch (e) { out.textContent = 'NOT A BACKUP FROM HERE'; } };

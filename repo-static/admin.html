@@ -165,6 +165,42 @@
     header { position: sticky; top: 0; }
     nav#tabs { top: 0; }
   }
+  /* the gallery: tiles, and a piece opened on its own with the five ways to answer it */
+  .list.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .list.gal .empty { grid-column: 1 / -1; }
+  .tile { position: relative; display: flex; flex-direction: column; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--sheet); box-shadow: 0 1px 0 var(--line), 0 6px 18px rgba(11,37,69,.08); text-align: left; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 1px 0 var(--line), 0 12px 28px rgba(11,37,69,.16); }
+  .tile .tp { display: block; aspect-ratio: 4 / 5; background: var(--slip); overflow: hidden; }
+  .tile .tp img, .tile .tp canvas { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: auto; }
+  .tile .tp .nopic { display: flex; align-items: center; justify-content: center; height: 100%; padding: 14px; font: italic 15px/1.35 Georgia, serif; color: var(--grey); }
+  .tile .tm { display: flex; flex-direction: column; padding: 8px 10px 10px; }
+  .tile .tm b { font: 600 12px var(--mono); letter-spacing: .12em; } .tile .tm small { font: 500 9.5px var(--mono); letter-spacing: .08em; color: var(--soft); }
+  .tile .tg { position: absolute; top: 8px; left: 8px; padding: 2px 7px; border-radius: 9px; background: var(--navy); color: #fff; font: 600 9px var(--mono); letter-spacing: .12em; font-style: normal; }
+  .tile.s-shown::after { content: ''; position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 2px #fff; }
+  #gal { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: rgba(11,37,69,.94); color: #fff; animation: gal-in .2s ease both; }
+  @keyframes gal-in { from { opacity: 0; } }
+  #gal .gtop { display: flex; align-items: center; gap: 14px; padding: 12px 18px; }
+  #gal .gtop .note { color: rgba(255,255,255,.6); }
+  #gal .gx, #gal .gnav button { border: 0; background: rgba(255,255,255,.1); color: #fff; width: 40px; height: 40px; border-radius: 50%; font: 20px/1 var(--mono); cursor: pointer; }
+  #gal .gnav { margin-left: auto; display: flex; gap: 8px; }
+  #gal .said { font: 600 11px var(--mono); letter-spacing: .14em; color: var(--teal); opacity: 0; transition: opacity .2s; } #gal .said.on { opacity: 1; }
+  #gal .gbody { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); gap: 22px; padding: 0 18px 18px; }
+  #gal .gp { min-height: 0; display: flex; gap: 10px; align-items: center; justify-content: center; background: rgba(0,0,0,.25); border-radius: 12px; overflow: hidden; padding: 12px; }
+  #gal .gp img, #gal .gp canvas { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; image-rendering: auto; }
+  #gal .gp img.art { max-width: 48%; }
+  #gal .gside { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+  #gal .gw { font: italic 22px/1.35 Georgia, serif; margin: 0; } #gal .note { color: rgba(255,255,255,.65); }
+  #gal .gg { display: flex; align-items: center; gap: 10px; font: 600 10px var(--mono); letter-spacing: .14em; color: rgba(255,255,255,.6); }
+  #gal .gg select { flex: 1; padding: 8px; border-radius: 6px; border: 0; font: 500 12px var(--mono); }
+  #gal .ga { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #gal .ga button { display: flex; justify-content: space-between; align-items: center; padding: 16px 14px; border: 0; border-radius: 10px; background: rgba(255,255,255,.1); color: #fff; cursor: pointer; font: 600 12px var(--mono); letter-spacing: .14em; transition: background .15s, transform .1s; }
+  #gal .ga button:active { transform: scale(.97); } #gal .ga kbd { font: 10px var(--mono); opacity: .5; }
+  #gal .ga .g-accept { grid-column: 1 / -1; background: var(--teal); color: var(--navy); padding: 20px 16px; font-size: 14px; }
+  #gal .ga .g-decline { background: rgba(198,45,31,.35); } #gal .ga .g-archive { background: rgba(255,255,255,.06); }
+  #gal .ga button:hover { filter: brightness(1.15); }
+  #gal textarea { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; border: 0; font: 15px/1.4 var(--sans); }
+  #gal .acts button { background: rgba(255,255,255,.12); color: #fff; }
+  @media (max-width: 760px) { #gal .gbody { grid-template-columns: 1fr; grid-template-rows: 46vh auto; overflow-y: auto; } #gal .gside { overflow: visible; } .list.gal { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
 </style>
 </head>
 <body>

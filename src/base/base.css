@@ -640,3 +640,88 @@ html.aura-on #booth pre.art { display: none; }
 
 /* the bot check: unseen, unless Cloudflare asks for a tap */
 .ng-human { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90; }
+
+/* ───────── the booth, a screen of its own: the Irukandji leads, nothing of the journey behind it, no choices set out ───────── */
+html.aura-on body.booth #aura { opacity: 0 !important; pointer-events: none !important; }
+html.aura-on #booth { background: radial-gradient(120% 80% at 50% 36%, #1d5596 0%, #17457F 46%, #0f3462 100%); animation: bt-in .5s ease both; }
+html.aura-on.aura-dark #booth { background: radial-gradient(120% 80% at 50% 36%, #1b1e25 0%, #111318 50%, #0a0b0e 100%); }
+#booth .bt-jel { display: block; overflow: visible; color: inherit; }
+#booth .bt-jel .b { fill: rgba(244, 241, 232, .07); stroke: currentColor; stroke-width: 1.6; }
+#booth .bt-jel .r { fill: none; stroke: currentColor; stroke-opacity: .32; stroke-width: 1; }
+#booth .bt-jel .t { fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-dasharray: .1 5.6; transform-box: fill-box; transform-origin: 50% 0; animation: bt-ten 3.4s ease-in-out infinite alternate; }
+#booth .bt-jel .t1 { animation-delay: -.9s; } #booth .bt-jel .t2 { animation-delay: -1.7s; } #booth .bt-jel .t3 { animation-delay: -2.6s; }
+#booth .bt-jel .bl { transform-box: fill-box; transform-origin: 50% 100%; animation: bt-pulse 1.9s cubic-bezier(.5, 0, .3, 1) infinite; }
+#booth .bt-jel .sw { animation: bt-bob 1.9s cubic-bezier(.5, 0, .3, 1) infinite; }
+#booth .bt-jel .al { fill: rgba(244, 241, 232, .12); stroke: currentColor; stroke-width: 1.4; }
+#booth .bt-jel .i { fill: none; stroke: currentColor; stroke-width: 1.2; }
+#booth .bt-jel .p { fill: currentColor; transition: r .25s; }
+#booth .bt-jel .gl { fill: #17457F; }
+html.aura-dark #booth .bt-jel .gl { fill: #111318; }
+#booth .bt-jel .ir { transition: transform .5s cubic-bezier(.3, 1.6, .5, 1); }
+#booth .bt-jel .lid { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .08s; }
+#booth .bt-jel .lid.shut { transform: scaleY(.06); }
+#booth .bt-jel .hp { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; opacity: 0; }
+#booth .bt-jel.happy .lid { opacity: 0; } #booth .bt-jel.happy .hp { opacity: 1; }
+#booth .bt-jel.happy .sw { animation: bt-joy 1.6s cubic-bezier(.3, 1.4, .5, 1) both, bt-bob 1.9s 1.6s cubic-bezier(.5, 0, .3, 1) infinite; }
+#booth .bt-jel.jet .sw { animation: bt-jet .8s cubic-bezier(.2, .9, .3, 1); }
+@keyframes bt-pulse { 0%, 100% { transform: none; } 34% { transform: scale(.88, 1.07); } }
+@keyframes bt-bob { 34% { transform: translateY(-5px); } }
+@keyframes bt-ten { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes bt-jet { 30% { transform: translateY(-24px) scale(.9, 1.1); } }
+@keyframes bt-joy { 0% { transform: translateY(30px) scale(.6); opacity: 0; } 45% { transform: translateY(-14px) rotate(-8deg); opacity: 1; } 70% { transform: rotate(5deg); } 100% { transform: none; } }
+/* the start: the jellyfish alone, its eye the thing to touch */
+html.aura-on #booth .eye { width: min(66vw, 290px) !important; height: auto !important; margin: 8vh auto 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; -webkit-tap-highlight-color: transparent; }
+html.aura-on #booth .eye:hover, html.aura-on #booth .eye:focus-within { transform: none !important; }
+#booth .eye .bt-jel { width: 100%; height: auto; }
+/* the print as it will be: paper, a little askew, its foot torn */
+html.aura-on #booth #bt-pv { transform: rotate(-.8deg); padding: 12px 12px 18px; border-radius: 1px; box-shadow: 0 14px 34px rgba(0, 0, 0, .34); animation: bt-land .7s cubic-bezier(.3, 1.3, .5, 1) both;
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 7px repeat-x;
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 14px 7px repeat-x; }
+@keyframes bt-land { from { transform: translateY(40px) rotate(4deg) scale(.94); opacity: 0; } }
+/* one thing at a time, slid in */
+#booth .bt-pn { width: min(100%, 380px); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#booth .bt-pn[hidden] { display: none; }
+#booth .bt-pn.in { animation: bt-pn .45s cubic-bezier(.3, 1.2, .5, 1) both; }
+@keyframes bt-pn { from { transform: translateX(40px); opacity: 0; } }
+html.aura-on #booth #bt-st .pxo { font: 22px/1 ui-monospace, Menlo, monospace; color: #F4F1E8; background: none !important; box-shadow: inset 0 0 0 1.5px rgba(244, 241, 232, .5); }
+html.aura-on #booth #bt-st .pxo.on { background: #F4F1E8 !important; color: #17457F; }
+#booth .bt-pix { display: flex; align-items: center; gap: 12px; }
+#booth .bt-pix[hidden] { display: none; }
+#booth .bt-pix canvas { width: 168px; height: 168px; border-radius: 6px; touch-action: none; cursor: crosshair; image-rendering: pixelated; }
+#booth .bt-pix span { display: grid; gap: 10px; }
+#booth .bt-pix button { width: 52px; height: 52px; border-radius: 50%; border: 0; box-shadow: inset 0 0 0 1.5px currentColor; background: none; color: inherit; font: 24px/1 ui-monospace, Menlo, monospace; cursor: pointer; }
+#booth .bt-pix #bt-pxa { background: #F4F1E8; color: #17457F; box-shadow: none; }
+/* the jellyfish below, swum down from the middle: touched, it takes it on; at the last it prints. Three dots for where it is */
+#booth .bt-foot { position: relative; display: flex; flex-direction: column; align-items: center; margin: 8px 0 0; width: min(100%, 380px); }
+#booth .bt-dots { display: flex; gap: 7px; margin: 0 0 2px; }
+#booth .bt-dots b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .25; transition: opacity .3s, transform .3s; }
+#booth .bt-dots b.on { opacity: 1; transform: scale(1.3); }
+#booth .bt-on { width: 112px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; animation: bt-swim 1s cubic-bezier(.3, 1.25, .5, 1) both; }
+#booth .bt-on .bt-jel { width: 100%; height: auto; }
+#booth .bt-on.doze { opacity: .45; } #booth .bt-on.doze .lid { transform: scaleY(.06); } #booth .bt-on.doze .bt-jel .bl, #booth .bt-on.doze .bt-jel .sw { animation-duration: 4s; }
+@keyframes bt-swim { from { transform: translateY(-46vh) scale(2.6); opacity: .3; } }
+/* the dot of colour: a save in full colour, beside the jellyfish */
+#booth .hq { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: conic-gradient(#E25C40, #F2C94C, #4CE08A, #3FA9F5, #B07CF2, #E25C40); box-shadow: 0 0 0 3px rgba(244, 241, 232, .14); transition: transform .2s; }
+#booth .hq:active { transform: scale(.88); } #booth .hq.ok { background: #4CE08A; }
+#booth .bt-foot .hq { position: absolute; right: 18px; bottom: 34px; }
+/* printing: the jellyfish over a slot, the paper fed out of it a line at a time */
+#booth .bt-top { display: block; width: 64px; margin: 10px auto -6px; }
+#booth .bt-top .bt-jel .bl, #booth .bt-top .bt-jel .sw { animation-duration: .9s; }
+#booth .feed { width: min(100%, 380px); display: flex; flex-direction: column; align-items: center; }
+#booth .feed .mouth { display: block; width: 100%; height: 12px; border-radius: 6px; background: rgba(0, 0, 0, .42); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .55), 0 1px 0 rgba(244, 241, 232, .14); position: relative; z-index: 2; }
+#booth .feed .win { overflow: hidden; margin-top: -6px; padding: 0 14px 34px; width: 100%; display: flex; justify-content: center; }
+html.aura-on #booth .feed .pv.slip { padding: 10px; animation: bt-feed 3s steps(30) both; box-shadow: 0 12px 26px rgba(0, 0, 0, .3); }
+@keyframes bt-feed { from { transform: translateY(-101%); } }
+html.aura-on #booth .feed .pv.slip canvas { max-height: 50vh; }
+#booth #bt-on { gap: 18px; align-items: center; }
+#booth #bt-on #bt-again { font: 22px/1 ui-monospace, Menlo, monospace; }
+/* kept: the jellyfish, eyes shut and pleased */
+html.aura-on #booth .kept { width: min(46vw, 200px); height: auto; margin: 16vh auto 0; border-radius: 0; box-shadow: none; }
+html.aura-on #booth .kept i { display: none; }
+html.aura-on #booth .kept .bt-jel { width: 100%; height: auto; }
+@media (prefers-reduced-motion: reduce) { #booth .bt-jel *, #booth .bt-on, #booth .bt-pn.in, #booth #bt-pv, #booth .feed .pv.slip { animation: none !important; } }
+html.aura-on #booth #bt-st { grid-template-columns: repeat(8, 1fr); }
+#booth .bt-pix canvas { width: 140px; height: 140px; }
+#booth #bt-on .hq, #booth .bt-foot .hq { background: conic-gradient(#E25C40, #F2C94C, #4CE08A, #3FA9F5, #B07CF2, #E25C40) !important; padding: 0 !important; }
+#booth #bt-on .hq.ok, #booth .bt-foot .hq.ok { background: #4CE08A !important; }
+#booth .bt-top { width: 84px; }

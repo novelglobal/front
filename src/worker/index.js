@@ -16,7 +16,7 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 const fail = (status, error) => json({ error }, status);
 const now = () => Date.now();
 const H = 3600e3, DAY = 24 * H;
-const LIMIT = { example: 700e3, body: 4.2e6, sig: 9000, record: 20e3, cells: 60e3, cellsN: 200, photo: 420e3, full: 1.6e6, escpos: 900e3, mesh: 240, waiting: 2000, perPrinter: 20, sends: 20 };
+const LIMIT = { example: 700e3, body: 4.2e6, sig: 9000, record: 20e3, cells: 60e3, cellsN: 200, photo: 420e3, full: 14e6, bodyBig: 20e6, escpos: 900e3, mesh: 240, waiting: 2000, perPrinter: 20, sends: 20 };
 /* a pack of cells: up to 200, each with a place on the ground and a short name */
 const cellsOk = t => { if (typeof t !== 'string' || t.length > LIMIT.cells) return false; let d; try { d = JSON.parse(t); } catch (e) { return false; }
   return !!d && Array.isArray(d.cells) && d.cells.length >= 1 && d.cells.length <= LIMIT.cellsN && d.cells.every(c => c && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat) <= 90 && Math.abs(c.lng) <= 180 && typeof c.n === 'string' && c.n.length <= 80); };
@@ -59,7 +59,7 @@ const SCHEMA = [
 ];
 /* SCHEMA_V: the database's version. Raise it by one whenever a table or a column is added below: each database (the live one and the
    preview's) then makes the changes once and keeps the number, and every start after is one read */
-const SCHEMA_V = 2;
+const SCHEMA_V = 3;
 const readied = new WeakMap();
 function ready(db) {
   if (!readied.has(db)) readied.set(db, (async () => {
@@ -98,6 +98,8 @@ async function upgrade(db) {
     /* art: the poster as designed, kept in R2 (its size), for the wall of posters; quiet: its talk closed on the approval page */
     try { await db.prepare('ALTER TABLE stories ADD COLUMN art INTEGER').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE stories ADD COLUMN quiet INTEGER').run(); } catch (e) { /* already there */ }
+    /* version 3. grp: the portfolio group a piece is filed under on the approval page (kept here; not on the site yet) */
+    try { await db.prepare('ALTER TABLE stories ADD COLUMN grp TEXT').run(); } catch (e) { /* already there */ }
     /* can: what a printer's receiver says it can do besides print ('off'); off: when TURN OFF was pressed for it */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN can TEXT').run(); } catch (e) { /* already there */ }
     /* warm: when someone last set out towards a print (the make step), so the printers ask quickly for a while */
@@ -154,10 +156,12 @@ const rid = (n = 16) => { const a = crypto.getRandomValues(new Uint8Array(n)); r
 async function same(a, b) { const [x, y] = await Promise.all([sha256(String(a)), sha256(String(b))]); return crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(enc.encode(x), enc.encode(y)) : x === y; }
 const bearer = req => (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 const b64ok = (s, max) => typeof s === 'string' && s.length <= max && /^[A-Za-z0-9+/=_-]*$/.test(s);
+/* an upload's original file, as it came (a photograph of any of the usual kinds), with its kind */
+function dataFile(s, max) { const m = typeof s === 'string' && s.match(/^data:(image\/(?:jpeg|png|webp|heic|heif|gif|avif));base64,([A-Za-z0-9+/=]+)$/); if (!m || m[2].length > max) return null; const bin = atob(m[2]); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return { bytes: out, type: m[1] }; }
 function dataURL(s, max = LIMIT.photo) { const m = typeof s === 'string' && s.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/); if (!m || m[1].length > max) return null; const bin = atob(m[1]); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out[0] === 0xFF && out[1] === 0xD8 ? out : null; }
-async function body(req) {
-  const n = +(req.headers.get('content-length') || 0); if (n > LIMIT.body) throw Object.assign(new Error('too large'), { status: 413 });
-  const t = await req.text(); if (t.length > LIMIT.body) throw Object.assign(new Error('too large'), { status: 413 });
+async function body(req, max = LIMIT.body) {
+  const n = +(req.headers.get('content-length') || 0); if (n > max) throw Object.assign(new Error('too large'), { status: 413 });
+  const t = await req.text(); if (t.length > max) throw Object.assign(new Error('too large'), { status: 413 });
   try { return JSON.parse(t || '{}'); } catch (e) { throw Object.assign(new Error('not json'), { status: 400 }); }
 }
 /* how often a visitor has asked: counted under a hash that changes daily, kept an hour */
@@ -297,7 +301,7 @@ async function mine(db, env, req, who, id) {
 /* a story sent: it waits for approval. A job for the partner's printer waits with it, unless that printer prints without approval.
    dest 'mesh': no print, only its mesh line, to every paired printer whose radio is on (MESH), to go out over the local mesh */
 async function send(db, env, req) {
-  const b = await body(req);
+  const b = await body(req, LIMIT.bodyBig);
   /* a send refused for a printer is noted on it, for the approval page to show */
   const refuse = async (code, why) => { if (typeof b.dest === 'string' && b.dest && b.dest !== 'mesh') { try { await db.prepare('UPDATE printers SET refused = ? WHERE id = ?').bind(JSON.stringify({ why, at: now() }), b.dest).run(); } catch (e) { /* no such printer */ } } return fail(code, why); };
   if (await tooMany(db, env, req, 'send', LIMIT.sends, 10 * 60e3)) return refuse(429, 'too many sends from one place in ten minutes');
@@ -345,9 +349,9 @@ async function send(db, env, req) {
   if (dest && !toMesh) ops.push(db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(t, dest));
   await db.batch(ops);
   /* the full photograph, kept in R2 when it is bound; the print and the site never need it */
-  const lowRes = (await settingsOf(db)).lowRes, full = env.MEDIA && b.full && !lowRes ? dataURL(b.full, LIMIT.full) : null, art = env.MEDIA && b.art ? dataURL(b.art, LIMIT.full) : null;
+  const lowRes = (await settingsOf(db)).lowRes, full = env.MEDIA && b.full && !lowRes ? dataFile(b.full, LIMIT.full) : null, art = env.MEDIA && b.art ? dataURL(b.art, LIMIT.full) : null;
   if (art && (await r2Bytes(db)) + art.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(`art/${id}`, art, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET art = ? WHERE id = ?').bind(art.length, id).run(); } catch (e) { /* kept without it */ } }
-  if (full && (await r2Bytes(db)) + full.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(mediaKey(id), full, { httpMetadata: { contentType: 'image/jpeg' } }); await db.prepare('UPDATE stories SET full = ? WHERE id = ?').bind(full.length, id).run(); } catch (e) { /* the story is kept without it */ } }
+  if (full && (await r2Bytes(db)) + full.bytes.length < CAP.r2 * 0.8) { try { await env.MEDIA.put(mediaKey(id), full.bytes, { httpMetadata: { contentType: full.type } }); await db.prepare('UPDATE stories SET full = ? WHERE id = ?').bind(full.bytes.length, id).run(); } catch (e) { /* the story is kept without it */ } }
   return json({ id, status: st0, job }, 201);
 }
 /* the sender's receipt: where their story is, and where its print is in the queue */
@@ -386,7 +390,8 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
 /* notice: the words above the rings on a first visit (JSON: off, head, text; empty: the site's own); country: the words over El Niño's
    map the first time it opens on a phone (JSON: off, head, text; empty: the Country and its sovereignty from config.js) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600 };
+/* groups: the portfolio's groups a piece can be filed under on the approval page, one to a line (kept here; not on the site yet) */
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
 async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
@@ -482,7 +487,7 @@ async function admin(db, env, req, parts) {
   const [what, id] = parts;
   if (what === 'stories' && !id && req.method === 'GET') {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
-    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, (s.photo IS NOT NULL OR s.pic IS NOT NULL) AS has_photo, s.full, s.star, s.who, s.gone, s.origin, s.art, s.quiet, (SELECT count(*) FROM talk t WHERE t.sec = 'p.' || s.code) AS said,
+    const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, (s.photo IS NOT NULL OR s.pic IS NOT NULL) AS has_photo, s.full, s.star, s.who, s.gone, s.origin, s.art, s.quiet, s.grp, (SELECT count(*) FROM talk t WHERE t.sec = 'p.' || s.code) AS said,
         (SELECT j.printer || ' ' || j.status || COALESCE(' ' || j.error, '') FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS jobat,
         (SELECT j.thumb FROM jobs j WHERE j.story = s.id AND j.thumb IS NOT NULL LIMIT 1) AS thumb,
         (SELECT j.status FROM jobs j WHERE j.story = s.id ORDER BY j.created DESC LIMIT 1) AS job FROM stories s WHERE s.status = ? ORDER BY s.created DESC LIMIT 1000`).bind(st).all();
@@ -497,6 +502,14 @@ async function admin(db, env, req, parts) {
     if (b.action === 'show') { await db.batch([db.prepare("UPDATE stories SET status = 'shown', decided = ? WHERE id = ?").bind(t, id), db.prepare("UPDATE jobs SET status = 'queued' WHERE story = ? AND status = 'held'").bind(id), db.prepare('UPDATE printers SET warm = ? WHERE id IN (SELECT printer FROM jobs WHERE story = ?)').bind(t, id)]); return json({ ok: true }); }
     if (b.action === 'refuse') { await db.batch([db.prepare("UPDATE stories SET status = 'refused', decided = ? WHERE id = ?").bind(t, id), db.prepare("DELETE FROM jobs WHERE story = ? AND status IN ('held', 'queued')").bind(id)]); return json({ ok: true }); }
     if (b.action === 'ungone') { await db.prepare('UPDATE stories SET gone = NULL WHERE id = ?').bind(id).run(); return json({ ok: true }); }   // taken down by its maker, put back
+    /* its words changed on the approval page (a record's words; a packed story is left as it was sent) */
+    if (b.action === 'edit') { const text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : null; const r = await db.prepare('SELECT kind, body FROM stories WHERE id = ?').bind(id).first(); if (text == null || !r || r.kind === 'story' || r.kind === 'message') return fail(400, 'edit');
+      let j = {}; try { j = JSON.parse(r.body) || {}; } catch (e) { return fail(400, 'edit'); } j.text = text; await db.prepare('UPDATE stories SET body = ? WHERE id = ?').bind(JSON.stringify(j), id).run(); return json({ ok: true }); }
+    /* a reply from novel.global, said in the piece's own talk */
+    if (b.action === 'reply') { const text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : ''; const r = await db.prepare('SELECT code FROM stories WHERE id = ?').bind(id).first(); if (!text || !r || !r.code) return fail(400, 'reply');
+      const tid = rid(); await db.prepare("INSERT INTO talk (id, sec, who, text, re, at, k) VALUES (?, ?, 'NG', ?, NULL, ?, 'ng')").bind(tid, 'p.' + r.code, text, t).run(); return json({ ok: true, id: tid }); }
+    /* filed under a portfolio group, or under none */
+    if (b.action === 'group') { const g = typeof b.grp === 'string' && b.grp.trim() ? b.grp.trim().slice(0, 40) : null; await db.prepare('UPDATE stories SET grp = ? WHERE id = ?').bind(g, id).run(); return json({ ok: true }); }
     /* a poster's talk closed (nothing more said or read there) or opened again */
     if (b.action === 'quiet' || b.action === 'unquiet') { await db.prepare('UPDATE stories SET quiet = ? WHERE id = ?').bind(b.action === 'quiet' ? now() : null, id).run(); return json({ ok: true }); }
     if (b.action === 'star' || b.action === 'unstar') { await db.prepare('UPDATE stories SET star = ? WHERE id = ?').bind(b.action === 'star' ? 1 : 0, id).run(); return json({ ok: true }); }
@@ -507,7 +520,7 @@ async function admin(db, env, req, parts) {
     return fail(400, 'action');
   }
   if (what === 'photos' && id) return photo(db, env, id, true);
-  if (what === 'full' && id) { const o = env.MEDIA ? await env.MEDIA.get(mediaKey(id)) : null; if (!o) return fail(404, 'not found'); return new Response(o.body, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
+  if (what === 'full' && id) { const o = env.MEDIA ? await env.MEDIA.get(mediaKey(id)) : null; if (!o) return fail(404, 'not found'); return new Response(o.body, { headers: { 'content-type': (o.httpMetadata && o.httpMetadata.contentType) || 'image/jpeg', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } }); }
   if (what === 'art' && id && req.method === 'GET') return posterArt(db, env, id, true);
   if (what === 'species' && !id && req.method === 'GET') { const { results } = await db.prepare('SELECT * FROM species ORDER BY first DESC LIMIT 5000').all(); return json({ species: results }); }
   if (what === 'species' && id && req.method === 'POST') { await db.prepare('DELETE FROM species WHERE id = ?').bind(+id || 0).run(); return json({ ok: true }); }
