@@ -479,15 +479,17 @@
     let so = {}; try { so = st.start ? JSON.parse(st.start) : {}; } catch (e) { so = {}; }
     const chk = (id, on, t) => el('label', { class: 'check' }, (() => { const c = el('input', { type: 'checkbox', id }); c.checked = on; return c; })(), t);
     const pn = el('select', {}, ...[['paper', 'AS THE PAPER: BLUE PRINTS NIGHT, WHITE PRINTS DAY'], ['day', 'ALWAYS DAY: BLACK ON WHITE'], ['night', 'ALWAYS NIGHT: WHITE ON A DARK SHADE']].map(([v, t]) => el('option', { value: v, text: t }))); pn.value = so.printNight || 'paper';
+    const tq = el('select', {}, ...[['booth', 'THE PHOTO BOOTH'], ['home', 'THE START']].map(([v, t]) => el('option', { value: v, text: t }))); tq.value = so.touchTo === 'home' ? 'home' : 'booth';
     const num = (v, mn, mx, stp) => { const n = el('input', { type: 'number', min: mn, max: mx, step: stp }); n.value = String(v); return n; };
     const bh = num(so.boothHome != null ? so.boothHome : 15, 1, 60, 0.5), bg = num(so.boothGap != null ? so.boothGap : 10, 0, 240, 1);
     const start = el('section', { class: 'ed' }, el('h3', { text: 'START AND BOOTH' }),
       chk('so-words', so.discWords !== false, 'THE THREE DISCS SAY WHAT THEY DO, ONCE'), hint('Ticked: under the three round buttons on the first screen, their words (Share what you noticed, Make a song, Print a photo) show once, then fade. Unticked: the buttons alone, no words.'),
       chk('so-check', so.checklist === true, 'THE CHECKLIST BESIDE DAY AND NIGHT'), hint('Off as built. Ticked: a short list sits top left of what each visitor has done (Photo, Intention, Song, W.I.S.H., Poster, Design), opening for ten seconds on each new one; it never shows for a visitor who opened everything at once. Unticked: never shown.'),
+      el('label', {}, 'THE TOUCH SCREEN\'S QR OPENS', tq), hint('Its QR is novel.global/t. THE PHOTO BOOTH: straight to taking a photo and printing it there, with the code on the slip. THE START: the site as it opens for anyone.'),
       el('label', {}, 'A PRINT STARTS', pn), hint('How a poster first prints on the 80 mm paper. AS THE PAPER: a blue poster prints dark (white on a dark shade), a white poster prints light. ALWAYS DAY: black on white. ALWAYS NIGHT: white on a dark shade. A visitor can still flip it with the moon key before they print.'),
       el('div', { class: 'three' }, el('label', {}, 'BOOTH: THE PASS SHOWS FOR (SECONDS)', bh, hint('After a booth print or save, a ring closes with "your code is on the paper" for this long, then the phone goes back to novel.global. 1 to 60, halves allowed. As built: 15.')),
         el('label', {}, 'BOOTH: MINUTES BETWEEN PRINTS FROM ONE PHONE', bg, hint('After printing, the same phone can print again after this many minutes. Until then the print button counts down; save still works. Whole minutes, 0 to 240; 0 means no wait. As built: 10. Counted on each phone, so another phone can print straight away.'))),
-      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 15)), boothGap: Math.max(0, Math.min(240, Math.round(+bg.value || 0))) }) }) })));
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ start: JSON.stringify({ touchTo: tq.value, discWords: $('#so-words').checked, checklist: $('#so-check').checked, printNight: pn.value, boothHome: Math.max(1, Math.min(60, +bh.value || 15)), boothGap: Math.max(0, Math.min(240, Math.round(+bg.value || 0))) }) }) })));
     /* the notice on a first visit: shown or not, and its words (empty: the site's own) */
     let nt = {}; try { nt = st.notice ? JSON.parse(st.notice) : {}; } catch (e) { nt = {}; }
     const ntx = el('textarea', { rows: 8, maxlength: 1300, placeholder: 'EMPTY: THE SITE\'S OWN WORDS' }); ntx.value = nt.text || '';
@@ -506,7 +508,11 @@
       el('label', {}, 'HEADING', coh), hint('One line, in capitals. Empty: the Country from config.js. A single dash (-): no heading.'),
       el('label', {}, 'WORDS', cot), hint('Set in capitals. A blank line starts a new line of its own. Empty: Sovereignty has never been ceded.'),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ country: JSON.stringify({ off: !$('#co-on').checked, head: coh.value.trim() === '-' ? '' : coh.value.trim() || null, text: cot.value.trim() }) }) })));
-    main.replaceChildren(...head('Settings'), gates, start, notice, country, motion, cur, reset);
+    /* sent with no printer: waiting here, or on the site at once */
+    const sends = el('section', { class: 'ed' }, el('h3', { text: 'SENT WITHOUT A PRINT' }),
+      chk('sd-live', !!st.sendLive, 'STRAIGHT ON THE SITE'), hint('A piece sent to novel.global from a phone with no printer (the print key set to NOVEL.GLOBAL). Unticked, as built: it waits on the Approve page. Ticked: it is on the site for everyone at once. Either way it is not a print: the devices stay locked until a printer has printed something with that phone\'s code.'),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ sendLive: $('#sd-live').checked }) })));
+    main.replaceChildren(...head('Settings'), gates, start, sends, notice, country, motion, cur, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */

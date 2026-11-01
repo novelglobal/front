@@ -2083,20 +2083,23 @@
     if (!NG.forPrint || !NG.ditherLib) return Promise.resolve(null);
     return Promise.all([fontReady(), NG.ditherLib(), NG.qrLib ? NG.qrLib() : null]).then(function (r) { S.preview = !!preview; var out; try { out = printSheet(W, r[1]); } finally { S.preview = 0; } S.lastPrint = [out.width, out.height]; S.lastSheet = out; return out; }).catch(function (e) { console.error('print sheet: ' + (e && e.stack || e)); return null; });
   }
-  var PMODES = [['paper', 'print', '80 mm'], ['mesh', 'sig', '80 mm + mesh'], ['wall', 'wall', 'wall only']];
+  /* where a finished piece goes: printed, printed and said over the mesh, kept on this phone's wall, or sent to novel.global with no printer
+     (waiting for approval, or on the site at once when the approval page says so; never a print, so never the devices) */
+  var PMODES = [['paper', 'print', '80 mm'], ['mesh', 'sig', '80 mm + mesh'], ['wall', 'wall', 'wall only'], ['send', 'live', 'novel.global']];
   S.pmode = store.get('da.aura.pmode', 'paper'); if (!PMODES.some(function (m) { return m[0] === S.pmode; })) S.pmode = 'paper';
   var pmode = function () { return PMODES.filter(function (m) { return m[0] === S.pmode; })[0]; };
   function printNow() {
     var n = settle(); if (!n) return; var btn = $('#au-print'), st = $('#au-pips'); btn.disabled = true; btn.classList.add('going'); st.innerHTML = NG.pips('sending');
     var art = P.photo ? 'photo' : 'net', photo = NG.PHOTOS[n.id] || P.photo || P.spPhoto || '', show2 = { line: 1, life: !!lifeOf(P), facts: 0, links: 0, code: 1 };
-    var toWall = S.pmode === 'wall'; beat(toWall ? 'wall' : 'print');
-    (toWall ? Promise.resolve('kept') : NG.printers().then(function (list) {
+    var toWall = S.pmode === 'wall', toSend = S.pmode === 'send'; beat(toWall ? 'wall' : toSend ? 'send' : 'print');
+    (toWall ? Promise.resolve('kept') : toSend ? NG.sendNote(n, null, '', n.wish, null, P.photo || '', posterJPEG(P)) : NG.printers().then(function (list) {
       var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
       return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, P.photo || '', posterJPEG(P)); });
     })).then(function (s) {
       st.innerHTML = toWall ? '' : NG.pips(s, n.sent && n.sent.why); btn.classList.remove('going');
-      if (!toWall && s !== 'failed') { squirt(); lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
+      if (toSend && s !== 'failed') { squirt(); NG.toast && NG.toast(s === 'shown' ? 'LIVE · EVERYONE ON NOVEL.GLOBAL' : s === 'outbox' ? 'SENDS WHEN THERE IS SIGNAL' : 'SENT · WAITING'); }
+      if (!toWall && !toSend && s !== 'failed') { squirt(); lvUp((P.adds || []).length ? 4 : 3); store.set('da.aura.printed', 1); if (S.pmode === 'mesh') store.set('da.aura.mesh', 1); } if (!toWall && n.sent && n.sent.id) NG.follow(n, st); harp([0, 2, 4, 7]);
       return poster(P).then(function (c) {
         var first = !P.folioId, item = { id: P.folioId || 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), src: c.toDataURL('image/jpeg', 0.86), cap: titleOf(P), code: n.code, wall: toWall ? 1 : 0 };
         P.folioId = item.id; P.sent = 1; item.piece = pack(P); folioKeep(item); draftSave(pack(P)); miniMake();
@@ -2226,7 +2229,7 @@
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
     var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
-    if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : 'Print') + '"') +
+    if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : S.pmode === 'send' ? 'send' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : S.pmode === 'send' ? 'Send it to novel.global' : 'Print') + '"') +
       hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + (canLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +

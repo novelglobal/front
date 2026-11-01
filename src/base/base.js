@@ -947,7 +947,7 @@ function sendNote(n, cv, dest, wishOn, mesh, full, art) {
   var payload = { kind: 'record', code: n.code, body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: dest };
   if (cv) { payload.escpos = raster(cv); payload.thumb = thumbOf(cv); } if (mesh) payload.mesh = String(mesh).slice(0, 200);
   if (PHOTOS[n.id] && cv) payload.photo = PHOTOS[n.id];
-  var tries = 0, ask = (full || art) && cv ? siteOf().then(function (s) { if (s && s.media) { if (full) payload.full = full; if (art) payload.art = art; } }) : Promise.resolve(), go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
+  var tries = 0, ask = (full || art) && (cv || !dest) ? siteOf().then(function (s) { if (s && s.media) { if (full) payload.full = full; if (art) payload.art = art; } }) : Promise.resolve(), go = function () { return send(payload).catch(function (e) { if (e.status || ++tries > 2) throw e; return new Promise(function (r) { setTimeout(r, tries * 2500); }).then(go); }); };
   return ask.then(go).then(function (j) { var s = j.job ? j.job.status : j.status; n.sent = { id: j.id, dest: dest, s: s }; saveNotes(); return s; }).catch(function (e) {
     if (e.status) { n.sent = { s: 'failed', why: e.status + ' ' + (e.message || '') }; saveNotes(); return 'failed'; } OUTBOX.push(payload); store.set('da.base.outbox', OUTBOX); n.sent = { s: 'outbox' }; saveNotes(); return 'outbox';
   });
