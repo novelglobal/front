@@ -3375,3 +3375,5 @@ html.in-aura #sec-set{display:none!important}
 .mtag{display:inline-flex;align-items:center;gap:3px;font-size:10px;letter-spacing:.08em}
 .mtag svg{width:11px;height:11px;flex:none}
 .mtag .md{font-size:4px;letter-spacing:.06em}
+/* the portfolio's sources: what novel.global is, small, above the list */
+#sec-src .src-about { margin: 6px 0 12px; max-width: 62ch; font-size: 11px; line-height: 1.5; opacity: .8; }
