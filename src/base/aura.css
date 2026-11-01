@@ -956,7 +956,17 @@ html.aura-on.aura-dark, html.aura-on.aura-dark body { background: #18191C; }
 .au-keyin { left: 84px; }
 #au-yours b { display: none; }
 #aura #au-yours b { display: none !important; }
-#au-keyout { margin-left: 6px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(10, 30, 60, .7); color: var(--ink); font-size: 18px; cursor: pointer; vertical-align: middle; } #au-keyout[hidden] { display: none; }
+/* the key's green light once a code is in, and a tiny × beside it to log out */
+#au-yours .au-ok { position: absolute; left: 21px; top: calc(27px + var(--sat)); width: 6px; height: 6px; border-radius: 50%; background: #4CE08A; box-shadow: 0 0 6px #4CE08A; display: none; }
+#au-yours.on .au-ok { display: block; }
+/* a device seen but locked until a printed code: a small padlock on it, its light out */
+#aura .au-dev.locked::before, #aura .sd-k.locked::before { content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 12'%3E%3Cpath d='M3 5V3.5a2 2 0 0 1 4 0V5' fill='none' stroke='%23F4F1E8' stroke-width='1.3'/%3E%3Crect x='1.5' y='5' width='7' height='6' rx='1' fill='%23F4F1E8'/%3E%3C/svg%3E"); position: absolute; right: 1px; bottom: 1px; width: 9px; height: 11px; line-height: 0; pointer-events: none; opacity: .9; }
+#aura .au-dev.locked .led { opacity: .2 !important; animation: none !important; }
+#au-keyout { position: absolute; left: 116px; top: calc(30px + var(--sat)); width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 30, 60, .6); color: var(--ink); font: 600 11px/18px ui-monospace, monospace; cursor: pointer; z-index: 31; display: none; }
+#aura.m-seed #au-keyout, #aura.m-globe #au-keyout, #aura.m-bang #au-keyout { display: block; }
+#aura #au-keyout[hidden] { display: none !important; }
+/* a tiny light on what is live on novel.global */
+#aura .au-hung .au-lvd { position: absolute; right: 8px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: #4CE08A; box-shadow: 0 0 0 1.5px rgba(10, 30, 60, .55), 0 0 7px #4CE08A; z-index: 2; pointer-events: none; }
 /* done, ticked */
 .au-todo li.done::before { content: '✓'; margin-right: 8px; opacity: .8; }
 
@@ -994,6 +1004,7 @@ html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 /* the moon a word was said under, the day and month beside it */
 .mtag { display: inline-flex; align-items: center; gap: 3px; font: 600 9.5px/1 "Departure Mono", ui-monospace, monospace; letter-spacing: .08em; cursor: default; }
 .mtag svg { width: 11px; height: 11px; flex: none; }
+.mtag .md { font-size: 3.8px; letter-spacing: .06em; }
 /* the talk's swarm: each dot drifts off on its own beat and comes home, the bubble loosening and gathering again */
 .au-i .sw { transform-box: fill-box; transform-origin: center; animation: au-sw 7.2s ease-in-out infinite; animation-delay: var(--dl, 0s); }
 @keyframes au-sw { 0%, 52%, 100% { transform: none; } 66% { transform: translate(var(--dx), var(--dy)) scale(.62); } 80% { transform: translate(calc(var(--dx) * -.25), calc(var(--dy) * -.25)) scale(1.12); } 90% { transform: scale(.94); } }

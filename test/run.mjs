@@ -29,7 +29,7 @@ const apiServer = createTestHarness({ root: ROOT, workers: [{ configPath: './wra
 const API_O = (await apiServer.listen()).url.origin;
 const admin = async (p, body) => { const r = await apiServer.fetch(new URL('/api/admin/' + p, API_O), { method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${ADMIN_KEY}`, 'content-type': 'application/json', origin: API_O }, body: body ? JSON.stringify(body) : undefined }); return r.json(); };
 
-async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false, dark = false, front = false, journey = false, plain = false } = {}) {
+async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night = 0, worst = 30, ens = true, comOK = true, overpass = true, net = { down: false }, first = false, nocode = false, dark = false, front = false, journey = false, plain = false } = {}) {
   /* the studio, the back of every page, unless a check is about the fronts */
   /* the radar stays where it is pinned, unless a check is about a first visit */
   /* and by day (night is the default), unless a check is about the night */
@@ -38,6 +38,8 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
   else if (!journey) await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.prefs')) localStorage.setItem('da.prefs', '{"journey":4}'); } catch (e) { /* no storage */ } });
   /* the studio's devices as built, unless a check is about the plain studio (after the prefs above, so they still stand) */
   if (!plain) await ctx.addInitScript(() => { try { localStorage.setItem('da.devices.v2', '1'); } catch (e) { /* no storage */ } });
+  /* a code printed at a printer on this phone (proof of presence: the devices open), unless a check is about a phone without one */
+  if (!nocode) await ctx.addInitScript(() => { try { if (localStorage.getItem('da.who.ok') == null) localStorage.setItem('da.who.ok', '1'); } catch (e) { /* no storage */ } });
   await ctx.route('**/*', async route => {
     const url = route.request().url(); let u = new URL(url);
     if (u.protocol === 'data:' || u.protocol === 'blob:') return route.continue();
@@ -60,6 +62,8 @@ async function wire(ctx, { inat = true, config = BASE_CONFIG, tmax = 33, night =
       if ((u.host === 'oan.test' || u.host === 'novel.global') && u.pathname.startsWith('/api/')) {
         const rq = route.request(); const headers = { ...rq.headers(), origin: API_O }; delete headers.host;
         const r = await apiServer.fetch(new URL(u.pathname + u.search, API_O), { method: rq.method(), headers, body: rq.postDataBuffer() || undefined });
+        /* no printer answers here: a phone's code counts as printed at one, unless a check is about a phone without one */
+        if (!nocode && rq.method() === 'GET' && /^\/api\/mine\/[^/]+$/.test(u.pathname) && r.ok) { const j = await r.json(); j.printed = true; return route.fulfill({ status: 200, body: JSON.stringify(j), headers: { 'content-type': 'application/json' } }); }
         return route.fulfill({ status: r.status, body: Buffer.from(await r.arrayBuffer()), headers: Object.fromEntries(r.headers) });
       }
       if (u.host === 'oan.test' || u.host === 'novel.global') {
@@ -1907,6 +1911,14 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
     const j1 = await jp.evaluate(() => ({ orbs: [...document.querySelectorAll('.au-orb')].map(o => getComputedStyle(o).display !== 'none'), yours: document.querySelector('#au-yours').hidden, lv: localStorage.getItem('da.lv') }));
     check('the journey: at first only the eye in the middle (no discs, no sound key, nothing kept yet); a photo taken opens the map disc alone, and the key for what is kept', j0.orbs === 0 && j0.eye === 'block' && j0.snd === 'none' && !j0.yours && j1.orbs.join() === 'true,false,false' && j1.lv === '1', JSON.stringify({ j0, j1 }));
     await jc.close(); }
+  /* proof of presence: without a printed code the devices are seen, locked, and open nothing; with one they open */
+  if (!AD) { const nc = await newCtx({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await wire(nc, { plain: true, nocode: true }); await nc.addInitScript(() => { try { if (!localStorage.getItem('da.lv')) localStorage.setItem('da.lv', '6'); } catch (e) { /* no storage */ } });
+    const np = await nc.newPage(); watch(np, 'aura-nocode'); await np.goto('https://oan.test/'); await np.waitForSelector('#aura'); await sleep(1200);
+    const n0 = await np.evaluate(async () => { document.querySelector('.au-tab[data-s="0"]').click(); await new Promise(r => setTimeout(r, 500)); const ks = [...document.querySelectorAll('.au-dev:not(.au-chatk):not([hidden])')]; window.AURA.dev(0); await new Promise(r => setTimeout(r, 400));
+      const shut = !document.querySelector('.au-win:not(.away)'); localStorage.setItem('da.who.ok', '1'); window.AURA.dev(0); await new Promise(r => setTimeout(r, 600));
+      return { seen: ks.length, locked: ks.every(k => k.classList.contains('locked')), shut, open: !!document.querySelector('.au-win:not(.away)') }; });
+    check('aura: without a printed code the devices are seen with a lock and open nothing; a printed code opens them', n0.seen > 0 && n0.locked && n0.shut && n0.open, JSON.stringify(n0));
+    await nc.close(); }
   await ctx.addInitScript(() => { try { if (!localStorage.getItem('da.lv')) localStorage.setItem('da.lv', '4'); } catch (e) { /* no storage */ } });
   const page = await ctx.newPage(); watch(page, 'aura-' + tag);
   const st = () => page.evaluate(() => window.AURA.state());
