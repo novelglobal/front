@@ -840,8 +840,10 @@ function thumbOf(cv) {
     var bin = ''; for (var k = 0; k < out.length; k++) bin += String.fromCharCode(out[k]); return w + ',' + h + ',' + btoa(bin);
   } catch (e) { return ''; }
 }
+/* heat: the head's darkness (GS ( K, function 49: under 0 lighter, over 0 darker, slower), from the quality set */
 function raster(cv) {
-  var W = cv.width, H = cv.height, bw = W >> 3, d = cv.getContext('2d').getImageData(0, 0, W, H).data, out = [0x1B, 0x40];
+  var W = cv.width, H = cv.height, bw = W >> 3, d = cv.getContext('2d').getImageData(0, 0, W, H).data, out = [0x1B, 0x40], ht = Math.max(-6, Math.min(8, Math.round(+pq().heat || 0)));
+  if (ht) out.push(0x1D, 0x28, 0x4B, 0x02, 0x00, 0x31, ht < 0 ? 256 + ht : ht);
   for (var y0 = 0; y0 < H; y0 += 255) {
     var h = Math.min(255, H - y0); out.push(0x1D, 0x76, 0x30, 0x00, bw & 0xFF, bw >> 8, h & 0xFF, h >> 8);
     for (var y = y0; y < y0 + h; y++) for (var xb = 0; xb < bw; xb++) { var v = 0; for (var bit = 0; bit < 8; bit++) if (d[(y * W + xb * 8 + bit) * 4] < 128) v |= 0x80 >> bit; out.push(v); }
@@ -932,9 +934,12 @@ function siteOf() { return SITE || (SITE = fetch('/api/settings', { cache: 'no-s
 function human() {
   return siteOf().then(function (s) { var k = s && s.cfsite; if (!k) return '';
     return new Promise(function (ok) {
-      var go = function () { var d = document.createElement('div'), id = null, done = function (t) { ok(t || ''); setTimeout(function () { try { window.turnstile.remove(id); } catch (e) { /* gone */ } d.remove(); }, 0); };
+      /* a challenge that never comes (a phone's keyboard over it, a blocked script) gives up after a while; one being answered is waited for */
+      var tm = 0, wait = function (ms) { clearTimeout(tm); tm = setTimeout(function () { ok(''); }, ms); };
+      wait(9000);
+      var go = function () { var d = document.createElement('div'), id = null, done = function (t) { clearTimeout(tm); ok(t || ''); setTimeout(function () { try { window.turnstile.remove(id); } catch (e) { /* gone */ } d.remove(); }, 0); };
         d.className = 'ng-human'; document.body.appendChild(d);
-        try { id = window.turnstile.render(d, { sitekey: k, appearance: 'interaction-only', callback: done, 'error-callback': function () { done(''); }, 'timeout-callback': function () { done(''); } }); } catch (e) { done(''); } };
+        try { id = window.turnstile.render(d, { sitekey: k, appearance: 'interaction-only', retry: 'never', 'before-interactive-callback': function () { wait(90000); }, callback: done, 'error-callback': function () { done(''); }, 'timeout-callback': function () { done(''); } }); } catch (e) { done(''); } };
       if (window.turnstile) return go(); var sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true; sc.onload = go; sc.onerror = function () { ok(''); }; document.head.appendChild(sc);
     }); });
 }
@@ -960,7 +965,7 @@ function sendMesh(n, text) {
   return send({ kind: 'record', code: n.code, body: JSON.stringify({ type: 'noticed', lat: lat, lng: lng, text: n.say || '' }), lat: lat, lng: lng, dest: 'mesh', mesh: String(text).slice(0, 200) })
     .then(function (j) { return j.job ? j.job.status : j.status || 'sent'; }).catch(function (e) { return e && e.status ? 'failed' : 'offline'; });
 }
-function download(cv, name) { var a = document.createElement('a'); a.download = name; a.href = cv.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
+function download(cv, name) { var a = document.createElement('a'); a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.href = cv.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
 /* the moon as the clock. Its phase from where the sun and the moon are (the Almanac's short formulas: within a few hours), its
    lunation counted from the new moon of 6 January 2000. What this phone keeps is kept by moons; the date comes second */
 var LUNA = 29.530588853 * 864e5, NEW0 = Date.UTC(2000, 0, 6, 18, 14), MOONS = ['new moon', 'waxing crescent', 'first quarter', 'waxing gibbous', 'full moon', 'waning gibbous', 'last quarter', 'waning crescent'];
@@ -1058,7 +1063,9 @@ function useCode(c) { if (!setMe(c)) return Promise.resolve(false); return api('
 /* is this phone's code one that was printed? asked of the island now and again (never makes a code); kept as da.who.ok */
 var proofAt = 0;
 function proof() { var c = store.get('da.who', ''); if (!c || !WHO_RE.test(c) || Date.now() - proofAt < 60e3) return Promise.resolve(!!store.get('da.who.ok', 0)); proofAt = Date.now();
-  return api('/mine/' + c).then(function (j) { var ok = !!(j && j.printed); store.set('da.who.ok', ok ? 1 : 0); return ok; }).catch(function () { return !!store.get('da.who.ok', 0); }); }
+  return api('/mine/' + c).then(function (j) { var ok = !!(j && j.printed); store.set('da.who.ok', ok ? 1 : 0);
+    /* what of theirs is already on the site, from whatever phone or the approval page: never offered to the island again */
+    var sh = ((j && j.mine) || []).filter(function (m) { return m.shown; }).map(function (m) { return m.code; }); if (sh.length) { var L0 = store.get('da.live', []) || []; store.set('da.live', sh.concat(L0.filter(function (q) { return sh.indexOf(q) < 0; })).slice(0, 60)); } return ok; }).catch(function () { return !!store.get('da.who.ok', 0); }); }
 function dropMine(id) { return api('/mine/' + me() + '/' + encodeURIComponent(id), { method: 'POST', body: '{}' }); }
 /* sent with the code, and where its maker is (the page sets NG.stageOf): for the approval page, never the public */
 function send(payload) { payload.who = payload.who || me(); meUsed(); payload.lv = +store.get('da.lv', 0) || 0; if (!payload.from) payload.from = BTH ? 'booth' : document.getElementById('aura') ? 'novel.global' : 'base'; if (!payload.stage) { try { payload.stage = String(window.NG && NG.stageOf ? NG.stageOf() : '').slice(0, 60); } catch (e) { /* none */ } } return api('/stories', { method: 'POST', body: JSON.stringify(payload) }); }
@@ -1817,7 +1824,7 @@ function shopSheet() {
     '<div class="lbl">POSTERS</div><ul class="list" id="s-rec">' + (mine.length ? mine.slice(0, 30).map(function (n, i) { return '<li><button data-i="' + i + '"><span>' + esc(n.cn || n.say || n.code) + '</span><small id="s-st-' + i + '">' + (n.sent ? pips(n.sent.s) : '○○○') + '</small></button><button class="rm" data-rm="' + i + '" aria-label="Delete" title="Delete">×</button></li>'; }).join('') : '<li class="empty">· · ·</li>') + '</ul>' +
     '<div class="lbl">PRINTER</div><ul class="list" id="s-prn"><li class="empty">· · ·</li></ul>' +
     '<div class="lbl">MAKE · DOWNLOAD</div>' +
-    '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" download aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
+    '<div class="row" style="margin-top:10px"><a class="g" href="build-a-solar-printer.txt" target="_blank" rel="noopener" aria-label="Build a solar thermal printer" title="Build a solar thermal printer">' + glyph('sun') + '</a><button class="g" id="s-qr" aria-label="QR sticker for the photo booth" title="QR sticker for the photo booth">' + glyph('qr') + '</button><button class="g" id="s-poster" aria-label="Print the PRINT FREE poster" title="Print the PRINT FREE poster">' + glyph('print') + '</button><span id="s-pst"></span><a class="g" href="#pixel" aria-label="Pixel board" title="Pixel board">' + glyph('pixel') + '</a>' + (mine[0] ? '<button class="g" id="s-sign" aria-label="Sign" title="Sign">' + glyph('sign') + '</button>' : '') + '</div>' +
     '<div class="lbl">ICONS</div><div class="row icons-row">' + iconsRow(ICON_NEXT && iconOf(ICON_NEXT) ? iconOf(ICON_NEXT).src : null, 's-ico') +
       '<label class="g" aria-label="Add icons: pictures, GIFs or a pack" title="Add icons: pictures, GIFs or a pack">+<input id="s-ico-in" type="file" accept="image/*,.json,application/json" multiple hidden></label>' +
       (ICONS.length ? '<button class="g" id="s-ico-out" aria-label="Save the icons as a pack" title="Save the icons as a pack">⇩</button>' : '') + (ICON_NEXT ? '<button class="g rm" id="s-ico-x" aria-label="Delete this icon" title="Delete this icon">×</button>' : '') + '</div>' +
@@ -2091,22 +2098,29 @@ function boothOn(dest) {
     $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
   boothStart(el);
 }
-/* the Irukandji, drawn by hand: a small clear box of a bell, four strings of beads trailing, one eye. It pulses,
-   drifts, looks about and follows a finger; blinks; jets up when touched */
+/* the Irukandji, as the aura draws it: the same bell, its eye in dots with the pupil ringed, four dots along the rim, four strings of
+   stinging beads. It pulses and drifts, its eye follows a finger and blinks; touched, it jets */
 function boothJel(cls) {
-  var T = [[-30, 10], [-11, 15], [11, 15], [30, 10]], al = 'M-17 0C-10 -10 10 -10 17 0C10 10 -10 10 -17 0Z';
-  return '<svg class="bt-jel' + (cls ? ' ' + cls : '') + '" viewBox="-80 -80 160 250" aria-hidden="true"><defs><filter id="bt-ro" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".07" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter><clipPath id="bt-al"><path d="' + al + '"/></clipPath></defs>' +
-    '<g class="sw"><g class="tn" filter="url(#bt-ro)">' + T.map(function (t, i) { var x = t[0], y = t[1], s = i % 2 ? 1 : -1; return '<path class="t t' + i + '" d="M' + x + ' ' + y + 'C' + (x + s * 10) + ' ' + (y + 40) + ' ' + (x - s * 12) + ' ' + (y + 80) + ' ' + (x + s * 4) + ' ' + (y + 150) + '"/>'; }).join('') + '</g>' +
-    '<g class="bl" filter="url(#bt-ro)"><path class="b" d="M-38 10C-41 -28 -24 -58 0 -58C24 -58 41 -28 38 10C26 15 14 13 0 16C-14 13 -26 15 -38 10Z"/><path class="r" d="M-17 -52C-22 -28 -22 -6 -19 13M17 -52C22 -28 22 -6 19 13"/></g>' +
-    '<g class="ey" transform="translate(0 -22)"><g class="lid"><g clip-path="url(#bt-al)"><g class="ir"><circle class="i" r="7"/><circle class="p" r="3.6"/><circle class="gl" cx="2.4" cy="-2.4" r="1.2"/></g></g><path class="al" d="' + al + '"/></g><path class="hp" d="M-15 -1C-8 8 8 8 15 -1"/></g></g></svg>';
+  var w = 36, h = 60, NR = 56, bell = [], i, j, f = function (n) { return n.toFixed(1); };
+  for (i = 0; i <= NR; i++) { var u = (i % NR) / NR, X, Y; if (u < 0.8) { var a = Math.PI * (1 - u / 0.8), ca = Math.cos(a), sa = Math.sin(a); X = Math.pow(Math.abs(ca), 0.55) * (ca < 0 ? -1 : 1) * w; Y = -Math.pow(sa, 0.42) * h * (0.94 + 0.06 * sa); } else { var s = (u - 0.8) / 0.2; X = w - 2 * w * s; Y = -Math.sin(s * Math.PI) * h * 0.09; } bell.push(f(X) + ' ' + f(Y)); }
+  var bp = 'M' + bell.join('L') + 'Z', ey = -h * 0.5, ew = w * 0.74, eh = h * 0.27, pr = eh * 0.95, eye = '';
+  for (i = 0; i < 30; i++) { var v = i / 30 * Math.PI * 2, su = Math.sin(v); eye += '<circle cx="' + f(Math.cos(v) * ew) + '" cy="' + f(su * eh * (0.35 + 0.65 * Math.abs(su))) + '" r="1.15"/>'; }
+  var tents = [0, 1, 2, 3].map(function (k) { var x0 = (k - 1.5) / 1.5 * w * 0.82, sw = (k % 2 ? 1 : -1) * 9, P = [[x0, -1], [x0 + sw, 50], [x0 - sw * 1.2, 110], [x0 + sw * 0.4, 175]], bez = function (t) { var m = 1 - t; return [0, 1].map(function (q) { return m * m * m * P[0][q] + 3 * m * m * t * P[1][q] + 3 * m * t * t * P[2][q] + t * t * t * P[3][q]; }); }, beads = '';
+    for (j = 4; j < 28; j += 2) { var p = bez(j / 28); beads += '<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + (j % 6 === 0 ? 2.1 : 1.2) + '"/>'; }
+    return '<g class="t t' + k + '"><path d="M' + P.map(function (q) { return f(q[0]) + ' ' + f(q[1]); }).join(' ').replace(/^(\S+ \S+) /, '$1C') + '"/>' + beads + '</g>'; }).join('');
+  var rim = [-0.62, -0.22, 0.22, 0.62].map(function (q) { return '<circle cx="' + f(q * w) + '" cy="' + f(-h * 0.1) + '" r="1.7"/>'; }).join('');
+  return '<svg class="bt-jel' + (cls ? ' ' + cls : '') + '" viewBox="-80 -90 160 270" aria-hidden="true"><defs><radialGradient id="bt-gl"><stop offset="0" stop-color="#F4F1E8" stop-opacity=".16"/><stop offset="1" stop-color="#F4F1E8" stop-opacity="0"/></radialGradient></defs>' +
+    '<g class="sw"><circle class="gw" cx="0" cy="-30" r="70" fill="url(#bt-gl)"/><g class="tn">' + tents + '</g>' +
+    '<g class="bl"><path class="b" d="' + bp + '"/><path class="b2" d="' + bp + '" transform="translate(1.2 .8)"/>' + rim + '</g>' +
+    '<g class="ey" transform="translate(0 ' + f(ey) + ')"><g class="lid"><g class="ed">' + eye + '</g><g class="ir"><circle class="p" r="' + f(pr * 0.42) + '"/><circle class="pr" r="' + f(pr) + '"/></g></g></g></g></svg>';
 }
 /* its eye alive: it follows a finger or the pointer, and left alone looks about and blinks now and then */
 function boothEye(el) {
-  var sv = el && el.querySelector('.bt-jel'); if (!sv || !BTH) return; var ir = sv.querySelector('.ir'), lid = sv.querySelector('.lid'), pu = sv.querySelector('.p');
+  var sv = el && el.querySelector('.bt-jel'); if (!sv || !BTH) return; var ir = sv.querySelector('.ir'), lid = sv.querySelector('.lid');
   var live = function () { return BTH && document.body.contains(sv); }, look = function (x, y) { ir.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; };
   var blink = function () { lid.classList.add('shut'); setTimeout(function () { lid.classList.remove('shut'); }, 170); };
-  var idle = function () { if (!live()) return; if (Date.now() - (BTH.moved || 0) > 1800) { if (Math.random() < 0.25) blink(); else look((Math.random() * 2 - 1) * 8, (Math.random() * 2 - 1) * 3); } BTH.eyeT = setTimeout(idle, 1300 + Math.random() * 2400); };
-  el.__eye = function (e) { if (!live()) return; var r = sv.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.24, dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 160); look(dx / d * 8 * k, dy / d * 3.4 * k); pu.setAttribute('r', d < r.width * 0.4 ? 4.8 : 3.6); BTH.moved = Date.now(); };
+  var idle = function () { if (!live()) return; if (Date.now() - (BTH.moved || 0) > 1800) { if (Math.random() < 0.25) blink(); else look((Math.random() * 2 - 1) * 9, (Math.random() * 2 - 1) * 2); } BTH.eyeT = setTimeout(idle, 1300 + Math.random() * 2400); };
+  el.__eye = function (e) { if (!live()) return; var r = sv.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.22, dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 160); look(dx / d * 9 * k, dy / d * 2.4 * k); BTH.moved = Date.now(); };
   if (!el.__eyeOn) { el.__eyeOn = 1; addEventListener('pointermove', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); addEventListener('pointerdown', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); }
   clearTimeout(BTH.eyeT); BTH.eyeT = setTimeout(idle, 900);
 }
@@ -2132,16 +2146,54 @@ function boothPic(file) {
    sharpened a little, then dithered. Stickers go on after, crisp */
 /* every photograph that goes on paper is made ready for the dots the same way: stretched to its own darkest and lightest (a flat
    one is left as it is), lifted for the spread of a hot dot, sharpened a little, then dithered (CanvasDither's Atkinson) */
+/* ───────── print quality: five ways a print can be made, each a set of tweaks the approval page can change one by one ─────────
+   clip: how much of the darkest and lightest is let go when the tones are stretched (%); gamma: under 1 darker mid-tones (a thermal
+   head prints light, so a little under 1 holds them); contrast: an S-curve on top (0 to 1); sharpen: the edges lifted (0 to 2);
+   dither: atkinson (clean, bright), floyd (fuller, holds the darks), bayer (an even screen), none (black or white at half);
+   lineCut: words and lines below this lightness print black (higher: bolder, fewer faint greys lost); bolden: dots added round
+   words and lines (0 to 2); minText: the smallest words on a slip, in dots at 512 wide */
+var PQ_SETS = {
+  soft: { clip: 1, gamma: 0.8, contrast: 0, sharpen: 0.7, dither: 'atkinson', lineCut: 200, bolden: 0, minText: 14, heat: 0 },
+  crisp: { clip: 2, gamma: 0.72, contrast: 0.25, sharpen: 1.1, dither: 'atkinson', lineCut: 215, bolden: 0, minText: 18, heat: 2 },
+  bold: { clip: 3, gamma: 0.62, contrast: 0.4, sharpen: 1.3, dither: 'floyd', lineCut: 225, bolden: 1, minText: 20, heat: 4 },
+  screen: { clip: 2, gamma: 0.7, contrast: 0.3, sharpen: 0.9, dither: 'bayer', lineCut: 215, bolden: 0, minText: 18, heat: 2 },
+  graphic: { clip: 4, gamma: 0.75, contrast: 0.7, sharpen: 1.6, dither: 'none', lineCut: 230, bolden: 1, minText: 20, heat: 3 }
+};
+var PQ_IN = null; siteOf().then(function (s) { try { PQ_IN = s && s.printq ? JSON.parse(s.printq) : null; } catch (e) { PQ_IN = null; } });
+function pq() { var o = PQ_IN || {}, b = PQ_SETS[o.preset] || PQ_SETS.crisp, out = {}; for (var k in b) out[k] = o[k] != null && o[k] !== '' ? o[k] : b[k]; return out; }
+/* the ordered screen, four by four */
+var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+function dots(L, W, H, how) {
+  var n = W * H, g = L, i, x, y, e, o;
+  if (how === 'none') { for (i = 0; i < n; i++) g[i] = g[i] < 128 ? 0 : 255; return g; }
+  if (how === 'bayer') { for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; g[i] = g[i] < (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) * 16 ? 0 : 255; } return g; }
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; o = g[i] < 128 ? 0 : 255; e = g[i] - o; g[i] = o;
+    if (how === 'floyd') { if (x + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < H) { if (x > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (x + 1 < W) g[i + W + 1] += e / 16; } }
+    else { e /= 8; if (x + 1 < W) g[i + 1] += e; if (x + 2 < W) g[i + 2] += e; if (y + 1 < H) { if (x > 0) g[i + W - 1] += e; g[i + W] += e; if (x + 1 < W) g[i + W + 1] += e; } if (y + 2 < H) g[i + 2 * W] += e; } }
+  return g;
+}
 function printReady(x, W, H, D) {
-  var img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, L = new Float32Array(n), hist = new Uint32Array(256), i, l;
+  var Q = pq(), img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, L = new Float32Array(n), hist = new Uint32Array(256), i, l, cut = n * Math.max(0, Math.min(10, +Q.clip || 0)) / 100;
   for (l = 0, i = 0; l < n; l++, i += 4) { L[l] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; hist[L[l] | 0]++; }
-  var lo = 0, hi = 255, acc = 0; for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > n * 0.01) { lo = i; break; } } acc = 0; for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > n * 0.01) { hi = i; break; } }
+  var lo = 0, hi = 255, acc = 0; for (i = 0; i < 256; i++) { acc += hist[i]; if (acc > cut) { lo = i; break; } } acc = 0; for (i = 255; i >= 0; i--) { acc += hist[i]; if (acc > cut) { hi = i; break; } }
   if (hi - lo < 40) { lo = 0; hi = 255; }
-  var span = hi - lo, B2 = new Float32Array(n);
-  for (l = 0; l < n; l++) L[l] = 255 * Math.pow(Math.max(0, Math.min(1, (L[l] - lo) / span)), 0.8);
-  for (var y = 0; y < H; y++) for (var xx = 0; xx < W; xx++) { var s = 0, m = 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var yy = y + dy, x2 = xx + dx; if (yy >= 0 && yy < H && x2 >= 0 && x2 < W) { s += L[yy * W + x2]; m++; } } B2[y * W + xx] = s / m; }
-  for (l = 0, i = 0; l < n; l++, i += 4) { var v = L[l] + 0.7 * (L[l] - B2[l]); d[i] = d[i + 1] = d[i + 2] = v < 0 ? 0 : v > 255 ? 255 : v; }
-  if (D) D.atkinson(img); else { x.putImageData(img, 0, 0); dither(x, W, H); return; }
+  var span = hi - lo, B2 = new Float32Array(n), gm = Math.max(0.3, Math.min(1.6, +Q.gamma || 0.8)), ct = Math.max(0, Math.min(1, +Q.contrast || 0)), sh = Math.max(0, Math.min(2.5, +Q.sharpen || 0));
+  for (l = 0; l < n; l++) { var t = Math.pow(Math.max(0, Math.min(1, (L[l] - lo) / span)), gm); if (ct) t = t + ct * (t - 0.5) * (1 - Math.abs(2 * t - 1)) * 2; L[l] = 255 * Math.max(0, Math.min(1, t)); }
+  if (sh) { for (var y = 0; y < H; y++) for (var xx = 0; xx < W; xx++) { var s = 0, m = 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var yy = y + dy, x2 = xx + dx; if (yy >= 0 && yy < H && x2 >= 0 && x2 < W) { s += L[yy * W + x2]; m++; } } B2[y * W + xx] = s / m; }
+    for (l = 0; l < n; l++) L[l] = L[l] + sh * (L[l] - B2[l]); }
+  for (l = 0; l < n; l++) L[l] = L[l] < 0 ? 0 : L[l] > 255 ? 255 : L[l];
+  /* CanvasDither's Atkinson when it is here and asked for; the others (and Atkinson without it) done here */
+  if (Q.dither === 'atkinson' && D) { for (l = 0, i = 0; l < n; l++, i += 4) d[i] = d[i + 1] = d[i + 2] = L[l]; D.atkinson(img); x.putImageData(img, 0, 0); return; }
+  dots(L, W, H, Q.dither); for (l = 0, i = 0; l < n; l++, i += 4) { d[i] = d[i + 1] = d[i + 2] = L[l]; d[i + 3] = 255; }
+  x.putImageData(img, 0, 0);
+}
+/* words and line work made pure: black below the cut, white above, then made a dot or two bolder (keep: a rectangle left as it is, the photograph) */
+function inkPass(x, W, H, keep) {
+  var Q = pq(), img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, k = new Uint8Array(n), cut = Math.max(120, Math.min(250, +Q.lineCut || 200)), bo = Math.max(0, Math.min(2, Math.round(+Q.bolden || 0))), i, l;
+  var inK = function (l2) { if (!keep) return false; var px = l2 % W, py = (l2 / W) | 0; return px >= keep[0] && px < keep[0] + keep[2] && py >= keep[1] && py < keep[1] + keep[3]; };
+  for (l = 0, i = 0; l < n; l++, i += 4) k[l] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114 < cut ? 1 : 0;
+  for (var r = 0; r < bo; r++) { var k2 = k.slice(); for (l = 0; l < n; l++) if (!k[l]) { var px = l % W; if ((px > 0 && k[l - 1]) || (px < W - 1 && k[l + 1]) || (l >= W && k[l - W]) || (l < n - W && k[l + W])) k2[l] = 1; } k = k2; }
+  for (l = 0, i = 0; l < n; l++, i += 4) { if (inK(l)) continue; d[i] = d[i + 1] = d[i + 2] = k[l] ? 0 : 255; d[i + 3] = 255; }
   x.putImageData(img, 0, 0);
 }
 function forPrint(src, W, D) {
@@ -2158,15 +2210,16 @@ function drawStickers(x, W, H, ink) {
 }
 function boothEdit() {
   var el = $('#booth'); BTH.code = code('b' + Date.now().toString(36) + '|' + Date.now());
-  /* the whole receipt as it will print, at the printer's own dots; a sticker tapped lands on the photo, the photo tapped moves it there */
-  var px = window.AURA && AURA.pix ? AURA.pixSubs : null; BTH.art = px ? px.map(function (q) { return AURA.pix(q); }) : null;
-  /* no choices set out: the print as it will be, and under it one thing at a time, words, then marks; the jellyfish, swum down from the
-     middle, takes it on each time it is touched, and at the last it prints. A dot of colour beside it saves it in colour */
+  /* the pixel things: the studio's own kinds (jellyfish, moon, coral, rubbish, clips), each touch a new one of its kind, placed on the photo */
+  var kinds = window.AURA && AURA.pix && AURA.pixKinds ? AURA.pixKinds : null; BTH.seeds = BTH.seeds || (kinds || []).map(function () { return 1 + Math.floor(Math.random() * 400); });
+  var art = function (i) { return AURA.pix(kinds[i], BTH.seeds[i]); };
   el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div>' +
-    '<div class="bt-pn" data-pn="s" hidden><div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + (px ? px.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div><div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div></div>' +
-    '<div class="bt-pn" data-pn="w"><input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…" enterkeyhint="next"></div>' +
-    '<div class="bt-foot"><i class="bt-dots" aria-hidden="true"><b class="on"></b><b></b><b></b></i><button id="bt-go" class="bt-on" aria-label="On">' + boothJel() + '</button><button id="bt-dl" class="hq" aria-label="Save it in full colour"></button></div>';
-  if (px) $$('#bt-st [data-k]').forEach(function (b, i) { var c = BTH.art[i], im = new Image(); im.alt = ''; im.src = c.toDataURL(); b.appendChild(im); });
+    '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…" enterkeyhint="done" autocomplete="off">' +
+    '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + (kinds ? kinds.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div>' +
+    '<div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div>' +
+    '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button></div>';
+  var tile = function (b, i) { var im = b.querySelector('img') || b.appendChild(Object.assign(new Image(), { alt: '' })); im.src = art(i).toDataURL(); };
+  if (kinds) $$('#bt-st [data-k]').forEach(function (b, i) { tile(b, i); });
   var cv = $('#bt-pv canvas'), pending = 0, paint = function () {
     clearTimeout(pending); pending = setTimeout(function () { if (!BTH) return; ditherLib().then(function (D) { return BTH && boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); }); }); }, 120);
   };
@@ -2182,16 +2235,14 @@ function boothEdit() {
   cv.addEventListener('pointermove', function (e) { if (!held) return; var p = at(e); held.x = Math.max(0, Math.min(1, p[0])); held.y = Math.max(0, Math.min(1, p[1])); paint(); });
   cv.addEventListener('pointerup', function () { held = null; });
   $('#bt-undo').addEventListener('click', function () { if (BTH.st.length) { BTH.st.pop(); paint(); } });
-  $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { BTH.pick = +b.dataset.k; BTH.st.push(BTH.art ? { img: BTH.art[BTH.pick], x: 0.25 + Math.random() * 0.5, y: 0.25 + Math.random() * 0.5 } : { t: STICKERS[BTH.pick], x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 }); paint(); }); });
-  var w = $('#bt-w'); w.value = BTH.words; w.addEventListener('input', function () { BTH.words = w.value; paint(); });
-  /* the jellyfish takes it on: words, then marks, then the print. Printed a little while ago from this phone, it dozes, eyes shut, until
-     it can print again (never a countdown); saving works all the while */
-  var gb = $('#bt-go'), dots = $$('.bt-dots b', el), step = 'w', show = function (k) { step = k; $$('.bt-pn', el).forEach(function (p) { var on = p.dataset.pn === k; if (on && p.hidden) { p.hidden = false; p.classList.remove('in'); void p.offsetWidth; p.classList.add('in'); } else if (!on) p.hidden = true; }); dots.forEach(function (d, i) { d.classList.toggle('on', i === (k === 'w' ? 0 : 1)); }); gb.setAttribute('aria-label', k === 'w' ? 'On' : 'Print'); };
-  var tick = function () { if (!$('#bt-go')) return; var l = boothLeft(); gb.classList.toggle('doze', l > 0); if (l > 0) BTH.t = setTimeout(tick, 1000); };
+  $$('#bt-st [data-k]').forEach(function (b) { b.addEventListener('click', function () { var i = +b.dataset.k; BTH.st.push(kinds ? { img: art(i), x: 0.25 + Math.random() * 0.5, y: 0.25 + Math.random() * 0.5 } : { t: STICKERS[i], x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6 });
+    if (kinds) { BTH.seeds[i]++; tile(b, i); } paint(); }); });
+  var w = $('#bt-w'); w.value = BTH.words; w.addEventListener('input', function () { BTH.words = w.value; paint(); }); w.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); w.blur(); } });
+  /* print: one key. Printed a little while ago from this phone, it waits, dimmed, until it can print again (never a countdown) */
+  var gb = $('#bt-go'), tick = function () { if (!$('#bt-go')) return; var l = boothLeft(); gb.disabled = l > 0; if (l > 0) BTH.t = setTimeout(tick, 1000); };
   clearTimeout(BTH.t); tick();
-  gb.addEventListener('click', function () { boothJet($('.bt-jel', gb)); if (step === 'w') { show('s'); $('#bt-w').blur(); return; } if (boothLeft() > 0) return; dots.forEach(function (d) { d.classList.add('on'); }); setTimeout(function () { if (BTH && $('#bt-go')) boothPrint(); }, 420); });
-  $('#bt-w').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); show('s'); this.blur(); } });
-  /* the pixel maker, kept with the stamps: twelve by twelve, a touch sets a dot (or clears it) and a drag goes on doing the same; + puts it on the photo */
+  gb.addEventListener('click', function () { if (boothLeft() <= 0) boothPrint(); });
+  /* the hand grid, kept with the pixel things: twelve by twelve, a touch sets a dot (or clears it) and a drag goes on doing the same; + puts it on the photo */
   var pc = $('#bt-px'), pw = $('.bt-pix', el), N = 12, Z = 14, px0 = BTH.px || (BTH.px = new Uint8Array(N * N)), pen = -1;
   var pxDraw = function () { var g = pc.getContext('2d'); g.fillStyle = '#F4F1E8'; g.fillRect(0, 0, N * Z, N * Z); for (var i = 0; i < N * N; i++) { g.fillStyle = px0[i] ? '#111' : 'rgba(23, 69, 127, .1)'; g.fillRect((i % N) * Z + 1, Math.floor(i / N) * Z + 1, Z - 2, Z - 2); } };
   var cell = function (e) { var r = pc.getBoundingClientRect(), cx = Math.floor((e.clientX - r.left) / r.width * N), cy = Math.floor((e.clientY - r.top) / r.height * N); return cx >= 0 && cy >= 0 && cx < N && cy < N ? cy * N + cx : -1; };
@@ -2202,36 +2253,34 @@ function boothEdit() {
   $('#bt-pxc').addEventListener('click', function () { px0.fill(0); pxDraw(); });
   $('#bt-pxa').addEventListener('click', function () { var any = false, i; for (i = 0; i < N * N; i++) if (px0[i]) any = true; if (!any) return; var o = document.createElement('canvas'); o.width = o.height = N; var g = o.getContext('2d'); g.fillStyle = '#000'; for (i = 0; i < N * N; i++) if (px0[i]) g.fillRect(i % N, Math.floor(i / N), 1, 1); BTH.st.push({ img: o, x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }); paint(); });
   pxDraw();
-  /* save: the photograph in full colour, as well as the print or instead of it; the booth stays where it is */
-  $('#bt-dl').addEventListener('click', function () { boothHQ(this); });
-  boothEye($('.bt-foot', el));
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
 function boothSlip(D, code, real) {
-  var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D);
+  var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D), mt = Math.max(10, Math.min(28, +pq().minText || 14)), fz = function (n2) { return Math.round(Math.max(n2, mt) * u); };
   var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace';
   var lines = words ? wrapText(x, words, W - pad * 2) : [];
   return qrLib().then(function (Q) {
     var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
     q = null; var qs = 0;   // the slip carries one code: the access code
-    x.font = 'italic ' + Math.round(17 * u) + 'px Georgia, serif'; var bl = wrapText(x, brief(), W - pad * 2).slice(0, 3);
-    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(24 * u) + (bl.length ? Math.round(14 * u) : 0), foot = real ? Math.max(qs, Math.round(104 * u)) + pad * 2 : pad;
+    x.font = 'italic ' + fz(17) + 'px Georgia, serif'; var bl = wrapText(x, brief(), W - pad * 2).slice(0, 3);
+    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(fz(17) * 1.4) + (bl.length ? Math.round(14 * u) : 0), foot = real ? Math.max(qs, Math.round(104 * u)) + pad * 2 : pad;
     c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
     x.fillRect(pad, Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
-    x.font = '700 ' + Math.round(17 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(38 * u), Math.round(8 * u)); x.font = Math.round(15 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
+    x.font = '700 ' + fz(17) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(38 * u), Math.round(8 * u)); x.font = fz(15) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
     BTH.lay = { head: head, ph: p.height };
     x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
     var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
-    if (bl.length) { y += Math.round(6 * u); x.font = 'italic ' + Math.round(17 * u) + 'px Georgia, serif'; bl.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(24 * u); }); }
+    if (bl.length) { y += Math.round(6 * u); x.font = 'italic ' + fz(17) + 'px Georgia, serif'; bl.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(fz(17) * 1.4); }); }
     /* the key: a drawn key and the three characters large, on the first print from this phone's booth only (never on a save, never again) */
     if (real) { y = c.height - foot + pad; var kx = pad, ky = y + Math.round(4 * u), kr = Math.round(11 * u); x.lineWidth = Math.max(2, Math.round(3 * u)); x.strokeStyle = '#000'; x.beginPath(); x.arc(kx + kr, ky + kr, kr, 0, 7); x.stroke();
     x.fillRect(kx + kr * 2, ky + kr - Math.round(1.5 * u), Math.round(26 * u), Math.round(3 * u)); x.fillRect(kx + kr * 2 + Math.round(16 * u), ky + kr, Math.round(3 * u), Math.round(8 * u)); x.fillRect(kx + kr * 2 + Math.round(23 * u), ky + kr, Math.round(3 * u), Math.round(6 * u));
     x.font = '700 ' + Math.round(52 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(me(), kx + Math.round(60 * u), y - Math.round(4 * u));
-    x.font = '700 ' + Math.round(16 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('your access code for novel.global', pad, y + Math.round(58 * u));
-    x.font = Math.round(14 * u) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('accounts are made only on paper', pad, y + Math.round(80 * u)); }
+    x.font = '700 ' + fz(16) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('your access code for novel.global', pad, y + Math.round(58 * u));
+    x.font = fz(14) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('accounts are made only on paper', pad, y + Math.round(58 * u) + Math.round(fz(16) * 1.35)); }
     if (q) { var n = q.getModuleCount(), ox = W - pad - qs; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, y + i * mod, mod, mod); }
-    /* every dot black or white, as the printer lays it down: what is seen is what prints */
+    /* every dot black or white, as the printer lays it down: what is seen is what prints (the words and lines by the quality set, bolder if asked) */
+    inkPass(x, W, c.height, [0, head, W, p.height]);
     var im2 = x.getImageData(0, 0, W, c.height), d2 = im2.data; for (var k2 = 0; k2 < d2.length; k2 += 4) { var v2 = d2[k2] * 0.299 + d2[k2 + 1] * 0.587 + d2[k2 + 2] * 0.114 < 128 ? 0 : 255; d2[k2] = d2[k2 + 1] = d2[k2 + 2] = v2; d2[k2 + 3] = 255; } x.putImageData(im2, 0, 0);
     return c;
   });
@@ -2259,16 +2308,17 @@ function boothPhoto() {
   }
   return out.length < 400e3 ? out : '';
 }
-/* after a print: the print is the pass (its code on the paper, never on the screen). The jellyfish, pleased, a while; then the very start of
-   the journey, the notice with it, already in */
+/* after a print: the print is the pass (its code on the paper, never on the screen). The jellyfish a while, and the full colour copy to
+   save; then the very start of the journey, the notice with it, already in */
 function boothPass(el, s0, printed) {
   if (!BTH) return;   // already gone back to novel.global
   if (/^#booth/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
   var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; if (printed) store.set('da.who.pass', 1); meUsed(); if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1);
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel('happy') + '</div><i class="pt" style="animation-duration:' + t + 'ms"></i>';
+  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel() + '</div>' + (BTH.im ? '<div class="am" id="bt-on"><button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button></div>' : '') + '<i class="pt" style="animation-duration:' + t + 'ms"></i>';
+  var sv2 = $('#bt-save', el); if (sv2) sv2.addEventListener('click', function () { boothHQ(this); }); boothEye(el);
   clearTimeout(BTH.home); BTH.home = setTimeout(function () { boothClose(); if (window.AURA && AURA.home && store.get('da.who.pass', 0)) AURA.home(); }, t);
 }
-function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
+function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
 function boothLeft() { return Math.max(0, (+store.get('da.booth.next', 0) || 0) - Date.now()); }
 function boothPrint() {
@@ -2278,7 +2328,7 @@ function boothPrint() {
     var lat = map.lat, lng = map.lng, words = BTH.words.trim(), photo = boothPhoto();
     /* the jellyfish over a slot, the paper fed out of it a line at a time: on the screen the print without its code (the code is on the paper alone) */
     el.innerHTML = BHEAD + '<i class="bt-top">' + boothJel() + '</i><div class="feed"><i class="mouth"></i><div class="win"><div class="pv slip"></div></div></div><p class="am"><span id="bt-pip">' + pips('sending') + '</span></p>' +
-      '<div class="am" id="bt-on"><button id="bt-save" class="hq" aria-label="Save it in full colour"></button><button id="bt-again" aria-label="Again" hidden>↺</button></div>';
+      '<div class="am" id="bt-on"><button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button><button id="bt-again" aria-label="Again" hidden>↺</button></div>';
     ditherLib().then(function (D) { return BTH && boothSlip(D, cd, false); }).then(function (sc) { var w = $('.pv.slip', el); if (w && sc) w.appendChild(sc); });
     $('#bt-save').addEventListener('click', function () { boothHQ(this); }); boothEye(el);
     var n = { id: id, code: cd, at: Date.now(), mine: true, booth: true, lat: +lat.toFixed(5), lng: +lng.toFixed(5), say: words, tags: [], thumb: shrink(BTH.im, 220, 0.7) };
@@ -2440,7 +2490,7 @@ window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, stor
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

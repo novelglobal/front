@@ -56,10 +56,12 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS traffic (day TEXT NOT NULL, k TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, k))`,
   /* species: every kind of life the devices have met, told once by the first device to meet it (iNaturalist's id, names, group, mark, a photograph) */
   `CREATE TABLE IF NOT EXISTS species (id INTEGER PRIMARY KEY, n TEXT NOT NULL, cn TEXT, ic TEXT, g TEXT, ph TEXT, first INTEGER NOT NULL)`,
+  /* tapes: a loop recorded on the radio, its file kept in R2 for half a moon to be saved from any phone, then cleared */
+  `CREATE TABLE IF NOT EXISTS tapes (id TEXT PRIMARY KEY, who TEXT, name TEXT NOT NULL, type TEXT NOT NULL, bytes INTEGER NOT NULL, at INTEGER NOT NULL)`,
 ];
 /* SCHEMA_V: the database's version. Raise it by one whenever a table or a column is added below: each database (the live one and the
    preview's) then makes the changes once and keeps the number, and every start after is one read */
-const SCHEMA_V = 3;
+const SCHEMA_V = 4;
 const readied = new WeakMap();
 function ready(db) {
   if (!readied.has(db)) readied.set(db, (async () => {
@@ -173,8 +175,8 @@ async function tooMany(db, env, req, kind, max, windowMs) {
   await db.prepare('INSERT INTO hits (k, t) VALUES (?, ?)').bind(k, t).run(); return false;
 }
 /* the housekeeping, now and then: what has waited too long goes, and what was printed keeps only its status */
-async function tidy(db) {
-  const t = now();
+async function tidy(db, env) {
+  const t = now(); await tapesGo(db, env);
   await db.batch([
     db.prepare('DELETE FROM hits WHERE t < ?').bind(t - H),
     db.prepare("UPDATE jobs SET status = 'expired', escpos = NULL, mesh = NULL, done = ? WHERE status IN ('held', 'queued') AND created < ?").bind(t, t - DAY),
@@ -275,6 +277,34 @@ async function talkSay(db, env, req) {
   const re = typeof b.re === 'string' && /^[a-z0-9]{6,24}$/.test(b.re) ? b.re : null, id = rid(), t = now();
   await db.batch([db.prepare('INSERT INTO talk (id, sec, who, text, re, at, k) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, sec, who, text, re, t, TALK_K.includes(b.k) ? b.k : null), db.prepare('UPDATE makers SET last = ? WHERE who = ?').bind(t, who)]);
   return json({ id, kin: mk.kin, at: t }, 201);
+}
+/* a tape: the loop as recorded (WAV, or what the phone made), up to 16 MB, from a maker's code; kept half a moon, then cleared.
+   Its name is the one it is saved under, the same wherever it is saved from */
+const TAPE = { bytes: 16e6, keep: 14 * DAY, types: /^audio\/(wav|x-wav|webm|mp4|ogg)$/ };
+const tapeKey = id => `${PREVIEW ? 'preview/' : ''}tape/${id}`;
+async function tapeUp(db, env, req, url) {
+  const who = url.searchParams.get('who') || '', type = String(req.headers.get('content-type') || '').split(';')[0].trim();
+  const name = String(url.searchParams.get('name') || '').toLowerCase().replace(/[^a-z0-9.-]+/g, '-').slice(0, 80);
+  if (!WHO.test(who) || !TAPE.types.test(type) || !/^novel-global-[a-z0-9-]+\.(wav|webm|m4a|ogg)$/.test(name)) return fail(400, 'tape');
+  if (!env.MEDIA) return fail(503, 'no room');
+  const n = +(req.headers.get('content-length') || 0); if (n > TAPE.bytes) return fail(413, 'too big');
+  if (await tooMany(db, env, req, 'tape', 12, H)) return fail(429, 'too many');
+  const b = new Uint8Array(await req.arrayBuffer()); if (!b.length || b.length > TAPE.bytes) return fail(413, 'too big');
+  if ((await r2Bytes(db)) + b.length >= CAP.r2 * 0.8) return fail(503, 'no room');
+  const id = rid(12), t = now(); await env.MEDIA.put(tapeKey(id), b, { httpMetadata: { contentType: type } });
+  await db.prepare('INSERT INTO tapes (id, who, name, type, bytes, at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, who, name, type, b.length, t).run();
+  return json({ id, url: `/api/tapes/${id}`, name, until: t + TAPE.keep }, 201);
+}
+async function tapeGet(db, env, id) {
+  if (!/^[a-z0-9]{6,24}$/.test(id)) return fail(404, 'not found');
+  const r = await db.prepare('SELECT name, type, at FROM tapes WHERE id = ?').bind(id).first(); if (!r || now() - r.at > TAPE.keep || !env.MEDIA) return fail(404, 'not found');
+  const o = await env.MEDIA.get(tapeKey(id)); if (!o) return fail(404, 'not found');
+  return new Response(o.body, { headers: { 'content-type': r.type, 'content-disposition': `attachment; filename="${r.name}"`, 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' } });
+}
+/* the tapes older than half a moon: their files cleared from R2 and their rows gone, a few at a time */
+async function tapesGo(db, env) {
+  const { results } = await db.prepare('SELECT id FROM tapes WHERE at < ? LIMIT 50').bind(now() - TAPE.keep).all().catch(() => ({ results: [] }));
+  for (const r of results) { if (env && env.MEDIA) await env.MEDIA.delete(tapeKey(r.id)).catch(() => {}); await db.prepare('DELETE FROM tapes WHERE id = ?').bind(r.id).run(); }
 }
 /* one's own printed poster put live by its maker's code: shown on the site's wall for everyone at once, no approval first (the
    approval page can still take it down); never one refused or taken down, never a message */
@@ -390,10 +420,12 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* start: the start page and the booth (JSON: discWords, checklist, printNight paper | day | night, boothHome s, boothGap minutes between prints from one phone) */
 /* notice: the words above the rings on a first visit (JSON: off, head, text; empty: the site's own); country: the words over El Niño's
    map the first time it opens on a phone (JSON: off, head, text; empty: the Country and its sovereignty from config.js) */
+/* printq: how prints are made (JSON: preset soft | crisp | bold | screen | graphic, and any of its tweaks set apart: clip, gamma, contrast,
+   sharpen, dither, lineCut, bolden, minText, heat; empty: crisp as it is) */
 /* groups: the portfolio's groups a piece can be filed under on the approval page, one to a line (kept here; not on the site yet) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600 };
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 400 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
-async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0); }
+async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); const tp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM tapes').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0) + ((tp && tp.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
 async function posters(db) {
   if (!(await madeOn(db))) return json({ posters: [] });
@@ -800,7 +832,7 @@ async function api(req, env, url, ctx) {
   if (url.pathname === '/api/img' && req.method === 'GET') return imgThrough(url);
   if (url.pathname.startsWith('/api/inat/') && req.method === 'GET') return inatThrough(url);
   const db = dbOf(env); if (!db) return fail(503, 'no database');
-  await ready(db); if (Math.random() < 0.05) await tidy(db);
+  await ready(db); if (Math.random() < 0.05) await tidy(db, env);
   const p = url.pathname.replace(/^\/api\//, '').split('/').filter(Boolean).map(decodeURIComponent); const m = req.method;
   if (p[0] === 'stories' && !p[1] && m === 'GET') return listStories(db, url);
   if (p[0] === 'stories' && !p[1] && m === 'POST') return send(db, env, req);
@@ -809,6 +841,8 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'talk' && !p[1] && m === 'GET') return talkList(db, env, req, url);
   if (p[0] === 'talk' && !p[1] && m === 'POST') return talkSay(db, env, req);
   if (p[0] === 'live' && !p[1] && m === 'POST') return live(db, env, req);
+  if (p[0] === 'tapes' && !p[1] && m === 'POST') return tapeUp(db, env, req, url);
+  if (p[0] === 'tapes' && p[1] && !p[2] && m === 'GET') return tapeGet(db, env, p[1]);
   if (p[0] === 'mine' && p[1] && !p[3] && (m === 'GET' && !p[2] || m === 'POST' && p[2])) return mine(db, env, req, p[1], p[2]);
   if (p[0] === 'photos' && p[1] && m === 'GET') return photo(db, env, p[1], false);
   if (p[0] === 'partners' && m === 'GET') return partners(db);

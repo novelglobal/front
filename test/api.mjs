@@ -314,6 +314,12 @@ try {
   { await call('/api/admin/settings', { method: 'POST', key: KEY, body: { madeShow: false } }); const [hs, ho, hp, hph, hpa, ha] = await Promise.all([call('/api/stories'), call('/api/stories/DA-7K2Q'), call('/api/posters'), call(`/api/photos/${s1.json.id}`), call('/api/talk?s=p.DA-7K2Q&who=K7Q'), call('/api/admin/stories?status=shown', { key: KEY })]);
     check('switched off, visitors see nothing made (no stories, posters, photographs or poster talk), the approval page still sees it all', hs.json.stories.length === 0 && ho.status === 404 && hp.json.posters.length === 0 && hph.status === 404 && hpa.status >= 400 && ha.json.stories.length > 0, [hs.json.stories.length, ho.status, hp.json.posters.length, hph.status, hpa.status, ha.json.stories.length].join());
     await call('/api/admin/settings', { method: 'POST', key: KEY, body: { madeShow: true } }); }
+  /* a tape: kept on novel.global to be saved from any phone, under its one name, and refused without a code or a proper name */
+  { const up = (q, t = 'audio/wav') => server.fetch(new URL('/api/tapes?' + q, O), { method: 'POST', headers: { origin: O, 'content-type': t }, body: Buffer.alloc(2048, 7) });
+    const a = await up('who=K7Q&name=novel-global-tape-carlton-ab12.wav'), aj = a.status === 201 ? await a.json() : {}, g = aj.url ? await server.fetch(new URL(aj.url, O)) : null;
+    const no1 = (await up('who=&name=novel-global-tape-x-ab12.wav')).status, no2 = (await up('who=K7Q&name=song.wav')).status, no3 = (await up('who=K7Q&name=novel-global-tape-x-ab12.wav', 'text/html')).status;
+    const cd = g ? g.headers.get('content-disposition') : '', len = g ? (await g.arrayBuffer()).byteLength : 0;
+    check('a tape is kept for half a moon and saved under its one name; without a code, a proper name or a sound it is refused', a.status === 201 && aj.until - Date.now() > 13 * 864e5 && g && g.status === 200 && /novel-global-tape-carlton-ab12.wav/.test(cd) && len === 2048 && no1 === 400 && no2 === 400 && no3 === 400, JSON.stringify({ s: a.status, cd, len, no1, no2, no3 })); }
   let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }

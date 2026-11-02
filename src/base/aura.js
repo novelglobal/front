@@ -999,10 +999,10 @@
     ul.innerHTML = DESK.kept.map(function (k2, i) { var m = MOODS[+k2.code.charAt(2)], sc = SRCS[+k2.code.charAt(3)]; return '<li class="' + (DESK.list && DESK.play && DESK.li === i ? 'on' : '') + (k2.on ? ' lay' : '') + '"><button class="ly" data-kl="' + i + '" aria-pressed="' + !!k2.on + '" aria-label="Lay this track with the song"></button><button data-ks="' + i + '" aria-label="Play from here"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + (k2.name ? esc(k2.name) : esc(m ? m.k : '') + ' · ' + esc(sc ? sc[0] : '')) + '</span><i>' + len(k2.code) + '</i></button>' + (k2.rec ? '<button class="rc' + (RECA && RECA.id === k2.rec ? ' on' : '') + '" data-kr="' + esc(k2.rec) + '" aria-label="Hear the recording">' + svgI('wave') + '</button>' : '') + '<button class="sv" data-kv="' + i + '" aria-label="Save this track alone">' + svgI('save') + '</button><button class="x" data-kx="' + i + '" aria-label="Let it go">×</button></li>'; }).join('');
     [].forEach.call(ul.querySelectorAll('[data-kl]'), function (b) { b.addEventListener('click', function () { var q = DESK.kept[+b.dataset.kl]; q.on = !q.on; store.set('da.aura.songs', DESK.kept); deskKept(); bell(+b.dataset.kl % 4, 0.1); }); });
     [].forEach.call(ul.querySelectorAll('[data-kr]'), function (b) { b.addEventListener('click', function () { recHear(b.dataset.kr); }); });
-    [].forEach.call(ul.querySelectorAll('[data-kv]'), function (b) { b.addEventListener('click', function () { var sg = songOf(DESK.kept[+b.dataset.kv].code); if (!sg) return; b.classList.add('going'); songLoop(sg).then(function (r) { b.classList.remove('going'); if (r) saveWav(r.blob, 'novel-global-track-' + (+b.dataset.kv + 1) + '.wav'); }); }); });
+    [].forEach.call(ul.querySelectorAll('[data-kv]'), function (b) { b.addEventListener('click', function () { var sg = songOf(DESK.kept[+b.dataset.kv].code); if (!sg) return; b.classList.add('going'); songLoop(sg).then(function (r) { b.classList.remove('going'); if (r) saveWav(r.blob, 'novel-global-tape-' + MOODS[sg.m].k.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + songCode(sg).replace(/[^a-z0-9]/gi, '').slice(-4).toLowerCase() + '.wav'); }); }); });
     [].forEach.call(ul.querySelectorAll('[data-ks]'), function (b) { b.addEventListener('click', function () { DESK.li = +b.dataset.ks; songPlay(true, true); deskKept(); }); });
     [].forEach.call(ul.querySelectorAll('[data-kx]'), function (b) { NG.sureTap(b, function () { DESK.kept.splice(+b.dataset.kx, 1); store.set('da.aura.songs', DESK.kept); deskKept(); }); }); }
-  function saveWav(blob, name) { var a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); }
+  function saveWav(blob, name) { var a = document.createElement('a'); a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); }
   function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); var kn = DESK.el.querySelector('#sd-mood'); kn.setAttribute('data-fw', MOODS[DESK.mood].k); kn.style.setProperty('--a', (DESK.mood * 110 - 110) + 'deg'); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); DESK.el.querySelector('#sd-list').classList.toggle('on', DESK.list && DESK.play);
     [].forEach.call(DESK.el.querySelectorAll('[data-ly]'), function (b) { var q = +b.dataset.ly; b.setAttribute('aria-pressed', String(!DESK.mute[q])); b.classList.toggle('off', DESK.mute[q]); b.setAttribute('data-fw', MOODS[DESK.mood].ins[q]); });
     DESK.el.querySelector('#sd-list').classList.toggle('none', !DESK.kept.length); DESK.el.querySelector('#sd-lcard').classList.toggle('none', !DESK.kept.length); DESK.el.querySelector('#sd-folio').classList.toggle('none', !DESK.kept.length); }
@@ -1030,15 +1030,17 @@
       DESK.el.querySelector('#sd-folio').addEventListener('click', function () { if (!DESK.kept.length) return; keepCanvas(listCard(DESK.kept.map(function (q) { return q.code; })), 'A mixtape · ' + DESK.kept.length + (DESK.kept.length === 1 ? ' song' : ' songs'), 'songs:' + DESK.kept.map(function (q) { return q.code; }).join(',')); made('song', 'mixtape'); harp([0, 4, 7]); NG.toast && NG.toast('✓ IN THE PORTFOLIO'); });
       DESK.el.querySelector('#sd-lcard').addEventListener('click', function () { if (!DESK.kept.length) return; var u = listCard(DESK.kept.map(function (q) { return q.code; })).toDataURL('image/png'); deskClose(); window.postMessage({ ng: 'piece', url: u, crisp: true }, location.origin); });
       DESK.el.querySelector('#sd-keep').addEventListener('click', function () { if (songEmpty(DESK.song)) return; beat('song'); beat('desk-keep'); lvUp(3); made('song', MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0]); var code = songCode(DESK.song); if (!DESK.kept.some(function (q) { return q.code === code; })) { DESK.kept.unshift({ code: code, at: Date.now() }); DESK.kept.splice(12); store.set('da.aura.songs', DESK.kept); } deskKept(); bubbles(3); });
-      DESK.el.querySelector('#sd-loop').addEventListener('click', function () { var b = this; if (!DESK.song) return; b.classList.add('going'); var more = layered(); songLoop(DESK.song, more).then(function (r) { b.classList.remove('going'); if (!r) return; S.lastLoop = r.seconds; saveWav(r.blob, 'novel-global-' + MOODS[DESK.song.m].k + (more.length ? '-' + (more.length + 1) + '-tracks' : '') + '-loop.wav'); }); });
+      DESK.el.querySelector('#sd-loop').addEventListener('click', function () { var b = this; if (!DESK.song) return; b.classList.add('going'); var more = layered(); songLoop(DESK.song, more).then(function (r) { b.classList.remove('going'); if (!r) return; S.lastLoop = r.seconds; saveWav(r.blob, 'novel-global-tape-' + MOODS[DESK.song.m].k.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + songCode(DESK.song).replace(/[^a-z0-9]/gi, '').slice(-4).toLowerCase() + '.wav'); }); });
       DESK.el.querySelector('#sd-card').addEventListener('click', function () { if (!DESK.song) return; var u = songCard(DESK.song).toDataURL('image/png'); deskClose(); window.postMessage({ ng: 'piece', url: u, crisp: true }, location.origin); });
       DESK.el.querySelector('#sd-link').addEventListener('click', function () { if (!DESK.song) return; var u = songURL(DESK.song); try { navigator.clipboard.writeText(u); } catch (e) { /* none */ } bell(4, 0.12); });
-      DESK.el.querySelector('#sd-radio').addEventListener('click', function () { if (!devOpen(0)) return; if (!keyed()) { lockSay(); return; } deskClose(); openDev(0); });
+      /* the radio from the desk: the whole radio with a printed code, else its lite one (the music, the radar put down nearby) */
+      DESK.el.querySelector('#sd-radio').addEventListener('click', function () { if (keyed() && devOpen(0)) { deskClose(); openDev(0); return; } if (!earned('music')) return; deskClose(); openDev(0, 'song'); });
       DESK.el.querySelector('#sd-drone').addEventListener('click', function () { mute = !mute; store.set('da.aura.mute', mute); $('#au-snd').classList.toggle('off', mute); if (!mute) { window.__auraSound = 1; humStart(); } humSet(!DESK.play); deskSync(); });
       DESK.el.querySelector('.au-wx').addEventListener('click', deskClose);
       [].forEach.call(DESK.el.querySelectorAll('[data-ly]'), function (b) { b.addEventListener('click', function () { var q = +b.dataset.ly; DESK.mute[q] = !DESK.mute[q]; deskSync(); bell(q, 0.12); }); });
     }
-    if (given) { DESK.song = given; DESK.src = given.s; DESK.mood = given.m; } else if (!DESK.song) DESK.song = songMake(DESK.src, DESK.mood);
+    /* the desk as first found on a visit: a mood and a source by chance; after, as it is turned */
+    if (given) { DESK.song = given; DESK.src = given.s; DESK.mood = given.m; } else if (!DESK.song) { DESK.mood = Math.floor(Math.random() * MOODS.length); DESK.src = Math.floor(Math.random() * SRCS.length); DESK.song = songMake(DESK.src, DESK.mood); }
     beat('desk-open'); DESK.el.hidden = false; root.classList.add('desk'); applyGates(); deskSync(); deskKept(); deskDraw(); flashWords(200); bell(6, 0.16);
     /* the places of the radius arrive with the field data: a song made before they came is made again once they are here */
     /* ready on what there is, and quiet until play is pressed (a song's own link plays at once) */
@@ -1050,7 +1052,13 @@
   }
   function deskClose() { if (!DESK.el || DESK.el.hidden) return; DESK.el.hidden = true; root.classList.remove('desk'); cancelAnimationFrame(DESK.raf); }
   /* a song or a playlist from the wall: the desk opened on it and playing (several in turn) */
-  api.play = function (codes) { var cs = (codes || []).filter(function (c) { return songOf(c); }); if (!cs.length) return false; closeDev(); deskOpen(songOf(cs[0])); setTimeout(function () { songPlay(true, cs.length > 1 && cs.every(function (c) { return DESK.kept.some(function (q) { return q.code === c; }); })); }, 60); return true; };
+  /* a song's art played where it is seen: nothing opens or closes, the view stays as it was; pressed again while it plays, it stops */
+  api.play = function (codes) { var cs = (codes || []).filter(function (c) { return songOf(c); }); if (!cs.length) return false;
+    if (DESK.play && DESK.song && songCode(DESK.song) === cs[0]) { songPlay(false); return 'stop'; }
+    DESK.kept = store.get('da.aura.songs', []) || DESK.kept; var sg = songOf(cs[0]); DESK.song = sg; DESK.mood = sg.m; DESK.src = sg.s;
+    var li = DESK.kept.findIndex(function (q) { return q.code === cs[0]; }); if (li >= 0) DESK.li = li;
+    songPlay(true, cs.length > 1 && cs.every(function (c) { return DESK.kept.some(function (q) { return q.code === c; }); }));
+    try { var c = NG.ac(); deskOut(c).in.gain.setTargetAtTime(1, c.currentTime, 0.2); } catch (e) { /* none */ } return 'play'; };
   api.desk = function (o) { if (o === false) deskClose(); else deskOpen(o && o.code ? songOf(o.code) : null); return DESK.song ? { code: songCode(DESK.song), play: DESK.play, kept: DESK.kept.length, loop: S.lastLoop || 0 } : null; };
   api.songLoop = function () { return DESK.song ? songLoop(DESK.song).then(function (r) { return r ? { bytes: r.blob.size, seconds: r.seconds } : null; }) : Promise.resolve(null); };
   /* seven devices, each earned on its own and never opening another: the simple ones (the music, INTENTION with W.I.S.H.'s lines,
@@ -1090,7 +1098,7 @@
   function lockSay() { bell(1, 0.12); NG.toast && NG.toast('LOCKED · A PRINTED CODE OPENS IT'); }
   /* the steps and keys of what is not earned are not there at all */
   function applyGates() { var lv = LV(); keyName(); orbs.forEach(function (o, i) { o.classList.toggle('gated', lv < ORB_LV[i]); }); tabs.forEach(function (b, i) { b.classList.toggle('gated', lv < TAB_LV[i]); });
-    var sk = $('#au-snd'); if (sk) sk.hidden = !earned('music'); if (DESK.el) DESK.el.classList.toggle('simple', !earned('desk')); var rk = DESK.el && DESK.el.querySelector('#sd-radio'); if (rk) { rk.hidden = !earned('radio'); rk.classList.toggle('locked', !keyed()); } devK.forEach(function (b) { b.classList.toggle('locked', !keyed()); }); if (!keyed()) closeDev(); }
+    var sk = $('#au-snd'); if (sk) sk.hidden = !earned('music'); if (DESK.el) DESK.el.classList.toggle('simple', !earned('desk')); var rk = DESK.el && DESK.el.querySelector('#sd-radio'); if (rk) { rk.hidden = !earned('radio') && !earned('music'); rk.classList.toggle('lite', !keyed()); } devK.forEach(function (b) { b.classList.toggle('locked', !keyed()); }); if (!keyed()) closeDev(); }
   /* a device opened: the studio's page in a window of its own over the aura, smoked glass and a green light; the eye on its bar brings one
      straight back. One window for all three (another device turns the same studio to its page); kept while the visit lasts */
   var WIN = null;
@@ -1099,7 +1107,7 @@
   function studioTell(on) { try { WIN.querySelector('iframe').contentWindow.postMessage({ ng: 'hush', on: on }, location.origin); } catch (e) { /* no studio */ } }
   function openDev(i, auto) {
     /* the radio as the simple music radio (make a song) needs only the music; as the complex radio, its own posters */
-    var d = DEVS[i]; if (d && !keyed() && auto !== 'mix') { lockSay(); return; } if (!d || !(devOpen(i) || (auto === 'song' && i === 0 && earned('music')) || (auto === 'mix' && i === 0))) return;
+    var d = DEVS[i]; if (d && !keyed() && auto !== 'mix' && auto !== 'song') { lockSay(); return; } if (!d || !(devOpen(i) || (auto === 'song' && i === 0 && earned('music')) || (auto === 'mix' && i === 0))) return;
     if (!WIN) { WIN = document.createElement('section'); WIN.className = 'au-win'; WIN.setAttribute('role', 'dialog'); WIN.setAttribute('aria-label', 'The studio');
       WIN.innerHTML = '<header><i class="led"></i><b></b><nav>' + DEV_AT.map(function (j) { var q = DEVS[j]; return '<button data-wd="' + j + '" aria-label="' + q[1] + '">' + svgI(q[3]) + '</button>'; }).join('') + '</nav><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header><iframe title="The studio" allow="geolocation; camera; autoplay; web-share; clipboard-write"></iframe>';
       root.appendChild(WIN); var fr = WIN.querySelector('iframe');
@@ -1137,7 +1145,7 @@
     var old = $('#au-file'); if (old) old.remove(); var f = new File([blob], name, { type: blob.type }), u = URL.createObjectURL(blob), k = document.createElement('div'); k.id = 'au-file';
     k.innerHTML = '<a href="' + u + '" download="' + esc(name) + '" aria-label="Save the loop">' + svgI('save') + '<b>' + esc(/\.wav$/.test(name) ? 'WAV' : /\.m4a$/.test(name) ? 'M4A' : 'WEBM') + '</b></a><button aria-label="Not now">×</button>'; document.body.appendChild(k);
     var gone = function () { k.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); };
-    k.querySelector('a').addEventListener('click', function (ev) { if (navigator.canShare && navigator.canShare({ files: [f] }) && (window.matchMedia('(pointer: coarse)').matches)) { ev.preventDefault(); navigator.share({ files: [f], title: name }).then(gone).catch(function (er) { if (!er || er.name !== 'AbortError') { var a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); gone(); } }); } else setTimeout(gone, 400); });
+    k.querySelector('a').addEventListener('click', function () { setTimeout(gone, 400); });   // saved here, never handed to another app
     k.querySelector('button').addEventListener('click', gone); bell(5, 0.12);
   }
   function closeDev() { if (!WIN || WIN.hidden || WIN.classList.contains('away')) return; deskDuck(false); WIN.classList.add('away'); root.classList.remove('win'); S.win = null; humSet(S.mode !== 'seed' && !devOn()); bell(0, 0.16); }
@@ -1448,7 +1456,7 @@
   devK = [].slice.call(ui.querySelectorAll('.au-dev:not(.au-chatk)')); setTimeout(lvSync, 0);
   orbs = [].slice.call(ui.querySelectorAll('.au-orb')); tabs = [].slice.call(ui.querySelectorAll('.au-tab')); catchK = $('#au-catch');
   panel = $('#au-panel'); deep = $('#au-deep');
-  function setMode(m) { /* plain: the moves between the places are the drawing's, so there they are made at once */ if (S.plain) { if (m === 'bang' || m === 'unmorph') m = 'globe'; else if (m === 'morph') { m = 'iruk'; S.fade = 1; setTimeout(regrow, 30); } } if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); if (typeof keyName === 'function') keyName(); alive(); }
+  function setMode(m) { if (m !== S.mode && /^(seed|bang|morph|unmorph)$/.test(m)) closeDev(); /* plain: the moves between the places are the drawing's, so there they are made at once */ if (S.plain) { if (m === 'bang' || m === 'unmorph') m = 'globe'; else if (m === 'morph') { m = 'iruk'; S.fade = 1; setTimeout(regrow, 30); } } if (m === 'globe' && typeof orbWords === 'function') setTimeout(function () { orbWords(); todoCheck(); }, 0); S.mode = m; S.t0 = performance.now(); root.className = 'm-' + m + ' st' + S.stage + (DARK ? ' dark' : '') + (S.deep ? ' deep' : '') + (typeof SH !== 'undefined' && SH.pswp ? ' showing' : '') + (L.big ? ' big' : '') + (DESK.el && !DESK.el.hidden ? ' desk' : '') + (S.win != null ? ' win' : '') + ($('#au-keyin') && !$('#au-keyin').hidden ? ' keyon' : '') + (S.plain ? ' au-plain' : ''); if (typeof keyName === 'function') keyName(); alive(); }
   var cls = function () { root.classList.remove('st0', 'st1', 'st2', 'st3'); root.classList.add('st' + S.stage); root.classList.toggle('deep', !!S.deep); };
   $('#au-snd').classList.toggle('off', mute);
   /* the moon tonight, beside SOUND in the dark: as it looks from the city chosen (lit on the left in the south while it waxes),
@@ -1585,7 +1593,7 @@
   /* the first round is a path: each step opens once the one before has something in it, none skipped; after the first poster, any */
   var canStep = function (i) { return LV() >= TAB_LV[i]; };
   function step(i) {
-    talkShut();
+    talkShut(); closeDev();   // another step or view puts the device window away (kept as it was, under the aura)
     if (!earned(i < 2 ? 'intention' : 'print')) return;
     if (!canStep(i)) return;
     hintsQuiet();
@@ -2048,12 +2056,14 @@
       var h = new Array(256).fill(0), n = 0; for (var i = 0; i < d.length; i += 4) if (md[i] < 128) { h[Math.round(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114)]++; n++; }
       var lo = 0, hi = 255, acc = 0; while (lo < 255 && (acc += h[lo]) < n * 0.02) lo++; acc = 0; while (hi > 0 && (acc += h[hi]) < n * 0.02) hi--;
       var pic = mk(H), pd = pic.getContext('2d').getImageData(0, 0, W, H), pdd = pd.data;
-      for (var j = 0; j < d.length; j += 4) { var v0 = d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114, v = hi - lo >= 20 ? Math.max(0, Math.min(1, (v0 - lo) / (hi - lo))) : v0 / 255; pdd[j] = pdd[j + 1] = pdd[j + 2] = md[j] < 128 ? Math.round(Math.pow(v, 0.85) * 255) : 255; pdd[j + 3] = 255; }
+      for (var j = 0; j < d.length; j += 4) { var v0 = d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114, v = hi - lo >= 20 ? Math.max(0, Math.min(1, (v0 - lo) / (hi - lo))) : v0 / 255; pdd[j] = pdd[j + 1] = pdd[j + 2] = md[j] < 128 ? Math.round(v * 255) : 255; pdd[j + 3] = 255; }
       pic.getContext('2d').putImageData(pd, 0, 0); var dt = NG.forPrint(pic, W, D), dd = dt.getContext('2d').getImageData(0, 0, W, H).data;
       for (var q0 = 0; q0 < d.length; q0 += 4) if (md[q0] < 128) d[q0] = d[q0 + 1] = d[q0 + 2] = dd[q0] < 128 ? 0 : 255;
     }
-    /* everything else black or white; a faint line still prints */
-    for (var t = 0; t < d.length; t += 4) { if (anyPic && md[t] < 128) { d[t + 3] = 255; continue; } var lum = d[t] * 0.299 + d[t + 1] * 0.587 + d[t + 2] * 0.114; d[t] = d[t + 1] = d[t + 2] = lum < 200 ? 0 : 255; d[t + 3] = 255; }
+    /* everything else black or white by the quality set on the approval page (a faint line still prints), then a dot or two bolder if asked */
+    var PQ = NG.pq ? NG.pq() : { lineCut: 200, bolden: 0 }, lcut = Math.max(120, Math.min(250, +PQ.lineCut || 200)), bo = Math.max(0, Math.min(2, Math.round(+PQ.bolden || 0)));
+    for (var t = 0; t < d.length; t += 4) { if (anyPic && md[t] < 128) { d[t + 3] = 255; continue; } var lum = d[t] * 0.299 + d[t + 1] * 0.587 + d[t + 2] * 0.114; d[t] = d[t + 1] = d[t + 2] = lum < lcut ? 0 : 255; d[t + 3] = 255; }
+    for (var br = 0; br < bo; br++) { var ink = new Uint8Array(W * H); for (var t2 = 0; t2 < ink.length; t2++) ink[t2] = d[t2 * 4] === 0 ? 1 : 0; for (var t3 = 0; t3 < ink.length; t3++) { if (ink[t3] || (anyPic && md[t3 * 4] < 128)) continue; var cx3 = t3 % W; if ((cx3 > 0 && ink[t3 - 1]) || (cx3 < W - 1 && ink[t3 + 1]) || (t3 >= W && ink[t3 - W]) || (t3 < ink.length - W && ink[t3 + W])) d[t3 * 4] = d[t3 * 4 + 1] = d[t3 * 4 + 2] = 0; } }
     o.putImageData(im, 0, 0);
     /* the code where the poster has it, a whole number of dots to every square (four at least, so a phone reads it), its quiet paper round it */
     var Q = window.qrcode, qk = null; if (Q && P.note && P.note.code && B0.qr) { try {
@@ -2182,7 +2192,7 @@
   var LIVE = store.get('da.live', []) || [];
   var TK = { re: null, sec: null, k: null, st: 0 }, TSECS = ['notice', 'story', 'make', 'print'];
   /* what became of a word sent, or why the talk is closed, as a mark under it: the key (a code from a print opens it), wait, rest, gone */
-  var TK_WHY = { 400: '∅', 403: '🗝', 429: '…', 503: '☾' };
+  var TK_WHY = { 400: '∅', 403: '↻', 429: '…', 503: '☾' };
   function talkSays(t, ok) { var e = $('#au-talkp .au-tkst'); if (!e) return; e.textContent = t || ''; e.classList.toggle('ok', !!ok); clearTimeout(TK.st); if (ok) TK.st = setTimeout(function () { e.textContent = ''; }, 2600); }
   /* closed as one moves on: another poster, another step, a device */
   function talkShut() { if (!TK) return; var p = $('#au-talkp'); if (p && !p.hidden) p.hidden = true; TK.sec = null; TK.re = null; }
@@ -2202,7 +2212,7 @@
   [].forEach.call(document.querySelectorAll('#au-talkp [data-tk]'), function (b) { b.addEventListener('click', function () { TK.k = TK.k === b.dataset.tk ? null : b.dataset.tk; [].forEach.call(document.querySelectorAll('#au-talkp [data-tk]'), function (q) { q.setAttribute('aria-pressed', String(q.dataset.tk === TK.k)); }); bell(TK.k ? 5 : 2, 0.08); }); });
   $('#au-talkp .x').addEventListener('click', function () { $('#au-talkp').hidden = true; });
   /* sent: it shows in the talk at once, marked ✓; refused, a mark for why and the words stay to try again */
-  $('#au-talkp form').addEventListener('submit', function (e) { e.preventDefault(); var i = this.querySelector('input'), t = i.value.trim(); if (!t || i.disabled) return; i.disabled = true; talkSays('…');
+  $('#au-talkp form').addEventListener('submit', function (e) { e.preventDefault(); var i = this.querySelector('input'), t = i.value.trim(); if (!t || i.disabled) return; i.blur(); i.disabled = true; talkSays('…');
     var sec = TK.sec || TSECS[S.stage] || 'notice', re = TK.re, k = TK.k;
     (NG.human ? NG.human() : Promise.resolve('')).then(function (cf) { return fetch('/api/talk', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: sec, who: NG.me(), text: t, re: re, k: k, cf: cf }) }); })
       .then(function (r) { i.disabled = false; if (r.status !== 201) { talkSays(TK_WHY[r.status] || '×'); bell(1, 0.1); return; }
@@ -2238,11 +2248,11 @@
   function wallPress() {
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
-    var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
+    LIVE = store.get('da.live', LIVE) || LIVE; var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : S.pmode === 'send' ? 'send' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : S.pmode === 'send' ? 'Send it to novel.global' : 'Print') + '"') +
       hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
-    else pr.innerHTML = nav(-1) + (canLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
+    else pr.innerHTML = nav(-1) + /* already live: no key for it, nothing to ask again */ (canLive && !isLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
       (f.code && !f.wall && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (f.island ? hand('au-sm', svgI('hide'), 'id="au-hide" data-fw="hide" aria-label="Hide it from this phone"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
@@ -2317,7 +2327,7 @@
       });
       ps.on('change', function () { try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) { /* no touch */ } bell(2, 0.07); });
       ps.on('destroy', function () { SH.d = (SH.d || 0) + 1; if (SH.pswp === ps) SH.pswp = null; root.classList.remove('showing'); setTimeout(strays, 60); });
-      SH.pswp = ps; root.classList.add('showing'); ps.init();
+      closeDev(); SH.pswp = ps; root.classList.add('showing'); ps.init();
     });
   }
   /* closed at any moment, even while it is still opening */
@@ -2587,7 +2597,8 @@
   /* back to the very start, the notice with it: where the booth leaves someone once their print is made */
   api.home = function () { try { closeDev(); } catch (e) { /* none open */ } if (S.deep) { S.deep = false; deep.hidden = true; } FIRSTV = true; noticeSet(store.get('da.aura.notice', null)); S.stage = 0; setMode('seed'); };
   api.pixSubs = ['jelly', 'coral', 'trash', 'st0', 'st1', 'st3'];
-  api.pix = function (sub) { usePaper(true); var c = pixArt(sub, 24, 0, 'ink', null, 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
+  api.pixKinds = PIX_SUBS.slice();
+  api.pix = function (sub, seed) { usePaper(true); var c = pixArt(sub, 24, 0, 'ink', null, seed || 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
   api.receipt = function (w) { return P ? posterPrint(w || 512).then(function (c) { return c ? c.toDataURL('image/png') : null; }) : Promise.resolve(null); };
   /* a piece added, moved to a place on the poster (fractions of its width and height), for checking the print against the poster */
   api.move = function (i, x, y) { var a = P && P.adds[i]; if (!a) return false; a.x = x; a.y = y; delete a.band; changed(); redraw(); return true; };

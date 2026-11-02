@@ -3377,3 +3377,12 @@ html.in-aura #sec-set{display:none!important}
 .mtag .md{font-size:4px;letter-spacing:.06em}
 /* the portfolio's sources: what novel.global is, small, above the list */
 #sec-src .src-about { margin: 6px 0 12px; max-width: 62ch; font-size: 11px; line-height: 1.5; opacity: .8; }
+/* the printer's kit: four lines under it, nothing more */
+.pt-kit .kit{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:11px;letter-spacing:.12em}
+.pt-kit .kit li{display:flex;align-items:baseline;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(127,127,127,.2)}
+.pt-kit .kit a{color:inherit;text-decoration:none}
+.pt-kit .kit a:first-child{flex:1}
+.pt-kit .kit a:hover,.pt-kit .kit a:focus-visible{text-decoration:underline}
+.pt-kit .kit small{opacity:.45;font-size:10px}
+.pt-kit .kit li.lock{opacity:.5}
+.pt-kit .kit li.lock span{flex:1}

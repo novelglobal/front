@@ -102,6 +102,14 @@ const moodOfLayer = k => moodIs((prefs.lm || {})[k]) || moodIs(prefs.mood) || (k
 /* the filter each layer is heard through, as its knob is turned: MIST, HALL, DEPTH */
 const FXS = ['mist', 'hall', 'depth', 'bloom', 'lung'];
 const fxOf = k => (FXS.includes((prefs.fx || {})[k]) ? prefs.fx[k] : k === 'air' ? 'lung' : 'mist');
+/* a first visit's radio set by chance, once: each layer's mood (never the loud ones first), filter and level. Never again after,
+   so whoever turns it, or moves the radar, keeps what they set */
+function radioDice() {
+  if (prefs.diced) return; const pick = a => a[Math.floor(Math.random() * a.length)], calm = MOOD_ON.filter(m => m !== 'riot' && m !== 'riff');
+  prefs.lm = prefs.lm || {}; prefs.fx = prefs.fx || {}; prefs.lvl = prefs.lvl || {};
+  for (const k of Object.keys(LM_DEF)) { if (!prefs.lm[k]) prefs.lm[k] = pick(calm); if (!prefs.fx[k]) prefs.fx[k] = pick(FXS); if (prefs.lvl[k] == null) prefs.lvl[k] = +(0.5 + Math.random() * 0.35).toFixed(2); }
+  prefs.diced = 1; savePrefs();
+}
 /* what each layer holds inside the radar now: a count, nothing more */
 function trackCount(k) {
   if (k === 'life') return life.items.filter(it => it.inS && !it.o.story && !it.o.pack && !it.o.hist).length;
@@ -380,25 +388,26 @@ function saveFour() {
   if (!song) { song = mixOf(ms.map(t => t.m)); if (!keepLoop(song)) { toast('NO ROOM ON THIS PHONE'); return; } made('song', 'mix'); snd.tick(1900); if (S.view !== 0) refreshPanel(); }
   loopFile(song, true);
 }
-/* a song shared: the phone's own share (its link, which opens the radio where it was made), else its link copied */
-async function shareSong(l) {
-  const url = mixURL(l), title = (l.where || {}).place || 'novel.global';
-  if (navigator.share) { try { await navigator.share({ title, url }); toast('✓ SHARED'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-  const ok = await copyText(url); toast(ok ? 'LINK COPIED' : url.slice(0, 60));
-}
 /* a song as a sound file: it plays alone from the top of its turn, one turn is taken as it sounds, its tail folded over its head, a WAV that loops on itself without a seam, and kept on this phone with its song (IndexedDB, rec:<id>), to be heard again in SONGS and saved at any time. A
    computer downloads it at once; a phone saves a file only from a tap, so the four-track shows a link to it, ready to press */
 let filing = false, FILED = null;   // FILED: the last loop the four-track recorded, its link waiting: { id, url, name }
-const recName = (l, type) => `novel-global-${String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'radio'}-loop.${/wav/.test(type || '') ? 'wav' : /mp4/.test(type || '') ? 'm4a' : 'webm'}`;
+/* a tape's one name, wherever it is saved from: the place it was made, and four of its own */
+const recName = (l, type) => `novel-global-tape-${String((l.where || {}).place || 'radio').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'radio'}-${String(l.id || '').replace(/[^a-z0-9]/gi, '').slice(-4).toLowerCase() || '0000'}.${/wav/.test(type || '') ? 'wav' : /mp4/.test(type || '') ? 'm4a' : 'webm'}`;
+/* the tape kept on novel.global for half a moon, so any phone can save it (a phone saves nothing from inside a window); after, this phone's own */
+const tapeURL = l => (l.tape && Date.now() < l.tape.until ? l.tape.url : '') || RECURL.get(l.id) || '';
+async function tapeUp(l, b, name) {
+  const who = store.get('da.who', ''); if (!/^[A-HJ-NP-Z2-9]{3}$/.test(who) || !navigator.onLine) return;
+  try { const r = await fetch(`/api/tapes?who=${who}&name=${encodeURIComponent(name)}`, { method: 'POST', headers: { 'content-type': b.type || 'audio/wav' }, body: b }); if (r.status !== 201) return; const j = await r.json(); l.tape = { url: j.url, until: j.until }; store.set('da.loops.v1', LOOPS); } catch (e) { /* this phone's own, then */ }
+}
 async function loopFile(l, four) {
   if (filing) return; filing = true; if (!prefs.sound) { prefs.sound = true; savePrefs(); } snd.wake(); recStop();
   const ms = tracksOf(l), dur = Math.max(...ms.map(t => loopDur(t.m))), t0 = performance.now() + 150; for (const t of ms) { t.t0 = t0; t.step = null; }
-  startPlay(ms); $$('[data-t4save], [data-song-file]').forEach(b => b.classList.add('going')); toast('RECORDING · ONE TURN', dur + 4200);
-  try { await new Promise(r => setTimeout(r, 150)); const b = await snd.record(dur, 3000); await big.set('rec:' + l.id, b); l.rec = { at: Date.now(), type: b.type, s: Math.round(dur / 1000) }; store.set('da.loops.v1', LOOPS);
+  startPlay(ms); $$('[data-t4save], [data-song-file]').forEach(b => b.classList.add('going')); /* whole turns, to at least 24 seconds: a tape to keep, not a blip */
+  const turns = Math.max(1, Math.ceil(24000 / dur)), len = dur * turns; toast('RECORDING', len + 4200);
+  try { await new Promise(r => setTimeout(r, 150)); const b = await snd.record(len, 3000); await big.set('rec:' + l.id, b); l.rec = { at: Date.now(), type: b.type, s: Math.round(len / 1000) }; store.set('da.loops.v1', LOOPS);
     const name = recName(l, b.type); FILED = { id: l.id, url: URL.createObjectURL(b), name, four: !!four }; RECURL.set(l.id, FILED.url);
-    /* in the aura's window the page itself saves it (a phone saves nothing from inside a window); alone, a computer downloads at once */
-    let up = false; if (IN_AURA) { try { parent.postMessage({ ng: 'file', blob: b, name }, location.origin); up = true; } catch (e) { up = false; } }
-    if (!up && !coarse()) download(name, b); toSound(l, l.id); toast(up || coarse() ? '✓ IN SONGS + SOUND · ↓ SAVES IT' : '✓ SAVED · IN SONGS + SOUND', 3600); made('song', 'loop'); }
+    /* one save, its key beside the loop: the tape on novel.global (opened in a tab of its own, never leaving this one) */
+    await tapeUp(l, b, name); if (l.tape) FILED.url = l.tape.url; toSound(l, l.id); toast('✓ ↓', 3600); made('song', 'loop'); }
   catch (e) { toast('NOT SAVED · TRY AGAIN'); }
   $$('[data-t4save], [data-song-file]').forEach(b => b.classList.remove('going')); if (LOOP.ms.length && LOOP.ms.every(t => t.of === l.id)) comeBack(); filing = false;
   refreshFour(); if (S.view !== 0) refreshPanel();
@@ -445,7 +454,7 @@ function fourHTML() {
     return `<li><button type="button" class="f4${on ? ' on' : ''}" data-t4k="${esc(l.id)}" aria-pressed="${on}" aria-label="Track ${i + 1}: ${nm}" data-tip="${nm}"><img src="${loopArt(l)}" alt=""><small class="mono">${i + 1}</small></button><button type="button" class="f4x" data-t4x="${esc(l.id)}" aria-label="Let track ${i + 1} go">×</button></li>`; }).join('')}`
     + `<li class="f4k"><button type="button" class="f4m${all ? ' on' : ''}" data-t4all aria-pressed="${all}" aria-label="The four together" data-tip="All four together"${four.length > 1 ? '' : ' disabled'}>${icon('loop', 'sm')}<small class="mono">all</small></button>`
     + `<button type="button" class="f4m" data-t4save aria-label="Record what plays, one whole turn, as a sound file" data-tip="Record the whole loop"${four.length ? '' : ' disabled'}>${icon('download', 'sm')}<small class="mono">save</small></button>`
-    + (FILED && FILED.four ? `<a class="f4m ready" href="${FILED.url}" download="${esc(FILED.name)}" aria-label="Save the recorded loop to this phone" data-tip="Save the file">${icon('out', 'sm')}<small class="mono">file</small></a>` : '') + '</li></ol>';
+    + (FILED && FILED.four ? `<a class="f4m ready" href="${FILED.url}" download="${esc(FILED.name)}" target="_blank" rel="noopener" aria-label="Save the recorded loop to this phone" data-tip="Save the file">${icon('out', 'sm')}<small class="mono">file</small></a>` : '') + '</li></ol>';
 }
 function refreshFour() { const f = $('#view .four'); if (f) f.outerHTML = fourHTML(); $$('[data-loop-next]').forEach(b => { b.disabled = !LOOPS.length; }); }
 /* the loops kept, in the portfolio: each its picture, its place and its day; pressed, it plays again */
@@ -458,7 +467,7 @@ const songsHTML = () => `<section class="sec songs" id="sec-songs"><div class="l
   + tapeMaker() + tapesHTML()
   + (LOOPS.length ? `<ol class="albums">${LOOPS.map((l, i) => `<li class="album"><button type="button" class="al-sleeve" data-loop-play="${esc(l.id)}" aria-label="Play ${esc((l.where || {}).place || 'this song')}"><img class="al-art" src="${loopArt(l)}" alt=""><img class="al-card" data-song-card="${i}" alt=""></button>`
     + `<span class="al-t"><b>${esc((l.where || {}).place || 'RADIO')}</b><small class="mono">${Math.round((l.where || {}).r || 0)} M · ${fmtStamp(l.at).split(' ')[0]}</small></span>`
-    + `<span class="al-k"><button type="button" class="ib${going(l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(going(l.id) ? 'pause' : 'play', 'sm')}</button>${l.rec ? `<button type="button" class="ib${REC && REC.id === l.id ? ' on' : ''}" data-rec-play="${esc(l.id)}" aria-label="Hear the recorded loop" data-tip="Hear the loop">${icon(REC && REC.id === l.id ? 'pause' : 'sound', 'sm')}</button><a class="ib" data-rec-dl="${esc(l.id)}" href="${RECURL.get(l.id) || '#'}" download="${esc(recName(l, l.rec.type))}" aria-label="Save the recorded loop to this phone" data-tip="Save the file">${icon('download', 'sm')}</a>` : `<button type="button" class="ib" data-song-file="${esc(l.id)}" aria-label="Record it, one whole turn, as a sound file" data-tip="Record the loop">${icon('download', 'sm')}</button>`}<button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
+    + `<span class="al-k"><button type="button" class="ib${going(l.id) ? ' on' : ''}" data-loop-play="${esc(l.id)}" aria-label="Play" data-tip="Play">${icon(going(l.id) ? 'pause' : 'play', 'sm')}</button>${l.rec ? `<button type="button" class="ib${REC && REC.id === l.id ? ' on' : ''}" data-rec-play="${esc(l.id)}" aria-label="Hear the recorded loop" data-tip="Hear the loop">${icon(REC && REC.id === l.id ? 'pause' : 'sound', 'sm')}</button><a class="ib" data-rec-dl="${esc(l.id)}" href="${tapeURL(l) || '#'}" download="${esc(recName(l, l.rec.type))}" target="_blank" rel="noopener" aria-label="Save the recorded loop to this phone" data-tip="Save the file">${icon('download', 'sm')}</a>` : `<button type="button" class="ib" data-song-file="${esc(l.id)}" aria-label="Record it, one whole turn, as a sound file" data-tip="Record the loop">${icon('download', 'sm')}</button>`}<button type="button" class="ib" data-song-poster="${esc(l.id)}" aria-label="Onto my poster" data-tip="Onto my poster">${icon('plus', 'sm')}</button></span></li>`).join('')}</ol>`
     : '<p class="al-none mono">NO SONGS KEPT YET · + KEEPS THE RADAR\'S SONG</p>') + '</section>';
 async function fillSongs() { recLoad(); fillTapes(); for (const im of $$('#view img[data-song-card]')) { const l = LOOPS[+im.dataset.songCard]; if (!l) continue; try { const c = await cardArt(songCard(l, +im.dataset.songCard), +im.dataset.songCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 $('#view').addEventListener('click', async e => {
@@ -470,7 +479,7 @@ $('#view').addEventListener('click', async e => {
   const tsh = e.target.closest('[data-tape-share]'); if (tsh) { const t = MIXTAPES.find(x => x.id === tsh.dataset.tapeShare); if (t) tapeShare(t); return; }
   const tx = e.target.closest('[data-tape-x]'); if (tx) { const i = MIXTAPES.findIndex(x => x.id === tx.dataset.tapeX); if (i >= 0) { MIXTAPES.splice(i, 1); store.set('da.tapes.v1', MIXTAPES); refreshPanel(); } return; }
   const rp = e.target.closest('[data-rec-play]'); if (rp) { recPlay(rp.dataset.recPlay); return; }
-  const rd = e.target.closest('[data-rec-dl]'); if (rd && !RECURL.get(rd.dataset.recDl)) { e.preventDefault(); toast('NOT ON THIS PHONE'); }
+  const rd = e.target.closest('[data-rec-dl]'); if (rd) { const l = LOOPS.find(x => x.id === rd.dataset.recDl); if (!l || !tapeURL(l)) { e.preventDefault(); toast('NOT ON THIS PHONE'); } }
 });
 /* the songs as a mixtape: a name, a life of the places in them for its cover (its photograph in a tarot card's arched window),
    kept on this phone (LOCAL) or SHARED as a link that opens it anywhere. Played, the songs' recordings in turn, else the songs together */
@@ -495,13 +504,12 @@ const tapeCard = (t, i) => ({ id: 't:' + t.id, img: loopArt(tapeLoops(t)[0] || L
 const tapesHTML = () => (MIXTAPES.length ? `<ol class="albums tapes">${MIXTAPES.map((t, i) => { const ls = tapeLoops(t), on = REC && REC.id === 't:' + t.id;
   return `<li class="album tape"><button type="button" class="al-sleeve" data-rec-play="t:${esc(t.id)}" aria-label="Play ${esc(t.name)}"><img class="al-art" data-tape-card="${i}" src="${ls[0] ? loopArt(ls[0]) : ''}" alt=""></button>`
     + `<span class="al-t"><b>${esc(t.name)}</b><small class="mono">${t.pub ? 'SHARED' : 'LOCAL'} · ${ls.length} ${ls.length === 1 ? 'SONG' : 'SONGS'}${t.sp ? ' · ' + esc(t.sp.n) : ''}</small></span>`
-    + `<span class="al-k"><button type="button" class="ib${on ? ' on' : ''}" data-rec-play="t:${esc(t.id)}" aria-label="Play the mixtape" data-tip="Play">${icon(on ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-tape-share="${esc(t.id)}" aria-label="Share it as a link" data-tip="Share">${icon('share', 'sm')}</button><button type="button" class="ib" data-tape-x="${esc(t.id)}" aria-label="Let it go" data-tip="Let it go">${icon('close', 'sm')}</button></span></li>`; }).join('')}</ol>` : '');
+    + `<span class="al-k"><button type="button" class="ib${on ? ' on' : ''}" data-rec-play="t:${esc(t.id)}" aria-label="Play the mixtape" data-tip="Play">${icon(on ? 'pause' : 'play', 'sm')}</button><button type="button" class="ib" data-tape-x="${esc(t.id)}" aria-label="Let it go" data-tip="Let it go">${icon('close', 'sm')}</button></span></li>`; }).join('')}</ol>` : '');
 async function fillTapes() { for (const im of $$('#view img[data-tape-card]')) { const t = MIXTAPES[+im.dataset.tapeCard]; if (!t) continue; try { const c = await cardArt(tapeCard(t, +im.dataset.tapeCard), +im.dataset.tapeCard, 2); if (im.isConnected) im.src = c.toDataURL('image/png'); } catch (e) { /* the sleeve alone */ } } }
 async function tapeShare(t) {
   const ls = tapeLoops(t); if (!ls.length) { toast('NO SONGS IN IT NOW'); return; }
-  const url = mixURL(mixOf(ls)); if (!t.pub) { t.pub = true; store.set('da.tapes.v1', MIXTAPES); }
-  if (navigator.share) { try { await navigator.share({ title: t.name, url }); toast('✓ SHARED'); refreshPanel(); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-  const ok = await copyText(url); toast(ok ? 'LINK COPIED · SHARED' : url.slice(0, 60)); refreshPanel();
+  /* shared on novel.global only: never handed to another app */
+  if (!t.pub) { t.pub = true; store.set('da.tapes.v1', MIXTAPES); } toast('✓ SHARED'); refreshPanel();
 }
 $('#view').addEventListener('submit', e => {
   const f = e.target.closest('[data-tape-form]'); if (!f) return; e.preventDefault();

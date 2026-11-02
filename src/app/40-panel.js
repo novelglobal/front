@@ -677,9 +677,18 @@ function printerTop() {
     + `<span class="pt-slot" aria-hidden="true"><span class="pt-paper">${PT.img ? `<img src="${PT.img}" alt="">` : ''}</span></span>`
     + `<figcaption class="pt-cap mono"><b>${esc(String(MASTER ? MASTER.n : 'novel.global').toUpperCase())}</b><span>${p.ready ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</span></figcaption>`
     + `<span class="pt-over mono" aria-live="polite">${fresh ? esc(PT.code || '') : ''}</span>`
-    /* how to make one: a handbook to download, to build a printer of one's own and join the network */
-    + `<a class="pt-build mono" href="build-a-solar-printer.txt" download="build-a-solar-direct-action-printer.txt">BUILD A SOLAR<br>THERMAL PRINTER</a></figure></section>`;
+    /* how to make one: its kit opens under it (the parts, the instructions, the receiver; the whole stack with a printed code) */
+    + `<a class="pt-build mono" href="#kit" data-kit aria-expanded="false">BUILD A SOLAR<br>THERMAL PRINTER</a></figure></section>` + kitSection();
 }
+const REPO = 'https://github.com/novelglobal/front';
+const kitOpen = () => !!store.get('da.who.ok', 0) || !!store.get('da.showcase', 0);
+const kitSection = () => `<section class="sec pt-kit" id="sec-kit" hidden><ol class="kit mono">`
+  + `<li><a href="build-a-solar-printer.txt" target="_blank" rel="noopener">PARTS</a><small>TXT</small></li>`
+  + `<li><a href="${REPO}/blob/main/receiver/README.md" target="_blank" rel="noopener">INSTRUCTIONS</a><small>PI</small></li>`
+  + `<li><a href="${REPO}/tree/main/receiver" target="_blank" rel="noopener">RECEIVER</a><small>PY</small></li>`
+  + (kitOpen() ? `<li><a href="${REPO}" target="_blank" rel="noopener">FULL STACK</a><a href="${REPO}/archive/refs/heads/main.zip" target="_blank" rel="noopener" aria-label="Download the full stack">↓</a></li>` : `<li class="lock"><span>FULL STACK</span><small aria-label="A printed code opens it">🗝</small></li>`)
+  + `</ol></section>`;
+document.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-kit]'); if (!k) return; e.preventDefault(); const s = $('#sec-kit'); if (!s) return; s.hidden = !s.hidden; k.setAttribute('aria-expanded', String(!s.hidden)); if (!s.hidden) s.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
 /* something sent to print: kept (the last one hangs from the slot), and played out now if the page is open, else on arrival */
 function ptPrint(img, code, status) {
   PT.img = img; PT.code = code || ''; PT.at = Date.now(); PT.status = status || ''; store.set('da.pt.v1', { img: PT.img.length < 400000 ? PT.img : '', code: PT.code, at: PT.at });
@@ -727,7 +736,7 @@ document.addEventListener('click', e => {
   if (a === 'x') wallShut(); else if (a === 'prev') wallShow(WALLAT - 1); else if (a === 'next') wallShow(WALLAT + 1);
   else if (a === 'full') { const im = $('#wall-v img'); if (im && im.requestFullscreen) im.requestFullscreen().catch(() => {}); else if (im && im.webkitEnterFullscreen) im.webkitEnterFullscreen(); }
   else if (a === 'poster') { wallShut(); if (IN_AURA) toAura(f.src, true); else { setView(2); setTimeout(() => placeOnPage(f.src, 'art', 240), 500); } snd.tick(1900); }
-  else if (a === 'play') { const cs = songsOf(f); try { if (IN_AURA && parent.AURA && parent.AURA.play) { parent.AURA.play(cs); toast('▶'); } else toast('♪'); } catch (er) { toast('♪'); } }
+  else if (a === 'play') { const cs = songsOf(f); try { if (IN_AURA && parent.AURA && parent.AURA.play) { const r = parent.AURA.play(cs); if (b) b.classList.toggle('on', r === 'play'); } else toast('♪'); } catch (er) { toast('♪'); } }
 });
 document.addEventListener('keydown', e => { if (WALLAT < 0) return; if (e.key === 'Escape') wallShut(); else if (e.key === 'ArrowLeft') wallShow(WALLAT - 1); else if (e.key === 'ArrowRight') wallShow(WALLAT + 1); });
 /* the board, in the portfolio: everyone's few words in the journey's four sections, by kin; written with the code from a print */
@@ -801,7 +810,7 @@ function bindPortfolio() {
 /* data to take away */
 const csvCell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 const toCSV = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
-function download(name, data, type = 'text/csv;charset=utf-8') { const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+function download(name, data, type = 'text/csv;charset=utf-8') { const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })); a.download = name; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 60000); }
 function takeAway(k) {
   const day = isoDay(new Date()); tick(1800);
   if (k === 'signals') download(`direct-action-signals-${day}.csv`, toCSV([['code', 'issued', 'by', 'life', 'latin', 'lat', 'lng', 'place', 'threat', 'when', 'w', 'i', 's', 'h', 'knots', 'brief', 'example'], ...S.signals.map(s => { const p = s.pin || {}; return [s.code, new Date(s.at).toISOString(), s.who || '', p.cn || '', p.n || '', p.lat, p.lng, p.place || '', s.threat || '', s.when || '', ...['w', 'i', 's', 'h'].map(x => (s.lines || {})[x] || ''), (s.nodes || []).map(n => n.n).join('; '), s.brief || '', s.ex ? 1 : 0]; })]));
