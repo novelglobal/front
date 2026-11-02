@@ -223,6 +223,7 @@ const snd = (() => {
         try { if (ctx.audioWorklet) ctx.audioWorklet.addModule('ladder.js').then(() => { hasLadder = true; }).catch(() => {}); } catch (e) { /* a plain low-pass */ }
       }
       /* a phone suspends sound when the page is put away, and some ("interrupted") only give it back inside a touch */
+      try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* not here */ }   // after a camera, an iPhone's sound back to playing
       if (ctx.state !== 'running' && ctx.state !== 'closed') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
       return ctx;
     } catch (e) { return null; }

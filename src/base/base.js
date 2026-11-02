@@ -1429,7 +1429,13 @@ var AC = null;
 /* an old phone or tablet (few cores, little memory, or no audio worklets): the sound made lighter everywhere, so it does not stutter */
 var LITE = (function () { try { var n = navigator.hardwareConcurrency || 2, m = navigator.deviceMemory || 4; return n <= 4 || m <= 2 || !window.AudioWorkletNode; } catch (e) { return false; } })();
 function newAC() { var A = window.AudioContext || window.webkitAudioContext; try { return new A({ latencyHint: LITE ? 'playback' : 'balanced' }); } catch (e) { return new A(); } }
-function ac() { if (!AC) AC = newAC(); if (AC.state === 'suspended') AC.resume(); return AC; }
+function ac() { if (!AC) { playback(); AC = newAC(); } if (AC.state !== 'running') AC.resume().catch(function () {}); return AC; }
+/* a phone's camera (the booth's photo) turns its sound over to recording, and on an iPhone, whichever browser, the page's sound can stay
+   silent or suspended after: asked back to playing, and woken again on the next touch and each return to the page */
+function playback() { try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* not here */ } }
+function soundBack() { playback(); if (AC && AC.state !== 'running' && AC.state !== 'closed') AC.resume().catch(function () {}); }
+['pointerdown', 'touchend', 'keydown'].forEach(function (k) { addEventListener(k, soundBack, { capture: true, passive: true }); });
+document.addEventListener('visibilitychange', function () { if (!document.hidden) soundBack(); }); addEventListener('focus', soundBack); addEventListener('pageshow', soundBack);
 var SCALES = { pelog: [0, 1, 3, 7, 8], slendro: [0, 2.4, 4.8, 7.2, 9.6] };
 function noiseBuf(c) { if (c.__nb) return c.__nb; var b = c.createBuffer(1, Math.floor(c.sampleRate * 0.5), c.sampleRate), d = b.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; c.__nb = b; return b; }
 function env(c, g, t, peak, a, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
@@ -2080,7 +2086,7 @@ BHEAD = '<a class="bm" href="./" aria-label="Back to novel.global">' + MARK_SVG 
 function boothClose() {
   clearTimeout(BTH && BTH.home); clearTimeout(BTH && BTH.t); var el = $('#booth');
   if (!document.getElementById('aura')) { document.body.classList.remove('booth'); location.href = siteURL(); return; }
-  BTH = null; document.body.classList.remove('booth'); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } if (el) { el.classList.remove('done'); el.innerHTML = ''; }
+  BTH = null; document.body.classList.remove('booth'); soundBack(); try { window.dispatchEvent(new Event('ng-level')); } catch (e) { /* old */ } if (el) { el.classList.remove('done'); el.innerHTML = ''; }
   history.replaceState(null, '', location.pathname + location.search); window.scrollTo(0, 0);
 }
 function beatK(k) { try { fetch('/api/beat?k=' + k, { keepalive: true }).catch(function () {}); } catch (e) { /* uncounted */ } }
