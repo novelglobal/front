@@ -73,7 +73,7 @@ document.body.dataset.view = VIEWS[0].k; document.body.classList.add('shut'); do
 /* a preview says so, so it is never mistaken for the live site */
 if (BUILD.branch) { const t = document.createElement('div'); t.className = 'preview mono'; t.setAttribute('aria-hidden', 'true'); t.textContent = `PREVIEW · ${BUILD.branch.toUpperCase()} · ${BUILD.sha.toUpperCase()}`; document.body.appendChild(t); }
 S.mo = nowK();
-radioDice(); derive(); buildTribes(); buildHeroes(); headBar(); syncDock(); renderView(); flags(); loadEvents();
+radioDice(); soundSync(); derive(); buildTribes(); buildHeroes(); headBar(); syncDock(); renderView(); flags(); loadEvents();
 /* the stories shown to everyone: as last fetched at once, then fresh; anything waiting to be sent goes */
 if (!IN_AURA) fetch('/api/beat?k=open-studio', { keepalive: true }).catch(() => {});
 /* opened from the aura's "make a song": the radar put down at random within 300 m of here, and the radio on */

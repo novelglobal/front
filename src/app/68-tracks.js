@@ -303,7 +303,7 @@ function loopStep(tr, notes, turn, share, B) {
 const here = () => { if (!placed()) startRadio(false); return placed() && !!S.scan && Number.isFinite(+S.scan.lat); };
 /* a song kept: newest first, eight at most, smaller and smaller until this phone has room for it */
 function keepLoop(m) {
-  LOOPS.unshift(m); LOOPS.splice(8);
+  LOOPS.unshift(m); LOOPS.splice(8); setTimeout(soundSync, 0);
   const thin = L => { if ((L.cells || []).length > 24) L.cells = L.cells.filter((c, i) => i % 2 === 0); };
   if (!store.set('da.loops.v1', LOOPS)) for (const l of LOOPS) for (const p of [l, ...(l.parts || [])]) Object.values(p.layers || {}).forEach(thin);
   while (!store.set('da.loops.v1', LOOPS) && LOOPS.length > 1) LOOPS.pop();
@@ -438,12 +438,14 @@ function deskOf(l) {
   return { code: 'v101' + rows.map(r => r.join('')).join('-'), lab };
 }
 /* every loop recorded goes into the SOUND playlist by itself, with its recording (rec), to be heard there again as it was */
-function toSound(l, rec) {
-  const { code, lab } = deskOf(l); if (!/\d/.test(code.slice(4))) { if (!rec) toast('NOTHING IN IT TO PLAY'); return; }
+function toSound(l, rec, quiet) {
+  const { code, lab } = deskOf(l); if (!/\d/.test(code.slice(4))) { if (!rec && !quiet) toast('NOTHING IN IT TO PLAY'); return; }
   const kept = store.get('da.aura.songs', []) || [], had = kept.find(q => q.code === code); if (had && rec) { had.rec = rec; store.set('da.aura.songs', kept); } if (!had) { kept.unshift({ code, at: Date.now(), lab, name: (l.where || {}).place || 'RADIO', ...(rec ? { rec } : {}) }); kept.splice(24); store.set('da.aura.songs', kept); }
-  try { if (IN_AURA) parent.postMessage({ ng: 'sound', code }, location.origin); } catch (e) { /* alone */ }
-  if (!rec) { toast(IN_AURA ? '✓ IN SOUND' : '✓ IN SOUND ON NOVEL.GLOBAL'); snd.tick(1900); }
+  try { if (IN_AURA && !(quiet && had)) parent.postMessage({ ng: 'sound', code }, location.origin); } catch (e) { /* alone */ }
+  if (!rec && !quiet) { toast(IN_AURA ? '✓ IN SOUND' : '✓ IN SOUND ON NOVEL.GLOBAL'); snd.tick(1900); }
 }
+/* every song kept on the radio (recorded or not) is in SOUND's player too, quietly, the oldest first so the newest stays on top */
+function soundSync() { try { [...LOOPS].reverse().forEach(l => toSound(l, l.rec ? l.id : null, true)); } catch (e) { /* as it was */ } }
 /* a recording playing (a life's own call): what the radio plays waits under it, and comes back when it ends */
 function hush(on) { LOOP.hush = !!on; }
 /* the four-track on the radio: + keeps the sound now; the four songs kept last, each in or out of the mix; ALL; SHARE */
