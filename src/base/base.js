@@ -2236,7 +2236,10 @@ function boothEdit() {
       '<div class="bt-mk" hidden><nav>' + MK.map(function (q, i) { return '<button data-m="' + i + '" class="' + (i === BTH.mk ? 'on' : '') + '" aria-label="' + esc(q) + '" title="' + esc(MK_SAY[q] || 'A stamp') + '">' + AURA.pixIcon(q) + '</button>'; }).join('') + '</nav><canvas id="bt-mkc" width="120" height="120" aria-label="The one to place"></canvas><span><button id="bt-mkn" aria-label="Another version" title="Another version: bold, hollow, mirrored, broken, tiled">⟳</button><button id="bt-mka" aria-label="Put it on the photo" title="Put it on the photo">+</button></span></div>'
     : '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div>') +
     '<div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div>' +
-    '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button></div>';
+    /* print: a round key with the printer's mark, its light green while online; pressed, it gives under the finger */
+    '<div class="am go2"><button id="bt-go" class="go pk" aria-label="Print" title="Print"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 12V5h14v7M9 23H6v-9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9h-3"/><path d="M9 19h14v9l-2.3-1.6L18.4 28 16 26.4 13.6 28l-2.3-1.6L9 28z"/></svg><i class="lt"></i><span class="vh">print</span></button>' +
+    /* waiting to print again from this phone: a ring filling as the wait passes (no numbers), and the way back to novel.global meanwhile */
+    '<div class="bt-wait" hidden><i class="ring" title="Printing again soon from this phone"></i><a class="wm" href="/" aria-label="novel.global" title="novel.global">' + MARK_SVG + '</a></div></div>';
   /* the pixel maker: its kinds and stamps, the chosen one swimming in its window; another, its size, and + puts it on the photo where it can be moved */
   if (kinds) { var mkw = $('.bt-mk', el), mkc = $('#bt-mkc'), dw = $('.bt-pix', el), mkRun = function () { if (!mkc.isConnected || mkw.hidden) return; var g = mkc.getContext('2d'), a0 = art(MK[BTH.mk], performance.now() / 1000); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 120, 120); g.drawImage(a0, 0, 0, 120, 120); requestAnimationFrame(mkRun); };
     $('#bt-mko').addEventListener('click', function () { mkw.hidden = !mkw.hidden; dw.hidden = true; $('#bt-pxo').classList.remove('on'); this.classList.toggle('on', !mkw.hidden); if (!mkw.hidden) mkRun(); });
@@ -2266,7 +2269,9 @@ function boothEdit() {
     if (kinds) { BTH.seeds[i]++; tile(b, i); } paint(); }); });
   var w = $('#bt-w'); w.value = BTH.words; w.addEventListener('input', function () { BTH.words = w.value; paint(); }); w.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); w.blur(); } });
   /* print: one key. Printed a little while ago from this phone, it waits, dimmed, until it can print again (never a countdown) */
-  var gb = $('#bt-go'), tick = function () { if (!$('#bt-go')) return; var l = boothLeft(); gb.disabled = l > 0; if (l > 0) BTH.t = setTimeout(tick, 1000); };
+  var gb = $('#bt-go'), wt = $('.bt-wait', el), tick = function () { if (!$('#bt-go')) return; var l = boothLeft(), all = boothGap() * 60e3 || 1; gb.disabled = l > 0; gb.hidden = l > 0; wt.hidden = !(l > 0); gb.classList.toggle('online', navigator.onLine !== false);
+    if (l > 0) { wt.querySelector('.ring').style.setProperty('--k', Math.round(Math.max(0, Math.min(1, 1 - l / all)) * 100) + '%'); BTH.t = setTimeout(tick, 1000); } };
+  $('.wm', wt).addEventListener('click', function (e) { e.preventDefault(); clearTimeout(BTH.t); boothClose(); if (window.AURA && AURA.home) AURA.home(); });
   clearTimeout(BTH.t); tick();
   gb.addEventListener('click', function () { if (boothLeft() <= 0) boothPrint(); });
   /* the hand grid, kept with the pixel things: twelve by twelve, a touch sets a dot (or clears it) and a drag goes on doing the same; + puts it on the photo */
@@ -2355,7 +2360,7 @@ function boothPass(el, s0, printed) {
   /* the print in full colour stays, its save beside it; it waits there (never sent on by itself), and after five seconds the jellyfish's
      strand sets novel.global down beside the save, the way on */
   var hq = boothHQc(), src = hq ? hq.toDataURL('image/jpeg', 0.88) : '';
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + (src ? '<img class="hqv" alt="" src="' + src + '">' : boothJel('sm')) + '</div>' + '<div class="am" id="bt-on">' + (BTH.im ? '<button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button>' : '') + '</div>' +
+  el.classList.remove('done'); el.innerHTML = '<div class="kept" aria-label="Kept">' + (src ? '<img class="hqv" alt="" src="' + src + '">' : boothJel('sm')) + '</div>' + '<div class="am" id="bt-on">' + (BTH.im ? '<button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button>' : '') + '</div>' +
     /* the jellyfish comes down on a strand with the mark held under it, swaying, asking to be touched */
     '<a id="bt-ng" class="ngo" href="/" aria-label="novel.global" hidden><span class="hold">' + boothJel('tiny') + '</span><i class="strand"></i><span class="tag">' + MARK_SVG + '<b>novel.global</b></span></a>';
   var sv2 = $('#bt-save', el); if (sv2) sv2.addEventListener('click', function () { boothHQ(this); }); boothEye(el);

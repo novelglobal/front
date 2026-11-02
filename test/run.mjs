@@ -1866,7 +1866,7 @@ if (run('base')) try {
   check('once sent, the paper fed out with no code on the screen; the full colour to save only now, and again (hidden for the ten minutes until this phone can print again)', out.keys.join() === '↓ colour>,↺>' && hid, JSON.stringify(out.keys) + hid);
   /* then the pass: the phone's three characters as a card to keep, and novel.global */
   await page.waitForSelector('#booth .kept', { timeout: 8000 }); await sleep(400); await shot(page, 'b06d-booth-pass.png');
-  const pass = await page.evaluate(() => ({ card: !!document.querySelector('#booth .kept'), me: localStorage.getItem('da.who'), site: !!document.querySelector('#booth .bm'), shown: document.querySelector('#booth').textContent }));
+  const pass = await page.evaluate(() => ({ card: !!document.querySelector('#booth .kept'), me: localStorage.getItem('da.who'), site: !!document.querySelector('#booth #bt-ng'), shown: document.querySelector('#booth').textContent }));
   check('then the print is the pass: the phone has its three characters, never shown on the screen, and the mark goes back to novel.global', pass.card && pass.site && /^"?[A-HJ-NP-Z2-9]{3}"?$/.test(pass.me) && !pass.shown.includes(JSON.parse(pass.me)), JSON.stringify(pass));
   await Promise.all([page.waitForNavigation({ timeout: 8000 }).catch(() => {}), page.click('#booth .bm')]);
   await page.waitForFunction(() => !document.body.classList.contains('booth') && window.__base, null, { timeout: 8000 });
