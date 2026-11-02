@@ -672,8 +672,8 @@ var IB = {
   dead: ['It is reported, and nothing touches it', 'We learn what happened here', 'Any young in its pouch found in time'],
   heat: ['Water out at three heights on hot days', 'Shade kept where they shelter', 'No one, bird or person, alone in the heat'],
   water: ['The water here kept clean and full', 'Runoff stopped at the drain', 'A pond for the frogs that stays wet'],
-  swoop: ['The nest left be for its six weeks', 'A detour, not a fight', 'Hats on and bikes walked past'],
-  snake: ['It is left to move on', 'Dogs on leads along the creek', 'A catcher called, not a shovel'],
+  swoop: ['The nest left be for its six weeks', 'A detour around the nest', 'Hats on and bikes walked past'],
+  snake: ['It is left to move on', 'Dogs on leads along the creek', 'A licensed snake catcher called'],
   litter: ['Loops cut before they reach the bin', 'The bin here emptied before it spills', 'Less plastic sold on this strip'],
   tree: ['Old trees with hollows kept standing', 'A new tree for every one lost', 'Life checked for before the saw'],
   light: ['Lights off or pointed down after 10 pm', 'A dark corridor for bats and moths'],
@@ -931,6 +931,11 @@ function stepS(n, boardArt, art) {
 /* is a person here (Cloudflare Turnstile)? Only once the site has a key; it asks for a tap only when it is unsure. Resolves to a token, or '' */
 var SITE = null;
 function siteOf() { return SITE || (SITE = fetch('/api/settings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; }).catch(function () { return {}; })); }
+/* a fresh start, when the site says so (its epoch changed on the approval page): everything this phone kept (posters, songs,
+   tapes, drafts, its code) let go once, then the site opened again clean. A showcase code stays */
+siteOf().then(function (s) { var e = s && s.epoch; if (!e) return; try { var had = localStorage.getItem('da.epoch'); if (had === e) return; var ks = [];
+  for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^(da\.|novelglobal)/.test(k) && k !== 'da.showcase') ks.push(k); } ks.forEach(function (k) { localStorage.removeItem(k); });
+  try { sessionStorage.clear(); indexedDB.deleteDatabase('novelglobal-kept'); } catch (er) { /* none kept */ } localStorage.setItem('da.epoch', e); if (ks.length) location.reload(); } catch (er) { /* as it was */ } });
 function human() {
   return siteOf().then(function (s) { var k = s && s.cfsite; if (!k) return '';
     return new Promise(function (ok) {
@@ -1003,31 +1008,28 @@ function moonsAgo(t) { var k = moon().n - moon(t).n; return k <= 0 ? 'this moon'
    one at a time, turning with the days (heat and fire first in an El Niño, flood in a La Niña). On the booth's slip, in the
    intel, and on a new poster, where it can be deleted */
 var BRIEFS = [
-  ['heat', 'Heat is the quiet disaster: no smoke, no sirens, and more deaths in Australia than any other.'],
-  ['heat', 'Knock on the door beside yours. Heat finds the people who live alone first.'],
-  ['heat', 'Under a tree the footpath can be ten degrees kinder. Shade is infrastructure.'],
-  ['heat', 'Above 42°, flying-foxes fall from the trees. Call wildlife rescue; never touch one.'],
-  ['heat', 'Drink before you are thirsty. Rest before you are tired. Check before you are worried.'],
-  ['heat', 'A heat plan fits on a fridge: who to call, where is cool, when to go.'],
-  ['heat', 'Fill a shallow dish and put it in the shade. The birds will find it before you do.'],
-  ['fire', 'A dry winter is the first page of a fire summer.'],
-  ['fire', 'Leaving early is not advice. It is the plan.'],
-  ['fire', 'Catastrophic is a forecast, not a feeling. Read the rating; believe it.'],
-  ['fire', 'Drought does not light fires. It builds them, one dry week at a time.'],
-  ['fire', 'Smoke travels further than flame. Keep a P2 mask where you keep your keys.'],
-  ['fire', 'Clear the gutters in spring. An ember in January will not ask.'],
-  ['flood', 'If it is flooded, forget it. Most flood deaths begin with a car.'],
-  ['flood', 'Fifteen centimetres of moving water can take you off your feet; thirty can float a car.'],
-  ['flood', 'Water remembers the old creek. Look up your flood map before the rain does.'],
-  ['flood', 'La Niña fills the rivers and El Niño drains them. Both are coming back.'],
-  ['shift', 'Every El Niño now begins on a warmer ocean than the last.'],
-  ['shift', 'Normal is a rear-view mirror.'],
-  ['shift', 'The planet is not broken. It is arriving, faster than our habits.'],
-  ['shift', 'The reef is not dying all at once. It is bleaching in instalments.'],
-  ['shift', 'The flowering calendar has moved. Notice what opens early, and write it down.'],
-  ['shift', 'Stay in the uncertainty long enough to act well. Keats called it negative capability.'],
-  ['shift', 'Make one cool room, know one neighbour, keep one plan. That is a refuge.'],
-  ['shift', 'Notice first. Every good plan is built on something someone saw.']];
+  ['heat', 'Heatwaves kill more Australians than any other natural hazard. Check on anyone living alone by midday.'],
+  ['heat', 'Text a neighbour who lives alone the night before a 40° day. Agree a time to knock.'],
+  ['heat', 'Above 40°, flying-foxes drop from their camps. Call Wildlife Victoria on 03 8400 7300 and keep your hands off them.'],
+  ['heat', 'Put water out at three heights: ground, waist and high. A stick in each dish lets small animals climb out.'],
+  ['heat', 'A parked car can be twice as hot inside as out within minutes. Children and pets come with you.'],
+  ['heat', 'Leave a damp, shaded corner in the garden. Frogs, skinks and snails sit out the heat there.'],
+  ['heat', 'Close the blinds before the sun reaches the glass. A room kept cool by 10 am stays cool longer.'],
+  ['fire', 'Decide your leave trigger before summer: the rating, the hour, the road out.'],
+  ['fire', 'On a Catastrophic day, leave the night before or early in the morning.'],
+  ['fire', 'Pack a go bag now: medicines, documents, chargers, a P2 mask, pet carriers and food.'],
+  ['fire', 'Keep a P2 mask with your keys. Smoke reaches the city long before a fire does.'],
+  ['fire', 'Clear gutters and leaf litter in spring. Embers start most house fires.'],
+  ['fire', 'Leave a bucket of water out during and after a fire. Animals escaping it come looking.'],
+  ['flood', 'Turn around at a flooded road. Most flood deaths in Australia happen in cars.'],
+  ['flood', 'Fifteen centimetres of moving water can knock you down; thirty can float a car.'],
+  ['flood', 'Look up your flood map tonight. Water follows the old creek lines under the streets.'],
+  ['flood', 'When the rain warning comes, lift medicines, power boards and pet beds up high.'],
+  ['shift', 'Every El Niño now starts on a warmer ocean. Plan for hotter than the last summer you remember.'],
+  ['shift', 'Write down what flowers early and what arrives late. Records like yours show where life is moving.'],
+  ['shift', 'Leave fallen logs and leaf litter. In a dry year they hold the water, and the lives that need it.'],
+  ['shift', 'Make one cool room, know one neighbour, keep one plan.'],
+  ['shift', 'Notice first, then write what you want to happen.']];
 /* one brief, the same for everyone on a given day (and step), leaning to heat and fire in an El Niño, to flood in a La Niña */
 function brief(step, k) {
   var d = Math.floor(Date.now() / 864e5) + (step || 0) * 7 + (k || 0), o = window.NG && NG.outlookNow ? NG.outlookNow() : null, ph = o && o.phase ? String(o.phase) : '';
@@ -1487,7 +1489,7 @@ function room(c) {
     rv.buffer = ir; hi.connect(rv); rv.connect(rg); }
   c.__room = { tuna: !!T, freeverb: !!fv };
 }
-function bus(c) { if (c.__bus) return c.__bus; c.__bus = c.createGain(); c.__bus.gain.value = 0.8; room(c); if (c === AC) soundLibs(); return c.__bus; }
+function bus(c) { if (c.__bus) return c.__bus; c.__bus = c.createGain(); c.__bus.gain.value = 0.96; room(c); if (c === AC) soundLibs(); return c.__bus; }
 /* the song: four tracks of sixteen steps, each step empty or a degree of the scale */
 var PITCH = { bird: 6, parrot: 8, owl: 3, raptor: 5, waterbird: 4, flyingfox: 5, bat: 9, possum: 2, macropod: 0, frog: 3, lizard: 1, snake: 0, turtle: 1, bee: 9, butterfly: 8, moth: 7, spider: 6, snail: 1, plant: 0 };
 var deg = function (g) { return PITCH[g] != null ? PITCH[g] : 5; };
@@ -2145,12 +2147,11 @@ function pixVary(src, v) {
   return o;
 }
 function boothJet(j) { if (!j) return; var l = j.querySelector('.lid'); j.classList.remove('jet'); void j.getBoundingClientRect(); j.classList.add('jet'); if (l) { l.classList.add('shut'); setTimeout(function () { l.classList.remove('shut'); }, 180); } }
-/* the water it floats in, behind it and quiet: marine snow sinking, a few far jellyfish drifting, two broken strands of stinging
+/* the water it floats in, behind it and quiet: marine snow sinking, two broken strands of stinging
    beads going by. Made new each time, never the same twice */
 function boothSea() {
   var r = function (a, b) { return a + Math.random() * (b - a); }, f = function (n) { return n.toFixed(1); }, s = '', i;
   for (i = 0; i < 30; i++) { var d = r(22, 48); s += '<i style="--l:' + f(r(0, 100)) + '%;--s:' + f(r(1, 2.6)) + 'px;--d:' + f(d) + 's;--dl:-' + f(r(0, d)) + 's;--o:' + r(0.12, 0.45).toFixed(2) + ';--x:' + f(r(-40, 40)) + 'px"></i>'; }
-  for (i = 0; i < 3; i++) s += '<b class="far" style="left:' + f(r(6, 88)) + '%;top:' + f(r(8, 78)) + '%;--k:' + r(0.5, 1.1).toFixed(2) + ';--d:' + f(r(26, 44)) + 's;--x:' + f(r(-60, 60)) + 'px"><svg viewBox="-12 -12 24 34"><path d="M-10 0Q-10-11 0-11Q10-11 10 0Z"/><path d="M-6 1q2 8-1 15M0 1q-2 10 1 18M6 1q-2 8 1 15"/></svg></b>';
   for (i = 0; i < 2; i++) s += '<u style="left:' + f(r(10, 85)) + '%;--d:' + f(r(50, 80)) + 's;--dl:-' + f(r(0, 50)) + 's"></u>';
   return '<div class="bt-sea" aria-hidden="true">' + s + '</div>';
 }

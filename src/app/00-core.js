@@ -204,7 +204,7 @@ const snd = (() => {
     try {
       if (ctx && (sick || ctx.state === 'closed')) rebuild();
       if (!ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ latencyHint: 'playback' }); } catch (e) { ctx = new AC(); } bus = ctx.createGain(); bus.gain.value = 0.65;   /* a third louder than it was */
+        const AC = window.AudioContext || window.webkitAudioContext; try { ctx = new AC({ latencyHint: 'playback' }); } catch (e) { ctx = new AC(); } bus = ctx.createGain(); bus.gain.value = 0.78;   /* a third louder than it was */
         /* the whole mix through a soft low-pass, so it stays deep and never shrill; El Niño opens it and drives it harder */
         heatWS = ctx.createWaveShaper(); mixLP = ctx.createBiquadFilter(); mixLP.type = 'lowpass'; mixLP.Q.value = 0.5;
         const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 2;

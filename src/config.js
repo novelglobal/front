@@ -170,7 +170,7 @@ window.DA_STATEMENT = {
   mantis: 'Without insects or cover in a drought, mantises starve or are exposed. Shrubby, unsprayed gardens keep the insect web they depend on.',
   dragonfly: 'Dragonfly nymphs live in water for a year or more, and when ponds dry a generation dies. A permanent pond without fish keeps them through the drought.',
   aquatic: 'Warm, low water runs out of oxygen, and fish suffocate. Shade along the banks and nothing but rain down the drains keep the creek breathing.',
-  snail: 'A sealed shell can outlast a short dry spell, but not a long El Niño drought. Mulch, damp shade and no snail pellets give native snails a chance.',
+  snail: 'Native snails seal their shells to wait out a dry spell; a long El Niño drought outlasts them. Mulch, damp shade and pellet-free gardens give them a chance.',
   segmented: 'Earthworms die when soil dries and heats. Mulch, compost and shade over bare soil keep the ground cool enough for them.',
   fungi: 'Dry ground means no fruiting, and the trees that depend on fungi go thirsty too. Mulch and deep watering keep the underground network alive.',
   plant: 'Drought kills trees slowly, and the shade they give goes with them. Deep watering of street trees through summer keeps the canopy over everyone.',

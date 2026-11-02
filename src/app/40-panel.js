@@ -683,17 +683,8 @@ function printerTop() {
     + `<figcaption class="pt-cap mono"><b>${esc(String(MASTER ? MASTER.n : 'novel.global').toUpperCase())}</b><span>${p.ready ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</span></figcaption>`
     + `<span class="pt-over mono" aria-live="polite">${fresh ? esc(PT.code || '') : ''}</span>`
     /* how to make one: its kit opens under it (the parts, the instructions, the receiver; the whole stack with a printed code) */
-    + `<a class="pt-build mono" href="#kit" data-kit aria-expanded="false">BUILD A SOLAR<br>THERMAL PRINTER</a></figure></section>` + kitSection();
+    + `<a class="pt-build mono" href="kit.html" target="_blank" rel="noopener">BUILD A SOLAR<br>THERMAL PRINTER</a></figure></section>`;
 }
-const REPO = 'https://github.com/novelglobal/front';
-const kitOpen = () => !!store.get('da.who.ok', 0) || !!store.get('da.showcase', 0);
-const kitSection = () => `<section class="sec pt-kit" id="sec-kit" hidden><ol class="kit mono">`
-  + `<li><a href="build-a-solar-printer.txt" target="_blank" rel="noopener">PARTS</a><small>TXT</small></li>`
-  + `<li><a href="${REPO}/blob/main/receiver/README.md" target="_blank" rel="noopener">INSTRUCTIONS</a><small>PI</small></li>`
-  + `<li><a href="${REPO}/tree/main/receiver" target="_blank" rel="noopener">RECEIVER</a><small>PY</small></li>`
-  + (kitOpen() ? `<li><a href="${REPO}" target="_blank" rel="noopener">FULL STACK</a><a href="${REPO}/archive/refs/heads/main.zip" target="_blank" rel="noopener" aria-label="Download the full stack">↓</a></li>` : `<li class="lock"><span>FULL STACK</span><small aria-label="A printed code opens it">🗝</small></li>`)
-  + `</ol></section>`;
-document.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-kit]'); if (!k) return; e.preventDefault(); const s = $('#sec-kit'); if (!s) return; s.hidden = !s.hidden; k.setAttribute('aria-expanded', String(!s.hidden)); if (!s.hidden) s.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
 /* something sent to print: kept (the last one hangs from the slot), and played out now if the page is open, else on arrival */
 function ptPrint(img, code, status) {
   PT.img = img; PT.code = code || ''; PT.at = Date.now(); PT.status = status || ''; store.set('da.pt.v1', { img: PT.img.length < 400000 ? PT.img : '', code: PT.code, at: PT.at });

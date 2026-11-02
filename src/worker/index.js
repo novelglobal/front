@@ -423,7 +423,7 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* printq: how prints are made (JSON: preset soft | crisp | bold | screen | graphic, and any of its tweaks set apart: clip, gamma, contrast,
    sharpen, dither, lineCut, bolden, minText, heat; empty: crisp as it is) */
 /* groups: the portfolio's groups a piece can be filed under on the approval page, one to a line (kept here; not on the site yet) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 400, sources: 8000 };
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 400, sources: 8000, epoch: 40 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
 async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); const tp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM tapes').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0) + ((tp && tp.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
@@ -589,7 +589,7 @@ async function admin(db, env, req, parts) {
   if (what === 'traffic' && req.method === 'GET') { const { results } = await db.prepare('SELECT day, k, n FROM traffic WHERE day >= ? ORDER BY day DESC, k').bind(new Date(now() - 60 * DAY).toISOString().slice(0, 10)).all(); return json({ traffic: results }); }
   if (what === 'export' && req.method === 'GET') return exportAll(db);
   if (what === 'restore' && req.method === 'POST') return restoreAll(db, req);
-  if (what === 'reset' && req.method === 'POST') return resetSite(db, req);
+  if (what === 'reset' && req.method === 'POST') return resetSite(db, env, req);
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
@@ -766,8 +766,14 @@ async function importPlaces(db, req) {
   for (let i = 0; i < ops.length; i += 50) await db.batch(ops.slice(i, i + 50));
   return json({ added: ops.length, bad });
 }
-async function resetSite(db, req) {
+async function resetSite(db, env, req) {
   const b = await body(req), t = now(), ops = [];
+  /* a fresh start, for good: every maker, poster (BOARD 00 aside), word of talk, tape, print and first sighting gone, their photographs
+     and recordings with them; the epoch moved, so every phone lets go of what it kept on its next visit. 888 is no maker, so it stays */
+  if (b.fresh) { if (env.MEDIA) { const { results } = await db.prepare("SELECT id FROM stories WHERE kind != 'example'").all(); for (const r of results) for (const k of [mediaKey(r.id), photoKey(r.id), `art/${r.id}`]) await env.MEDIA.delete(k).catch(() => {});
+      const tp = await db.prepare('SELECT id FROM tapes').all(); for (const r of tp.results) await env.MEDIA.delete(tapeKey(r.id)).catch(() => {}); }
+    ops.push(db.prepare('DELETE FROM jobs'), db.prepare("DELETE FROM stories WHERE kind != 'example'"), db.prepare('DELETE FROM makers'), db.prepare('DELETE FROM talk'), db.prepare('DELETE FROM tapes'), db.prepare('DELETE FROM hits'), db.prepare('DELETE FROM species'),
+      db.prepare("INSERT INTO settings (k, v) VALUES ('epoch', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind('e' + t.toString(36))); }
   if (b.stories) ops.push(db.prepare("DELETE FROM jobs WHERE status IN ('held', 'queued')"), db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE status != 'deleted' AND kind != 'example'").bind(t));
   if (b.example) ops.push(db.prepare("UPDATE stories SET status = 'deleted', decided = ? WHERE kind = 'example'").bind(t));
   if (b.places) ops.push(db.prepare("UPDATE places SET status = 'deleted', decided = ? WHERE status != 'deleted'").bind(t));

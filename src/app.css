@@ -3083,7 +3083,7 @@ textarea[data-fabric-hiddentextarea]{font-size:16px!important}
 .simple-p .jp-keys .tp-k .i{width:12px!important;height:12px!important}
 .simple-p .jp-keys .tp-k::before{content:"";position:absolute;inset:-5px -8px}
 .simple-p .jp-keys .tp-k:active{transform:translateY(1px);box-shadow:0 1px 0 #34383B!important}
-.pt-build{position:absolute;right:10px;top:10px;max-width:46%;padding:6px 8px;border-radius:6px;background:rgba(6,9,11,.72);color:#9FFFE6;font-size:9px;line-height:1.3;letter-spacing:.1em;text-align:right;text-decoration:none;box-shadow:inset 0 0 0 1px rgba(127,255,224,.35)}
+.pt-build{position:absolute;right:10px;bottom:10px;max-width:46%;padding:6px 8px;border-radius:6px;background:rgba(6,9,11,.72);color:#9FFFE6;font-size:9px;line-height:1.3;letter-spacing:.1em;text-align:right;text-decoration:none;box-shadow:inset 0 0 0 1px rgba(127,255,224,.35)}
 .pt-build:hover,.pt-build:focus-visible{background:#7FFFE0;color:#06110F}
 /* the equaliser's colour: yellow at the foot of a column to red at its head, the red reaching further down as a month is
    hotter, and further up still with the music and El Niño (--hot, set as it plays); every month of the year in colour */
@@ -3378,11 +3378,3 @@ html.in-aura #sec-set{display:none!important}
 /* the portfolio's sources: what novel.global is, small, above the list */
 #sec-src .src-about { margin: 6px 0 12px; max-width: 62ch; font-size: 11px; line-height: 1.5; opacity: .8; }
 /* the printer's kit: four lines under it, nothing more */
-.pt-kit .kit{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:11px;letter-spacing:.12em}
-.pt-kit .kit li{display:flex;align-items:baseline;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(127,127,127,.2)}
-.pt-kit .kit a{color:inherit;text-decoration:none}
-.pt-kit .kit a:first-child{flex:1}
-.pt-kit .kit a:hover,.pt-kit .kit a:focus-visible{text-decoration:underline}
-.pt-kit .kit small{opacity:.45;font-size:10px}
-.pt-kit .kit li.lock{opacity:.5}
-.pt-kit .kit li.lock span{flex:1}

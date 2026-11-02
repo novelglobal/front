@@ -801,9 +801,6 @@ html.aura-on #booth .eye { position: relative !important; z-index: 1; }
 #booth .bt-sea { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; color: #F4F1E8; }
 #booth .bt-sea i { position: absolute; top: -12px; left: var(--l); width: var(--s); height: var(--s); border-radius: 50%; background: currentColor; opacity: 0; animation: bt-snow var(--d) linear var(--dl) infinite; }
 @keyframes bt-snow { 0% { transform: translate(0, 0); opacity: 0; } 12%, 85% { opacity: var(--o); } 100% { transform: translate(var(--x), 112vh); opacity: 0; } }
-#booth .bt-sea .far { position: absolute; width: calc(26px * var(--k)); opacity: .13; animation: bt-far var(--d) ease-in-out infinite alternate; }
-#booth .bt-sea .far svg { display: block; width: 100%; height: auto; fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round; }
-@keyframes bt-far { to { transform: translate(var(--x), -46px); } }
 #booth .bt-sea u { position: absolute; top: -30vh; height: 22vh; width: 3px; opacity: .14; background: radial-gradient(circle, currentColor 1px, transparent 1.4px) 0 0 / 3px 9px repeat-y; animation: bt-strand var(--d) linear var(--dl) infinite; }
 @keyframes bt-strand { from { transform: translate(0, 0) rotate(-8deg); } to { transform: translate(30px, 140vh) rotate(8deg); } }
 html:has(.au-plain) #booth .bt-sea { display: none; }

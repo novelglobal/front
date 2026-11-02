@@ -1024,7 +1024,7 @@
   function ampEnded() { if (!AMP.go) return; if (AMP.q && AMP.q.length) { recHear(AMP.q.shift()); return; } if (AMP.rows.length) ampPlay((AMP.i + 1) % AMP.rows.length); }
   function ampDraw() {
     var ol = DESK.el && DESK.el.querySelector('.sd-pl'); if (!ol) return; AMP.rows = ampList(); var on = ampOn();
-    var t = DESK.el.querySelector('.sd-ttl'), r0 = AMP.rows[AMP.i]; t.textContent = DESK.play && !AMP.go && DESK.song ? MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0] : on && r0 ? r0.n : AMP.rows.length ? '—' : 'NOTHING MADE YET'; DESK.el.querySelector('.sd-amp').classList.toggle('on', on);
+    DESK.el.classList.toggle('playing', on); var t = DESK.el.querySelector('.sd-ttl'), r0 = AMP.rows[AMP.i]; t.textContent = DESK.play && !AMP.go && DESK.song ? MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0] : on && r0 ? r0.n : AMP.rows.length ? '—' : 'NOTHING MADE YET'; DESK.el.querySelector('.sd-amp').classList.toggle('on', on);
     var g = DESK.el.querySelector('[data-amp="go"]'); g.textContent = on ? '■' : '▶';
     ol.innerHTML = AMP.rows.map(function (r, i) { return '<li class="' + (on && AMP.go && i === AMP.i ? 'on' : '') + '"><button data-ap="' + i + '" title="' + (r.k === 'tape' ? 'A mixtape: its recordings in turn' : r.rec ? 'A recording from the radio' : 'A song, played here') + '"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + esc(r.n) + '</span><i>' + (r.k === 'tape' ? r.c + '×' : r.s ? Math.floor(r.s / 60) + ':' + ('0' + r.s % 60).slice(-2) : r.rec ? '◉' : '♪') + '</i></button></li>'; }).join('');
     [].forEach.call(ol.querySelectorAll('[data-ap]'), function (b) { b.addEventListener('click', function () { var i = +b.dataset.ap; if (ampOn() && AMP.go && i === AMP.i) ampStop(); else ampPlay(i); }); });
@@ -1391,6 +1391,7 @@
     paste: '<path d="M10 7h12v20H10z"/><path d="M13 5h6v4h-6z" class="f"/><path d="M13 15h6M13 19h6" class="d"/>',
     mic: '<path d="M12.5 6.5a3.5 3.5 0 0 1 7 0v8a3.5 3.5 0 0 1-7 0z"/><path d="M8.5 14a7.5 7.5 0 0 0 15 0M16 21.5V27M12 27h8" class="d"/>',
     ok: '<path d="M7 17l6 6 12-13"/>',
+    sun: '<circle cx="16" cy="16" r="5"/><path d="M16 4v4M16 24v4M4 16h4M24 16h4M7.5 7.5l2.8 2.8M21.7 21.7l2.8 2.8M7.5 24.5l2.8-2.8M21.7 10.3l2.8-2.8"/>',
     moon2: '<path d="M20 5a11 11 0 1 0 7 15A9 9 0 0 1 20 5z"/><circle cx="24" cy="9" r="1" class="f"/><circle cx="27" cy="14" r=".8" class="f"/>'
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
@@ -1416,16 +1417,16 @@
   var wd = function (k, d) { return WORDS[k] || d || ''; };
   wordsSet(store.get('da.aura.words', null));
   var SAY = {
-    globe: 'Start here. Tell us one small thing you noticed today.',
+    globe: 'What have you noticed today?',
     notice: '', wish: '',
     art: 'Drag to move. Tap to edit.',
     artEmpty: 'Start a blank receipt',
-    print: 'Print sends this to the novel.global printer on 80 mm paper, and it goes up on your wall. Pick blue or white paper first.',
-    wall: 'Everything you have printed. Swipe through, tap one to see it full screen, or bring one back to keep working on it.',
+    print: 'Printed on 80 mm paper, then up on your wall.',
+    wall: 'Everything you have printed.',
     map: 'Tap where you saw it.',
-    near: 'Places and lives within a short walk of here. Open it and tap any you want on your poster.',
+    near: 'Places and lives a short walk from here.',
     find: 'Type a name to find it.',
-    vals: 'Today’s details. Tap to add.',
+    vals: 'Today’s details.',
     month: 'What to look for this month.'
   };
   /* why El Niño matters now, from the season's own reports (sources in docs/sources.md) */
@@ -1694,7 +1695,7 @@
   var P = null;
   var filled = function () { return !!(P && (P.photo || P.spPhoto || P.say || (P.lines || []).some(Boolean) || caught(P).length || (P.adds || []).length)); };
   var ready = function () { return !!(P && (P.blank || filled())); };
-  function newPiece() { beat('begin'); return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, who: NG.me(), lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [], tf: {}, paper: 'blue', ptone: 'as' }; }
+  function newPiece() { beat('begin'); return { id: 'n' + Date.now().toString(36), at: Date.now(), photo: '', thumb: '', say: '', tags: [], mine: true, who: NG.me(), lat: NG.map.lat, lng: NG.map.lng, src: 'MAP', art: 'photo', lines: ['', '', '', ''], catch: { map: false, life: '', data: [], nino: false }, pos: {}, adds: [], tf: {}, paper: 'white', ptone: 'as' }; }
   var piece = function () { if (done()) fresh(); if (!P) { P = newPiece(); where(P); } return P; };
   /* the print dark or light: as chosen, else as the paper is */
   var START = store.get('da.aura.start', null) || {};
@@ -2287,7 +2288,7 @@
     LIVE = store.get('da.live', LIVE) || LIVE; var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : S.pmode === 'send' ? 'send' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : S.pmode === 'send' ? 'Send it to novel.global' : 'Print') + '"') +
       hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
-      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'moon'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
+      hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'sun'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + /* already live: no key for it, nothing to ask again */ (canLive && !isLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
       (f.code && !f.wall && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (f.island ? hand('au-sm', svgI('hide'), 'id="au-hide" data-fw="hide" aria-label="Hide it from this phone"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
@@ -2531,7 +2532,7 @@
   var ACTS = ['Put out a shallow dish of water with a stick or stones in it, so small animals can climb out.', 'On hot days, check on older neighbours and anyone living alone.',
     'Check the fire danger rating each day on the VicEmergency app, and know when you would leave.', 'Keep pets inside in the heat. Keep cats in at night.',
     'Turn off outside lights at night. They draw moths and bats off course.', 'Found an injured or heat-stressed animal? Call Wildlife Victoria: 03 8400 7300.',
-    'Don’t touch flying-foxes on the ground. Call Wildlife Victoria.', 'In an emergency, call 000.'];
+    'A flying-fox on the ground needs a vaccinated carer. Call Wildlife Victoria and keep your hands off.', 'In an emergency, call 000.'];
   /* the new parts sound from below: a few bubbles rising, or a low swell */
   function bubbles(n) { if (mute || !AC0()) return; var c = NG.ac(), t = c.currentTime; for (var i = 0; i < (n || 4); i++) { var o = c.createOscillator(), g = c.createGain(), t0 = t + i * 0.06 + Math.random() * 0.04, f0 = 260 + Math.random() * 380;
       o.type = 'sine'; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f0 * 2.2, t0 + 0.09); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.035, t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);

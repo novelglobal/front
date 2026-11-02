@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar printer kit · novel.global</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon.svg">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 16px; background: #0B0D0E; color: #E9EEF0; font: 12px/1.4 ui-monospace, "IBM Plex Mono", Menlo, monospace; }
+  main { max-width: 760px; margin: 0 auto; }
+  /* the form as it prints: 81 columns, set small enough on a phone that a line never wraps */
+  pre { margin: 0 0 20px; font-size: min(13px, calc((100vw - 32px) / 49)); line-height: 1.3; white-space: pre; overflow-x: auto; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; letter-spacing: .1em; }
+  li { display: flex; align-items: baseline; gap: 10px; padding: 10px 2px; border-top: 1px solid rgba(233, 238, 240, .12); }
+  a { color: inherit; text-decoration: none; } li a:first-child, li span { flex: 1; }
+  a:hover, a:focus-visible { text-decoration: underline; }
+  small { opacity: .45; font-size: 10px; } li.lock { opacity: .5; }
+</style>
+</head>
+<body>
+<main>
+  <pre id="form" aria-label="Parts and steps">…</pre>
+  <ol>
+    <li><a href="build-a-solar-printer.txt" download>PARTS</a><small>TXT ↓</small></li>
+    <li><a href="https://github.com/novelglobal/front/blob/main/receiver/README.md" rel="noopener">INSTRUCTIONS</a><small>PI</small></li>
+    <li><a href="https://github.com/novelglobal/front/tree/main/receiver" rel="noopener">RECEIVER</a><small>PY</small></li>
+    <li id="stack" class="lock"><span>FULL STACK</span><small aria-label="A printed code opens it">🗝</small></li>
+  </ol>
+</main>
+<script>
+  fetch('build-a-solar-printer.txt').then(function (r) { return r.text(); }).then(function (t) { document.getElementById('form').textContent = t; }).catch(function () {});
+  /* the whole stack opens on a phone with a printed code (or the showcase), as on the site */
+  try { var ok = function (k) { var v = localStorage.getItem(k); return !!v && v !== '0' && v !== 'false' && v !== 'null'; };
+    if (ok('da.who.ok') || ok('da.showcase')) { var li = document.getElementById('stack'); li.className = ''; li.innerHTML = '<a href="https://github.com/novelglobal/front" rel="noopener">FULL STACK</a><a href="https://github.com/novelglobal/front/archive/refs/heads/main.zip" aria-label="Download the full stack">↓</a>'; } } catch (e) {}
+</script>
+</body>
+</html>
