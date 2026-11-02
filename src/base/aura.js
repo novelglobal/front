@@ -895,14 +895,16 @@
   /* played: the song on the desk, or (list) every kept song in turn, each twice through, round and round. Nothing plays that is empty */
   /* the kept songs laid with it, as tracks: each kept song can be on, and plays with the desk's song, in its time */
   var layered = function () { return DESK.kept.filter(function (q) { return q.on; }).map(function (q) { return songOf(q.code); }).filter(function (q) { return q && !songEmpty(q); }); };
-  function songPlay(on, list) {
+  function songPlay(on, list, amp) {
+    if (on) { if (!amp) AMP.go = false; if (RECA) { try { RECA.a.pause(); } catch (e) { /* gone */ } RECA = null; } }
     clearInterval(DESK.iv); DESK.iv = 0; DESK.list = !!on && !!list && DESK.kept.length > 0; DESK.step = -1;
     if (DESK.list) { DESK.li = Math.min(DESK.li || 0, DESK.kept.length - 1); var s0 = keptSong(DESK.kept[DESK.li]); if (s0) { DESK.song = s0; DESK.mood = s0.m; DESK.src = s0.s; } }
     DESK.play = !!on && (!songEmpty(DESK.song) || (!list && layered().length > 0)); if (DESK.play && songEmpty(DESK.song)) DESK.song = layered()[0]; if (DESK.el) { DESK.el.classList.toggle('playing', DESK.play); DESK.el.classList.toggle('listing', DESK.list && DESK.play); deskSync(); }
-    if (!DESK.play) { DESK.list = false; deskHeld = null; if (studioHeld) { studioHeld = false; studioTell(false); humSet(false); } else humSet(S.mode !== 'seed' && S.win == null); return; }
+    if (!DESK.play) { DESK.list = false; deskHeld = null; ampDraw(); if (studioHeld) { studioHeld = false; studioTell(false); humSet(false); } else humSet(S.mode !== 'seed' && S.win == null); return; }
     /* one music at a time: the studio's radio, if it plays, waits under the desk's song and comes back when it stops */
-    beat('desk-play'); txtRead(); deskHeld = null; if (WIN && !studioHeld) { studioHeld = true; studioTell(true); } humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0, li = DESK.li || 0; DESK.t0 = next;
+    beat('desk-play'); txtRead(); deskHeld = null; if (WIN && !studioHeld) { studioHeld = true; studioTell(true); } humSet(false); var c = NG.ac(), out = NG.bus(c), sg = DESK.song, sd = stepDur(sg), next = c.currentTime + 0.08, n = 0, li = DESK.li || 0; DESK.t0 = next; ampDraw();
     DESK.iv = setInterval(function () { if (!DESK.play || (!DESK.list && DESK.song !== sg)) return; while (next < c.currentTime + 0.25) {
+      if (amp && n >= STEPS_N * 2) { clearInterval(DESK.iv); setTimeout(ampEnded, 0); return; }
       if (DESK.list && n === STEPS_N * 2) { li = (li + 1) % DESK.kept.length; DESK.li = li; setTimeout(deskKept, 0); var s2 = keptSong(DESK.kept[li] || {}); if (s2) { sg = DESK.song = s2; DESK.mood = s2.m; DESK.src = s2.s; sd = stepDur(sg); DESK.t0 = next; deskSync(); } n = 0; }
       var st = n % STEPS_N, all = DESK.list ? [sg] : [sg].concat(layered()); all.forEach(function (g2) { g2.t.forEach(function (row, k) { var ch = row.charAt(st); if (ch !== '.') noteAt(c, out, g2, k, +ch, next); }); }); next += sd; n++; } }, 40);
   }
@@ -950,7 +952,7 @@
   /* what sounds now, and why: its track and voice, the word or place it is, and what the song was made from */
   var WHY = ['THE POSTER\'S WORDS', 'THE PLACES AND LIVES NEAR', 'THE POSTERS ON THE WALL', 'THE RADIUS\'S CONSTELLATIONS'];
   function deskNow(k, w) { var n = DESK.el && DESK.el.querySelector('.sd-now'), sg = DESK.song; if (!n || !sg) return; var q = DESK.list ? DESK.kept[DESK.li] : null;
-    n.innerHTML = '<b>' + ('0' + (k + 1)) + ' ' + esc(MOODS[sg.m].ins[k].toUpperCase()) + '</b><span>' + esc(w.slice(0, 40)) + '</span><small>FROM ' + esc(q && q.name ? q.name.toUpperCase() + ' (RADIO)' : WHY[sg.s] || '') + '</small>'; }
+    n.innerHTML = '<b>' + ('0' + (k + 1)) + ' ' + esc(MOODS[sg.m].ins[k].toUpperCase()) + '</b><span>' + esc(w) + '</span>'; }
   function deskDraw() {
     cancelAnimationFrame(DESK.raf); var cv = DESK.el && DESK.el.querySelector('canvas'); if (!cv || DESK.el.hidden) return; var g = cv.getContext('2d'), dp = Math.min(2, window.devicePixelRatio || 1), Wc = cv.clientWidth, Hc = cv.clientHeight;
     if (cv.width !== Wc * dp) { cv.width = Wc * dp; cv.height = Hc * dp; } g.setTransform(dp, 0, 0, dp, 0, 0); g.clearRect(0, 0, Wc, Hc);
@@ -1016,16 +1018,16 @@
   function ampPlay(i) {
     var r = AMP.rows[i]; if (!r) return; AMP.go = false; if (RECA) { try { RECA.a.pause(); } catch (e) { /* gone */ } RECA = null; } if (DESK.play) songPlay(false);
     AMP.i = i; AMP.go = true; AMP.q = r.k === 'tape' ? r.ids.slice(1) : null;
-    if (r.k === 'tape') recHear(r.ids[0]); else if (r.rec) recHear(r.rec); else { var sg = songOf(r.code); if (sg) { DESK.song = sg; DESK.mood = sg.m; DESK.src = sg.s; deskSync(); songPlay(true); } }
+    if (r.k === 'tape') recHear(r.ids[0]); else if (r.k === 'rec') recHear(r.rec); else { var sg = keptSong(DESK.kept[r.i] || { code: r.code }); if (sg) { DESK.song = sg; DESK.mood = sg.m; DESK.src = -1; deskSync(); songPlay(true, false, true); } }
     ampDraw();
   }
   function ampEnded() { if (!AMP.go) return; if (AMP.q && AMP.q.length) { recHear(AMP.q.shift()); return; } if (AMP.rows.length) ampPlay((AMP.i + 1) % AMP.rows.length); }
   function ampDraw() {
     var ol = DESK.el && DESK.el.querySelector('.sd-pl'); if (!ol) return; AMP.rows = ampList(); var on = ampOn();
-    var t = DESK.el.querySelector('.sd-ttl'), r0 = AMP.rows[AMP.i]; t.textContent = on && r0 ? r0.n : AMP.rows.length ? '—' : 'NOTHING MADE YET'; DESK.el.querySelector('.sd-amp').classList.toggle('on', on);
+    var t = DESK.el.querySelector('.sd-ttl'), r0 = AMP.rows[AMP.i]; t.textContent = DESK.play && !AMP.go && DESK.song ? MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0] : on && r0 ? r0.n : AMP.rows.length ? '—' : 'NOTHING MADE YET'; DESK.el.querySelector('.sd-amp').classList.toggle('on', on);
     var g = DESK.el.querySelector('[data-amp="go"]'); g.textContent = on ? '■' : '▶';
-    ol.innerHTML = AMP.rows.map(function (r, i) { return '<li class="' + (on && i === AMP.i ? 'on' : '') + '"><button data-ap="' + i + '" title="' + (r.k === 'tape' ? 'A mixtape: its recordings in turn' : r.rec ? 'A recording from the radio' : 'A song, played here') + '"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + esc(r.n) + '</span><i>' + (r.k === 'tape' ? r.c + '×' : r.s ? Math.floor(r.s / 60) + ':' + ('0' + r.s % 60).slice(-2) : r.rec ? '◉' : '♪') + '</i></button></li>'; }).join('');
-    [].forEach.call(ol.querySelectorAll('[data-ap]'), function (b) { b.addEventListener('click', function () { var i = +b.dataset.ap; if (ampOn() && i === AMP.i) ampStop(); else ampPlay(i); }); });
+    ol.innerHTML = AMP.rows.map(function (r, i) { return '<li class="' + (on && AMP.go && i === AMP.i ? 'on' : '') + '"><button data-ap="' + i + '" title="' + (r.k === 'tape' ? 'A mixtape: its recordings in turn' : r.rec ? 'A recording from the radio' : 'A song, played here') + '"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + esc(r.n) + '</span><i>' + (r.k === 'tape' ? r.c + '×' : r.s ? Math.floor(r.s / 60) + ':' + ('0' + r.s % 60).slice(-2) : r.rec ? '◉' : '♪') + '</i></button></li>'; }).join('');
+    [].forEach.call(ol.querySelectorAll('[data-ap]'), function (b) { b.addEventListener('click', function () { var i = +b.dataset.ap; if (ampOn() && AMP.go && i === AMP.i) ampStop(); else ampPlay(i); }); });
   }
   function saveWav(blob, name) { var a = document.createElement('a'); a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); }
   function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); var kn = DESK.el.querySelector('#sd-mood'); kn.setAttribute('data-fw', MOODS[DESK.mood].k); kn.style.setProperty('--a', (DESK.mood * 110 - 110) + 'deg'); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); DESK.el.querySelector('#sd-list').classList.toggle('on', DESK.list && DESK.play);
@@ -1045,17 +1047,17 @@
         '<nav class="sd-row sd-layers" aria-label="The four layers">' + [0, 1, 2, 3].map(function (q) { return k('sd-k sd-ly', '<i class="ly ly' + q + '"></i><span class="sd-vu" aria-hidden="true"><i></i></span>', 'data-ly="' + q + '" aria-pressed="true" data-fw="' + MOODS[0].ins[q] + '" aria-label="Layer ' + (q + 1) + ', on or off"'); }).join('') + '</nav>' +
         '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="card" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('qrc'), 'id="sd-lcard" data-fw="list card" aria-label="The playlist onto my poster, with one code for all of it"') + k('sd-k', svgI('dfolio'), 'id="sd-folio" data-fw="portfolio" aria-label="The playlist as a mixtape, into the portfolio"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + '</nav>' +
         '<div class="sd-amp"><i class="sd-led"></i><b class="sd-ttl" title="Playing now">—</b>' + ['prev', 'go', 'next'].map(function (q) { return '<button data-amp="' + q + '" title="' + { prev: 'The one before', go: 'Play or stop', next: 'The next one' }[q] + '" aria-label="' + { prev: 'Before', go: 'Play or stop', next: 'Next' }[q] + '">' + { prev: '⏮', go: '▶', next: '⏭' }[q] + '</button>'; }).join('') + '</div><ol class="sd-pl" aria-label="Every song, loop and mixtape made here"></ol>' +
-        '<ul class="au-kept"></ul>';
+        '<ul class="au-kept"></ul>'; DESK.el.querySelector('.sd-now').after(DESK.el.querySelector('.sd-amp'), DESK.el.querySelector('.sd-pl'));
       root.appendChild(DESK.el);
       /* every key says what it does when a pointer rests on it */
       [].forEach.call(DESK.el.querySelectorAll('button[aria-label]'), function (b) { if (!b.title) b.title = b.getAttribute('aria-label'); });
       [].forEach.call(DESK.el.querySelectorAll('[data-amp]'), function (b) { b.addEventListener('click', function () { var q = b.dataset.amp, n = AMP.rows.length; if (!n) return; if (q === 'go') { if (ampOn()) ampStop(); else ampPlay(Math.max(0, AMP.i)); } else ampPlay(((AMP.i < 0 ? 0 : AMP.i) + (q === 'next' ? 1 : -1) + n) % n); }); });
-      var mk2 = function (go) { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
-      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; NG.db().then(function () { mk2(); }); }); });
+      var mk2 = function (go) { if (DESK.src < 0) DESK.src = Math.floor(Math.random() * SRCS.length); DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
+      [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { if (DESK.src === +b.dataset.src) { DESK.src = -1; if (DESK.play && !AMP.go) songPlay(false); deskSync(); return; } DESK.src = +b.dataset.src; NG.db().then(function () { var was = ampOn(); if (AMP.go || RECA) ampStop(); mk2(was); }); }); });
       DESK.el.querySelector('#sd-mood').addEventListener('click', function () { DESK.mood = (DESK.mood + 1) % MOODS.length; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); } else mk2(); bell(2 + DESK.mood, 0.1); });
       DESK.el.querySelector('#sd-new').addEventListener('click', function () { mk2(); });
-      DESK.el.querySelector('#sd-go').addEventListener('click', function () { if (!DESK.song) mk2(); if (songEmpty(DESK.song) && !DESK.play) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } songPlay(!DESK.play); });
-      DESK.el.querySelector('#sd-list').addEventListener('click', function () { if (!DESK.kept.length) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } songPlay(!(DESK.play && DESK.list), true); });
+      DESK.el.querySelector('#sd-go').addEventListener('click', function () { if (DESK.src < 0 || AMP.go || RECA) { if (ampOn()) ampStop(); else if (AMP.rows.length) ampPlay(Math.max(0, AMP.i)); else mk2(true); return; } if (!DESK.song) mk2(); if (songEmpty(DESK.song) && !DESK.play) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } songPlay(!DESK.play); });
+      DESK.el.querySelector('#sd-list').addEventListener('click', function () { if (!DESK.kept.length) { DESK.el.classList.add('empty'); setTimeout(function () { DESK.el.classList.remove('empty'); }, 900); return; } if (ampOn() && AMP.go) ampStop(); else ampPlay(Math.max(0, AMP.i)); });
       DESK.el.querySelector('#sd-folio').addEventListener('click', function () { if (!DESK.kept.length) return; keepCanvas(listCard(DESK.kept.map(function (q) { return q.code; })), 'A mixtape · ' + DESK.kept.length + (DESK.kept.length === 1 ? ' song' : ' songs'), 'songs:' + DESK.kept.map(function (q) { return q.code; }).join(',')); made('song', 'mixtape'); harp([0, 4, 7]); NG.toast && NG.toast('✓ IN THE PORTFOLIO'); });
       DESK.el.querySelector('#sd-lcard').addEventListener('click', function () { if (!DESK.kept.length) return; var u = listCard(DESK.kept.map(function (q) { return q.code; })).toDataURL('image/png'); deskClose(); window.postMessage({ ng: 'piece', url: u, crisp: true }, location.origin); });
       DESK.el.querySelector('#sd-keep').addEventListener('click', function () { if (songEmpty(DESK.song)) return; beat('song'); beat('desk-keep'); lvUp(3); made('song', MOODS[DESK.song.m].k + ' · ' + SRCS[DESK.song.s][0]); var code = songCode(DESK.song); if (!DESK.kept.some(function (q) { return q.code === code; })) { DESK.kept.unshift({ code: code, at: Date.now() }); DESK.kept.splice(12); store.set('da.aura.songs', DESK.kept); } deskKept(); bubbles(3); });
@@ -1069,13 +1071,13 @@
       [].forEach.call(DESK.el.querySelectorAll('[data-ly]'), function (b) { b.addEventListener('click', function () { var q = +b.dataset.ly; DESK.mute[q] = !DESK.mute[q]; deskSync(); bell(q, 0.12); }); });
     }
     /* the desk as first found on a visit: a mood and a source by chance; after, as it is turned */
-    if (given) { DESK.song = given; DESK.src = given.s; DESK.mood = given.m; } else if (!DESK.song) { DESK.mood = Math.floor(Math.random() * MOODS.length); DESK.src = Math.floor(Math.random() * SRCS.length); DESK.song = songMake(DESK.src, DESK.mood); }
+    if (given) { DESK.song = given; DESK.src = given.s; DESK.mood = given.m; } else if (!DESK.song && DESK.kept.length && keptSong(DESK.kept[0])) { DESK.song = keptSong(DESK.kept[0]); DESK.mood = DESK.song.m; DESK.src = -1; } else if (!DESK.song) { DESK.mood = Math.floor(Math.random() * MOODS.length); DESK.src = Math.floor(Math.random() * SRCS.length); DESK.song = songMake(DESK.src, DESK.mood); }
     beat('desk-open'); DESK.el.hidden = false; root.classList.add('desk'); applyGates(); deskSync(); deskKept(); deskDraw(); flashWords(200); bell(6, 0.16);
     /* the places of the radius arrive with the field data: a song made before they came is made again once they are here */
     /* ready on what there is, and quiet until play is pressed (a song's own link plays at once) */
     NG.db().then(function () { deskAvail(); if (DESK.play) return;
       if (given) { songPlay(true); return; }
-      if (DESK.song && !songEmpty(DESK.song)) return;
+      if (DESK.src < 0 || (DESK.song && !songEmpty(DESK.song))) return;
       var order = [DESK.src, 0, 1, 3, 2]; for (var i = 0; i < order.length; i++) { var sg = songMake(order[i], DESK.mood); if (!songEmpty(sg)) { DESK.src = order[i]; DESK.song = sg; deskSync(); return; } }
       DESK.song = songMake(DESK.src, DESK.mood); deskSync(); });
   }
@@ -1577,7 +1579,7 @@
   (function () { var q = /[?&]plain=([01])/.exec(location.search), on = function (why) { if (S.plain) return; S.plain = 1; root.classList.add('au-plain'); /* found frozen: the drawing's last picture, stuck, is put away */ if (why !== 'asked') document.documentElement.classList.add('au-frozen'); if (/^(bang|morph|unmorph)$/.test(S.mode)) setMode(S.mode); setTimeout(function () { beat('plain-' + why); }, 0); };
     /* and by hand: a small key at the start turns the still version on (kept on this phone) or back off, for a browser whose
        protections stop the motion without the drawing seeming to stall */
-    var sk = document.createElement('button'); sk.className = 'au-stillk'; sk.id = 'au-stillk'; sk.textContent = '◌'; sk.title = 'Still version, for browsers that block motion'; sk.setAttribute('aria-label', 'Still version on or off'); root.appendChild(sk);
+    var sk = document.createElement('button'); sk.className = 'au-stillk'; sk.id = 'au-stillk'; sk.textContent = '◌'; sk.setAttribute('aria-label', 'Still version on or off'); root.appendChild(sk);
     sk.addEventListener('click', function (e) { e.stopPropagation(); if (S.plain) { store.set('da.plain', 0); location.replace(location.pathname + '?plain=0'); } else { store.set('da.plain', 1); on('asked'); } });
     if (q) { if (q[1] === '1') on('asked'); return; }
     if (+store.get('da.plain', 0) === 1) { on('asked'); return; }
