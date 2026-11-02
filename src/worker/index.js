@@ -226,11 +226,11 @@ async function kinOf(db, who) {
 }
 /* the board: the latest of a section (or all), each by its maker's kin; written only with a code a print gave (a maker the site knows) */
 const SECS = ['notice', 'story', 'make', 'print'];
-const POSTER_SEC = /^p\.DA-[0-9A-HJKMNP-TV-Z]{4}$/;
+const POSTER_SEC = /^p\.DA-[0-9A-HJKMNP-TV-Z]{4}$/, SONG_SEC = /^p\.S-[0-9a-z]{6}$/;
 /* a talk's place: a step, or a poster shown on the site (never a private message, never one taken down); its own maker can
    always talk on it, shown or still a draft */
 async function secOf(db, s, who) {
-  if (SECS.includes(s)) return s;
+  if (SECS.includes(s) || SONG_SEC.test(s || '')) return s;   // a song's art: anyone who has it may talk on it
   if (!POSTER_SEC.test(s || '')) return null;
   if (who && (await db.prepare("SELECT 1 AS k FROM stories WHERE code = ? AND who = ? AND gone IS NULL AND kind != 'message'").bind(s.slice(2), who).first())) return s;
   if (!(await madeOn(db))) return null;

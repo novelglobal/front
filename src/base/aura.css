@@ -1060,3 +1060,16 @@ html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 /* the dots that unfold the rest are the dots alone: no ring, no key's ground, so they never read as a feature of their own */
 #aura .au-morek::before { display: none; } #aura .au-morek { background: none !important; box-shadow: none !important; border: 0 !important; }
 #aura .au-morek b { opacity: .85; } #aura .au-morek[aria-expanded="true"] b { opacity: 1; }
+/* the SOUND player: a small dark strip saying what plays, its three keys, and the list under it, one line each */
+.au-desk .au-kept { display: none !important; }
+.sd-amp { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, .45); box-shadow: inset 0 0 0 1px rgba(124, 224, 163, .25); font: 500 11px "Departure Mono", ui-monospace, monospace; color: #7CE0A3; }
+.sd-amp .sd-led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .3; flex: none; } .sd-amp.on .sd-led { opacity: 1; box-shadow: 0 0 6px currentColor; }
+.sd-amp .sd-ttl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.sd-amp button { width: 26px; height: 22px; border-radius: 4px; background: rgba(124, 224, 163, .1); color: inherit; font-size: 11px; line-height: 1; }
+.sd-pl { list-style: none; margin: 0; padding: 0; max-height: 132px; overflow-y: auto; font: 11px "Departure Mono", ui-monospace, monospace; }
+.sd-pl:empty { display: none; }
+.sd-pl button { width: 100%; display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; text-align: left; color: inherit; opacity: .75; border-radius: 4px; }
+.sd-pl button:hover { opacity: 1; background: rgba(255, 255, 255, .05); }
+.sd-pl li.on button { opacity: 1; color: #7CE0A3; }
+.sd-pl b { font-weight: 500; opacity: .5; } .sd-pl span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .06em; } .sd-pl i { font-style: normal; opacity: .5; }
+.au-talkp header b { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

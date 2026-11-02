@@ -30,7 +30,7 @@
   function recHear(id, b) { if (RECA) { var was = RECA.id; try { RECA.a.pause(); } catch (e) { /* gone */ } RECA = null; deskKept(); if (was === id) return; }
     try { var q = indexedDB.open('novelglobal-kept', 1); q.onupgradeneeded = function () { q.result.createObjectStore('kv'); };
       q.onsuccess = function () { try { var g = q.result.transaction('kv').objectStore('kv').get('rec:' + id); g.onsuccess = function () { if (!g.result) { NG.toast && NG.toast('NOT ON THIS PHONE'); return; }
-        if (DESK.play) songPlay(false); var a = new Audio(URL.createObjectURL(g.result)); RECA = { id: id, a: a }; a.onended = function () { RECA = null; deskKept(); }; a.play().catch(function () { RECA = null; deskKept(); }); deskKept(); }; } catch (e) { /* none */ } }; } catch (e) { /* none */ } }
+        if (DESK.play) songPlay(false); var a = new Audio(URL.createObjectURL(g.result)); RECA = { id: id, a: a }; a.onended = function () { RECA = null; deskKept(); ampEnded(); }; a.play().catch(function () { RECA = null; deskKept(); }); deskKept(); }; } catch (e) { /* none */ } }; } catch (e) { /* none */ } }
   function spicDrop(id) { try { var q = indexedDB.open('novelglobal-kept', 1); q.onupgradeneeded = function () { q.result.createObjectStore('kv'); }; q.onsuccess = function () { try { q.result.transaction('kv', 'readwrite').objectStore('kv').delete('poster:' + id); } catch (e) { /* fine */ } }; } catch (e) { /* fine */ } delete SPIC[id]; }
   function folioLoad() {
     return spicLoad().then(folioDB).then(function (d) {
@@ -1001,7 +1001,32 @@
     [].forEach.call(ul.querySelectorAll('[data-kr]'), function (b) { b.addEventListener('click', function () { recHear(b.dataset.kr); }); });
     [].forEach.call(ul.querySelectorAll('[data-kv]'), function (b) { b.addEventListener('click', function () { var sg = songOf(DESK.kept[+b.dataset.kv].code); if (!sg) return; b.classList.add('going'); songLoop(sg).then(function (r) { b.classList.remove('going'); if (r) saveWav(r.blob, 'novel-global-tape-' + MOODS[sg.m].k.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + songCode(sg).replace(/[^a-z0-9]/gi, '').slice(-4).toLowerCase() + '.wav'); }); }); });
     [].forEach.call(ul.querySelectorAll('[data-ks]'), function (b) { b.addEventListener('click', function () { DESK.li = +b.dataset.ks; songPlay(true, true); deskKept(); }); });
-    [].forEach.call(ul.querySelectorAll('[data-kx]'), function (b) { NG.sureTap(b, function () { DESK.kept.splice(+b.dataset.kx, 1); store.set('da.aura.songs', DESK.kept); deskKept(); }); }); }
+    [].forEach.call(ul.querySelectorAll('[data-kx]'), function (b) { NG.sureTap(b, function () { DESK.kept.splice(+b.dataset.kx, 1); store.set('da.aura.songs', DESK.kept); deskKept(); }); }); ampDraw(); }
+  /* the player: every song kept here, every loop recorded on the radio and every mixtape, one list, one after another, the bar
+     saying what plays. A recording plays as it was made; a song with none is played by the desk, round until the next is asked */
+  var AMP = { rows: [], i: -1, q: null, go: false };
+  function ampList() {
+    var loops = store.get('da.loops.v1', []) || [], rows = DESK.kept.map(function (k2, i) { var m = MOODS[+k2.code.charAt(2)]; return { k: 'song', i: i, n: k2.name || (m ? m.k : 'SONG'), rec: k2.rec || null, code: k2.code }; });
+    loops.forEach(function (l) { if (l.rec && !DESK.kept.some(function (k2) { return k2.rec === l.id; })) rows.push({ k: 'rec', rec: l.id, n: (l.where && l.where.place) || 'RADIO', s: l.rec.s }); });
+    (store.get('da.tapes.v1', []) || []).forEach(function (t) { var ids = (t.ids || []).filter(function (id) { return loops.some(function (l) { return l.id === id && l.rec; }); }); if (ids.length) rows.push({ k: 'tape', ids: ids, n: t.name || 'MIXTAPE', c: ids.length }); });
+    return rows;
+  }
+  var ampOn = function () { return !!RECA || DESK.play; };
+  function ampStop() { AMP.go = false; AMP.q = null; if (RECA) { try { RECA.a.pause(); } catch (e) { /* gone */ } RECA = null; } if (DESK.play) songPlay(false); ampDraw(); deskKept(); }
+  function ampPlay(i) {
+    var r = AMP.rows[i]; if (!r) return; AMP.go = false; if (RECA) { try { RECA.a.pause(); } catch (e) { /* gone */ } RECA = null; } if (DESK.play) songPlay(false);
+    AMP.i = i; AMP.go = true; AMP.q = r.k === 'tape' ? r.ids.slice(1) : null;
+    if (r.k === 'tape') recHear(r.ids[0]); else if (r.rec) recHear(r.rec); else { var sg = songOf(r.code); if (sg) { DESK.song = sg; DESK.mood = sg.m; DESK.src = sg.s; deskSync(); songPlay(true); } }
+    ampDraw();
+  }
+  function ampEnded() { if (!AMP.go) return; if (AMP.q && AMP.q.length) { recHear(AMP.q.shift()); return; } if (AMP.rows.length) ampPlay((AMP.i + 1) % AMP.rows.length); }
+  function ampDraw() {
+    var ol = DESK.el && DESK.el.querySelector('.sd-pl'); if (!ol) return; AMP.rows = ampList(); var on = ampOn();
+    var t = DESK.el.querySelector('.sd-ttl'), r0 = AMP.rows[AMP.i]; t.textContent = on && r0 ? r0.n : AMP.rows.length ? '—' : 'NOTHING MADE YET'; DESK.el.querySelector('.sd-amp').classList.toggle('on', on);
+    var g = DESK.el.querySelector('[data-amp="go"]'); g.textContent = on ? '■' : '▶';
+    ol.innerHTML = AMP.rows.map(function (r, i) { return '<li class="' + (on && i === AMP.i ? 'on' : '') + '"><button data-ap="' + i + '" title="' + (r.k === 'tape' ? 'A mixtape: its recordings in turn' : r.rec ? 'A recording from the radio' : 'A song, played here') + '"><b>' + ('0' + (i + 1)).slice(-2) + '</b><span>' + esc(r.n) + '</span><i>' + (r.k === 'tape' ? r.c + '×' : r.s ? Math.floor(r.s / 60) + ':' + ('0' + r.s % 60).slice(-2) : r.rec ? '◉' : '♪') + '</i></button></li>'; }).join('');
+    [].forEach.call(ol.querySelectorAll('[data-ap]'), function (b) { b.addEventListener('click', function () { var i = +b.dataset.ap; if (ampOn() && i === AMP.i) ampStop(); else ampPlay(i); }); });
+  }
   function saveWav(blob, name) { var a = document.createElement('a'); a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); a.remove(); }
   function deskSync() { if (!DESK.el) return; DESK.el.setAttribute('data-mood', MOODS[DESK.mood].k); [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.classList.toggle('on', +b.dataset.src === DESK.src); }); var kn = DESK.el.querySelector('#sd-mood'); kn.setAttribute('data-fw', MOODS[DESK.mood].k); kn.style.setProperty('--a', (DESK.mood * 110 - 110) + 'deg'); DESK.el.querySelector('#sd-drone').classList.toggle('on', !mute); DESK.el.querySelector('#sd-list').classList.toggle('on', DESK.list && DESK.play);
     [].forEach.call(DESK.el.querySelectorAll('[data-ly]'), function (b) { var q = +b.dataset.ly; b.setAttribute('aria-pressed', String(!DESK.mute[q])); b.classList.toggle('off', DESK.mute[q]); b.setAttribute('data-fw', MOODS[DESK.mood].ins[q]); });
@@ -1019,8 +1044,12 @@
         '<nav class="sd-row sd-play">' + k('sd-k', svgI('again'), 'id="sd-new" data-fw="again" aria-label="Make it again"') + k('sd-big', '<i class="sd-tri"></i>', 'id="sd-go" aria-label="Play or stop"') + k('sd-k', svgI('plus'), 'id="sd-keep" data-fw="keep" aria-label="Keep it"') + k('sd-k', svgI('list'), 'id="sd-list" data-fw="playlist" aria-label="Play every kept song in turn, round and round"') + '</nav>' +
         '<nav class="sd-row sd-layers" aria-label="The four layers">' + [0, 1, 2, 3].map(function (q) { return k('sd-k sd-ly', '<i class="ly ly' + q + '"></i><span class="sd-vu" aria-hidden="true"><i></i></span>', 'data-ly="' + q + '" aria-pressed="true" data-fw="' + MOODS[0].ins[q] + '" aria-label="Layer ' + (q + 1) + ', on or off"'); }).join('') + '</nav>' +
         '<nav class="sd-row">' + k('sd-k', svgI('save'), 'id="sd-loop" data-fw="loop" aria-label="A 45 second loop to save"') + k('sd-k', svgI('pics'), 'id="sd-card" data-fw="card" aria-label="Onto my poster"') + k('sd-k', svgI('copy'), 'id="sd-link" data-fw="link" aria-label="Copy its link"') + k('sd-k', svgI('qrc'), 'id="sd-lcard" data-fw="list card" aria-label="The playlist onto my poster, with one code for all of it"') + k('sd-k', svgI('dfolio'), 'id="sd-folio" data-fw="portfolio" aria-label="The playlist as a mixtape, into the portfolio"') + k('sd-k', svgI('dradio'), 'id="sd-radio" data-fw="radio" aria-label="The radio: layers and moods on the map"') + '</nav>' +
+        '<div class="sd-amp"><i class="sd-led"></i><b class="sd-ttl" title="Playing now">—</b>' + ['prev', 'go', 'next'].map(function (q) { return '<button data-amp="' + q + '" title="' + { prev: 'The one before', go: 'Play or stop', next: 'The next one' }[q] + '" aria-label="' + { prev: 'Before', go: 'Play or stop', next: 'Next' }[q] + '">' + { prev: '⏮', go: '▶', next: '⏭' }[q] + '</button>'; }).join('') + '</div><ol class="sd-pl" aria-label="Every song, loop and mixtape made here"></ol>' +
         '<ul class="au-kept"></ul>';
       root.appendChild(DESK.el);
+      /* every key says what it does when a pointer rests on it */
+      [].forEach.call(DESK.el.querySelectorAll('button[aria-label]'), function (b) { if (!b.title) b.title = b.getAttribute('aria-label'); });
+      [].forEach.call(DESK.el.querySelectorAll('[data-amp]'), function (b) { b.addEventListener('click', function () { var q = b.dataset.amp, n = AMP.rows.length; if (!n) return; if (q === 'go') { if (ampOn()) ampStop(); else ampPlay(Math.max(0, AMP.i)); } else ampPlay(((AMP.i < 0 ? 0 : AMP.i) + (q === 'next' ? 1 : -1) + n) % n); }); });
       var mk2 = function (go) { DESK.song = songMake(DESK.src, DESK.mood); deskSync(); if (DESK.play || go) songPlay(true); };
       [].forEach.call(DESK.el.querySelectorAll('[data-src]'), function (b) { b.addEventListener('click', function () { DESK.src = +b.dataset.src; NG.db().then(function () { mk2(); }); }); });
       DESK.el.querySelector('#sd-mood').addEventListener('click', function () { DESK.mood = (DESK.mood + 1) % MOODS.length; if (DESK.song) { DESK.song.m = DESK.mood; deskSync(); if (DESK.play) songPlay(true); } else mk2(); bell(2 + DESK.mood, 0.1); });
@@ -2198,7 +2227,7 @@
   function talkShut() { if (!TK) return; var p = $('#au-talkp'); if (p && !p.hidden) p.hidden = true; TK.sec = null; TK.re = null; }
   function talkOpen(psec) {
     if (psec !== undefined) TK.sec = psec || null;
-    var p = $('#au-talkp'), sec = TK.sec || TSECS[S.stage] || 'notice'; TK.re = null; p.hidden = false; p.classList.toggle('poster', !!TK.sec); p.querySelector('header b').textContent = TK.sec ? TK.sec.slice(2) : STEPS[S.stage] ? STEPS[S.stage][0] : sec;
+    var p = $('#au-talkp'), sec = TK.sec || TSECS[S.stage] || 'notice'; TK.re = null; p.hidden = false; p.classList.toggle('poster', !!TK.sec); p.querySelector('header b').textContent = TK.sec ? (/^p\.S-/.test(TK.sec) ? '♪' : TK.sec.slice(2)) : STEPS[S.stage] ? STEPS[S.stage][0] : sec;
     var ol = p.querySelector('ol'); talkFill(ol, store.get('da.talk.' + sec, []) || []); talkSays('');
     fetch('/api/talk?s=' + sec + '&who=' + encodeURIComponent(NG.me())).then(function (r) { if (!r.ok) { if (!p.hidden) talkSays(TK_WHY[r.status] || '⌁'); return null; } return r.json(); }).then(function (j) { if (!j) return; var l = j.talk || []; store.set('da.talk.' + sec, l.slice(0, 40)); if (!p.hidden) talkFill(ol, l); }).catch(function () { if (!p.hidden) talkSays('⌁'); });
   }
@@ -2268,7 +2297,7 @@
       var nk = $('#au-newk'); if (nk) nk.addEventListener('click', function () { letGo(); });
     } else {
       var sd = $('#au-print'); if (sd) sd.addEventListener('click', function () { letGo(); });
-      var pt = $('#au-ptalk'); if (pt) pt.addEventListener('click', function () { beat('talk'); var tp = $('#au-talkp'), sec = 'p.' + f.code; if (!tp.hidden && TK.sec === sec) tp.hidden = true; else talkOpen(sec); bell(3, 0.1); });
+      var pt = $('#au-ptalk'); if (pt) pt.addEventListener('click', function () { beat('talk'); var tp = $('#au-talkp'), sec = /^DA-[0-9A-Z]{4}$/.test(f.code || '') ? 'p.' + f.code : 'p.S-' + ('0000000' + (hashW(String(f.code || '')) >>> 0).toString(36)).slice(-6); if (!tp.hidden && TK.sec === sec) tp.hidden = true; else talkOpen(sec); bell(3, 0.1); });
       var nm = 'novel-global-' + (f.code || 'poster') + '.jpg', wf = null; fetch(f.src).then(function (r) { return r.blob(); }).then(function (b) { wf = new File([b], nm, { type: b.type || 'image/jpeg' }); }).catch(function () {});
       var ws = $('#au-wsave'); if (ws) ws.addEventListener('click', function () { saveImg(wf, function () { return NG.loadImg(f.src).then(function (im) { var c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0); return c; }); }, nm); });
       /* printed again: it comes forward as the piece in hand, goes to the printer, and takes its own place on the wall again */
