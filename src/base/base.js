@@ -2124,6 +2124,20 @@ function boothEye(el) {
   if (!el.__eyeOn) { el.__eyeOn = 1; addEventListener('pointermove', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); addEventListener('pointerdown', function (e) { if (el.__eye) el.__eye(e); }, { passive: true }); }
   clearTimeout(BTH.eyeT); BTH.eyeT = setTimeout(idle, 900);
 }
+/* a pixel piece made another way, by its version: as it is, bold, hollow, set in a black block, mirrored four ways, its rows
+   broken and slid, tiled; ink only, so each still prints clean */
+function pixVary(src, v) {
+  v = (v || 0) % 7; if (!v) return src; var w = src.width, h = src.height, d = src.getContext('2d').getImageData(0, 0, w, h).data, on = function (x, y) { return x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 100 && d[(y * w + x) * 4] < 160; };
+  var o = document.createElement('canvas'), W = v === 4 || v === 6 ? w * 2 : w, H = v === 4 || v === 6 ? h * 2 : h; o.width = W; o.height = H; var g = o.getContext('2d'); g.fillStyle = '#000';
+  var put = function (x, y) { g.fillRect(x, y, 1, 1); }, x, y;
+  if (v === 1) { for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (on(x, y) || on(x - 1, y) || on(x, y - 1) || on(x + 1, y) || on(x, y + 1)) put(x, y); }
+  else if (v === 2) { for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (on(x, y) && !(on(x - 1, y) && on(x + 1, y) && on(x, y - 1) && on(x, y + 1))) put(x, y); }
+  else if (v === 3) { for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (!on(x, y)) put(x, y); }
+  else if (v === 4) { for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (on(x, y)) { put(x, y); put(W - 1 - x, y); put(x, H - 1 - y); put(W - 1 - x, H - 1 - y); } }
+  else if (v === 5) { for (y = 0; y < h; y++) { var sh = (y * 7919) % 5 - 2; if ((y >> 2) % 2) sh *= 2; for (x = 0; x < w; x++) if (on(x, y)) put((x + sh + w) % w, y); } }
+  else { for (y = 0; y < h; y++) for (x = 0; x < w; x++) if (on(x, y)) { put(x, y); put(x + w, y + h); if ((x + y) % 2) { put(x + w, y); put(x, y + h); } } }
+  return o;
+}
 function boothJet(j) { if (!j) return; var l = j.querySelector('.lid'); j.classList.remove('jet'); void j.getBoundingClientRect(); j.classList.add('jet'); if (l) { l.classList.add('shut'); setTimeout(function () { l.classList.remove('shut'); }, 180); } }
 function boothStart(el) {
   el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.big = null; BTH.file = null; BTH.px = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
@@ -2213,12 +2227,13 @@ function boothEdit() {
   /* the pixel things: the studio's own kinds (jellyfish, moon, coral, rubbish, clips), each touch a new one of its kind, placed on the photo */
   var kinds = window.AURA && AURA.pix && AURA.pixKinds ? AURA.pixKinds : null; BTH.seeds = BTH.seeds || (kinds || []).map(function () { return 1 + Math.floor(Math.random() * 400); });
   var MK = kinds ? kinds.concat(AURA.pixStamps || []) : [], MK_SAY = { jelly: 'The irukandji, swimming', moon: 'The moon', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }; BTH.mk = BTH.mk || 0; BTH.mkc = BTH.mkc || 24; BTH.mks = BTH.mks || {};
-  var art = function (q, ph) { return AURA.pix(q, BTH.mks[q] || (BTH.mks[q] = 1 + Math.floor(Math.random() * 400)), BTH.mkc, ph || 0); };
+  BTH.mkv = BTH.mkv || {};
+  var art = function (q, ph) { var v = BTH.mkv[q] || 0; return pixVary(AURA.pix(q, BTH.mks[q] || (BTH.mks[q] = 1 + Math.floor(Math.random() * 400)), [24, 16, 32, 24, 24, 20, 24][v % 7], ph || 0), v); };
   el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div>' +
     '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…" enterkeyhint="done" autocomplete="off">' +
     /* with the aura: three keys, take the last off (once something is on), the pixel maker and its art, and drawing one's own */
-    (kinds ? '<div class="am sm" id="bt-st"><button id="bt-undo" class="rm" aria-label="Take the last one off" title="Take the last one off" hidden>×</button><button id="bt-mko" class="pxo" aria-label="The pixel maker" title="The pixel maker">' + AURA.pixIcon('jelly') + '</button><button id="bt-pxo" class="pxo" aria-label="Draw one" title="Draw your own">✎</button></div>' +
-      '<div class="bt-mk" hidden><nav>' + MK.map(function (q, i) { return '<button data-m="' + i + '" class="' + (i === BTH.mk ? 'on' : '') + '" aria-label="' + esc(q) + '" title="' + esc(MK_SAY[q] || 'A stamp') + '">' + AURA.pixIcon(q) + '</button>'; }).join('') + '</nav><canvas id="bt-mkc" width="120" height="120" aria-label="The one to place"></canvas><span><button id="bt-mkn" aria-label="Another" title="Another one">⚄</button><button id="bt-mks" aria-label="Its size" title="More or fewer pixels">▦</button><button id="bt-mka" aria-label="Put it on the photo" title="Put it on the photo">+</button></span></div>'
+    (kinds ? '<div class="am sm" id="bt-st"><button id="bt-undo" class="rm" aria-label="Take the last one off" title="Take the last one off" hidden>×</button><button id="bt-mko" class="pxo" aria-label="The pixel maker" title="The pixel maker">' + AURA.pixIcon('jelly') + '</button><button id="bt-pxo" class="pxo" aria-label="Draw one" title="Draw your own">✎</button><button id="bt-ln" class="pxo" aria-label="Another line" title="Another line under the photo">❝</button><button id="bt-lno" class="pxo" aria-label="The line on or off" title="The line under the photo, on or off">⊘</button></div>' +
+      '<div class="bt-mk" hidden><nav>' + MK.map(function (q, i) { return '<button data-m="' + i + '" class="' + (i === BTH.mk ? 'on' : '') + '" aria-label="' + esc(q) + '" title="' + esc(MK_SAY[q] || 'A stamp') + '">' + AURA.pixIcon(q) + '</button>'; }).join('') + '</nav><canvas id="bt-mkc" width="120" height="120" aria-label="The one to place"></canvas><span><button id="bt-mkn" aria-label="Another version" title="Another version: bold, hollow, mirrored, broken, tiled">⟳</button><button id="bt-mka" aria-label="Put it on the photo" title="Put it on the photo">+</button></span></div>'
     : '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div>') +
     '<div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div>' +
     '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button></div>';
@@ -2226,10 +2241,11 @@ function boothEdit() {
   if (kinds) { var mkw = $('.bt-mk', el), mkc = $('#bt-mkc'), dw = $('.bt-pix', el), mkRun = function () { if (!mkc.isConnected || mkw.hidden) return; var g = mkc.getContext('2d'), a0 = art(MK[BTH.mk], performance.now() / 1000); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 120, 120); g.drawImage(a0, 0, 0, 120, 120); requestAnimationFrame(mkRun); };
     $('#bt-mko').addEventListener('click', function () { mkw.hidden = !mkw.hidden; dw.hidden = true; $('#bt-pxo').classList.remove('on'); this.classList.toggle('on', !mkw.hidden); if (!mkw.hidden) mkRun(); });
     $$('.bt-mk [data-m]').forEach(function (b) { b.addEventListener('click', function () { BTH.mk = +b.dataset.m; $$('.bt-mk [data-m]').forEach(function (q) { q.classList.toggle('on', q === b); }); }); });
-    $('#bt-mkn').addEventListener('click', function () { var q = MK[BTH.mk]; BTH.mks[q] = (BTH.mks[q] || 1) + 1; });
-    $('#bt-mks').addEventListener('click', function () { BTH.mkc = BTH.mkc === 24 ? 32 : BTH.mkc === 32 ? 16 : 24; });
-    $('#bt-mka').addEventListener('click', function () { BTH.st.push({ img: art(MK[BTH.mk], performance.now() / 1000), x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }); var q = MK[BTH.mk]; BTH.mks[q] = (BTH.mks[q] || 1) + 1; paint(); });
-    $('#bt-pxo').addEventListener('click', function () { mkw.hidden = true; $('#bt-mko').classList.remove('on'); }); }
+    $('#bt-mkn').addEventListener('click', function () { var q = MK[BTH.mk]; BTH.mkv[q] = (BTH.mkv[q] || 0) + 1; BTH.mks[q] = (BTH.mks[q] || 1) + 1; });
+    $('#bt-mka').addEventListener('click', function () { BTH.st.push({ img: art(MK[BTH.mk], performance.now() / 1000), x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }); paint(); });
+    $('#bt-pxo').addEventListener('click', function () { mkw.hidden = true; $('#bt-mko').classList.remove('on'); });
+    $('#bt-ln').addEventListener('click', function () { BTH.lineOff = false; BTH.lineK = (BTH.lineK || 0) + 1; $('#bt-lno').classList.remove('on'); paint(); });
+    $('#bt-lno').addEventListener('click', function () { BTH.lineOff = !BTH.lineOff; this.classList.toggle('on', BTH.lineOff); paint(); }); }
   var cv = $('#bt-pv canvas'), pending = 0, paint = function () {
     var rm = $('#bt-undo.rm'); if (rm) rm.hidden = !BTH.st.length;
     clearTimeout(pending); pending = setTimeout(function () { if (!BTH) return; ditherLib().then(function (D) { return BTH && boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); }); }); }, 120);
@@ -2267,6 +2283,12 @@ function boothEdit() {
   paint();
 }
 /* the receipt: the photograph in dots with its stickers, the words large, and a small code that opens the site */
+/* the line under the booth's photo: the approval page's own line if it has one (a dash: none to begin with), else El Niño's line of the
+   day; ❝ gives another, ⊘ takes it off or puts it back */
+function boothLine() {
+  if (BTH.lineOff) return ''; var cu = String((store.get('da.aura.start', {}) || {}).boothLine || '').trim();
+  if (cu && !BTH.lineK) return cu === '-' ? '' : cu; return brief(0, (BTH.lineK || 0) + (cu ? -1 : 0));
+}
 function boothSlip(D, code, real) {
   var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D), mt = Math.max(10, Math.min(28, +pq().minText || 14)), fz = function (n2) { return Math.round(Math.max(n2, mt) * u); };
   var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace';
@@ -2274,7 +2296,7 @@ function boothSlip(D, code, real) {
   return qrLib().then(function (Q) {
     var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
     q = null; var qs = 0;   // the slip carries one code: the access code
-    x.font = 'italic ' + fz(17) + 'px Georgia, serif'; var bl = wrapText(x, brief(), W - pad * 2).slice(0, 3);
+    x.font = 'italic ' + fz(17) + 'px Georgia, serif'; var bl = boothLine() ? wrapText(x, boothLine(), W - pad * 2).slice(0, 3) : [];
     var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(fz(17) * 1.4) + (bl.length ? Math.round(14 * u) : 0), foot = real ? Math.max(qs, Math.round(104 * u)) + pad * 2 : pad;
     c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
     x.fillRect(pad, Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
@@ -2333,10 +2355,12 @@ function boothPass(el, s0, printed) {
   /* the print in full colour stays, its save beside it; it waits there (never sent on by itself), and after five seconds the jellyfish's
      strand sets novel.global down beside the save, the way on */
   var hq = boothHQc(), src = hq ? hq.toDataURL('image/jpeg', 0.88) : '';
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel('sm') + (src ? '<img class="hqv" alt="" src="' + src + '">' : '') + '</div>' + '<div class="am" id="bt-on">' + (BTH.im ? '<button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button>' : '') + '<a id="bt-ng" class="ngo" href="/" hidden>novel.global</a></div>';
+  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + (src ? '<img class="hqv" alt="" src="' + src + '">' : boothJel('sm')) + '</div>' + '<div class="am" id="bt-on">' + (BTH.im ? '<button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button>' : '') + '</div>' +
+    /* the jellyfish comes down on a strand with the mark held under it, swaying, asking to be touched */
+    '<a id="bt-ng" class="ngo" href="/" aria-label="novel.global" hidden><span class="hold">' + boothJel('tiny') + '</span><i class="strand"></i><span class="tag">' + MARK_SVG + '<b>novel.global</b></span></a>';
   var sv2 = $('#bt-save', el); if (sv2) sv2.addEventListener('click', function () { boothHQ(this); }); boothEye(el);
   var ng = $('#bt-ng', el); ng.addEventListener('click', function (e) { e.preventDefault(); clearTimeout(BTH && BTH.home); boothClose(); if (window.AURA && AURA.home && store.get('da.who.pass', 0)) AURA.home(); });
-  clearTimeout(BTH.home); BTH.home = setTimeout(function () { if (ng.isConnected) { ng.hidden = false; ng.classList.add('set'); var j = $('.kept .bt-jel', el); if (j) j.classList.add('reach'); } }, Math.min(5000, t));
+  clearTimeout(BTH.home); BTH.home = setTimeout(function () { if (ng.isConnected) { ng.hidden = false; ng.classList.add('set'); boothEye(el); } }, Math.min(5000, t));
 }
 function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
