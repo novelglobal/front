@@ -572,6 +572,14 @@
       el('label', {}, 'HEADING', nth), hint('One line above the words, in capitals. Empty: the site\'s own. A single dash (-): no heading.'),
       el('label', {}, 'WORDS', ntx),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ notice: JSON.stringify({ off: !$('#nt-on').checked, head: nth.value.trim() === '-' ? '' : nth.value.trim() || null, text: ntx.value.trim() }) }) })));
+    /* the portfolio's Sources: the words above the list, and the list itself */
+    let sr = {}; try { sr = st.sources ? JSON.parse(st.sources) : {}; } catch (e) { sr = {}; }
+    const sra = el('textarea', { rows: 5, maxlength: 2000, placeholder: 'EMPTY: THE SITE\'S OWN WORDS' }); sra.value = sr.about || '';
+    const srl = el('textarea', { rows: 10, maxlength: 5000, placeholder: 'EMPTY: THE SITE\'S OWN LIST' }); srl.value = sr.list || '';
+    const sources = el('section', { class: 'ed' }, el('h3', { text: 'PORTFOLIO · SOURCES' }),
+      el('label', {}, 'THE WORDS ABOVE THE LIST', sra), hint('Shown in small type at the top of Sources on the portfolio. Empty: the site\'s own words. A single dash (-): no words.'),
+      el('label', {}, 'THE LIST, ONE SOURCE TO A LINE', srl), hint('Replaces the whole list of sources. Empty: the site\'s own list (iNaturalist, OpenStreetMap and the rest).'),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ sources: JSON.stringify({ about: sra.value.trim(), list: srl.value.trim() }) }) })));
     /* the Country over El Niño's map, once on each phone */
     let co = {}; try { co = st.country ? JSON.parse(st.country) : {}; } catch (e) { co = {}; }
     const coh = el('input', { type: 'text', maxlength: 120, placeholder: 'EMPTY: THE COUNTRY FROM CONFIG.JS' }); coh.value = co.head == null ? '' : co.head === '' ? '-' : co.head;
@@ -585,7 +593,7 @@
     const sends = el('section', { class: 'ed' }, el('h3', { text: 'SENT WITHOUT A PRINT' }),
       chk('sd-live', !!st.sendLive, 'STRAIGHT ON THE SITE'), hint('A piece sent to novel.global from a phone with no printer (the print key set to NOVEL.GLOBAL). Unticked, as built: it waits on the Approve page. Ticked: it is on the site for everyone at once. Either way it is not a print: the devices stay locked until a printer has printed something with that phone\'s code.'),
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: () => save({ sendLive: $('#sd-live').checked }) })));
-    main.replaceChildren(...head('Settings'), gates, start, printq, sends, notice, country, motion, cur, reset);
+    main.replaceChildren(...head('Settings'), gates, start, printq, sends, notice, country, motion, cur, sources, reset);
   }
 
   /* ───────── data: everything as one file, the places and stories as sheets, places brought in by the hundred ───────── */

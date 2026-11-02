@@ -1575,7 +1575,12 @@
      in, or has failed: a browser that draws keeps the creature as it is, whatever its name (DuckDuckGo's is counted apart). ?plain=1 or
      ?plain=0 to try it either way */
   (function () { var q = /[?&]plain=([01])/.exec(location.search), on = function (why) { if (S.plain) return; S.plain = 1; root.classList.add('au-plain'); /* found frozen: the drawing's last picture, stuck, is put away */ if (why !== 'asked') document.documentElement.classList.add('au-frozen'); if (/^(bang|morph|unmorph)$/.test(S.mode)) setMode(S.mode); setTimeout(function () { beat('plain-' + why); }, 0); };
+    /* and by hand: a small key at the start turns the still version on (kept on this phone) or back off, for a browser whose
+       protections stop the motion without the drawing seeming to stall */
+    var sk = document.createElement('button'); sk.className = 'au-stillk'; sk.id = 'au-stillk'; sk.textContent = '◌'; sk.title = 'Still version, for browsers that block motion'; sk.setAttribute('aria-label', 'Still version on or off'); root.appendChild(sk);
+    sk.addEventListener('click', function (e) { e.stopPropagation(); if (S.plain) { store.set('da.plain', 0); location.replace(location.pathname + '?plain=0'); } else { store.set('da.plain', 1); on('asked'); } });
     if (q) { if (q[1] === '1') on('asked'); return; }
+    if (+store.get('da.plain', 0) === 1) { on('asked'); return; }
     var look = function () { if (document.hidden) { setTimeout(look, 3000); return; } var f0 = S.frames || 0, e0 = S.ferr || 0; setTimeout(function () { var df = (S.frames || 0) - f0, de = (S.ferr || 0) - e0; if (!document.hidden && (df < 4 || de > df / 2)) on(/DuckDuckGo\/|\bDdg\//.test(navigator.userAgent || '') ? 'ddg' : 'still'); }, 3000); };
     setTimeout(look, 1500); })();
 
@@ -2627,7 +2632,10 @@
   api.home = function () { try { closeDev(); } catch (e) { /* none open */ } if (S.deep) { S.deep = false; deep.hidden = true; } FIRSTV = true; noticeSet(store.get('da.aura.notice', null)); S.stage = 0; setMode('seed'); };
   api.pixSubs = ['jelly', 'coral', 'trash', 'st0', 'st1', 'st3'];
   api.pixKinds = PIX_SUBS.slice();
-  api.pix = function (sub, seed) { usePaper(true); var c = pixArt(sub, 24, 0, 'ink', null, seed || 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
+  /* the pixel maker lent to the booth: a kind (or a stamp, st0 to st5) at a size and a moment of its swim, its icon, the stamps' thumbnails */
+  api.pixIcon = function (q) { return /^st\d$/.test(q) ? '<img alt="" src="' + stampThumb(+q.slice(2)) + '">' : svgI('px' + q); };
+  api.pixStamps = STAMPS.map(function (w, i) { return 'st' + i; });
+  api.pix = function (sub, seed, cells, ph) { usePaper(true); var c = pixArt(sub, cells || 24, ph || 0, 'ink', null, seed || 1), o = document.createElement('canvas'); o.width = c.width; o.height = c.height; var g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0); usePaper(false); return o; };
   api.receipt = function (w) { return P ? posterPrint(w || 512).then(function (c) { return c ? c.toDataURL('image/png') : null; }) : Promise.resolve(null); };
   /* a piece added, moved to a place on the poster (fractions of its width and height), for checking the print against the poster */
   api.move = function (i, x, y) { var a = P && P.adds[i]; if (!a) return false; a.x = x; a.y = y; delete a.band; changed(); redraw(); return true; };

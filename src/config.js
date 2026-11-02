@@ -53,7 +53,7 @@ window.DA_CONFIG = {
     'intention.ask': 'what’s your intention?',
     'intention.say': 'From something you noticed, write what you want to happen. It goes at the top of your poster.',
     'wish.tab': 'wish',
-    'wish.say': 'One line for each letter. Tap a letter for help.',
+    'wish.say': '',
     'w.word': 'theories', 'w.head': 'What we know', 'w.how': 'what you saw',
     'i.word': 'beliefs', 'i.head': 'It would be great', 'i.how': 'what you want to happen',
     's.word': 'principles', 's.head': 'So let’s create', 's.how': 'one thing to do',

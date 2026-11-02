@@ -123,6 +123,8 @@ async function loadSettings() {
     /* the example shown or hidden on the approval page: BOARD 00 and its poster on the wall come and go with it */
     if (j && typeof j.exampleShow === 'boolean' && j.exampleShow !== (CFG.exampleShow !== false)) { CFG.exampleShow = j.exampleShow; store.set('da.cfg.v1', CFG); if (boardId === 'b00' && !exShown()) { const b = BOARDS.find(x => !x.ex); if (b) await switchBoard(b.id); } if (S.view === 1 || S.view === 3) refreshPanel(); }
     if (j && typeof j.lifeLock === 'boolean' && j.lifeLock !== CFG.lifeLock) { CFG.lifeLock = j.lifeLock; store.set('da.cfg.v1', CFG); if (S.view === 0) refreshPanel(); if (S.mapReady) { life.redraw(); life.moved(); } }
+    /* the portfolio's Sources, as rewritten on the approval page */
+    if (j && typeof j.sources === 'string' && j.sources !== (CFG.sources || '')) { CFG.sources = j.sources; store.set('da.cfg.v1', CFG); if (S.view === 3) refreshPanel(); }
     /* the first board's words, as rewritten on the approval page */
     if (j && typeof j.template === 'string' && j.template !== (CFG.template || '')) { CFG.template = j.template; store.set('da.cfg.v1', CFG); } } catch (e) { /* as last heard */ }
 }

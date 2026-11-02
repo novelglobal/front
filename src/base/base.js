@@ -2212,15 +2212,26 @@ function boothEdit() {
   var el = $('#booth'); BTH.code = code('b' + Date.now().toString(36) + '|' + Date.now());
   /* the pixel things: the studio's own kinds (jellyfish, moon, coral, rubbish, clips), each touch a new one of its kind, placed on the photo */
   var kinds = window.AURA && AURA.pix && AURA.pixKinds ? AURA.pixKinds : null; BTH.seeds = BTH.seeds || (kinds || []).map(function () { return 1 + Math.floor(Math.random() * 400); });
-  var art = function (i) { return AURA.pix(kinds[i], BTH.seeds[i]); };
+  var MK = kinds ? kinds.concat(AURA.pixStamps || []) : [], MK_SAY = { jelly: 'The irukandji, swimming', moon: 'The moon', coral: 'Coral', trash: 'Something the tide brought', clip: 'A paperclip' }; BTH.mk = BTH.mk || 0; BTH.mkc = BTH.mkc || 24; BTH.mks = BTH.mks || {};
+  var art = function (q, ph) { return AURA.pix(q, BTH.mks[q] || (BTH.mks[q] = 1 + Math.floor(Math.random() * 400)), BTH.mkc, ph || 0); };
   el.innerHTML = BHEAD + '<div class="pv" id="bt-pv"><canvas></canvas></div>' +
     '<input id="bt-w" class="bw" maxlength="40" aria-label="Your words" placeholder="…" enterkeyhint="done" autocomplete="off">' +
-    '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + (kinds ? kinds.map(function (q, i) { return '<button data-k="' + i + '" class="px" aria-label="' + esc(q) + '"></button>'; }) : STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; })).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div>' +
+    /* with the aura: three keys, take the last off (once something is on), the pixel maker and its art, and drawing one's own */
+    (kinds ? '<div class="am sm" id="bt-st"><button id="bt-undo" class="rm" aria-label="Take the last one off" title="Take the last one off" hidden>×</button><button id="bt-mko" class="pxo" aria-label="The pixel maker" title="The pixel maker">' + AURA.pixIcon('jelly') + '</button><button id="bt-pxo" class="pxo" aria-label="Draw one" title="Draw your own">✎</button></div>' +
+      '<div class="bt-mk" hidden><nav>' + MK.map(function (q, i) { return '<button data-m="' + i + '" class="' + (i === BTH.mk ? 'on' : '') + '" aria-label="' + esc(q) + '" title="' + esc(MK_SAY[q] || 'A stamp') + '">' + AURA.pixIcon(q) + '</button>'; }).join('') + '</nav><canvas id="bt-mkc" width="120" height="120" aria-label="The one to place"></canvas><span><button id="bt-mkn" aria-label="Another" title="Another one">⚄</button><button id="bt-mks" aria-label="Its size" title="More or fewer pixels">▦</button><button id="bt-mka" aria-label="Put it on the photo" title="Put it on the photo">+</button></span></div>'
+    : '<div class="am sm" id="bt-st"><button id="bt-undo" aria-label="Undo">↶</button>' + STICKERS.map(function (t, i) { return '<button data-k="' + i + '" aria-label="Sticker ' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '<button id="bt-pxo" class="pxo" aria-label="Draw one">▦</button></div>') +
     '<div class="bt-pix" hidden><canvas id="bt-px" width="168" height="168" aria-label="Pixels"></canvas><span><button id="bt-pxc" aria-label="Clear">×</button><button id="bt-pxa" aria-label="Put it on the photo">+</button></span></div>' +
     '<div class="am go2"><button id="bt-go" class="go" aria-label="Print">print</button></div>';
-  var tile = function (b, i) { var im = b.querySelector('img') || b.appendChild(Object.assign(new Image(), { alt: '' })); im.src = art(i).toDataURL(); };
-  if (kinds) $$('#bt-st [data-k]').forEach(function (b, i) { tile(b, i); });
+  /* the pixel maker: its kinds and stamps, the chosen one swimming in its window; another, its size, and + puts it on the photo where it can be moved */
+  if (kinds) { var mkw = $('.bt-mk', el), mkc = $('#bt-mkc'), dw = $('.bt-pix', el), mkRun = function () { if (!mkc.isConnected || mkw.hidden) return; var g = mkc.getContext('2d'), a0 = art(MK[BTH.mk], performance.now() / 1000); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 120, 120); g.drawImage(a0, 0, 0, 120, 120); requestAnimationFrame(mkRun); };
+    $('#bt-mko').addEventListener('click', function () { mkw.hidden = !mkw.hidden; dw.hidden = true; $('#bt-pxo').classList.remove('on'); this.classList.toggle('on', !mkw.hidden); if (!mkw.hidden) mkRun(); });
+    $$('.bt-mk [data-m]').forEach(function (b) { b.addEventListener('click', function () { BTH.mk = +b.dataset.m; $$('.bt-mk [data-m]').forEach(function (q) { q.classList.toggle('on', q === b); }); }); });
+    $('#bt-mkn').addEventListener('click', function () { var q = MK[BTH.mk]; BTH.mks[q] = (BTH.mks[q] || 1) + 1; });
+    $('#bt-mks').addEventListener('click', function () { BTH.mkc = BTH.mkc === 24 ? 32 : BTH.mkc === 32 ? 16 : 24; });
+    $('#bt-mka').addEventListener('click', function () { BTH.st.push({ img: art(MK[BTH.mk], performance.now() / 1000), x: 0.3 + Math.random() * 0.4, y: 0.3 + Math.random() * 0.4 }); var q = MK[BTH.mk]; BTH.mks[q] = (BTH.mks[q] || 1) + 1; paint(); });
+    $('#bt-pxo').addEventListener('click', function () { mkw.hidden = true; $('#bt-mko').classList.remove('on'); }); }
   var cv = $('#bt-pv canvas'), pending = 0, paint = function () {
+    var rm = $('#bt-undo.rm'); if (rm) rm.hidden = !BTH.st.length;
     clearTimeout(pending); pending = setTimeout(function () { if (!BTH) return; ditherLib().then(function (D) { return BTH && boothSlip(D, BTH.code).then(function (p) { if (!p) return; cv.width = p.width; cv.height = p.height; cv.getContext('2d').drawImage(p, 0, 0); crisp(); }); }); }, 120);
   };
   /* shown at a whole number of screen dots to each printer dot, so it reads as sharp as it prints */
@@ -2288,15 +2299,20 @@ function boothSlip(D, code, real) {
 /* saved, as well as or instead of a print: the photograph in full colour as large as it came (to 3200), its stamps on, and under it
    the mark, the words and the moon, on paper */
 function boothHQ(btn) {
-  if (!BTH || !BTH.im) return; var im = BTH.big || BTH.im, W = im.width, H = im.height, s = W / 1000, wd = BTH.words.trim(), pad = Math.round(40 * s), fh = Math.round((wd ? 190 : 120) * s);
+  var c = boothHQc(); if (!c) return;
+  c.toBlob(function (b) { if (b) saveBlob(b, 'novel-global-' + Date.now().toString(36) + '.jpg'); }, 'image/jpeg', 0.93); beatK('booth-save');
+  if (btn) { btn.classList.add('ok'); setTimeout(function () { btn.classList.remove('ok'); }, 1600); }
+}
+/* the full colour copy: the photograph as large as it came, stamps on, the mark, the words and the moon under it */
+function boothHQc() {
+  if (!BTH || !BTH.im) return null; var im = BTH.big || BTH.im, W = im.width, H = im.height, s = W / 1000, wd = BTH.words.trim(), pad = Math.round(40 * s), fh = Math.round((wd ? 190 : 120) * s);
   var c = document.createElement('canvas'); c.width = W + pad * 2; c.height = H + pad + fh; var x = c.getContext('2d');
   x.fillStyle = '#F4F1E8'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, pad, pad, W, H); x.save(); x.translate(pad, pad); drawStickers(x, W, H, '#111'); x.restore();
   var y = pad + H + Math.round(44 * s); x.fillStyle = '#111'; x.fillRect(pad, y, Math.round(26 * s), Math.round(26 * s)); x.fillStyle = '#E25C40'; x.beginPath(); x.arc(pad + Math.round(48 * s), y + Math.round(13 * s), Math.round(14 * s), 0, 7); x.fill();
   x.fillStyle = '#111'; x.textBaseline = 'middle'; x.font = '700 ' + Math.round(28 * s) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(74 * s), y + Math.round(14 * s));
   var dt = when(Date.now()); x.font = Math.round(24 * s) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText(dt, c.width - pad - x.measureText(dt).width, y + Math.round(14 * s));
   if (wd) { x.font = 'bold ' + Math.round(44 * s) + 'px ui-monospace, Menlo, monospace'; x.fillText(wd, pad, y + Math.round(84 * s), W); }
-  c.toBlob(function (b) { if (b) saveBlob(b, 'novel-global-' + Date.now().toString(36) + '.jpg'); }, 'image/jpeg', 0.93); beatK('booth-save');
-  if (btn) { btn.classList.add('ok'); setTimeout(function () { btn.classList.remove('ok'); }, 1600); }
+  return c;
 }
 /* the photograph kept for the site's gallery: in colour, its stickers on, as large as the server takes */
 function boothPhoto() {
@@ -2314,9 +2330,13 @@ function boothPass(el, s0, printed) {
   if (!BTH) return;   // already gone back to novel.global
   if (/^#booth/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
   var hs = +((store.get('da.aura.start', {}) || {}).boothHome), t = (isFinite(hs) && hs > 0 ? hs : s0) * 1000; if (printed) store.set('da.who.pass', 1); meUsed(); if ((+store.get('da.lv', 0) || 0) < 1) store.set('da.lv', 1);
-  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel() + '</div>' + (BTH.im ? '<div class="am" id="bt-on"><button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button></div>' : '') + '<i class="pt" style="animation-duration:' + t + 'ms"></i>';
+  /* the print in full colour stays, its save beside it; it waits there (never sent on by itself), and after five seconds the jellyfish's
+     strand sets novel.global down beside the save, the way on */
+  var hq = boothHQc(), src = hq ? hq.toDataURL('image/jpeg', 0.88) : '';
+  el.classList.remove('done'); el.innerHTML = BHEAD + '<div class="kept" aria-label="Kept">' + boothJel('sm') + (src ? '<img class="hqv" alt="" src="' + src + '">' : '') + '</div>' + '<div class="am" id="bt-on">' + (BTH.im ? '<button id="bt-save" class="hq" aria-label="Save it in full colour">↓ colour</button>' : '') + '<a id="bt-ng" class="ngo" href="/" hidden>novel.global</a></div>';
   var sv2 = $('#bt-save', el); if (sv2) sv2.addEventListener('click', function () { boothHQ(this); }); boothEye(el);
-  clearTimeout(BTH.home); BTH.home = setTimeout(function () { boothClose(); if (window.AURA && AURA.home && store.get('da.who.pass', 0)) AURA.home(); }, t);
+  var ng = $('#bt-ng', el); ng.addEventListener('click', function (e) { e.preventDefault(); clearTimeout(BTH && BTH.home); boothClose(); if (window.AURA && AURA.home && store.get('da.who.pass', 0)) AURA.home(); });
+  clearTimeout(BTH.home); BTH.home = setTimeout(function () { if (ng.isConnected) { ng.hidden = false; ng.classList.add('set'); var j = $('.kept .bt-jel', el); if (j) j.classList.add('reach'); } }, Math.min(5000, t));
 }
 function saveBlob(b, name) { var u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = name; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 60000); }
 function boothGap() { var g = +((store.get('da.aura.start', {}) || {}).boothGap); return isFinite(g) && g >= 0 ? g : 10; }
