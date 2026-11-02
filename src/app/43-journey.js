@@ -571,9 +571,7 @@ function idleOn() {
     if (!ph) { ph = document.createElement('span'); ph.id = 'jr-ph'; ph.className = 'jr-ph'; ph.setAttribute('aria-hidden', 'true'); ph.textContent = 'tell a story'; }
     if (ph.parentNode !== c.parentNode) c.parentNode.appendChild(ph); ph.style.left = `${c.offsetLeft + c.offsetWidth + 6}px`; ph.style.top = `${c.offsetTop}px`; ph.style.fontSize = `${Math.max(11, c.offsetHeight * 0.82)}px`; ph.hidden = false; return;
   }
-  const w = !S.open || S.view === 0 ? 'What have you noticed?' : S.view === 1 && faceOf(1) === 'front' ? 'Make a connection' : ''; if (!w) return;
-  const i = $('.maplibregl-ctrl-attrib-button') || $('.maplibregl-ctrl-attrib'); if (!i) return; const r = i.getBoundingClientRect(); if (!r.width) return;
-  idleTip.textContent = w; idleTip.style.left = `${Math.round(r.right + 8)}px`; idleTip.style.top = `${Math.round(r.top + r.height / 2)}px`; idleTip.hidden = false;
+  /* on the map itself: no words beside the map's i, the map is left to speak */
 }
 for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'click']) addEventListener(ev, idleOff, { passive: true, capture: true });
 idleOff();

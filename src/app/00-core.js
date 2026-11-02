@@ -568,7 +568,10 @@ const snd = (() => {
         sp.onaudioprocess = e => { if (got >= want) return; const ib = e.inputBuffer, l = ib.getChannelData(0), r = ib.numberOfChannels > 1 ? ib.getChannelData(1) : l; L.push(new Float32Array(l)); R.push(new Float32Array(r)); got += l.length;
           if (got < want) return; try { tap.disconnect(sp); sp.disconnect(); } catch (er) { /* gone */ }
           try { ok(wavLoop([L, R].map(parts => { const o = new Float32Array(N); let k = 0; for (const p of parts) for (let i = 0; i < p.length && k < want; i++, k++) o[k % N] += p[i]; return o; }), sr)); } catch (er) { no(er); } };
-        tap.connect(sp); sp.connect(c.destination); setTimeout(() => { if (got < want) { try { tap.disconnect(sp); sp.disconnect(); } catch (er) { /* gone */ } no(new Error('record')); } }, ms + tail + 4000); });
+        /* given up only when nothing has come for four seconds (a busy phone records slower, and still records), or the sound was built again */
+        let seen = performance.now(), had = 0; const was = c, tp = tap; const dog = setInterval(() => { if (got >= want) { clearInterval(dog); return; } if (got > had) { had = got; seen = performance.now(); }
+          if (performance.now() - seen > 4000 || ctx !== was) { clearInterval(dog); try { tp.disconnect(sp); sp.disconnect(); } catch (er) { /* gone */ } no(new Error('record')); } }, 500);
+        tap.connect(sp); sp.connect(c.destination); });
     },
     wake() { const c = ready(); if (!c) return false; try { const b = c.createBuffer(1, 1, 22050); const s0 = c.createBufferSource(); s0.buffer = b; s0.connect(c.destination); s0.start(0); } catch (e) { /* silent */ } return true; },
     /* El Niño: the same tempo, more heat: the mix opened and driven harder */

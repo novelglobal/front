@@ -2145,11 +2145,20 @@ function pixVary(src, v) {
   return o;
 }
 function boothJet(j) { if (!j) return; var l = j.querySelector('.lid'); j.classList.remove('jet'); void j.getBoundingClientRect(); j.classList.add('jet'); if (l) { l.classList.add('shut'); setTimeout(function () { l.classList.remove('shut'); }, 180); } }
+/* the water it floats in, behind it and quiet: marine snow sinking, a few far jellyfish drifting, two broken strands of stinging
+   beads going by. Made new each time, never the same twice */
+function boothSea() {
+  var r = function (a, b) { return a + Math.random() * (b - a); }, f = function (n) { return n.toFixed(1); }, s = '', i;
+  for (i = 0; i < 30; i++) { var d = r(22, 48); s += '<i style="--l:' + f(r(0, 100)) + '%;--s:' + f(r(1, 2.6)) + 'px;--d:' + f(d) + 's;--dl:-' + f(r(0, d)) + 's;--o:' + r(0.12, 0.45).toFixed(2) + ';--x:' + f(r(-40, 40)) + 'px"></i>'; }
+  for (i = 0; i < 3; i++) s += '<b class="far" style="left:' + f(r(6, 88)) + '%;top:' + f(r(8, 78)) + '%;--k:' + r(0.5, 1.1).toFixed(2) + ';--d:' + f(r(26, 44)) + 's;--x:' + f(r(-60, 60)) + 'px"><svg viewBox="-12 -12 24 34"><path d="M-10 0Q-10-11 0-11Q10-11 10 0Z"/><path d="M-6 1q2 8-1 15M0 1q-2 10 1 18M6 1q-2 8 1 15"/></svg></b>';
+  for (i = 0; i < 2; i++) s += '<u style="left:' + f(r(10, 85)) + '%;--d:' + f(r(50, 80)) + 's;--dl:-' + f(r(0, 50)) + 's"></u>';
+  return '<div class="bt-sea" aria-hidden="true">' + s + '</div>';
+}
 function boothStart(el) {
   el = el || $('#booth'); if (!el.__head) { el.__head = 1; el.addEventListener('click', function (e) { if (e.target.closest('.bm, #bt-site')) { e.preventDefault(); boothClose(); } }); } BTH.im = null; BTH.big = null; BTH.file = null; BTH.px = null; BTH.st = []; BTH.words = ''; BTH.sent = null;
   clearTimeout(BTH.t);
   /* one touch: the jellyfish's eye. A phone then offers its camera or its photos; a computer, a file */
-  el.innerHTML = BHEAD + '<label class="eye" aria-label="A photo">' + boothJel() + '<input type="file" accept="image/*" hidden></label><nav class="bp" aria-label="Which printer"></nav>';
+  el.innerHTML = '<label class="eye" aria-label="A photo">' + boothJel() + '<input type="file" accept="image/*" hidden></label><nav class="bp" aria-label="Which printer"></nav>' + boothSea();
   $$('input', el).forEach(function (inp) { inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; if (f) boothPic(f); setTimeout(function () { inp.value = ''; }, 1500); }); });
   var lb = $('.eye', el); lb.addEventListener('click', function () { boothJet($('.bt-jel', lb)); });
   boothEye(el);

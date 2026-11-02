@@ -277,27 +277,35 @@ function scoreOf(m) {
   for (const f of m.figs || []) if (f.b != null) figs[at(f.b)].push(f.id);
   const o = { n, sc, figs }; SCORES.set(m, o); return o;
 }
+/* how much this phone can sound at once, learned as it plays: every note while it keeps up; when it falls behind (a step missed),
+   fewer voices a sixteenth for a while, the tracks taking turns at them so each is still heard; after eight calm seconds, more again.
+   Steps missed are let go, never crowded into one moment (that is what made a busy four-track skip, then fall silent) */
+const LOAD = { lv: 0, at: 0 }, LOAD_B = [99, 8, 6, 4, 3, 2];
 function loopTick() {
   const now = performance.now(), hold = !LOOP.on || document.hidden || !prefs.sound || !S.radio || LOOP.hush;
-  const share = 1 / Math.sqrt(LOOP.ms.length || 1), B = snd.lite ? 1 : 2;
+  const share = 1 / Math.sqrt(LOOP.ms.length || 1), B = snd.lite ? 1 : 2, due = []; let late = false;
   for (const tr of LOOP.ms) {
     const { n, sc, figs } = scoreOf(tr.m), st = Math.floor((now - tr.t0) / loopDur(tr.m) * n), prev = tr.step; tr.step = st;
-    if (hold || prev == null || st <= prev) continue;
-    for (let s = Math.max(prev + 1, st - 2); s <= st; s++) { const i = ((s % n) + n) % n; loopStep(tr, sc[i], Math.floor(s / n), share, B); for (const id of figs[i]) strings.playFig(id); }
+    if (hold || prev == null || st <= prev) continue; if (st - prev > 1) late = true;
+    const i = ((st % n) + n) % n; due.push({ tr, notes: sc[i], turn: Math.floor(st / n), figs: figs[i], st });
   }
+  if (late && now - LOAD.at > 1500) { LOAD.lv = Math.min(LOAD_B.length - 1, LOAD.lv + 1); LOAD.at = now; } else if (LOAD.lv && now - LOAD.at > 8000) { LOAD.lv--; LOAD.at = now; }
+  let left = LOAD_B[LOAD.lv]; const r0 = due.length ? due[0].st % due.length : 0;
+  for (let j = 0; j < due.length; j++) { const d = due[(j + r0) % due.length]; left -= loopStep(d.tr, d.notes, d.turn, share, Math.min(B, Math.max(0, left))); for (const id of d.figs) strings.playFig(id); }
 }
 /* one sixteenth of one track: up to B of its notes (one on a slower phone), turning through them turn by turn; each sounded as
    the radar sounds it, at the level and mood it was kept with (the live loop with the layer keys as they are now) */
 function loopStep(tr, notes, turn, share, B) {
-  const Ls = tr.m.layers || {}, on = notes.filter(x => (tr.live ? trackOn(x.k) : (Ls[x.k] || {}).on)); if (!on.length) return;
+  const Ls = tr.m.layers || {}, on = notes.filter(x => (tr.live ? trackOn(x.k) : (Ls[x.k] || {}).on)); if (!on.length || B < 1) return 0; let n = 0;
   for (let j = 0; j < Math.min(B, on.length); j++) {
     const { k, c } = on[(turn * B + j) % on.length], L = Ls[k] || {}; const lvl = tr.live ? lvlOf(k) : (L.lvl == null ? 0.7 : +L.lvl); if (lvl < 0.02) continue;
     const v = lvl * share, mood = tr.live ? moodOfLayer(k) : L.mood || moodOfLayer(k), pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
     if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * v * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life'), sure: true }); }
     else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * v, pan, fx: fxOf('water'), sure: true });
     else ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * v, pan, fx: fxOf(k), sure: true });
-    if (ok) flashLayer(k);
+    if (ok) { flashLayer(k); n++; }
   }
+  return n;
 }
 /* where the radar is: placed where the map is looking, if it has not been yet (the radio opened in the aura's window) */
 const here = () => { if (!placed()) startRadio(false); return placed() && !!S.scan && Number.isFinite(+S.scan.lat); };
