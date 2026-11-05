@@ -30,10 +30,15 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 
-SERVER = os.environ.get('DA_SERVER', 'https://novel.global').rstrip('/')
-PRINTER = os.environ.get('DA_PRINTER', '')
-TOKEN = os.environ.get('DA_TOKEN', '')
-VERSION = 'bridge 31 Oct b'   # said to the site beside its Wi-Fi, for the approval page
+def env(k, d=''):
+    # a value as typed: spaces, quotes and a pasted line end (from a phone or a Windows file) taken off, so the token still matches
+    return os.environ.get(k, d).strip().strip('"\'').strip()
+
+
+SERVER = env('DA_SERVER', 'https://novel.global').rstrip('/')
+PRINTER = env('DA_PRINTER')
+TOKEN = env('DA_TOKEN')
+VERSION = 'bridge 6 Nov'   # said to the site beside its Wi-Fi, for the approval page
 PRINTD = os.environ.get('PRINTD_URL', 'http://127.0.0.1:8080').rstrip('/')
 PRINTD_KEY = os.environ.get('PRINTD_API_KEY', '')
 MESH = os.environ.get('DA_MESH', '')        # '' for none; 'auto' (plugged in); a serial device such as /dev/ttyUSB0; tcp:auto (found
@@ -278,7 +283,7 @@ def main():
                 return 0
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                log.error('the token was refused: make a new one on the approval page')
+                log.error('the token was refused by %s for printer %s: make a new one on that site’s approval page (PRINTERS, NEW TOKEN) and put it in /etc/da-pull.env', SERVER, PRINTER)
                 wait = 60
             else:
                 log.warning('the server answered %s', e.code)
