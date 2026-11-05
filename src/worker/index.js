@@ -507,6 +507,46 @@ async function report(db, req, id, job) {
   return json({ ok: true });
 }
 
+/* ───────── an island pairs without a token typed: it asks for a code, prints it, and asks again until the code is approved on the
+   approval page; then it is handed its printer and a token, once. A code lasts a quarter of an hour; only its hash of the island's
+   own secret is kept, and no token is kept at all (it is made at the moment it is handed over). The table is made on first use ───────── */
+const PAIR_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', PAIR_FOR = 15 * 60e3;
+const pairsReady = new WeakMap();
+const pairs = db => { if (!pairsReady.has(db)) pairsReady.set(db, db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT, printer TEXT, created INTEGER NOT NULL)').run().catch(e => { pairsReady.delete(db); throw e; })); return pairsReady.get(db); };
+const pairCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+async function pairAsk(db, env, req) {
+  if (await tooMany(db, env, req, 'pair', 12, H)) return fail(429, 'too many');
+  await pairs(db); const b = await body(req, 2048), t = now();
+  const a = crypto.getRandomValues(new Uint8Array(8)), code = [...a].map(x => PAIR_ABC[x % 32]).join(''), device = rid(32);
+  const name = String(b.name || '').replace(/[^\w .·'&-]/g, '').trim().slice(0, 40);
+  await db.batch([db.prepare('DELETE FROM pairs WHERE created < ?').bind(t - PAIR_FOR), db.prepare('INSERT INTO pairs (code, device, name, created) VALUES (?, ?, ?, ?)').bind(code, await sha256(device), name, t)]);
+  return json({ code, device, every: 5, expires: t + PAIR_FOR }, 201);
+}
+async function pairPoll(db, req) {
+  await pairs(db); const b = await body(req, 2048); if (typeof b.device !== 'string' || b.device.length > 64) return fail(400, 'device');
+  const r = await db.prepare('SELECT * FROM pairs WHERE device = ? AND created > ?').bind(await sha256(b.device), now() - PAIR_FOR).first();
+  if (!r) return fail(404, 'gone');
+  if (!r.printer) return json({ waiting: true, every: 5 }, 202);
+  const tok = rid(32);
+  await db.batch([db.prepare('UPDATE printers SET token = ?, seen = NULL, can = NULL, off = NULL WHERE id = ?').bind(await sha256(tok), r.printer), db.prepare('DELETE FROM pairs WHERE code = ?').bind(r.code)]);
+  return json({ printer: r.printer, token: tok });
+}
+/* the approval page: a code looked up (from the island's slip, scanned), then approved for a printer here or a new one by the island's name */
+async function adminPair(db, req, code) {
+  await pairs(db); code = pairCode(code);
+  const r = code.length === 8 && await db.prepare('SELECT code, name, printer, created FROM pairs WHERE code = ? AND created > ?').bind(code, now() - PAIR_FOR).first();
+  if (!r) return fail(404, 'no such code, or it is older than a quarter of an hour');
+  if (req.method === 'GET') return json(r);
+  const b = await body(req); let id = String(b.printer || '');
+  if (!id) {
+    const base = String(b.name || r.name || 'island').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'island';
+    id = base; for (let i = 2; await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first(); i++) id = `${base}-${i}`;
+    await db.prepare("INSERT INTO printers (id, name, paper, created) VALUES (?, ?, '80', ?)").bind(id, String(b.name || r.name || id).slice(0, 40), now()).run();
+  } else if (!(await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first())) return fail(404, 'no such printer');
+  await db.prepare('UPDATE pairs SET printer = ? WHERE code = ?').bind(id, code).run();
+  return json({ ok: true, printer: id });
+}
+
 /* ───────── the approval page: everything waiting, shown, refused; the printers and their tokens ───────── */
 async function adminAuth(db, env, req) {
   if (!env.ADMIN_KEY) return fail(503, 'set the ADMIN_KEY secret in Cloudflare first');
@@ -590,6 +630,7 @@ async function admin(db, env, req, parts) {
   if (what === 'export' && req.method === 'GET') return exportAll(db);
   if (what === 'restore' && req.method === 'POST') return restoreAll(db, req);
   if (what === 'reset' && req.method === 'POST') return resetSite(db, env, req);
+  if (what === 'pair' && id && (req.method === 'GET' || req.method === 'POST')) return adminPair(db, req, id);
   if (what === 'printers' && !id) {
     const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.auto, p.live, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
@@ -867,6 +908,8 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'warm' && !p[1] && m === 'POST') { if (now() - USE.warmAt > 60e3) { USE.warmAt = now(); await db.prepare('UPDATE printers SET warm = ? WHERE token IS NOT NULL OR touch IS NOT NULL').bind(now()).run(); } return new Response(null, { status: 204, headers: TEXT_H }); }
   if (p[0] === 'printers' && p[1] && p[2] === 'next' && m === 'GET') return next(db, req, p[1]);
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
+  if (p[0] === 'pair' && !p[1] && m === 'POST') return pairAsk(db, env, req);
+  if (p[0] === 'pair' && p[1] === 'poll' && !p[2] && m === 'POST') return pairPoll(db, req);
   if (p[0] === 'touch' && p[1] && !p[2] && m === 'GET') return touchList(db, req, p[1]);
   if (p[0] === 'touch' && p[1] && p[2] && m === 'POST') return touchAct(db, req, p[1], p[2]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));

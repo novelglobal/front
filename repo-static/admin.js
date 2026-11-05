@@ -26,7 +26,7 @@
       el('button', { type: 'submit', text: 'OPEN' }), el('p', { class: 'note', id: 'gate-note' }));
     return f;
   }
-  async function open() { $('#tabs').hidden = false; await show(tab); badges(); }
+  async function open() { $('#tabs').hidden = false; if (/pair=/.test(location.hash)) tab = 'printers'; await show(tab); badges(); }
   /* how many wait, beside their names in the rail */
   async function badges() { try { const o = await (await api('overview')).json(); $('#n-waiting').textContent = o.stories.waiting || ''; $('#n-places').textContent = o.places.waiting || ''; } catch (e) { /* later */ } }
   /* a page's own heading, and a line on what it is for */
@@ -389,7 +389,20 @@
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for INTENTION and W.I.S.H.?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ words: '' }) }); show('stations'); } })));
     return sec;
   }
-  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers'), ...list.map(printerCard)); }
+  /* an island pairs by the code it prints: scanned, the code arrives here in the address (#pair=CODE); approved, the island takes its token by itself */
+  function pairCard(list) {
+    const want = (location.hash.match(/pair=([\w-]+)/) || [])[1] || ''; const sec = el('section', { class: 'printer' }), out = el('div', {});
+    const code = el('input', { type: 'text', value: want, placeholder: 'CODE FROM THE SLIP', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Pairing code' });
+    const look = async () => { out.replaceChildren(); const c = code.value.trim(); if (!c) return; let j;
+      try { j = await (await api('pair/' + encodeURIComponent(c))).json(); } catch (e) { out.replaceChildren(el('p', { class: 'note', text: 'NO SUCH CODE, OR IT IS OLDER THAN A QUARTER OF AN HOUR. THE ISLAND PRINTS A NEW ONE BY ITSELF.' })); return; }
+      if (j.printer) { out.replaceChildren(el('p', { class: 'note', text: `APPROVED FOR ${j.printer.toUpperCase()}. THE ISLAND PRINTS A SLIP ONCE IT HAS ITS TOKEN.` })); return; }
+      const pick = el('select', { 'aria-label': 'Printer' }, el('option', { value: '', text: `A NEW PRINTER: ${(j.name || 'ISLAND').toUpperCase()}` }), ...list.map(p => el('option', { value: p.id, text: `${(p.name || p.id).toUpperCase()}${p.paired ? ' (ITS OLD PI STOPS)' : ''}` })));
+      out.replaceChildren(el('p', { class: 'note', text: `${j.code.replace(/(.{4})/, '$1-')} · ${(j.name || 'AN ISLAND').toUpperCase()} · ASKED ${when(j.created)}` }), el('div', { class: 'acts' }, pick,
+        el('button', { type: 'button', class: 'on', text: 'APPROVE', onclick: async () => { await api('pair/' + j.code, { method: 'POST', body: JSON.stringify({ printer: pick.value, name: j.name }) }); history.replaceState(null, '', location.pathname); show('printers'); } }))); };
+    sec.append(el('h3', { text: 'PAIR AN ISLAND' }), el('div', { class: 'note', text: "SCAN THE CODE ON THE ISLAND'S SLIP, OR TYPE ITS EIGHT LETTERS HERE." }), el('div', { class: 'acts' }, code, el('button', { type: 'button', text: 'LOOK UP', onclick: look })), out);
+    if (want) look(); return sec;
+  }
+  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers'), pairCard(list), ...list.map(printerCard)); }
 
   /* ───────── the portfolio: posts written here, kept as drafts until published; a cover, a category, links ───────── */
   async function coverOf(id, img) { try { const r = await api(`posts/${id}/cover`); img.src = URL.createObjectURL(await r.blob()); } catch (e) { /* none */ } }
@@ -655,7 +668,7 @@
   /* ───────── the guide: how each part works, the stack, and where things are ───────── */
   const G = [
     ['Every day', ['Open OVERVIEW: the numbers in coral want a look. WAITING holds what was sent: SHOW puts it on the map and the board, and sends it to its printer; REFUSE keeps it here, never shown; ARCHIVE puts it away (ARCHIVE can bring it back for a year).', 'PLACES SUGGESTED by visitors wait the same way under PLACES.']],
-    ['Printers', ['PAIR A PRINTER shows a token once: it goes on the Raspberry Pi in /etc/da-pull.env. PRINTS AFTER APPROVAL holds each slip here (or on its touch screen, if one is paired) until shown; PRINTS WITHOUT APPROVAL prints at once.', 'MESH ON sends a line to the T-Beam only for slips sent to the mesh. Paper always prints before any mesh line.', 'TEST PRINT, TURN OFF and the state of each part (Pi, screen, mesh, the last slip) are on each printer.']],
+    ['Printers', ['PAIR AN ISLAND: an island (the island kit on a Raspberry Pi) prints a code; scan it and APPROVE, and it takes its token by itself. PAIR A PRINTER shows a token once: it goes on the Raspberry Pi in /etc/da-pull.env. PRINTS AFTER APPROVAL holds each slip here (or on its touch screen, if one is paired) until shown; PRINTS WITHOUT APPROVAL prints at once.', 'MESH ON sends a line to the T-Beam only for slips sent to the mesh. Paper always prints before any mesh line.', 'TEST PRINT, TURN OFF and the state of each part (Pi, screen, mesh, the last slip) are on each printer.']],
     ['Places', ['Add one under PLACES, or many under DATA → BRING IN PLACES from a sheet. A sheet has a first row of column names: n, cat, role, what, addr, sub, url, lat, lng. Right-click a spot in a map app to copy its latitude and longitude.', 'Places written into the site itself (places.js) are always there too.']],
     ['Words, boards and cities', ['WORDS AND BOARDS rewrites the words on INTENTION and W.I.S.H., the first board every visitor gets, and BOARD 00 (open it to editing, change it in the studio, send it, then show it under WAITING).', 'Cities: a line # Name begins a city, "centre, lat, lng" places it, and each other line is "name, lat, lng".']],
     ['Species and offline', ['SPECIES lists every kind of life the devices have met, the newest first, learned from their pulls of sightings: no device is asked for anything extra. MARK ONLY are the kinds not yet in the field list (src/field.js); download them as a sheet and add the ones that matter, with their months, needs and who to call. Offline, each device keeps what it has met: sightings, photographs and map tiles once seen, the field list and the app. Nothing is asked of the site while a page is hidden or left untouched for a quarter of an hour, and nothing runs on the site while no one is using it.']],
@@ -674,6 +687,8 @@
 
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
   $('#out').addEventListener('click', () => lock('LOCKED'));
+  /* a second island's code scanned while this page is open */
+  addEventListener('hashchange', () => { if (KEY && /pair=/.test(location.hash)) show('printers'); });
   $('#gate').addEventListener('submit', e => { e.preventDefault(); KEY = $('#key').value.trim(); if (!KEY) return; sessionStorage.setItem('da.admin', KEY); open(); });
   if (KEY) open();
 })();

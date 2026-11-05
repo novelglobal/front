@@ -436,6 +436,20 @@ if (run('portfolio')) try {
   await ctx.close();
 } catch (e) { results.push(`FAIL  section portfolio: ${e.message.split('\n')[0]}`); }
 
+// ───────── pairing an island: its slip, scanned, opens the approval page on PRINTERS with its code; APPROVE, and the island takes its token by itself (ONLY=pair) ─────────
+if (run('pair')) try {
+  const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'pair');
+  const ask = await (await apiServer.fetch(new URL('/api/pair', API_O), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Laundromate' }) })).json();
+  await page.goto('https://oan.test/admin.html#pair=' + ask.code); await sleep(800);
+  await page.fill('#key', ADMIN_KEY); await page.click('#gate button[type="submit"]'); await sleep(1500);
+  const seen = await page.evaluate(() => ({ tab: (document.querySelector('#tabs [data-tab].on') || {}).dataset?.tab, card: [...document.querySelectorAll('section.printer h3')].map(h => h.textContent)[0], note: (document.querySelector('section.printer .note + .acts + div .note') || {}).textContent || '', opt: (document.querySelector('section.printer select option') || {}).textContent || '' }));
+  await page.click('section.printer button:has-text("APPROVE")'); await sleep(900);
+  const got = await (await apiServer.fetch(new URL('/api/pair/poll', API_O), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ device: ask.device }) })).json();
+  check('the code on an island slip, scanned, opens PAIR AN ISLAND with its name; APPROVE hands the island a new printer and its token', seen.tab === 'printers' && seen.card === 'PAIR AN ISLAND' && /LAUNDROMATE/.test(seen.note) && /A NEW PRINTER: LAUNDROMATE/.test(seen.opt) && got.printer === 'laundromate' && got.token && got.token.length === 32, JSON.stringify({ seen, printer: got.printer }));
+  await shot(page, '04-admin-pair.png');
+  await ctx.close();
+} catch (e) { results.push(`FAIL  section pair: ${e.message.split('\n')[0]}`); }
+
 // ───────── the fronts: the quickest way from a sound to a receipt; the example; BOARD 00, and its editing from the approval page ─────────
 if (run('fronts')) try {
   const ctx = await newCtx(); await wire(ctx, { first: true }); await ctx.addInitScript(() => { window.__noStart = true; }); const page = await ctx.newPage(); watch(page, 'fronts');

@@ -262,6 +262,16 @@ try {
       JSON.stringify({ old: old.status, exit: run2.status, note: fs.existsSync(note), slips: slips.length, again: again.status, can: (pl.json.printers.find(p => p.id === 'elsie') || {}).can, log: (run2.stdout + run2.stderr).slice(-300) }));
     fs.rmSync(dir2, { recursive: true, force: true });
   } else results.push('SKIP  the receiver: no Python here');
+  /* an island pairs without a token typed: a code asked for, looked up and approved here, then its token handed over once and working */
+  { const pk = await call('/api/pair', { method: 'POST', ip: '192.0.2.40', body: { name: 'Laundromate' } }), D = pk.json && pk.json.device, C = pk.json && pk.json.code;
+    const w0 = await call('/api/pair/poll', { method: 'POST', body: { device: D } }), bad = await call('/api/pair/poll', { method: 'POST', body: { device: 'nope' } });
+    const lk = await call(`/api/admin/pair/${C.slice(0, 4)}-${C.slice(4).toLowerCase()}`, { key: KEY }), lkNo = await call(`/api/admin/pair/${C}`);
+    const ap = await call(`/api/admin/pair/${C}`, { method: 'POST', key: KEY, body: { printer: '' } });
+    const got = await call('/api/pair/poll', { method: 'POST', body: { device: D } }), twice = await call('/api/pair/poll', { method: 'POST', body: { device: D } });
+    const nx = await call(`/api/printers/${got.json && got.json.printer}/next`, { token: got.json && got.json.token }), pl = (await call('/api/admin/printers', { key: KEY })).json.printers;
+    check('an island pairs by a printed code: approved on the approval page, it is handed a new printer and a working token once', pk.status === 201 && /^[A-Z2-9]{8}$/.test(C) && w0.status === 202 && bad.status === 404 && lk.status === 200 && lk.json.name === 'Laundromate'
+      && [401, 429].includes(lkNo.status) && ap.json.printer === 'laundromate' && got.status === 200 && got.json.printer === 'laundromate' && got.json.token.length === 32 && twice.status === 404 && nx.status === 204 && pl.some(p => p.id === 'laundromate' && p.paired),
+      JSON.stringify([pk.status, w0.status, bad.status, lk.status, lkNo.status, ap.json, got.status, twice.status, nx.status])); }
   /* a message to novel.global, from the portfolio: approved, it prints; it is never listed for anyone, nor its photograph */
   const ms = await call('/api/stories', { method: 'POST', ip: '203.0.113.77', body: story('DA-3MSG', { kind: 'message', dest: 'novelglobal', escpos: Buffer.from([0x1B, 0x40, 72, 10]).toString('base64'), photo: JPEG }) });
   await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });
