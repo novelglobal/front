@@ -186,12 +186,11 @@ viewEl.addEventListener('change', e => {
 /* which printer a print goes to: the one chosen, while it is online; else the first online; else novel.global's own, where it
    waits */
 const prnNow = () => { const on = printersOn(); return on.find(p => p.id === prefs.prn) || on[0] || MASTER; };
-const prnPlace = p => (p === MASTER ? 'NOVEL.GLOBAL' : String(p.sub ? title(p.sub) : p.addr || '').toUpperCase());
 function printFront() {
   const s = pressStory(); const on = printersOn(); const p = prnNow();
   /* more than one online: each with its light and its place, to choose from */
-  const info = on.length > 1 ? `<b>PRINT ON</b>${on.map(x => `<button type="button" class="jp-prn${x === p ? ' on' : ''}" data-prn-pick="${esc(x.id)}" aria-pressed="${x === p}"><i class="tp-led"></i><b>${esc(String(x.n).toUpperCase())}</b><small>${esc(prnPlace(x))}</small></button>`).join('')}`
-    : `<b>${esc(String(p ? p.n : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small>`;
+  const info = on.length > 1 ? `<b>PRINT ON</b>${on.map(x => `<button type="button" class="jp-prn${x === p ? ' on' : ''}" data-prn-pick="${esc(x.id)}" aria-pressed="${x === p}"><i class="tp-led"></i><b>${esc(prnWord(x).toUpperCase())}</b></button>`).join('')}`
+    : `<b>${esc((p ? prnWord(p) : 'novel.global').toUpperCase())}</b><small>${on.length ? 'ONLINE' : 'OFFLINE · PRINTS WAIT 24 H'}</small>`;
   const stk = radiusSpecies(3).map((sp, i) => `<i class="jp-stk s${i}"><img src="${esc(photoURL(sp.ph, 'square'))}" alt="" loading="lazy"></i>`).join('');
   return `<section class="sec front-p simple-p" id="sec-out"><div class="dev tepra jr-dev${upCls()}"><div class="tp-slot" aria-hidden="true"><i class="tp-paper"></i></div>${SCREWS}<i class="hack h-tie" aria-hidden="true"></i>`
     + `<div class="jp-row"><button type="button" class="jp-sel" data-pick="strip" aria-label="Select: stickers, lives"><span class="jp-sheet" aria-hidden="true">${stk}<i class="jp-stk jelly">${M.jellySVG('#0F3B40', 'rgba(127,255,224,.55)', 30)}</i><i class="jp-peel"></i></span><i class="jp-plus" aria-hidden="true">${icon('plus')}</i></button>`

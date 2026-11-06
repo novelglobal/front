@@ -2162,7 +2162,7 @@
         S.round = performance.now() / 1000; S.sting = S.round;
         btn.disabled = false; btn.innerHTML = svgI('seed'); btn.setAttribute('aria-label', 'Begin a new piece');
         var hero = panel.querySelector('.au-hero'); if (hero) hero.classList.add('kept');
-        setTimeout(function () { WALL = Math.max(0, showList().map(function (q) { return q.id; }).indexOf(item.id)); if (S.stage === 3) paint(); }, 2200);
+        setTimeout(function () { WALL = Math.max(0, showList().map(function (q) { return q.id; }).indexOf(item.id)); WALL_ID = item.id; WALL_SET = ''; if (S.stage === 3) paint(); }, 2200);
       });
     }).catch(function () { st.innerHTML = NG.pips('failed'); btn.disabled = false; btn.classList.remove('going'); });
   }
@@ -2270,12 +2270,14 @@
     if (v === '888') { SHOWN = true; store.set('da.showcase', 1); i.value = ''; $('#au-keyin').hidden = true; root.classList.remove('keyon'); keyName(); applyGates(); if (S.mode === 'iruk') paint(); beat('showcase'); harp([0, 4, 7, 12, 16]); NG.toast && NG.toast('888 · OPEN'); return; }
     i.disabled = true; NG.useCode(v).then(function (ok) { i.disabled = false; if (!ok) { i.value = ''; bell(1, 0.1); return; } $('#au-keyin').hidden = true; keyName(); applyGates(); if (!store.get('da.who.ok', 0)) NG.toast && NG.toast('IN · NOT PRINTED YET'); root.classList.add('keyon'); setTimeout(function () { if ($('#au-keyin').hidden) root.classList.remove('keyon'); keyName(); }, 4000); harp([0, 4, 7]); }); });
   function closeSig() { var el = $('#au-sig'); if (el) el.remove(); }
-  var WALL = 0, EMB = null;
+  /* the one in front, kept by which it is: posters coming in from the island move the rest along, never it */
+  var WALL = 0, EMB = null, WALL_ID = '', WALL_SET = '';
   var making = function () { return !!P && !P.sent && filled(); };
   var showList = function () { return (making() ? [{ id: 'now', now: 1 }] : []).concat(slides()); };
   function wallHTML() {
     var all = showList(); if (!all.length) return '<button class="au-go" data-go="0" aria-label="Begin a piece"><i></i>' + svgI('seed') + '<b class="au-arrow"></b></button><div class="au-press">' + hand('au-sm', svgI('in'), 'id="au-sigk0" aria-label="Take in a line"') + '</div>';
-    WALL = Math.max(0, Math.min(WALL, all.length - 1));
+    var ids = all.map(function (q) { return q.id; }), set = ids.join(); if (set !== WALL_SET && WALL_ID && !making() && ids.indexOf(WALL_ID) >= 0) WALL = ids.indexOf(WALL_ID);
+    WALL = Math.max(0, Math.min(WALL, all.length - 1)); WALL_SET = set; WALL_ID = ids[WALL];
     return '<div class="au-line2" aria-hidden="true"></div><div class="au-wall"><div class="au-etrack">' + all.map(function (f, i) { return '<figure class="au-eslide' + (f.now ? ' now' : '') + '" data-n="' + i + '"><span class="au-hung"><i class="au-clip l"></i><i class="au-clip r"></i><b class="au-st' + (f.now ? ' mk' : f.wall ? '' : ' pr') + '">' + (f.now ? 'draft' : f.wall ? 'only here' : 'shared') + '</b>' + (liveOf(f) ? '<i class="au-lvd" aria-label="Live on novel.global"></i>' : '') + (f.now ? '<canvas></canvas>' : '<img alt="" src="' + f.src + '">') + '</span></figure>'; }).join('') + '</div></div>' +
       (all.length > 1 ? '<nav class="au-wdots">' + all.map(function (q, i) { return '<i class="' + (i === WALL ? 'on' : '') + '"></i>'; }).join('') + '</nav>' : '') +
       '<div class="au-press" id="au-wpress"></div>';
@@ -2284,7 +2286,7 @@
   var liveOf = function (f) { return !f.now && !!f.code && !f.down && !f.wall && (!!f.island || !!ONISL[f.code] || (LIVE || []).indexOf(f.code) >= 0); };
   /* which printer, when more than one is set up: its name under it, its light lit while it listens; a touch moves to the next */
   function prnKey() { var l = S.prns || [], p = l.length > 1 && S.pmode !== 'wall' && S.pmode !== 'send' ? NG.prnPick(l) : null; if (!p) return '';
-    return hand('au-sm au-mode au-to' + (p.ready ? ' on' : ''), '<i class="au-led"></i><small class="au-mw">' + esc(p.name || p.id) + '</small>', 'id="au-to" aria-label="Printer: ' + esc(p.name || p.id) + (p.ready ? ', online' : ', offline') + '"'); }
+    return hand('au-sm au-mode au-to' + (p.ready ? ' on' : ''), '<i class="au-led"></i><small class="au-mw">' + esc(NG.prnWord(p)) + '</small>', 'id="au-to" aria-label="Printer: ' + esc(NG.prnWord(p)) + (p.ready ? ', online' : ', offline') + '"'); }
   function wallPress() {
     if (!S.prnAt || Date.now() - S.prnAt > 60e3) { S.prnAt = Date.now(); NG.printers().then(function (l) { var was = (S.prns || []).map(function (p) { return p.id + p.ready; }).join(); S.prns = l; if (l.map(function (p) { return p.id + p.ready; }).join() !== was) wallPress(); }); }
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
@@ -2295,7 +2297,7 @@
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'sun'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + /* already live: no key for it, nothing to ask again */ (canLive && !isLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
-      (f.code && !f.wall && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (f.island ? hand('au-sm', svgI('hide'), 'id="au-hide" data-fw="hide" aria-label="Hide it from this phone"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
+      (f.code && !f.wall && earned('talk') ? hand('au-sm au-ptk', svgI('xtalk'), 'id="au-ptalk" data-fw="talk" aria-label="Its talk"') : '') + (f.island ? hand('au-sm', svgI('hide'), 'id="au-hide" data-fw="hide" aria-label="Hide it from this phone"') : '') + (ownSlide(f) ? hand('au-sm au-del', svgI('bin'), 'id="au-drop" data-fw="delete here" aria-label="Delete it from this phone (what was sent stays on novel.global)"') : '') + (ownSlide(f) && f.code && !f.down && store.get('da.who.pass', 0) ? hand('au-sm au-del', svgI('offsite'), 'id="au-down" data-fw="take down" aria-label="Take it down from novel.global (it stays on this phone)"') : '') + (f.src && (f.island || (f.code && !f.wall)) ? hand('au-sm', svgI('print'), 'id="au-again" data-fw="print" aria-label="Print it again"') + '<span class="au-pips" id="au-wpips"></span>' : '') + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-print" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1); foldRow(pr, 2);
     [].forEach.call(pr.querySelectorAll('[data-w]'), function (b) { b.addEventListener('click', function () { if (EMB) { if (+b.dataset.w > 0) EMB.scrollNext(); else EMB.scrollPrev(); } else { WALL = (WALL + (+b.dataset.w) + all.length) % all.length; paint(); } }); });
     if (f.now) {
       $('#au-print').addEventListener('click', function () { printNow(); });
@@ -2325,6 +2327,8 @@
           .catch(function () { if (say) say.remove(); NG.toast('NOT LIVE · TRY AGAIN'); paint(); }); });
       var br = $('#au-bring'); if (br) br.addEventListener('click', function () { P = unpack(f.piece); P.sent = 0; think(); draftSave(pack(P)); miniSoon(); bell(5, 0.22); step(2); });
       var hk = $('#au-hide'); if (hk) hk.addEventListener('click', function () { HIDE = [f.code].concat(HIDE.filter(function (c) { return c !== f.code; })).slice(0, 200); store.set('da.island.hide', HIDE); ISLAND = ISLAND.filter(function (q) { return q.code !== f.code; }); WALL = Math.max(0, WALL - 1); bell(1, 0.12); paint(); });
+      var ag = $('#au-again'); if (ag) ag.addEventListener('click', function (ev) { ev.stopPropagation(); var st = $('#au-wpips'); ag.disabled = true; st.innerHTML = NG.pips('sending'); bell(4, 0.14);
+        NG.printAgain(f.src, f.code).then(function (s) { st.innerHTML = NG.pips(s); squirt(); }).catch(function (e) { st.innerHTML = NG.pips(e && e.status ? 'failed' : 'outbox'); }).then(function () { ag.disabled = false; }); });
       var dr = $('#au-drop'); if (dr) NG.sureTap(dr, function () { dropSlide(f).then(function () { WALL = Math.max(0, WALL - 1); paint(); }); bell(1, 0.16); });
       /* taken down from novel.global by one's own code: off the map and the wall for everyone, kept on the approval page and on this phone */
       var dn = $('#au-down'); if (dn) NG.sureTap(dn, function () { NG.mine().then(function (l) { var s = (l || []).filter(function (x) { return x.code === f.code; })[0]; return s ? NG.dropMine(s.id) : null; }).then(function () { f.down = 1; NG.toast('TAKEN DOWN FROM NOVEL.GLOBAL'); paint(); }).catch(function () { NG.toast('NOT TAKEN DOWN · TRY AGAIN'); }); bell(1, 0.16); });
@@ -2340,7 +2344,7 @@
     [].forEach.call(vp.querySelectorAll('.au-eslide'), function (fg) { fg.addEventListener('click', function () { var n2 = +fg.dataset.n; if (n2 !== WALL && EMB) { EMB.scrollTo(n2); return; } show(srcs(), making() ? n2 : n2); }); });
     NG.lib('embla', function () { return window.EmblaCarousel; }).then(function (ok) {
       if (!ok || !document.contains(vp)) return; EMB = window.EmblaCarousel(vp, { align: 'center', loop: false, startIndex: WALL, skipSnaps: false, dragFree: false });
-      EMB.on('select', function () { WALL = EMB.selectedScrollSnap(); wallPress(); bell(2, 0.06); try { if (navigator.vibrate) navigator.vibrate(5); } catch (e) { /* no touch */ } });
+      EMB.on('select', function () { WALL = EMB.selectedScrollSnap(); WALL_ID = (showList()[WALL] || {}).id || ''; wallPress(); bell(2, 0.06); try { if (navigator.vibrate) navigator.vibrate(5); } catch (e) { /* no touch */ } });
     });
   }
 

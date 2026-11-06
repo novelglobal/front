@@ -863,7 +863,17 @@ function api(path, opt) {
 }
 var PRN = null, PRN_AT = 0;
 /* the printers a piece can go to: novel.global's own and every one paired since (a partner's Pi), as heard in the last minute */
+/* a poster on the wall printed again, by whoever is looking at it: its picture on the printer's dots, sent as a record (no new
+   poster on the island) to the printer chosen on this phone */
+function printAgain(src, was) {
+  return Promise.all([printers(), loadImg(src), ditherLib()]).then(function (r) { var p = prnPick(r[0]); if (!p) throw { status: 400 };
+    var cv = forPrint(r[1], +p.paper === 58 ? 384 : 512, r[2]), body = { type: 'poster', again: String(was || '').slice(0, 12), lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4) };
+    return send({ kind: 'record', code: code('a' + Date.now().toString(36) + Math.random()), body: JSON.stringify(body), lat: body.lat, lng: body.lng, dest: p.id, escpos: raster(cv), thumb: thumbOf(cv) }).then(function (j) { return j.job ? j.job.status : j.status; });
+  });
+}
 function printers() { if (PRN && Date.now() - PRN_AT < 60e3) return Promise.resolve(PRN); return api('/partners').then(function (j) { PRN = ((j && j.partners) || []).filter(function (p) { return p.id === 'novelglobal' || p.paired; }); PRN_AT = Date.now(); return PRN; }).catch(function () { return PRN || []; }); }
+/* a printer by one word, wherever it is named: Pickles, not Pickles Milk Bar */
+function prnWord(p) { return String((p && (p.name || p.id)) || '').trim().split(/s+/)[0]; }
 /* the one a print goes to: the one chosen on this phone; else the first listening now; else novel.global's own, where it waits */
 function prnPick(list) { var last = store.get('da.base.printer', ''); return list.filter(function (p) { return p.id === last; })[0] || list.filter(function (p) { return p.ready; })[0] || list.filter(function (p) { return p.id === 'novelglobal'; })[0] || list[0] || null; }
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art (photograph,
@@ -904,7 +914,7 @@ function stepS(n, boardArt, art) {
   printers().then(function (list) {
     var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); });
     if (!ps.length && B.master) ps = [{ id: B.master.id, name: B.master.n, paper: B.master.paper }];
-    sel.innerHTML = ps.map(function (p) { return '<option value="' + esc(p.id) + '" data-paper="' + esc(p.paper) + '">' + (p.ready ? '● ' : '○ ') + esc(p.name || p.id) + '</option>'; }).join('');
+    sel.innerHTML = ps.map(function (p) { return '<option value="' + esc(p.id) + '" data-paper="' + esc(p.paper) + '">' + (p.ready ? '● ' : '○ ') + esc(prnWord(p)) + '</option>'; }).join('');
     var p0 = prnPick(ps); if (p0) sel.value = p0.id;
     pick();
   });
@@ -1867,7 +1877,7 @@ function shopSheet() {
   });
   mine.slice(0, 30).forEach(function (n, i) { if (n.sent && n.sent.id) follow(n, document.getElementById('s-st-' + i), 29); });
   mine.slice(0, 30).forEach(function (n, i) { if (!n.sent || !n.sent.id) return; api('/receipts/' + n.sent.id).then(function (j) { if (!j) return; n.sent.s = j.job ? j.job.status : j.status; saveNotes(); var el = document.getElementById('s-st-' + i); if (el) el.innerHTML = pips(n.sent.s); }).catch(function () { /* later */ }); });
-  printers().then(function (list) { var ul = $('#s-prn'); if (!ul) return; ul.innerHTML = list.length ? list.map(function (p) { return '<li><span class="li"><span>' + (p.ready ? '● ' : '○ ') + esc(p.name || p.id) + '</span><small>' + (p.queued ? p.queued + ' … ' : '') + (p.printed || 0) + ' ⎙</small></span></li>'; }).join('') : '<li class="empty">—</li>'; });
+  printers().then(function (list) { var ul = $('#s-prn'); if (!ul) return; ul.innerHTML = list.length ? list.map(function (p) { return '<li><span class="li"><span>' + (p.ready ? '● ' : '○ ') + esc(prnWord(p)) + '</span><small>' + (p.queued ? p.queued + ' … ' : '') + (p.printed || 0) + ' ⎙</small></span></li>'; }).join('') : '<li class="empty">—</li>'; });
 }
 function packsHTML() {
   var p = function (k, g, t) { return '<button class="g' + (PACKS[k] ? ' on' : '') + '" data-pack="' + k + '" aria-label="' + t + '" title="' + t + '">' + glyph(g) + '</button>'; };
@@ -2106,7 +2116,7 @@ function boothOn(dest) {
      printer listening, to choose from, when there is more than one */
   printers().then(function (l) { if (!dest) { var q = prnPick(l); if (q) BTH.dest = q.id; } var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384;
     var on = l.filter(function (x) { return x.ready; }); if (dest || on.length < 2) return; var nv = $('#booth .bp'); if (!nv) return;
-    nv.innerHTML = on.map(function (p) { return '<button type="button" data-bp="' + esc(p.id) + '" class="' + (p.id === BTH.dest ? 'on' : '') + '">' + esc(p.name || p.id) + '</button>'; }).join('');
+    nv.innerHTML = on.map(function (p) { return '<button type="button" data-bp="' + esc(p.id) + '" class="' + (p.id === BTH.dest ? 'on' : '') + '">' + esc(prnWord(p)) + '</button>'; }).join('');
     $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; store.set('da.base.printer', BTH.dest); BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
   boothStart(el);
 }
@@ -2559,7 +2569,7 @@ window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, stor
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, prnPick: prnPick, prnSet: function (id) { store.set('da.base.printer', id); }, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, prnPick: prnPick, prnWord: prnWord, printAgain: printAgain, prnSet: function (id) { store.set('da.base.printer', id); }, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();
