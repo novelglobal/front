@@ -85,6 +85,9 @@ A person picks a style, edits it, and keeps it as their own. Artists publish mod
 
 ## Open decisions (the owner's)
 
-1. **The engine's name and home:** a new GitHub organisation or repo for the engine and the island program, with novel.global as its first island.
-2. **Licence:** AGPL-3.0 for the engine and the island program, CC BY-SA for packs (suggested).
-3. **The Pi:** 3 A+ (512 MB) as the floor, or a Zero 2 W or 4 as recommended.
+All decided, 6 November 2026:
+
+1. ~~**The engine's name and home**~~ **Decided: the novelglobal GitHub account.** `island-engine` holds the engine and `island-kit` the device, with novel.global as the first island. `island-engine` stays on this PC, private, until the owner says to publish it.
+2. ~~**Licence**~~ **Decided:** AGPL-3.0 for the engine and the island program, CC BY-SA 4.0 for packs, MIT for the image and build scripts.
+3. ~~**The Pi**~~ **Decided: a Raspberry Pi 3 (B, B+ or A+) is the floor, and a Zero 2 W works too.** The printer is a second-hand Epson TM-T88V. The start screen's checklist says the same.
+4. **Decided: an island's devices are always open to novel.global, never the other way.** novel.global may publish to and print on any island's printers it can reach, even when the island has a site of its own. That site prints only to its own printer.

@@ -25,6 +25,10 @@ The designer's play, in short: the small ball is confusing; the lore and copy ar
 | 1.0 B, engine | the island format, packs, the builder (`island-engine`) | the kit for making: islands, packs, **games** |
 | 1.0 B, games (this brief) | five games, story boxes, the farm, the finder | the showcase: novel.global makes the games and shows them |
 
+**A new category, run like Wikipedia.** novel.global works like a Wikipedia of businesses: free and open, made by the people who use it. The device stack (a second-hand receipt printer, a small Pi) plus the network make a new kind of thing, and novel.global is the showcase. Others with the same stack use it to make their own experiences and interventions. A shop uses it as a better till: the printer stops being a passive sales printer and becomes an in-store driver, a creative tool for staff, and a way to put direct action under every sale (`island-engine`'s third example, the shop: a counter card the staff make each morning, and that action at the foot of every docket).
+
+**The store.** Packs and blocks are swapped through a lite store, like an app store or Steam but small and made for exactly this stack. An island assembles itself visually from blocks (steps, styles, maps, games, templates), then publishes and swaps them. The store opens from the start screen's **NETWORK** key (see the start screen, below) and lives in the builder (`island-engine/docs/builder.md`, The store).
+
 **Every island, four rules:** it can be found and visited, nothing on it is behind a paywall, every journey ends in a direct action (a print, a pledge, a step taken), and its devices are always open to novel.global, one way. novel.global may publish to and print on any island's printers whenever it can reach them (online or by mesh), even when the island has a site of its own. That site links only to its own island and prints only to its own printer, never to novel.global's or another island's. The engine refuses an island that breaks any of the four (`island-engine`: `network.hub`, and `docs/runtimes.md`, One way, always).
 
 ## What goes
@@ -128,6 +132,8 @@ These five words replace the site's steps. They sit in the rings as word blocks,
 - **MAKE:** an island of your own: the island builder (`island-engine/docs/builder.md`) as word blocks: ISLAND, STEPS, PACKS, PRINTER, PEOPLE.
 - **KEEP:** the portfolio, the boxes, the receipts, the farms.
 - **STACK:** where the maker decides the technology: hosted or on a Pi, online or offline, mesh or none, which printer (any ESC/POS or Star printer, 58 or 80 mm).
+
+**The start screen's two keys.** Beside the rings, novel.global's start screen gets two keys: on the left, the island-making checklist (a Raspberry Pi 3 or Zero 2 W, a second-hand Epson TM-T88V); on the right, **NETWORK**, the islands and, later, the door into the store. They lead into MAKE and FIND.
 
 ## The stages
 
