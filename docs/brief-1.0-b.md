@@ -63,7 +63,7 @@ Every experience still ends in a direct action (the third of the four rules), an
 - **PEOPLE:** keys for staff, each set to approve, make or both.
 - **PARTNERS:** other islands this island lets print here, and the islands it prints to.
 - **NETWORKS:** the mesh, the novel.global feed, or none.
-- **Printers:** each printer model has a profile: paper width (58 or 80 mm), dots across (384 or 576), cutter, speed and darkness. Every block renders to each profile, so one experience prints correctly on any printer in the network.
+- **Printers:** each printer model has a profile: paper width (58 or 80 mm), dots across (384 on 58 mm; 512 or 576 on 80 mm), cutter, speed and darkness. Every block renders to each profile, so one experience prints correctly on any printer in the network.
 
 ## One island owner, start to finish
 
@@ -73,7 +73,7 @@ A café owner buys a second-hand TM-T88V and a Pi 3.
 2. **A starting island.** It begins as a copy of a template: novel.global's own, a blank one, or any in the library (the photo booth, the shop till, the gig flyer).
 3. **STUDIO.** Three canvases, one at a time, each of blocks:
    - **PAGE:** what a visitor's phone shows. Blocks stack top to bottom: a mark, a map, a camera, a pick, a button.
-   - **RECEIPT:** the 80 mm slip at the printer's own 576 dots, previewed in true black and white as it will print. Blocks: words, a photograph, a drawing, a QR code, a line, a code, the moon.
+   - **RECEIPT:** the 80 mm slip at the printer's own dots (512 on the TM-T88V, 576 on most others), previewed in true black and white as it will print. Blocks: words, a photograph, a drawing, a QR code, a line, a code, the moon.
    - **FLOW:** the steps, as cards in a row. Each step takes an input and gives a receipt. novel.global's flow is notice, W.I.S.H. and direct action. A photo booth's is one card. A café's might be: the till rings up a sale, then the docket gets the day's direct action at its foot.
 4. **LIBRARY.** They find a riso-look style from an island in Footscray and a frog-call sound pack from a school, press install, and both arrive in their island as their own copies, credited.
 5. **Publish back.** Their counter card becomes a block in the library. Someone in Hobart forks it into a mod, and the credit chain prints as a small code at the foot of each receipt.
