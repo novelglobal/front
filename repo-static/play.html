@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex">
+<meta name="theme-color" content="#E9E1CC"><title>novel.global</title><link rel="icon" href="iruk.svg" type="image/svg+xml">
+<style>
+  :root { --paper: #EFE8D6; --ink: #2B2A26; --white: #F7F4EC; }
+  html, body { margin: 0; height: 100%; background: var(--paper); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+  body { font: 500 12px/1.3 ui-monospace, "IBM Plex Mono", Menlo, Consolas, monospace; color: var(--ink); letter-spacing: .06em; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #ground, #life { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  canvas { display: block; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  #ghost { position: fixed; left: 0; top: 0; width: 44px; height: 44px; margin: -22px 0 0 -22px; display: grid; place-items: center; z-index: 5; }
+  #ghost svg { width: 26px; height: 26px; overflow: visible; transition: transform .9s ease, opacity .9s ease; }
+  #ghost .ball { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--white); box-shadow: 0 0 0 1px rgba(43,42,38,.45); opacity: 0; transform: scale(.2); transition: transform .9s ease, opacity .9s ease; }
+  #ghost.ball svg { transform: scale(.15); opacity: 0; }
+  #ghost.ball .ball { opacity: 1; transform: scale(1); animation: breathe 3.2s ease-in-out infinite; }
+  @keyframes breathe { 50% { transform: scale(1.35); } }
+  #rings { position: fixed; inset: 0; z-index: 4; display: none; }
+  #rings.on { display: block; }
+  #rings svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #rings ellipse { fill: none; stroke: var(--white); stroke-width: 1.4; stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: draw 1.6s ease forwards; }
+  #rings ellipse.under { stroke: rgba(43,42,38,.35); stroke-width: 3; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .blk { position: fixed; z-index: 6; width: 64px; height: 26px; margin: -13px 0 0 -32px; perspective: 600px; opacity: 0; transition: opacity .6s ease; }
+  .blk.on { opacity: 1; }
+  .blk .in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .6s ease; }
+  .blk.flip .in { transform: rotateY(180deg); }
+  .blk .f, .blk .b { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(247,244,236,.94); box-shadow: 0 0 0 1px rgba(43,42,38,.55); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .blk .b { transform: rotateY(180deg); background: var(--ink); color: var(--white); }
+  #back { position: fixed; z-index: 7; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(340px, calc(100vw - 32px)); background: rgba(247,244,236,.96); box-shadow: 0 0 0 1px rgba(43,42,38,.55); padding: 12px; display: none; }
+  #back.on { display: block; }
+  #back .path { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 10px; }
+  #back .path button { opacity: .5; } #back .path button.at { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+  #back .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #back .w { padding: 5px 8px; box-shadow: 0 0 0 1px rgba(43,42,38,.55); }
+  #back .w.at { background: var(--ink); color: var(--white); }
+  .box { width: 74px; height: 120px; box-shadow: 0 0 0 1px var(--ink); display: block; image-rendering: pixelated; }
+  #hand { position: fixed; z-index: 8; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); width: 40px; height: 40px; margin-left: -20px; display: none; touch-action: none; }
+  #hand.on { display: block; animation: lift 2.4s ease-in-out infinite; }
+  #hand.drag { animation: none; }
+  @keyframes lift { 50% { transform: translateY(-5px); } }
+  #slot { position: fixed; inset: 0; z-index: 9; background: rgba(239,232,214,.94); display: none; overflow: hidden; }
+  #slot.on { display: block; }
+  #slot .r { position: absolute; left: 50%; top: 0; width: min(300px, calc(100vw - 48px)); transform: translate(-50%, -110%); background: #FFF; color: #111; padding: 18px 18px 22px; box-shadow: 0 0 0 1px rgba(17,17,17,.18); transition: transform 1.1s cubic-bezier(.2,.7,.2,1); font: 500 13px/1.45 ui-monospace, "IBM Plex Mono", Menlo, monospace; letter-spacing: 0; }
+  #slot .r.out { transform: translate(-50%, 56px); }
+  #slot .r.gone { transform: translate(-50%, 120vh); transition-duration: .8s; }
+  .r h2 { font: 700 17px/1.25 "Helvetica Neue", Arial, sans-serif; margin: 0 0 12px; letter-spacing: 0; }
+  .r p { margin: 0 0 8px; } .r .k { opacity: .55; font-size: 11px; }
+  .r ul { margin: 0 0 10px; padding: 0; list-style: none; } .r li { padding: 4px 0; border-top: 1px dotted #111; }
+  .r .ft { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 14px; padding-top: 12px; border-top: 2px solid #111; }
+  .r .cut { position: absolute; left: 0; right: 0; bottom: 0; border-bottom: 2px dashed rgba(17,17,17,.35); }
+  #slot .key { position: absolute; left: 50%; bottom: calc(40px + env(safe-area-inset-bottom)); width: 54px; height: 54px; margin-left: -27px; display: none; place-items: center; }
+  #slot .key.on { display: grid; }
+  #credit { position: fixed; right: 6px; bottom: 3px; z-index: 3; font-size: 8px; opacity: .45; letter-spacing: 0; pointer-events: none; }
+</style>
+<script src="vendor/qrcode.js"></script><script src="play.js"></script></head><body></body></html>
