@@ -58,7 +58,7 @@
   }
 
   /* ───────── talk: the board, every post with its maker's code and kin; hidden ones stay here ───────── */
-  const KIN = ['Irukandji', 'Blue-ringed octopus', 'Weedy seadragon', 'Port Jackson shark', 'Little penguin', 'Australian fur seal', 'Southern right whale', 'Burrunan dolphin',
+  const KIN = ['Irukandji', 'Blue-ringed octopus', 'Weedy seadragon', 'Port Jackson shark', 'Little penguin', 'Australian fur seal', 'Southern right whale', 'Burrunan dolphin', 'Bluebottle', 'Biscuit star', 'Giant cuttlefish', 'Blue groper', 'Old wife', 'Sea hare', 'Spider crab', 'Pied oystercatcher', 'Crested tern', 'Hooded plover', 'Short-tailed shearwater', 'Australasian gannet', 'Silver gull', 'Black swan', 'Australian pelican', 'Superb fairy-wren', 'Rainbow lorikeet', 'Laughing kookaburra', 'Tawny frogmouth', 'Powerful owl', 'Australian magpie', 'Galah', 'Sulphur-crested cockatoo', 'Grey-headed flying-fox', 'Brushtail possum', 'Ringtail possum', 'Platypus', 'Echidna', 'Eastern grey kangaroo', 'Swamp wallaby', 'Common wombat', 'Koala', 'Sugar glider', 'Growling grass frog', 'Brown tree frog', 'Blue-tongue lizard', 'Eastern water dragon', 'Tiger snake', 'Golden sun moth', 'Bogong moth', 'Blue-banded bee', 'Common brown butterfly', 'Garden orb-weaver', 'Huntsman', 'Yabby', 'Murray cod', 'River blackfish', 'Short-finned eel', 'River red gum', 'Golden wattle', 'Coast banksia', 'Common heath', 'Bull kelp', 'Eelgrass', 'Coast saltbush', 'Mangrove'];
   const kinName = k => (k == null ? '' : KIN[k % KIN.length]);
   /* each step's talk and each poster's; one at a time when chosen (a poster's ITS TALK opens it here) */
   let talkSec = '';
