@@ -512,14 +512,14 @@ async function report(db, req, id, job) {
    own secret is kept, and no token is kept at all (it is made at the moment it is handed over). The table is made on first use ───────── */
 const PAIR_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', PAIR_FOR = 15 * 60e3;
 const pairsReady = new WeakMap();
-const pairs = db => { if (!pairsReady.has(db)) pairsReady.set(db, db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT, printer TEXT, created INTEGER NOT NULL)').run().catch(e => { pairsReady.delete(db); throw e; })); return pairsReady.get(db); };
+const pairs = db => { if (!pairsReady.has(db)) pairsReady.set(db, db.prepare('CREATE TABLE IF NOT EXISTS pairs (code TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT, printer TEXT, created INTEGER NOT NULL)').run().then(() => db.prepare('ALTER TABLE pairs ADD COLUMN paper TEXT').run().catch(() => {})).catch(e => { pairsReady.delete(db); throw e; })); return pairsReady.get(db); };
 const pairCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 async function pairAsk(db, env, req) {
   if (await tooMany(db, env, req, 'pair', 12, H)) return fail(429, 'too many');
   await pairs(db); const b = await body(req, 2048), t = now();
   const a = crypto.getRandomValues(new Uint8Array(8)), code = [...a].map(x => PAIR_ABC[x % 32]).join(''), device = rid(32);
-  const name = String(b.name || '').replace(/[^\w .·'&-]/g, '').trim().slice(0, 40);
-  await db.batch([db.prepare('DELETE FROM pairs WHERE created < ?').bind(t - PAIR_FOR), db.prepare('INSERT INTO pairs (code, device, name, created) VALUES (?, ?, ?, ?)').bind(code, await sha256(device), name, t)]);
+  const name = String(b.name || '').replace(/[^\w .·'&-]/g, '').trim().slice(0, 40), paper = ['58', '80'].includes(String(b.paper)) ? String(b.paper) : null;
+  await db.batch([db.prepare('DELETE FROM pairs WHERE created < ?').bind(t - PAIR_FOR), db.prepare('INSERT INTO pairs (code, device, name, paper, created) VALUES (?, ?, ?, ?, ?)').bind(code, await sha256(device), name, paper, t)]);
   return json({ code, device, every: 5, expires: t + PAIR_FOR }, 201);
 }
 async function pairPoll(db, req) {
@@ -528,20 +528,20 @@ async function pairPoll(db, req) {
   if (!r) return fail(404, 'gone');
   if (!r.printer) return json({ waiting: true, every: 5 }, 202);
   const tok = rid(32);
-  await db.batch([db.prepare('UPDATE printers SET token = ?, seen = NULL, can = NULL, off = NULL WHERE id = ?').bind(await sha256(tok), r.printer), db.prepare('DELETE FROM pairs WHERE code = ?').bind(r.code)]);
+  await db.batch([db.prepare('UPDATE printers SET token = ?, seen = NULL, can = NULL, off = NULL, paper = COALESCE(?, paper) WHERE id = ?').bind(await sha256(tok), r.paper || null, r.printer), db.prepare('DELETE FROM pairs WHERE code = ?').bind(r.code)]);
   return json({ printer: r.printer, token: tok });
 }
 /* the approval page: a code looked up (from the island's slip, scanned), then approved for a printer here or a new one by the island's name */
 async function adminPair(db, req, code) {
   await pairs(db); code = pairCode(code);
-  const r = code.length === 8 && await db.prepare('SELECT code, name, printer, created FROM pairs WHERE code = ? AND created > ?').bind(code, now() - PAIR_FOR).first();
+  const r = code.length === 8 && await db.prepare('SELECT code, name, paper, printer, created FROM pairs WHERE code = ? AND created > ?').bind(code, now() - PAIR_FOR).first();
   if (!r) return fail(404, 'no such code, or it is older than a quarter of an hour');
   if (req.method === 'GET') return json(r);
   const b = await body(req); let id = String(b.printer || '');
   if (!id) {
     const base = String(b.name || r.name || 'island').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'island';
     id = base; for (let i = 2; await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first(); i++) id = `${base}-${i}`;
-    await db.prepare("INSERT INTO printers (id, name, paper, created) VALUES (?, ?, '80', ?)").bind(id, String(b.name || r.name || id).slice(0, 40), now()).run();
+    await db.prepare("INSERT INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)").bind(id, String(b.name || r.name || id).slice(0, 40), r.paper || '80', now()).run();
   } else if (!(await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first())) return fail(404, 'no such printer');
   await db.prepare('UPDATE pairs SET printer = ? WHERE code = ?').bind(id, code).run();
   return json({ ok: true, printer: id });
