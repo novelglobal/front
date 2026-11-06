@@ -2146,7 +2146,7 @@
     var art = P.photo ? 'photo' : 'net', photo = NG.PHOTOS[n.id] || P.photo || P.spPhoto || '', show2 = { line: 1, life: !!lifeOf(P), facts: 0, links: 0, code: 1 };
     var toWall = S.pmode === 'wall', toSend = S.pmode === 'send'; beat(toWall ? 'wall' : toSend ? 'send' : 'print');
     (toWall ? Promise.resolve('kept') : toSend ? NG.sendNote(n, null, '', n.wish, null, fullOf(P), posterJPEG(P)) : NG.printers().then(function (list) {
-      var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); }), dest = ps.length ? ps[0].id : (B.master ? B.master.id : 'novelglobal'), paper2 = ps.length ? ps[0].paper : (B.master && B.master.paper) || 80;
+      var p0 = NG.prnPick(list), dest = p0 ? p0.id : (B.master ? B.master.id : 'novelglobal'), paper2 = p0 ? p0.paper : (B.master && B.master.paper) || 80;
       var Pp = (B.printers || {})[String(paper2 || 80)] || { dots: 512 }, W = Pp.dots - Pp.dots % 8;
       return posterPrint(W).then(function (c) { return c || NG.slip(n, photo, { lines: [], rel: [], call: null }, { art: photo ? 'photo' : art, wish: n.wish, show: show2 }, W); }).then(function (c) { return NG.sendNote(n, c, dest, n.wish, S.pmode === 'mesh' ? sigOf(P) : null, fullOf(P), posterJPEG(P)); });
     })).then(function (s) {
@@ -2282,12 +2282,16 @@
   }
   /* the press for the one in front: the piece being made (start again, paper, save, print), or a printed one (print again, save, bring back, take down) */
   var liveOf = function (f) { return !f.now && !!f.code && !f.down && !f.wall && (!!f.island || !!ONISL[f.code] || (LIVE || []).indexOf(f.code) >= 0); };
+  /* which printer, when more than one is set up: its name under it, its light lit while it listens; a touch moves to the next */
+  function prnKey() { var l = S.prns || [], p = l.length > 1 && S.pmode !== 'wall' && S.pmode !== 'send' ? NG.prnPick(l) : null; if (!p) return '';
+    return hand('au-sm au-mode au-to' + (p.ready ? ' on' : ''), '<i class="au-led"></i><small class="au-mw">' + esc(p.name || p.id) + '</small>', 'id="au-to" aria-label="Printer: ' + esc(p.name || p.id) + (p.ready ? ', online' : ', offline') + '"'); }
   function wallPress() {
+    if (!S.prnAt || Date.now() - S.prnAt > 60e3) { S.prnAt = Date.now(); NG.printers().then(function (l) { var was = (S.prns || []).map(function (p) { return p.id + p.ready; }).join(); S.prns = l; if (l.map(function (p) { return p.id + p.ready; }).join() !== was) wallPress(); }); }
     var all = showList(), f = all[WALL], pr = $('#au-wpress'); if (!f || !pr) return;
     var nav = function (d) { return all.length > 1 ? hand('au-sm au-nav', d < 0 ? '‹' : '›', 'data-w="' + d + '" aria-label="' + (d < 0 ? 'Before' : 'After') + '"') : ''; };
     LIVE = store.get('da.live', LIVE) || LIVE; var pm = pmode(), isLive = !!f.code && (LIVE || []).indexOf(f.code) >= 0 && !f.down, canLive = ownSlide(f) && !!f.code && !f.wall && !f.down && !!store.get('da.who.pass', 0);
     if (f.now) pr.innerHTML = nav(-1) + hand('au-big', svgI('print'), 'id="au-print" data-fw="' + (S.pmode === 'wall' ? 'hang' : S.pmode === 'send' ? 'send' : 'print') + '" aria-label="' + (S.pmode === 'wall' ? 'Hang it on the wall' : S.pmode === 'send' ? 'Send it to novel.global' : 'Print') + '"') +
-      hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
+      hand('au-sm au-mode m-' + S.pmode, svgI(pm[1]) + '<small class="au-mw">' + esc(pm[2]) + '</small>', 'id="au-mode" aria-label="Where it goes: ' + pm[2] + '"') + prnKey() + hand('au-sm', svgI('save'), 'id="au-save" data-fw="save" aria-label="Save"') + hand('au-sm au-morek', '<b>···</b>', 'id="au-more" aria-label="More" aria-expanded="false"') + '<span class="au-more" hidden>' + hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') +
       hand('au-sm', svgI('paper'), 'id="au-paper" data-fw="paper" aria-label="Blue paper or white" aria-pressed="' + (P.paper === 'white') + '"') + hand('au-sm', svgI(printNight() ? 'moon2' : 'sun'), 'id="au-pnight" data-fw="' + (printNight() ? 'night print' : 'day print') + '" aria-label="Print it dark or light" aria-pressed="' + printNight() + '"') + hand('au-sm au-reset au-del', svgI('bin'), 'id="au-reset" data-fw="delete draft" aria-label="Delete this draft and start again"') + '</span><span class="au-pips" id="au-pips"></span>' + (P && P.sent ? hand('au-sm au-seedk', svgI('seed'), 'id="au-newk" data-fw="new" aria-label="Begin a new piece"') : '') + nav(1);
     else pr.innerHTML = nav(-1) + /* already live: no key for it, nothing to ask again */ (canLive && !isLive ? hand('au-big au-live' + (isLive ? ' on' : ''), svgI('live') + '<small class="au-lw">' + (isLive ? 'LIVE' : 'ISLAND') + '</small>', 'id="au-golive" data-fw="' + (isLive ? 'live' : 'to the island') + '" aria-label="' + (isLive ? 'Live for everyone on novel.global' : 'Put it live for everyone on novel.global') + '"' + (isLive ? ' disabled' : '')) : '') + hand('au-sm', svgI('save'), 'id="au-wsave" data-fw="save" aria-label="Save"') +
       (f.piece ? hand('au-sm', svgI('sig'), 'id="au-sigk" data-fw="signal" aria-label="Signal"') : '') + (f.piece ? hand('au-sm', svgI('back'), 'id="au-bring" data-fw="rework" aria-label="Bring it back to work on"') : '') +
@@ -2298,6 +2302,7 @@
       /* the rest, folded: signal, paper, day or night, delete */
       $('#au-more').addEventListener('click', function () { var m = pr.querySelector('.au-more'), on = m.hidden; m.hidden = !on; this.setAttribute('aria-expanded', String(on)); bell(on ? 3 : 1, 0.08); });
       $('#au-mode').addEventListener('click', function () { var i = PMODES.indexOf(pmode()); S.pmode = PMODES[(i + 1) % PMODES.length][0]; store.set('da.aura.pmode', S.pmode); wallPress(); bell(4 + i, 0.14); flashWords(0); });
+      var tk = $('#au-to'); if (tk) tk.addEventListener('click', function () { var l = S.prns, i = l.indexOf(NG.prnPick(l)); NG.prnSet(l[(i + 1) % l.length].id); wallPress(); bell(3, 0.12); });
       $('#au-save').addEventListener('click', function () { saveImg(SAVE.file, function () { return poster(P); }, 'novel-global-' + ((P.note && P.note.code) || 'piece') + '.png'); });
       $('#au-pnight').addEventListener('click', function () { P.pnight = !printNight(); changed(); paint(); bell(P.pnight ? 2 : 5, 0.16); });
       $('#au-paper').addEventListener('click', function () { P.paper = P.paper === 'white' ? 'blue' : 'white'; changed(); redraw(); this.setAttribute('aria-pressed', String(P.paper === 'white')); bell(5, 0.16); });

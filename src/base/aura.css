@@ -616,6 +616,8 @@ html.aura-on body { background: var(--blue, #17457F); }
 #aura .au-mode { position: relative; }
 #aura .au-mode .au-mw { position: absolute; left: 50%; top: calc(100% + 3px); transform: translateX(-50%); font: 500 9px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; white-space: nowrap; opacity: .85; pointer-events: none; }
 #aura .au-mode.m-mesh { border-style: solid; }
+#aura .au-to .au-led { display: block; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .7; }
+#aura .au-to.on .au-led { background: currentColor; opacity: 1; }
 /* the art tray on a desktop: a thin bar to show there is more, and a grab to move it */
 @media (hover: hover) and (pointer: fine) { #aura .au-tray { scrollbar-width: thin; scrollbar-color: rgba(244, 241, 232, .35) transparent; cursor: grab; } #aura .au-tray.dragging { cursor: grabbing; } #aura .au-tray.dragging button { pointer-events: none; } }
 

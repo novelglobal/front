@@ -861,8 +861,11 @@ function api(path, opt) {
   opt = opt || {}; opt.headers = { 'content-type': 'application/json' };
   return fetch(API + path, opt).then(function (r) { if (r.status === 204) return null; return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var e = new Error(j.error || r.status); e.status = r.status; throw e; } return j; }); });
 }
-var PRN = null;
-function printers() { if (PRN) return Promise.resolve(PRN); return api('/partners').then(function (j) { PRN = ((j && j.partners) || []).filter(function (p) { return p.id === 'novelglobal'; }); return PRN; }).catch(function () { return []; }); }
+var PRN = null, PRN_AT = 0;
+/* the printers a piece can go to: novel.global's own and every one paired since (a partner's Pi), as heard in the last minute */
+function printers() { if (PRN && Date.now() - PRN_AT < 60e3) return Promise.resolve(PRN); return api('/partners').then(function (j) { PRN = ((j && j.partners) || []).filter(function (p) { return p.id === 'novelglobal' || p.paired; }); PRN_AT = Date.now(); return PRN; }).catch(function () { return PRN || []; }); }
+/* the one a print goes to: the one chosen on this phone; else the first listening now; else novel.global's own, where it waits */
+function prnPick(list) { var last = store.get('da.base.printer', ''); return list.filter(function (p) { return p.id === last; })[0] || list.filter(function (p) { return p.ready; })[0] || list.filter(function (p) { return p.id === 'novelglobal'; })[0] || list[0] || null; }
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art (photograph,
    pixels, the net); W.I.S.H. writes its four lines on; the printer; PRINT. Nothing else */
 var ARTS = ['photo', 'pixel', 'net', 'sign'];
@@ -897,15 +900,15 @@ function stepS(n, boardArt, art) {
   $$('#p-ico [data-ic]').forEach(function (b) { b.addEventListener('click', function () { var ic = iconOf(b.dataset.ic); n.icon = n.icon === ic.src ? '' : ic.src; $$('#p-ico button').forEach(function (x) { x.classList.toggle('on', x === b && !!n.icon); }); saveNotes(); render(); draw(); }); });
   $('#p-slip').addEventListener('click', function () { o.art = ARTS[(ARTS.indexOf(o.art) + 1) % ARTS.length]; if (o.art === 'photo' && !photo) o.art = 'pixel'; if (o.art === 'pixel' && !photo && !boardArt) o.art = 'net'; draw(); });
   $('#p-wish').addEventListener('click', function () { o.wish = !o.wish; n.wish = o.wish; if (o.wish && !n.wishText) n.wishText = wishLines(n, r).map(function (l) { return l[1]; }); saveNotes(); draw(); });
-  var pick = function () { var op = sel.options[sel.selectedIndex]; var P = (B.printers || {})[String((op && op.getAttribute('data-paper')) || '80')] || { dots: 512 }; W = P.dots - P.dots % 8; store.set('da.base.printer', sel.value); draw(); };
+  var pick = function () { var op = sel.options[sel.selectedIndex]; var P = (B.printers || {})[String((op && op.getAttribute('data-paper')) || '80')] || { dots: 512 }; W = P.dots - P.dots % 8; draw(); };
   printers().then(function (list) {
     var ps = list.filter(function (p) { return p.paired || p.id === (B.master && B.master.id); });
     if (!ps.length && B.master) ps = [{ id: B.master.id, name: B.master.n, paper: B.master.paper }];
     sel.innerHTML = ps.map(function (p) { return '<option value="' + esc(p.id) + '" data-paper="' + esc(p.paper) + '">' + (p.ready ? '● ' : '○ ') + esc(p.name || p.id) + '</option>'; }).join('');
-    var last = store.get('da.base.printer', ''); if (last && ps.some(function (p) { return p.id === last; })) sel.value = last;
+    var p0 = prnPick(ps); if (p0) sel.value = p0.id;
     pick();
   });
-  sel.addEventListener('change', pick);
+  sel.addEventListener('change', function () { store.set('da.base.printer', sel.value); pick(); });
   $('#p-send').addEventListener('click', function () {
     var btn = $('#p-send'); if (btn.dataset.next) { wishSheet(n); return; }
     if (!cv || !sel.value) return; btn.disabled = true; var st = $('#p-st');
@@ -1854,7 +1857,7 @@ function shopSheet() {
   $('#s-poster').addEventListener('click', function () {
     var b = this, st = $('#s-pst'); b.disabled = true; st.innerHTML = pips('sending');
     printers().then(function (list) {
-      var wide = list.filter(function (p) { return +p.paper !== 58; }), p = wide.filter(function (x) { return x.ready; })[0] || wide.filter(function (x) { return x.id === 'novelglobal'; })[0] || wide[0];
+      var wide = list.filter(function (p) { return +p.paper !== 58; }), p = prnPick(wide);
       if (!p) { st.innerHTML = pips('failed'); b.disabled = false; return; }
       return boothPoster(p.id, 512).then(function (cv) {
         var id = 'p' + Date.now().toString(36), body = { type: 'poster', lat: +map.lat.toFixed(4), lng: +map.lng.toFixed(4) };
@@ -2099,11 +2102,12 @@ function boothOn(dest) {
   BTH = { dest: dest || 'novelglobal', im: null, st: [], words: '', pick: 0, paper: 512 };
   document.body.classList.add('booth'); sheet.hidden = true;
   var el = $('#booth') || document.body.appendChild(Object.assign(document.createElement('main'), { id: 'booth' }));
-  printers().then(function (l) { var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384; });
-  /* opened without a printer named (from the start's print disc): every printer listening now, to choose from, when there is more than one */
-  if (!dest) api('/partners').then(function (j) { var on = ((j && j.partners) || []).filter(function (p) { return p.ready; }); if (on.length < 2) return; var nv = $('#booth .bp'); if (!nv) return;
+  /* opened without a printer named (from the start's print disc): the one chosen on this phone, else one listening now; and every
+     printer listening, to choose from, when there is more than one */
+  printers().then(function (l) { if (!dest) { var q = prnPick(l); if (q) BTH.dest = q.id; } var p = l.filter(function (x) { return x.id === BTH.dest; })[0]; if (p && +p.paper === 58) BTH.paper = 384;
+    var on = l.filter(function (x) { return x.ready; }); if (dest || on.length < 2) return; var nv = $('#booth .bp'); if (!nv) return;
     nv.innerHTML = on.map(function (p) { return '<button type="button" data-bp="' + esc(p.id) + '" class="' + (p.id === BTH.dest ? 'on' : '') + '">' + esc(p.name || p.id) + '</button>'; }).join('');
-    $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
+    $$('[data-bp]', nv).forEach(function (b) { b.addEventListener('click', function () { BTH.dest = b.dataset.bp; store.set('da.base.printer', BTH.dest); BTH.paper = +((on.filter(function (p) { return p.id === BTH.dest; })[0] || {}).paper) === 58 ? 384 : 512; $$('[data-bp]', nv).forEach(function (q) { q.classList.toggle('on', q === b); }); }); }); }).catch(function () {});
   boothStart(el);
 }
 /* the Irukandji, as the aura draws it: the same bell, its eye in dots with the pupil ringed, four dots along the rim, four strings of
@@ -2555,7 +2559,7 @@ window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, stor
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, prnPick: prnPick, prnSet: function (id) { store.set('da.base.printer', id); }, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

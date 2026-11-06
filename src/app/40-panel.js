@@ -505,7 +505,7 @@ async function quickPrint(btn) {
     const cvs = await quickCanvas(512); const bytes = new Uint8Array([0x1B, 0x40, ...rasterOf(cvs), 0x0A, 0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00]);
     const at = Date.now(); const first = String(QP.t || '').trim().split('\n')[0].slice(0, 40);
     const s = { v: 1, code: codeFor(`${at}|note|${S.me.dev}`), at, pin: { id: null, lat: +S.scan.lat.toFixed(3), lng: +S.scan.lng.toFixed(3), n: '', cn: 'NOTE', g: 'paw', place: suburbAt(S.scan.lat, S.scan.lng) }, threat: '', when: '', deg: 0, lines: { w: first, i: '', s: '', h: '' }, nodes: [], edges: [], who: S.me.by || '', note: String(QP.t || '').slice(0, 280) };
-    const v = await directAction(s, MASTER ? MASTER.id : '', bytes, 'message'); store.set('da.printed.v1', Date.now()); snd.printer(900); ptPrint(cvs.toDataURL('image/png'), s.code, v && v.status); toast(v && v.status === 'outbox' ? '…' : '✓'); btn.classList.add('sent');
+    const v = await directAction(s, (prnNow() || {}).id || '', bytes, 'message'); store.set('da.printed.v1', Date.now()); snd.printer(900); ptPrint(cvs.toDataURL('image/png'), s.code, v && v.status); toast(v && v.status === 'outbox' ? '…' : '✓'); btn.classList.add('sent');
     /* sent: the form is cleared for the next message, the words and the photograph both */
     QP.t = ''; QP.img = ''; store.set('da.quick.v1', QP); { const t = $('#qp-t'); if (t) t.value = ''; const ph = $('#sec-quick .qp-ph'); if (ph) ph.remove(); }
     setTimeout(() => btn.classList.remove('sent'), 1600); return v;
