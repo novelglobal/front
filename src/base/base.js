@@ -873,7 +873,7 @@ function printAgain(src, was) {
 }
 function printers() { if (PRN && Date.now() - PRN_AT < 60e3) return Promise.resolve(PRN); return api('/partners').then(function (j) { PRN = ((j && j.partners) || []).filter(function (p) { return p.id === 'novelglobal' || p.paired; }); PRN_AT = Date.now(); return PRN; }).catch(function () { return PRN || []; }); }
 /* a printer by one word, wherever it is named: Pickles, not Pickles Milk Bar */
-function prnWord(p) { return String((p && (p.name || p.id)) || '').trim().split(/s+/)[0]; }
+function prnWord(p) { return String((p && (p.name || p.id)) || '').trim().split(/\s+/)[0]; }
 /* the one a print goes to: the one chosen on this phone; else the first listening now; else novel.global's own, where it waits */
 function prnPick(list) { var last = store.get('da.base.printer', ''); return list.filter(function (p) { return p.id === last; })[0] || list.filter(function (p) { return p.ready; })[0] || list.filter(function (p) { return p.id === 'novelglobal'; })[0] || list[0] || null; }
 /* the design stage: the receipt as it will print, the photograph its top half. A touch on it changes the art (photograph,

@@ -133,6 +133,12 @@ try {
   const lv2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
   check('a printer is switched online on the map from the approval page, and off again; nobody else can', lv0.live === false && lvx.status === 401 && lv1.live === true && lv2.live === false, JSON.stringify({ lv0, lvx: lvx.status, lv1, lv2 }));
 
+  /* renamed on the approval page: the name changes everywhere, the id (and every link and token) stays; nobody else can */
+  const nm1 = await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'name', name: '  Elsie   Corner  Bar ' } });
+  const nmP = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'name', name: lv0.name } });
+  check('a printer is renamed on the approval page, its id kept', nm1.status === 200 && nmP && nmP.name === 'Elsie Corner Bar', JSON.stringify({ nm1: nm1.status, nmP }));
+
   /* to the local mesh: nothing printed; the mesh line goes to each paired printer whose radio is on, once approved */
   await call('/api/admin/printers/pickles', { method: 'POST', key: KEY, body: { action: 'mesh', on: true } });
   const MESH = 'DA-M5H1 NOISY MINER\n-37.7700,144.9600\nA line';

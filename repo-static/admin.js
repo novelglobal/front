@@ -289,6 +289,7 @@
         return el('div', { class: 'note', text: [one('PI', a), p.touch ? one('SCREEN', b) : '', same].filter(Boolean).join('  ·  ') }); })(),
       el('div', { class: 'acts' },
         el('button', { type: 'button', text: p.paired ? 'NEW TOKEN' : 'PAIR A PRINTER', onclick: async () => { if (p.paired && !confirm('A new token stops the old one working. Go on?')) return; const j = await setP(p.id, { action: 'token' }); tok.hidden = false; tok.textContent = `This token shows once. Put it on the receiver, in /etc/da-pull.env:\n\nDA_SERVER=${location.origin}\nDA_PRINTER=${p.id}\nDA_TOKEN=${j.token}`; } }),
+        el('button', { type: 'button', text: 'RENAME', onclick: async () => { const n = prompt('Its name. The site shows the first word; links and tokens stay as they are.', p.name || p.id); if (n == null || !n.trim()) return; await setP(p.id, { action: 'name', name: n.trim() }); show('printers'); } }),
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,
         el('button', { type: 'button', class: p.auto ? 'on' : '', text: p.auto ? 'PRINTS WITHOUT APPROVAL' : 'PRINTS AFTER APPROVAL', onclick: async () => { await setP(p.id, { action: 'auto', on: !p.auto }); show('printers'); } }),
         el('button', { type: 'button', class: p.mesh ? 'on' : '', text: p.mesh ? 'MESH ON' : 'MESH OFF', onclick: async () => { await setP(p.id, { action: 'mesh', on: !p.mesh }); show('printers'); } }),
@@ -399,8 +400,10 @@
       try { j = await (await api('pair/' + encodeURIComponent(c))).json(); } catch (e) { out.replaceChildren(el('p', { class: 'note', text: 'NO SUCH CODE, OR IT IS OLDER THAN A QUARTER OF AN HOUR. THE ISLAND PRINTS A NEW ONE BY ITSELF.' })); return; }
       if (j.printer) { out.replaceChildren(el('p', { class: 'note', text: `APPROVED FOR ${j.printer.toUpperCase()}. THE ISLAND PRINTS A SLIP ONCE IT HAS ITS TOKEN.` })); return; }
       const pick = el('select', { 'aria-label': 'Printer' }, el('option', { value: '', text: `A NEW PRINTER: ${(j.name || 'ISLAND').toUpperCase()}` }), ...list.map(p => el('option', { value: p.id, text: `${(p.name || p.id).toUpperCase()}${p.paired ? ' (ITS OLD PI STOPS)' : ''}` })));
-      out.replaceChildren(el('p', { class: 'note', text: `${j.code.replace(/(.{4})/, '$1-')} · ${(j.name || 'AN ISLAND').toUpperCase()} · ASKED ${when(j.created)}` }), el('div', { class: 'acts' }, pick,
-        el('button', { type: 'button', class: 'on', text: 'APPROVE', onclick: async () => { await api('pair/' + j.code, { method: 'POST', body: JSON.stringify({ printer: pick.value, name: j.name }) }); history.replaceState(null, '', location.pathname); show('printers'); } }))); };
+      /* a new printer takes the name the island was given at its setup, changed here first if need be */
+      const nm = el('input', { type: 'text', value: j.name || '', placeholder: 'ITS NAME', maxlength: '40', autocomplete: 'off', 'aria-label': 'Its name' }); pick.addEventListener('change', () => { nm.hidden = !!pick.value; });
+      out.replaceChildren(el('p', { class: 'note', text: `${j.code.replace(/(.{4})/, '$1-')} · ${(j.name || 'AN ISLAND').toUpperCase()} · ASKED ${when(j.created)}` }), el('div', { class: 'acts' }, pick, nm,
+        el('button', { type: 'button', class: 'on', text: 'APPROVE', onclick: async () => { await api('pair/' + j.code, { method: 'POST', body: JSON.stringify({ printer: pick.value, name: nm.value.trim() || j.name }) }); history.replaceState(null, '', location.pathname); show('printers'); } }))); };
     sec.append(el('h3', { text: 'PAIR AN ISLAND' }), el('div', { class: 'note', text: "SCAN THE CODE ON THE ISLAND'S SLIP, OR TYPE ITS EIGHT LETTERS HERE." }), el('div', { class: 'acts' }, code, el('button', { type: 'button', text: 'LOOK UP', onclick: look })), out);
     if (want) look(); return sec;
   }

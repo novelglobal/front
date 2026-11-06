@@ -651,6 +651,8 @@ async function admin(db, env, req, parts) {
     if (b.action === 'wifi') { await db.prepare('UPDATE printers SET wifi = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'auto' || b.action === 'mesh' || b.action === 'live') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
+    /* its name, said everywhere it is shown (the site shows its first word); its id, and so every link and token, stays as it is */
+    if (b.action === 'name') { const n = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 40); if (!n) return fail(400, 'name'); await db.prepare('UPDATE printers SET name = ? WHERE id = ?').bind(n, id).run(); return json({ ok: true, name: n }); }
     if (b.action === 'paper' && ['58', '80'].includes(String(b.paper))) { await db.prepare('UPDATE printers SET paper = ? WHERE id = ?').bind(String(b.paper), id).run(); return json({ ok: true }); }
     if (b.action === 'test') { await db.batch([db.prepare("INSERT INTO jobs (id, printer, code, mesh, status, created) VALUES (?, ?, 'DA-TEST', ?, 'queued', ?)").bind(rid(), id, 'DIRECT ACTION - test print', now()), db.prepare('UPDATE printers SET warm = ? WHERE id = ?').bind(now(), id)]); return json({ ok: true }); }
     return fail(400, 'action');

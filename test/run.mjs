@@ -1946,6 +1946,12 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   const toIruk = async s => { await page.mouse.click(AD ? 720 : 195, AD ? 450 : 422); await sleep(3000); await page.evaluate(n => document.querySelector(`.au-orb[data-s="${n}"]`).click(), s); await page.waitForFunction(() => window.AURA.state().mode === 'iruk', null, { timeout: 5000 }); await sleep(600); };
   await page.goto('https://oan.test/'); await page.waitForSelector('#aura'); await sleep(900); await shot(page, `${P}01-seed.png`);
   const s0 = await st(); const vis0 = await page.evaluate(() => ({ home: getComputedStyle(document.querySelector('#home')).display, orbs: [...document.querySelectorAll('.au-orb')].filter(o => getComputedStyle(o).display !== 'none').length, top: getComputedStyle(document.querySelector('#top')).display }));
+  /* either side of the seed: making an island (its checklist, kept), and the network of islands */
+  const sk = await page.evaluate(async () => { const s = id => { const b = document.getElementById(id); return b ? getComputedStyle(b).display : 'none'; }; const v = { isl: s('au-islk'), net: s('au-netk') };
+    document.getElementById('au-islk').click(); await new Promise(r => setTimeout(r, 200)); const d = document.getElementById('au-isle'); v.steps = d ? d.querySelectorAll('.au-chk li').length : 0; v.links = d ? d.querySelectorAll('.au-chk a[href^="https"]').length : 0;
+    document.getElementById('au-netk').click(); await new Promise(r => setTimeout(r, 400)); v.one = document.querySelectorAll('.au-side').length; v.net = !!document.getElementById('au-net');
+    document.querySelector('#au-net .au-wx').click(); v.shut = !document.querySelector('.au-side'); v.mode = window.AURA.state().mode; return v; });
+  check(`aura (${tag}): beside the seed, an island key (its checklist, the Imager and the island card linked) and a network key, one open at a time, the seed left as it was`, sk.isl !== 'none' && sk.steps === 7 && sk.links === 2 && sk.one === 1 && sk.net && sk.shut && sk.mode === 'seed', JSON.stringify(sk));
   check(`aura (${tag}): the start is a seed of light alone on the paper, no rings, keys or words yet`, s0.mode === 'seed' && vis0.home === 'none' && vis0.orbs === 0 && vis0.top === 'none', JSON.stringify({ s0, vis0 }));
   await page.mouse.click(AD ? 720 : 195, AD ? 450 : 422); await sleep(700); const s1 = await st(); await shot(page, `${P}02-bang.png`);
   await sleep(2600); const s2 = await st(); await shot(page, `${P}03-globe.png`);
