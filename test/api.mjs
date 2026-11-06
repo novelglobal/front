@@ -15,7 +15,7 @@ const { url } = await server.listen(); const O = url.origin;
 const call = async (p, { method = 'GET', body, key, token, origin = O, raw, ip } = {}) => {
   const headers = { origin }; if (ip) headers['cf-connecting-ip'] = ip; if (body !== undefined) headers['content-type'] = 'application/json'; if (key) headers.authorization = `Bearer ${key}`; if (token) headers.authorization = `Bearer ${token}`;
   const r = await server.fetch(new URL(p, O), { method, headers, body: raw != null ? raw : body !== undefined ? JSON.stringify(body) : undefined });
-  const t = r.headers.get('content-type') || ''; return { status: r.status, type: t, json: /json/.test(t) ? await r.json() : null, text: /text/.test(t) ? await r.text() : null, bin: /image/.test(t) ? Buffer.from(await r.arrayBuffer()) : null };
+  const t = r.headers.get('content-type') || ''; return { status: r.status, type: t, island: r.headers.get('x-island'), json: /json/.test(t) ? await r.json() : null, text: /text/.test(t) ? await r.text() : null, bin: /image/.test(t) ? Buffer.from(await r.arrayBuffer()) : null };
 };
 const SIG = Buffer.from(JSON.stringify({ c: 'DA-7K2Q', t: 'hs0d7', p: [-37.77, 144.96, 'bird', 'Noisy Miner', 'Manorina melanocephala', 'BRUNSWICK', 0], l: ['A line', '', '', ''], k: [], e: [] })).toString('base64url');
 const JPEG_B = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xD9]), JPEG = 'data:image/jpeg;base64,' + JPEG_B.toString('base64');
@@ -140,6 +140,12 @@ try {
   await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'live', on: false } });
   const lv2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
   check('a printer is switched online on the map from the approval page, and off again; nobody else can', lv0.live === false && lvx.status === 401 && lv1.live === true && lv2.live === false, JSON.stringify({ lv0, lvx: lvx.status, lv1, lv2 }));
+  /* one-way by default: novel.global prints on an island; TWO-WAY, set only on the approval page, lets the island print on novel.global's */
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'two', on: true } });
+  const tw1 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'two', on: false } });
+  const tw2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  check('an island is one-way until the approval page makes it two-way, and one-way again', lv0.two === false && tw1.two === true && tw2.two === false, JSON.stringify({ tw1: tw1.two, tw2: tw2.two }));
 
   /* renamed on the approval page: the name changes everywhere, the id (and every link and token) stays; nobody else can */
   const nm1 = await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'name', name: '  Elsie   Corner  Bar ' } });
@@ -285,7 +291,14 @@ try {
     const nx = await call(`/api/printers/${got.json && got.json.printer}/next`, { token: got.json && got.json.token }), pl = (await call('/api/admin/printers', { key: KEY })).json.printers;
     check('an island pairs by a printed code: approved on the approval page, it is handed a new printer and a working token once', pk.status === 201 && /^[A-Z2-9]{8}$/.test(C) && w0.status === 202 && bad.status === 404 && lk.status === 200 && lk.json.name === 'Laundromate'
       && [401, 429].includes(lkNo.status) && ap.json.printer === 'laundromate' && got.status === 200 && got.json.printer === 'laundromate' && got.json.token.length === 32 && twice.status === 404 && nx.status === 204 && pl.some(p => p.id === 'laundromate' && p.paired && String(p.paper) === '58') && lk.json.paper === '58',
-      JSON.stringify([pk.status, w0.status, bad.status, lk.status, lkNo.status, ap.json, got.status, twice.status, nx.status])); }
+      JSON.stringify([pk.status, w0.status, bad.status, lk.status, lkNo.status, ap.json, got.status, twice.status, nx.status]));
+    const nums = pl.filter(p => p.number != null).map(p => p.number), mine = pl.find(p => p.id === 'laundromate') || {};
+    const tk2 = got.json && got.json.token, mv = await call('/api/admin/printers/laundromate', { method: 'POST', key: KEY, body: { action: 'number', number: 9 } });
+    const nx9 = await call('/api/printers/laundromate/next', { token: tk2 }), taken = await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'number', number: 9 } });
+    check('island numbers: novel.global 1, each printer 2 and up the first time it is paired, the newest last, none shared, none for one never paired; an island is told its own when paired and on every ask; ISLAND N sets one by hand, never one taken',
+      (pl.find(p => p.id === 'novelglobal') || {}).number === 1 && pl.every(p => p.id === 'novelglobal' || (p.paired ? p.number >= 2 : true)) && pl.some(p => !p.paired && p.number == null) && new Set(nums).size === nums.length
+      && mine.number === Math.max(...nums) && mine.number >= 2 && got.json.number === mine.number && nx.island === String(mine.number) && mv.status === 200 && nx9.island === '9' && taken.status === 409,
+      JSON.stringify({ nums, got: got.json && got.json.number, header: nx.island, mv: mv.status, nx9: nx9.island, taken: taken.status })); }
   /* a message to novel.global, from the portfolio: approved, it prints; it is never listed for anyone, nor its photograph */
   const ms = await call('/api/stories', { method: 'POST', ip: '203.0.113.77', body: story('DA-3MSG', { kind: 'message', dest: 'novelglobal', escpos: Buffer.from([0x1B, 0x40, 72, 10]).toString('base64'), photo: JPEG }) });
   await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });

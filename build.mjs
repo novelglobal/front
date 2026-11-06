@@ -127,6 +127,8 @@ fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'ba
 const thermal = read(path.join(src, 'base', 'thermal.js'));
 fs.writeFileSync(path.join(out, 'base.js'), min(thermal + '\n' + read(path.join(src, 'base', 'base.js')), 'js'));
 fs.writeFileSync(path.join(out, 'admin.js'), thermal + '\n' + read(path.join(root, 'repo-static', 'admin.js')));
+/* an island's experience played from its stack (x.html#<stack>), on the same dots */
+fs.writeFileSync(path.join(out, 'x.js'), min(thermal + '\n' + read(path.join(root, 'repo-static', 'x.js')), 'js'));
 fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'aura.css')), 'css'));
 fs.writeFileSync(path.join(out, 'aura.js'), min(read(path.join(src, 'base', 'aura.js')), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));

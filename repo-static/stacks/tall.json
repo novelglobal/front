@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "id": "tall",
+  "name": "TALL",
+  "island": "pickles",
+  "where": [-37.8136, 144.9631],
+  "printer": { "profile": "tm-t88v", "dots": 512, "dpi": 180 },
+  "grants": { "novelglobal": "always", "two": "asked" },
+  "blocks": [
+    { "k": "photo", "from": ["camera", "library"] },
+    { "k": "strip", "mm": [72, 300], "paper": "landscape", "move": ["drag", "scroll"] },
+    { "k": "words", "max": 22, "case": "upper", "face": "thin", "ink": ["white", "black"] },
+    { "k": "print", "to": ["island", "novelglobal"] }
+  ]
+}

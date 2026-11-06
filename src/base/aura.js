@@ -1690,7 +1690,9 @@
   /* the network: every island paired with novel.global, its light lit while it listens. novel.global may print on any of them, always */
   $('#au-netk').addEventListener('click', function (e) { e.stopPropagation(); beat('network');
     var el = sideOpen('au-net', 'NETWORK', '<ol class="au-isles"><li>· · ·</li></ol>');
-    if (el) NG.printers().then(function (l) { var ol = el.querySelector('.au-isles'); if (ol) ol.innerHTML = l.length ? l.map(function (p) { return '<li class="' + (p.ready ? 'on' : '') + '"><i></i><b>' + esc(NG.prnWord(p)) + '</b></li>'; }).join('') : '<li>—</li>'; }); });
+    if (el) Promise.all([NG.printers(), fetch('stacks/index.json').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; })]).then(function (got) { var l = got[0], xs = got[1] || [], ol = el.querySelector('.au-isles');
+      /* each island's experiences beside it: novel.global may always play them */
+      if (ol) ol.innerHTML = l.length ? l.map(function (p) { return '<li class="' + (p.ready ? 'on' : '') + '"><i></i><b>' + esc(NG.prnWord(p)) + (p.two ? ' ⇄' : '') + '</b>' + xs.filter(function (x) { return x.island === p.id; }).map(function (x) { return '<a class="au-xp" href="x.html#' + esc(x.id) + '">' + esc(x.name || x.id) + '</a>'; }).join('') + '</li>'; }).join('') : '<li>—</li>'; }); });
   root.addEventListener('pointerdown', function (e) { if (S.mode !== 'seed' || e.target !== cv) return; var r = root.getBoundingClientRect(), dx = e.clientX - r.left - L.cx, dy = e.clientY - r.top - L.cy, k = Math.max(72, L.R0 * 0.9); if (dx * dx + dy * dy <= k * k) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); var go = o.dataset.go;
     beat('disc-' + o.dataset.s); toIruk(+o.dataset.s); }); });

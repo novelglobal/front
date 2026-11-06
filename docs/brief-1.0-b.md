@@ -59,11 +59,23 @@ Every experience still ends in a direct action (the third of the four rules), an
 ## Roles, partners and networks
 
 - **The owner** controls everything on the island's switchboard: its name, its experiences, its printer and its people.
-- **novel.global** can always view and edit every island's switchboard, as its steward. An island can never reach into novel.global's switchboard (the one-way rule).
+- **novel.global** can always view and edit every island's switchboard, as its steward, and can always play an island's experiences and print on its printer. An island can never reach into novel.global's switchboard (the one-way rule).
+- **Two-way:** novel.global can grant an island two-way on the approval page (ONE-WAY / TWO-WAY on each printer). The island's own experiences may then print on novel.global's printer too, and novel.global's network shows ⇄ beside it. It's for close partners, and it can be taken back at any time.
 - **PEOPLE:** keys for staff, each set to approve, make or both.
 - **PARTNERS:** other islands this island lets print here, and the islands it prints to.
 - **NETWORKS:** the mesh, the novel.global feed, or none.
 - **Printers:** each printer model has a profile: paper width (58 or 80 mm), dots across (384 on 58 mm; 512 or 576 on 80 mm), cutter, speed and darkness. Every block renders to each profile, so one experience prints correctly on any printer in the network.
+
+## The first example: TALL
+
+A stack of four blocks, live at `x.html#tall` (`repo-static/stacks/tall.json`), played by `repo-static/x.js`. It belongs to the island Pickles, and novel.global lists it under Pickles in its NETWORK panel.
+
+1. **photo:** from the camera or the phone's library.
+2. **strip:** a landscape poster, 300 mm across and the paper's 72 mm high, at the printer's own dots (2126 by 512 on the TM-T88V). The photo is blown up to fill it and stays upright. A drag, or a scroll down, moves it within the poster, and TURN rotates it a quarter. The whole poster is turned a quarter to print, so it comes out down the strip and is read with the receipt held sideways.
+3. **words:** one line, up to 22 capitals, set thin and large across the poster, in white or black ink over the dithered photo.
+4. **print:** to the island's own printer. If novel.global has made the island two-way, novel.global's printer is offered as well.
+
+A stack is data only, so the same player can play any stack made of these blocks, and the switchboard (E1b) will write them. The print goes through the same queue and approval as every other print.
 
 ## One island owner, start to finish
 
@@ -102,7 +114,7 @@ Everything an island is made of is a block, and every block is data with a fixed
 5. **No AI.** The studio has no generated words or pictures. People pick, place, draw, type and photograph; templates and forks do the heavy lifting. Facts come from sources, credited.
 6. **The till.** An input block takes a sale. The Pi sits between the till and the printer (USB, or the network printer's port 9100), passes the docket through, and adds the island's foot: the day's direct action, a counter card, a code. The printer stops being a passive sales printer and becomes an in-store driver and a creative tool for staff.
 7. **The switchboard is the approval page grown**, with one layout for every island: status strip, experiences, stack, preview and one big key. novel.global's own copy adds the fleet.
-8. **The four rules, enforced by the engine:** an island can be found and visited; nothing is behind a paywall; every journey ends in a direct action; and an island's devices are always open to novel.global, never the other way.
+8. **The four rules, enforced by the engine:** an island can be found and visited; nothing is behind a paywall; every journey ends in a direct action; and an island's devices are always open to novel.global, never the other way unless novel.global makes that island two-way.
 9. **novel.global is island 0.** Its packs are the showcase and the first template, and the library lives at its NETWORK key.
 10. **A new island is a mirror.** It starts as novel.global under its own name, and every part of it can be changed. Nothing on it is locked except the four rules.
 11. **Printer profiles, not printer code.** A new printer model is a profile (data), so supporting another piece of e-waste never needs a change to the engine.
