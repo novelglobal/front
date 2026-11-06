@@ -300,8 +300,10 @@
         /* the printer's icon on the map: online when switched on here, or while its Pi is listening */
         el('button', { type: 'button', class: p.live ? 'on' : '', text: p.live ? 'ONLINE ON THE MAP' : 'NOT YET ONLINE ON THE MAP', onclick: async () => { await setP(p.id, { action: 'live', on: !p.live }); show('printers'); } }),
         el('button', { type: 'button', text: `PAPER ${p.paper === '80' ? '58' : '80'} MM`, onclick: async () => { await setP(p.id, { action: 'paper', paper: p.paper === '80' ? '58' : '80' }); show('printers'); } }),
+        !(p.paired && /\bwifi\b/.test(p.can || '')) ? el('button', { type: 'button', disabled: true, text: p.paired ? 'CHANGE WI-FI ONCE HEARD' : 'CHANGE WI-FI ONCE PAIRED' }) : null,
         p.paired && /\bwifi\b/.test(p.can || '') ? el('button', { type: 'button', text: fresh(p.wifi) ? 'OPENING ITS WI-FI SETUP' : 'CHANGE WI-FI', onclick: async () => { if (!confirm('Open this printer\'s Wi-Fi setup? It leaves its Wi-Fi, prints its setup slip with a code to scan, and waits ten minutes for a phone to choose another.')) return; await setP(p.id, { action: 'wifi' }); show('printers'); } }) : null,
         p.paired ? el('button', { type: 'button', text: 'TEST PRINT', onclick: async () => { await setP(p.id, { action: 'test' }); show('printers'); } }) : null,
+        !canOff ? el('button', { type: 'button', disabled: true, text: p.paired ? 'TURN OFF ONCE HEARD' : 'TURN OFF ONCE PAIRED' }) : null,
         canOff && !listening ? el('button', { type: 'button', disabled: true, text: 'OFF OR OUT OF WI-FI' }) : null,
         canOff && listening ? el('button', { type: 'button', class: 'no', text: fresh(p.off) ? 'TURNING OFF' : 'TURN OFF', onclick: async () => { if (!confirm('Turn this printer off? It prints a slip, then shuts down. Unplug it once its green light stops.')) return; await setP(p.id, { action: 'off' }); show('printers'); } }) : null),
       tok);
