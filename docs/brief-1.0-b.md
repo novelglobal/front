@@ -25,7 +25,7 @@ The designer's play, in short: the small ball is confusing; the lore and copy ar
 | 1.0 B, engine | the island format, packs, the builder (`island-engine`) | the kit for making: islands, packs, **games** |
 | 1.0 B, games (this brief) | five games, story boxes, the farm, the finder | the showcase: novel.global makes the games and shows them |
 
-**Every island, three rules:** it can be found and visited, nothing on it is behind a paywall, and every journey ends in a direct action (a print, a pledge, a step taken). The engine refuses an island that breaks them.
+**Every island, four rules:** it can be found and visited, nothing on it is behind a paywall, every journey ends in a direct action (a print, a pledge, a step taken), and its devices are always open to novel.global, one way. novel.global may publish to and print on any island's printers whenever it can reach them (online or by mesh), even when the island has a site of its own. That site links only to its own island and prints only to its own printer, never to novel.global's or another island's. The engine refuses an island that breaks any of the four (`island-engine`: `network.hub`, and `docs/runtimes.md`, One way, always).
 
 ## What goes
 
