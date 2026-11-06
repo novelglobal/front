@@ -971,6 +971,8 @@ html.au-frozen #au-cv { visibility: hidden; }
 /* the print row: three keys, the rest folded behind the dots */
 #aura .au-more[hidden] { display: none; }
 #aura .au-more { display: contents; }
+/* the fold open on a phone: its keys go to a second line, so PRINT never leaves the screen */
+@media (max-width: 759px) { #aura .au-press:has(.au-more:not([hidden])) { flex-wrap: wrap; row-gap: 10px; } }
 #aura .au-morek b { font: 700 16px/1 "Departure Mono", ui-monospace, monospace; letter-spacing: .05em; }
 /* the print preview is the sheet itself: crisp dots on white */
 #aura .au-eslide.now canvas.sheet { image-rendering: pixelated; background: #fff; }
@@ -1097,3 +1099,15 @@ html.aura-dark .au-talkp { background: rgba(20, 21, 24, .96); }
 /* the still version's key: small, low, at the start only (and always in the still version, to turn it back) */
 #aura .au-stillk { position: fixed; right: 12px; bottom: calc(10px + var(--sab, 0px)); z-index: 7; width: 28px; height: 28px; border: 0; background: none; color: var(--ink); font-size: 14px; opacity: .3; cursor: pointer; display: none; }
 #aura.m-seed .au-stillk, #aura.au-plain .au-stillk { display: block; } #aura .au-stillk:hover { opacity: .8; } #aura.au-plain .au-stillk { opacity: .6; bottom: auto; top: calc(10px + var(--sat, 0px)); }
+
+/* the style: its chips in one row, then a few plain controls to make it one's own (1.0 C) */
+.au-stp { margin: 6px auto 10px; max-width: 520px; font: 600 10px "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.au-stp nav { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; }
+#aura .au-stp nav button { flex: 0 0 auto; padding: 7px 11px; border-radius: 999px; box-shadow: inset 0 0 0 1.2px var(--line); white-space: nowrap; }
+#aura .au-stp nav button.on { background: var(--ink); color: #17457F; }
+.au-stf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; align-items: center; }
+.au-stf label { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--faint); }
+.au-stf select, .au-stf input[type=range] { width: 62%; min-width: 0; font: inherit; color: var(--ink); background: transparent; border: 0; box-shadow: inset 0 -1px 0 var(--line); }
+.au-stf select option { color: #111; }
+.au-stf input[type=color] { width: 34px; height: 22px; padding: 0; border: 0; background: none; }
+#aura .au-stf .au-stx { justify-self: start; font-size: 18px; color: var(--ink); }

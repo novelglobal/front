@@ -81,6 +81,14 @@ try {
   await call(`/api/printers/pickles/jobs/${j1.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } });
   const r2 = await call(`/api/receipts/${s1.json.id}`);
   check('and once printed, the sender sees it printed', r2.json.job.status === 'printed' && !!r2.json.job.done, JSON.stringify(r2.json));
+  /* 1.0 C: the calibration strip goes to the printer with its own bytes; garbage is refused; the styles setting keeps a mod pack */
+  { const esc = Buffer.from([0x1B, 0x40, 0x1D, 0x76, 0x30, 0, 1, 0, 1, 0, 0xFF]).toString('base64');
+    const sp = await call('/api/admin/printers/pickles', { method: 'POST', key: KEY, body: { action: 'strip', escpos: esc } }), sx = await call('/api/admin/printers/pickles', { method: 'POST', key: KEY, body: { action: 'strip', escpos: '<b>' } });
+    const js = await call('/api/printers/pickles/next', { token: T }); if (js.json && js.json.job) await call(`/api/printers/pickles/jobs/${js.json.job}`, { method: 'POST', token: T, body: { status: 'printed' } });
+    const pack = JSON.stringify({ packs: [{ name: 'A PACK', by: 'an artist', styles: [{ id: 'grain', fonts: { body: 'mono' } }], off: [] }] });
+    await call('/api/admin/settings', { method: 'POST', key: KEY, body: { styles: pack } }); const pub = await call('/api/settings');
+    check('the calibration strip prints with its own bytes (garbage refused); a mod pack is kept in the settings every phone reads', sp.status === 200 && sx.status === 400 && js.json && js.json.code === 'DA-STRIP' && js.json.escpos === esc && pub.json.styles === pack,
+      JSON.stringify([sp.status, sx.status, js.json && js.json.code, pub.json.styles && pub.json.styles.length])); }
 
   /* held up on the approval page: starred for everyone, with how often it has printed */
   await call(`/api/admin/stories/${s1.json.id}`, { method: 'POST', key: KEY, body: { action: 'star' } });

@@ -743,7 +743,8 @@ function slip(n, photo, r, opt, W, boardArt) {
   opt = opt || {}; var art = opt.art || 'photo', show = opt.show || { line: 1, life: 1, facts: 1, links: 1, code: 1 };
   if (art === 'sign') return signSlip(n, photo, r, W);
   var F = function (px, w) { return (w || 'bold') + ' ' + px + 'px "Courier New", Courier, monospace'; };
-  var u = W / 512, pad = Math.round(W * 0.04), aw = W - pad * 2;
+  /* the words a third bigger than they were (the style's size), as the poster and the booth */
+  var u = W / 512 * (styleNow().size || 1.3), pad = Math.round(W * 0.04), aw = W - pad * 2;
   /* the lower half first, so the photograph can take as much again */
   var Lc = document.createElement('canvas'); Lc.width = W; Lc.height = 3000; var x = Lc.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, 3000); x.fillStyle = '#000'; x.textBaseline = 'top';
   var y = Math.round(12 * u);
@@ -795,7 +796,7 @@ var SIGN = { young: 'FLEDGLINGS ON THE GROUND', hurt: 'INJURED WILDLIFE', dead: 
 function actions(s, k) { var all = String(s || '').match(/[^.!?]+[.!?]?/g) || []; return all.filter(function (x) { return !/\?\s*$/.test(x); }).slice(0, k || 2).map(function (x) { return x.trim(); }).join(' '); }
 function signSlip(n, photo, r, W) {
   var F = function (px) { return 'bold ' + px + 'px "Courier New", Courier, monospace'; };
-  var u = W / 512, pad = Math.round(W * 0.05), aw = W - pad * 2;
+  var u = W / 512 * Math.min(1.2, styleNow().size || 1.3), pad = Math.round(W * 0.05), aw = W - pad * 2;
   var c = document.createElement('canvas'); c.width = W; c.height = 3000; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, 3000); x.textBaseline = 'top';
   var head = SIGN[n.issue] || (n.cn ? n.cn.toUpperCase() + ' LIVES HERE' : (n.say || 'NOTICED HERE').toUpperCase());
   x.font = F(Math.round(46 * u)); var hl = wrapText(x, head, aw); var bh = hl.length * Math.round(50 * u) + Math.round(30 * u);
@@ -840,17 +841,8 @@ function thumbOf(cv) {
     var bin = ''; for (var k = 0; k < out.length; k++) bin += String.fromCharCode(out[k]); return w + ',' + h + ',' + btoa(bin);
   } catch (e) { return ''; }
 }
-/* heat: the head's darkness (GS ( K, function 49: under 0 lighter, over 0 darker, slower), from the quality set */
-function raster(cv) {
-  var W = cv.width, H = cv.height, bw = W >> 3, d = cv.getContext('2d').getImageData(0, 0, W, H).data, out = [0x1B, 0x40], ht = Math.max(-6, Math.min(8, Math.round(+pq().heat || 0)));
-  if (ht) out.push(0x1D, 0x28, 0x4B, 0x02, 0x00, 0x31, ht < 0 ? 256 + ht : ht);
-  for (var y0 = 0; y0 < H; y0 += 255) {
-    var h = Math.min(255, H - y0); out.push(0x1D, 0x76, 0x30, 0x00, bw & 0xFF, bw >> 8, h & 0xFF, h >> 8);
-    for (var y = y0; y < y0 + h; y++) for (var xb = 0; xb < bw; xb++) { var v = 0; for (var bit = 0; bit < 8; bit++) if (d[(y * W + xb * 8 + bit) * 4] < 128) v |= 0x80 >> bit; out.push(v); }
-  }
-  out.push(0x1B, 0x64, 0x04, 0x1D, 0x56, 0x42, 0x00);
-  var s = ''; for (var i = 0; i < out.length; i += 0x8000) s += String.fromCharCode.apply(null, out.slice(i, i + 0x8000)); return btoa(s);
-}
+/* heat: the head's darkness from the quality set (thermal.js lays the dots out for the printer) */
+function raster(cv) { return TH.raster(cv, pq().heat); }
 /* iNaturalist through novel.global (stage 4), with a way round: when novel.global is turned away (iNaturalist limits the shared
    addresses Cloudflare asks from) or slow, the browser asks iNaturalist itself, as it did before */
 (function () { var fetch0 = window.fetch.bind(window), DIRECT = 'https://api.inaturalist.org/v1/';
@@ -2198,24 +2190,31 @@ function boothPic(file) {
    words and lines (0 to 2); minText: the smallest words on a slip, in dots at 512 wide */
 var PQ_SETS = {
   soft: { clip: 1, gamma: 0.8, contrast: 0, sharpen: 0.7, dither: 'atkinson', lineCut: 200, bolden: 0, minText: 14, heat: 0 },
-  crisp: { clip: 2, gamma: 0.72, contrast: 0.25, sharpen: 1.1, dither: 'atkinson', lineCut: 215, bolden: 0, minText: 18, heat: 2 },
+  crisp: { clip: 2, gamma: 0.72, contrast: 0.25, sharpen: 1.1, dither: 'auto', lineCut: 215, bolden: 0, minText: 18, heat: 2 },
   bold: { clip: 3, gamma: 0.62, contrast: 0.4, sharpen: 1.3, dither: 'floyd', lineCut: 225, bolden: 1, minText: 20, heat: 4 },
   screen: { clip: 2, gamma: 0.7, contrast: 0.3, sharpen: 0.9, dither: 'bayer', lineCut: 215, bolden: 0, minText: 18, heat: 2 },
   graphic: { clip: 4, gamma: 0.75, contrast: 0.7, sharpen: 1.6, dither: 'none', lineCut: 230, bolden: 1, minText: 20, heat: 3 }
 };
 var PQ_IN = null; siteOf().then(function (s) { try { PQ_IN = s && s.printq ? JSON.parse(s.printq) : null; } catch (e) { PQ_IN = null; } });
-function pq() { var o = PQ_IN || {}, b = PQ_SETS[o.preset] || PQ_SETS.crisp, out = {}; for (var k in b) out[k] = o[k] != null && o[k] !== '' ? o[k] : b[k]; return out; }
-/* the ordered screen, four by four */
-var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-function dots(L, W, H, how) {
-  var n = W * H, g = L, i, x, y, e, o;
-  if (how === 'none') { for (i = 0; i < n; i++) g[i] = g[i] < 128 ? 0 : 255; return g; }
-  if (how === 'bayer') { for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; g[i] = g[i] < (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) * 16 ? 0 : 255; } return g; }
-  for (y = 0; y < H; y++) for (x = 0; x < W; x++) { i = y * W + x; o = g[i] < 128 ? 0 : 255; e = g[i] - o; g[i] = o;
-    if (how === 'floyd') { if (x + 1 < W) g[i + 1] += e * 7 / 16; if (y + 1 < H) { if (x > 0) g[i + W - 1] += e * 3 / 16; g[i + W] += e * 5 / 16; if (x + 1 < W) g[i + W + 1] += e / 16; } }
-    else { e /= 8; if (x + 1 < W) g[i + 1] += e; if (x + 2 < W) g[i + 2] += e; if (y + 1 < H) { if (x > 0) g[i + W - 1] += e; g[i + W] += e; if (x + 1 < W) g[i + W + 1] += e; } if (y + 2 < H) g[i + 2 * W] += e; } }
-  return g;
-}
+/* ───────── styles: the house's own, those curated on the approval page from artists' packs, and one's own kept on this phone ─────────
+   (thermal.js holds what a style is and checks every one) */
+var TH = window.THERMAL, STY_SITE = [], PSTY = null;
+siteOf().then(function (s) { var out = []; try { var j = s && s.styles ? JSON.parse(s.styles) : null; ((j && j.packs) || []).forEach(function (p) { var pk = TH.pack(p), off = p.off || []; if (pk) pk.styles.forEach(function (st) { if (off.indexOf(st.id) < 0) { st.pack = pk.name; out.push(st); } }); }); } catch (e) { out = []; } STY_SITE = out; });
+function stylesAll() { var seen = {}, mine = (store.get('da.styles.mine', []) || []).map(TH.clean).filter(Boolean); mine.forEach(function (q) { q.mine = 1; });
+  return TH.HOUSE.concat(STY_SITE, mine).filter(function (q) { if (seen[q.id]) return false; seen[q.id] = 1; return true; }); }
+function styleBy(id) { var all = stylesAll(); return all.filter(function (q) { return q.id === id; })[0] || all[0]; }
+function styleOn() { return store.get('da.style', 'house') || 'house'; }
+/* one's own: kept on this phone (twelve at most), an edit of any style */
+function styleKeep(st) { var c = TH.clean(st); if (!c) return null; var mine = (store.get('da.styles.mine', []) || []).filter(function (q) { return q.id !== c.id; }); mine.push(c); store.set('da.styles.mine', mine.slice(-12)); return c; }
+function styleDrop(id) { store.set('da.styles.mine', (store.get('da.styles.mine', []) || []).filter(function (q) { return q.id !== id; })); if (styleOn() === id) store.set('da.style', 'house'); }
+/* the style a print is being made in (the aura sets its poster's while it prints); else the one chosen on this phone */
+function printStyle(st) { PSTY = st || null; }
+function styleNow() { return PSTY || styleBy(styleOn()); }
+/* the set, its tweaks from the approval page, the curve measured there (which stands for the set's mid-tones), then the style's own photograph */
+function pq() { var o = PQ_IN || {}, b = PQ_SETS[o.preset] || PQ_SETS.crisp, out = {}, k; for (k in b) out[k] = o[k] != null && o[k] !== '' ? o[k] : b[k];
+  out.cal = o.cal ? TH.cal(o.cal) : null; if (out.cal && o.gamma == null) out.gamma = 1;
+  var st = styleNow(), ph = (st && st.photo) || {}; for (k in ph) out[k] = ph[k]; out.size = st ? st.size : 1.3; return out; }
+var dots = function (L, W, H, how) { return TH.dots(L, W, H, how); };
 function printReady(x, W, H, D) {
   var Q = pq(), img = x.getImageData(0, 0, W, H), d = img.data, n = W * H, L = new Float32Array(n), hist = new Uint32Array(256), i, l, cut = n * Math.max(0, Math.min(10, +Q.clip || 0)) / 100;
   for (l = 0, i = 0; l < n; l++, i += 4) { L[l] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; hist[L[l] | 0]++; }
@@ -2225,10 +2224,13 @@ function printReady(x, W, H, D) {
   for (l = 0; l < n; l++) { var t = Math.pow(Math.max(0, Math.min(1, (L[l] - lo) / span)), gm); if (ct) t = t + ct * (t - 0.5) * (1 - Math.abs(2 * t - 1)) * 2; L[l] = 255 * Math.max(0, Math.min(1, t)); }
   if (sh) { for (var y = 0; y < H; y++) for (var xx = 0; xx < W; xx++) { var s = 0, m = 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { var yy = y + dy, x2 = xx + dx; if (yy >= 0 && yy < H && x2 >= 0 && x2 < W) { s += L[yy * W + x2]; m++; } } B2[y * W + xx] = s / m; }
     for (l = 0; l < n; l++) L[l] = L[l] + sh * (L[l] - B2[l]); }
-  for (l = 0; l < n; l++) L[l] = L[l] < 0 ? 0 : L[l] > 255 ? 255 : L[l];
+  for (l = 0; l < n; l++) L[l] = L[l] < 10 ? 0 : L[l] > 245 ? 255 : L[l];
+  /* the dots chosen for this picture (auto), then its tones through the curve measured on the printer: what is meant black prints solid */
+  var how = Q.dither === 'auto' ? TH.pick(L, W, H) : Q.dither, lut = Q.cal ? TH.curve(Q.cal) : null; printReady.how = how;
+  if (lut) for (l = 0; l < n; l++) L[l] = L[l] ? lut[L[l] | 0] : 0;
   /* CanvasDither's Atkinson when it is here and asked for; the others (and Atkinson without it) done here */
-  if (Q.dither === 'atkinson' && D) { for (l = 0, i = 0; l < n; l++, i += 4) d[i] = d[i + 1] = d[i + 2] = L[l]; D.atkinson(img); x.putImageData(img, 0, 0); return; }
-  dots(L, W, H, Q.dither); for (l = 0, i = 0; l < n; l++, i += 4) { d[i] = d[i + 1] = d[i + 2] = L[l]; d[i + 3] = 255; }
+  if (how === 'atkinson' && D) { for (l = 0, i = 0; l < n; l++, i += 4) d[i] = d[i + 1] = d[i + 2] = L[l]; D.atkinson(img); x.putImageData(img, 0, 0); return; }
+  dots(L, W, H, how); for (l = 0, i = 0; l < n; l++, i += 4) { d[i] = d[i + 1] = d[i + 2] = L[l]; d[i + 3] = 255; }
   x.putImageData(img, 0, 0);
 }
 /* words and line work made pure: black below the cut, white above, then made a dot or two bolder (keep: a rectangle left as it is, the photograph) */
@@ -2325,27 +2327,32 @@ function boothLine() {
   if (cu && !BTH.lineK) return cu === '-' ? '' : cu; return brief(0, (BTH.lineK || 0) + (cu ? -1 : 0));
 }
 function boothSlip(D, code, real) {
-  var W = BTH.paper, pad = Math.round(W * 0.04), u = W / 512, p = forPrint(BTH.im, W, D), mt = Math.max(10, Math.min(28, +pq().minText || 14)), fz = function (n2) { return Math.round(Math.max(n2, mt) * u); };
-  var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace';
+  /* the words in the style chosen on this phone, a third bigger than they were (the style's size), each size a whole number of dots */
+  var st = styleNow(), Z = st.size || 1.3, W = BTH.paper, pad = Math.round(W * 0.04 * st.margin), u = W / 512, p = forPrint(BTH.im, W, D), mt = Math.max(10, Math.min(28, +pq().minText || 14)), fz = function (n2) { return Math.round(Math.max(n2 * Z, mt) * u); };
+  var fo = function (role, px) { return TH.font(st, st.fonts[role], px, true); }, band = st.top === 'band', lh = function (n2) { return Math.round(n2 * Z * st.lead * u); };
+  var words = BTH.words.trim(), c = document.createElement('canvas'), x = c.getContext('2d'); x.font = fo('head', fz(34));
   var lines = words ? wrapText(x, words, W - pad * 2) : [];
-  return qrLib().then(function (Q) {
+  return Promise.all([qrLib(), TH.fontsOf(st)]).then(function (got) { var Q = got[0];
     var q = null; if (Q) { try { q = Q(0, 'M'); q.addData(siteURL('n=' + code)); q.make(); } catch (e) { q = null; } }
     q = null; var qs = 0;   // the slip carries one code: the access code
-    x.font = 'italic ' + fz(17) + 'px Georgia, serif'; var bl = boothLine() ? wrapText(x, boothLine(), W - pad * 2).slice(0, 3) : [];
-    var head = Math.round(34 * u), wh = lines.length * Math.round(42 * u) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(fz(17) * 1.4) + (bl.length ? Math.round(14 * u) : 0), foot = real ? Math.max(qs, Math.round(104 * u)) + pad * 2 : pad;
+    x.font = fo('body', fz(17)); var bl = boothLine() ? wrapText(x, boothLine(), W - pad * 2).slice(0, 3) : [];
+    var head = Math.round((band ? 44 : 34) * u), wh = lines.length * lh(42) + (lines.length ? Math.round(16 * u) : 0) + bl.length * Math.round(fz(17) * 1.4 * st.lead) + (bl.length ? Math.round(14 * u) : 0), foot = real ? Math.max(qs, Math.round(104 * u)) + pad * 2 : pad;
     c.width = W; c.height = head + p.height + wh + foot; x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, c.height); x.fillStyle = '#000'; x.textBaseline = 'top';
-    x.fillRect(pad, Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
-    x.font = '700 ' + fz(17) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('novel.global', pad + Math.round(38 * u), Math.round(8 * u)); x.font = fz(15) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, Math.round(8 * u));
+    /* the top: the mark and the name, or (band) the same reversed out of solid black */
+    var hy = band ? Math.round(5 * u) : 0; if (band) { x.fillRect(0, 0, W, head - Math.round(6 * u)); x.fillStyle = '#fff'; }
+    if (st.top !== 'none') { x.fillRect(pad, hy + Math.round(9 * u), Math.round(14 * u), Math.round(14 * u)); x.beginPath(); x.arc(pad + Math.round(25 * u), hy + Math.round(16 * u), Math.round(7.5 * u), 0, 7); x.fill();
+    x.font = fo('small', fz(17)); x.fillText('novel.global', pad + Math.round(38 * u), hy + Math.round(8 * u)); x.font = fo('small', fz(15)); var dt = when(Date.now()); x.fillText(dt, W - pad - x.measureText(dt).width, hy + Math.round(8 * u)); }
+    x.fillStyle = '#000';
     BTH.lay = { head: head, ph: p.height };
     x.drawImage(p, 0, head); x.save(); x.translate(0, head); drawStickers(x, W, p.height, '#000'); x.restore(); x.fillStyle = '#000'; x.textBaseline = 'top';
-    var y = head + p.height + Math.round(14 * u); x.font = 'bold ' + Math.round(34 * u) + 'px ui-monospace, Menlo, monospace'; lines.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(42 * u); });
-    if (bl.length) { y += Math.round(6 * u); x.font = 'italic ' + fz(17) + 'px Georgia, serif'; bl.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(fz(17) * 1.4); }); }
+    var y = head + p.height + Math.round(14 * u); x.font = fo('head', fz(34)); lines.forEach(function (t) { x.fillText(t, pad, y); y += lh(42); });
+    if (bl.length) { y += Math.round(6 * u); x.font = fo('body', fz(17)); bl.forEach(function (t) { x.fillText(t, pad, y); y += Math.round(fz(17) * 1.4 * st.lead); }); }
     /* the key: a drawn key and the three characters large, on the first print from this phone's booth only (never on a save, never again) */
     if (real) { y = c.height - foot + pad; var kx = pad, ky = y + Math.round(4 * u), kr = Math.round(11 * u); x.lineWidth = Math.max(2, Math.round(3 * u)); x.strokeStyle = '#000'; x.beginPath(); x.arc(kx + kr, ky + kr, kr, 0, 7); x.stroke();
     x.fillRect(kx + kr * 2, ky + kr - Math.round(1.5 * u), Math.round(26 * u), Math.round(3 * u)); x.fillRect(kx + kr * 2 + Math.round(16 * u), ky + kr, Math.round(3 * u), Math.round(8 * u)); x.fillRect(kx + kr * 2 + Math.round(23 * u), ky + kr, Math.round(3 * u), Math.round(6 * u));
     x.font = '700 ' + Math.round(52 * u) + 'px ui-monospace, Menlo, monospace'; x.fillText(me(), kx + Math.round(60 * u), y - Math.round(4 * u));
-    x.font = '700 ' + fz(16) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('your access code for novel.global', pad, y + Math.round(58 * u));
-    x.font = fz(14) + 'px "Helvetica Neue", Helvetica, Arial, sans-serif'; x.fillText('accounts are made only on paper', pad, y + Math.round(58 * u) + Math.round(fz(16) * 1.35)); }
+    x.font = fo('small', fz(16)); x.fillText('your access code for novel.global', pad, y + Math.round(58 * u));
+    x.font = fo('small', fz(14)); x.fillText('accounts are made only on paper', pad, y + Math.round(58 * u) + Math.round(fz(16) * 1.35)); }
     if (q) { var n = q.getModuleCount(), ox = W - pad - qs; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) if (q.isDark(i, j)) x.fillRect(ox + j * mod, y + i * mod, mod, mod); }
     /* every dot black or white, as the printer lays it down: what is seen is what prints (the words and lines by the quality set, bolder if asked) */
     inkPass(x, W, c.height, [0, head, W, p.height]);
@@ -2569,7 +2576,7 @@ window.NG = { usedAt: function () { return USED; }, $: $, $$: $$, esc: esc, stor
   read: read, wishOptions: wishOptions, wishLines: wishLines, context: context, weather: weather, db: db, DB: function () { return DB; }, outlookNow: outlookNow, nowItems: nowItems, seasonNow: seasonNow,
   reveal: reveal, far: far, dist: dist, code: code, SIGN: SIGN, actions: actions, PHOTOS: PHOTOS, notes: function () { return NOTES; }, saveNotes: saveNotes, attend: attend,
   place: function (c) { cur = c; place(); var n = cur.note; cur = null; return n; },
-  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, inkPass: inkPass, ditherLib: ditherLib, printers: printers, prnPick: prnPick, prnWord: prnWord, printAgain: printAgain, prnSet: function (id) { store.set('da.base.printer', id); }, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
+  slip: slip, wav: wav, sendNote: sendNote, human: human, lite: LITE, newAC: newAC, sendMesh: sendMesh, forPrint: forPrint, pq: pq, pqSets: PQ_SETS, styles: stylesAll, styleBy: styleBy, styleOn: styleOn, setStyle: function (id) { store.set('da.style', id); }, styleKeep: styleKeep, styleDrop: styleDrop, printStyle: printStyle, raster: raster, inkPass: inkPass, ditherLib: ditherLib, printers: printers, prnPick: prnPick, prnWord: prnWord, printAgain: printAgain, prnSet: function (id) { store.set('da.base.printer', id); }, pips: pips, follow: follow, download: download, pieces: function () { return PIECES.concat(PIECES_SHARED); }, boothWith: boothWith, useCode: useCode, proof: proof, kin: kin, mine: mine, brief: brief, me: me, setMe: setMe, mine: mine, dropMine: dropMine, meUsed: meUsed, moon: moon, moonPath: moonPath, moonTip: moonTip, moonMark: moonMark, moonsAgo: moonsAgo, moonTag: moonTag, minePiece: function (id) { return PIECES.some(function (p) { return p.id === id; }); }, dropPiece: function (id) { PIECES = PIECES.filter(function (p) { return p.id !== id; }); store.set('da.base.pieces', PIECES); },
   icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, ac: ac, bus: bus, INS: INS, soundLibs: soundLibs, pixelArt: pixelArt, printReady: printReady, map: map, toneOf: toneOf, KINDS: KINDS };
 window.__base = { room: function () { return AC && AC.__room; }, iruk: function (ns) { return irukandji(ns).map(function (j) { return j.ns.length; }); }, icons: function () { return ICONS; }, qrLib: qrLib, noteURL: noteURL, drone: function () { return { on: DRONE.on, voices: Object.keys(DRONE.v).length }; }, undo: function () { return UNDO.length; }, poster: boothPoster, hits: function () { return hits; }, song: function () { return SONG; }, seq: function () { return SEQ; }, wish: function () { var n = NOTES[0]; return n ? wishLines(n, read({ id: n.id, say: n.say, tags: n.tags, spId: n.sp, lat: n.lat, lng: n.lng, wx: n.wx })) : []; }, read: read, guess: guess, issueOf: issueOf, related: related, nowItems: nowItems, exif: exif, notes: function () { return NOTES; }, db: db, map: map, code: code, pixelArt: pixelArt, slip: slip, set: function (n) { cur = n; } };
 })();

@@ -123,7 +123,10 @@ fs.writeFileSync(path.join(out, 'base-db.json'), JSON.stringify({
 const BASE = { imagery: win.DA_CONFIG.IMAGERY.url, maxzoom: win.DA_CONFIG.IMAGERY.maxzoom, credit: win.DA_CONFIG.IMAGERY.attribution, centre: [win.DA_CONFIG.SCAN.lat, win.DA_CONFIG.SCAN.lng], bbox: win.DA_CONFIG.BBOX,
   portal: win.DA_CONFIG.PORTAL_URL, inat: win.DA_CONFIG.INAT_API, master: win.DA_MASTER || null, printers: win.DA_PRINTERS || {}, contacts: win.DA_CONTACTS || [], words: win.DA_CONFIG.WORDS || {}, build: sha };
 fs.writeFileSync(path.join(out, 'base.css'), min(read(path.join(src, 'base', 'base.css')), 'css'));
-fs.writeFileSync(path.join(out, 'base.js'), min(read(path.join(src, 'base', 'base.js')), 'js'));
+/* thermal-first printing and the styles, shared: put in front of the base and of the approval page */
+const thermal = read(path.join(src, 'base', 'thermal.js'));
+fs.writeFileSync(path.join(out, 'base.js'), min(thermal + '\n' + read(path.join(src, 'base', 'base.js')), 'js'));
+fs.writeFileSync(path.join(out, 'admin.js'), thermal + '\n' + read(path.join(root, 'repo-static', 'admin.js')));
 fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'aura.css')), 'css'));
 fs.writeFileSync(path.join(out, 'aura.js'), min(read(path.join(src, 'base', 'aura.js')), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));
