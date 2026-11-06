@@ -78,12 +78,13 @@
     var go = $('#go'); if (go) go.disabled = !S.img || !S.to;
     [].forEach.call(document.querySelectorAll('#to button'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === S.to)); });
   }
-  /* where it may print: its own island always; novel.global's printer only once the island is two-way */
+  /* where it may print: its own island always; novel.global's printer once the island is two-way, or always when played on novel.global */
+  var IN = /[?&]in=1/.test(location.search);
   function printers() {
     return api('/partners').then(function (j) {
       var l = j.partners || [], isl = l.filter(function (p) { return p.id === S.stack.island && p.paired; })[0], ng = l.filter(function (p) { return p.id === 'novelglobal'; })[0];
       var to = (block('print') || {}).to || ['island'];
-      S.prns = [].concat(isl && to.indexOf('island') >= 0 ? [isl] : [], isl && isl.two && ng && to.indexOf('novelglobal') >= 0 ? [ng] : []);
+      S.prns = [].concat(isl && to.indexOf('island') >= 0 ? [isl] : [], ng && to.indexOf('novelglobal') >= 0 && (IN || (isl && isl.two)) ? [ng] : []);
       S.to = S.prns.length ? S.prns[0].id : null; $('#led').classList.toggle('on', !!(isl && isl.ready));
       $('#to').innerHTML = S.prns.length > 1 ? S.prns.map(function (p) { return '<button type="button" data-p="' + p.id + '"><i class="led' + (p.ready ? ' on' : '') + '"></i>' + word(p) + '</button>'; }).join('') : '';
       keys();
@@ -125,6 +126,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    if (IN) document.documentElement.className = 'in';
     var id = (location.hash.slice(1) || 'tall').replace(/[^a-z0-9-]/g, '');
     fetch('stacks/' + id + '.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (s) { S.stack = s; build(); })
       .catch(function () { $('#nm').textContent = '—'; });

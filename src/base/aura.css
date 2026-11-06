@@ -62,6 +62,9 @@ html.aura-on body { background: var(--blue, #17457F); }
 .au-chk li:focus-visible i { box-shadow: 0 0 0 3px rgba(92, 224, 122, .35); } .au-chk a { color: inherit; text-underline-offset: 3px; }
 .au-isles li { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid rgba(255, 255, 255, .08); font: 500 12px/1 "Departure Mono", ui-monospace, Menlo, monospace; letter-spacing: .06em; }
 .au-isles b { font-weight: 500; } .au-isles i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid currentColor; opacity: .6; } .au-isles li.on i { background: #5CE07A; border-color: #5CE07A; opacity: 1; }
+.au-side.au-play { width: min(760px, calc(100vw - 32px)); height: min(700px, calc(100dvh - 40px)); padding-bottom: 0; overflow: hidden; }
+.au-side .au-xf { flex: 1; width: 100%; border: 0; background: transparent; }
+.au-side .au-wback { font: 400 18px/1 inherit; color: #E9F2E4; }
 .au-xp { color: inherit; text-decoration: none; border: 1px solid currentColor; padding: 5px 8px; opacity: .8; } .au-xp:hover, .au-xp:focus-visible { opacity: 1; }
 #aura.m-seed #au-seed { display: block; position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin: -70px; border-radius: 50%; }
 #aura.m-bang .au-orb, #aura.m-globe .au-orb { display: grid; }
@@ -975,6 +978,7 @@ html.au-frozen #au-cv { visibility: hidden; }
 
 /* the print row: three keys, the rest folded behind the dots */
 #aura .au-more[hidden] { display: none; }
+#aura .au-press .au-pips:empty { display: none; }
 #aura .au-more { display: contents; }
 /* the fold open on a phone: its keys go to a second line, so PRINT never leaves the screen */
 @media (max-width: 759px) { #aura .au-press:has(.au-more:not([hidden])) { flex-wrap: wrap; row-gap: 10px; } }
