@@ -1420,7 +1420,7 @@
     ok: '<path d="M7 17l6 6 12-13"/>',
     sun: '<circle cx="16" cy="16" r="5"/><path d="M16 4v4M16 24v4M4 16h4M24 16h4M7.5 7.5l2.8 2.8M21.7 21.7l2.8 2.8M7.5 24.5l2.8-2.8M21.7 10.3l2.8-2.8"/>',
     moon2: '<path d="M20 5a11 11 0 1 0 7 15A9 9 0 0 1 20 5z"/><circle cx="24" cy="9" r="1" class="f"/><circle cx="27" cy="14" r=".8" class="f"/>',
-    fist: '<path d="M8 15.5c0-5.8 3.6-9.5 8-9.5s8 3.7 8 9.5"/><path d="M8 15.5c0 2.6 4 2.6 4 0c0 2.6 4 2.6 4 0c0 2.6 4 2.6 4 0c0 2.6 4 2.6 4 0"/><path d="M8 15.5c-1.8.2-2.6-1.6-1.6-3.4"/><path d="M10 19v7M14 19.6v8.4M18 19.6v8.4M22 19v7" class="d"/>',
+    fist: '<path d="M7 14.5V9.4a2.2 2.2 0 0 1 4.4 0v4.1M11.4 13V8.2a2.2 2.2 0 0 1 4.4 0V13M15.8 13V8.2a2.2 2.2 0 0 1 4.4 0V13M20.2 13.5V9.4a2.2 2.2 0 0 1 4.4 0v5.1"/><path d="M7 14.5c0 4.2 3.4 7.3 8.8 7.3s8.8-3 8.8-7.3"/><path d="M7.4 15.6h7.4c1.3 0 2 1.5 1.1 2.4"/><path d="M11 21.6v6.4M14.6 22v7M18 22v7M21.6 21.4v6.4" class="d"/>',
     net: '<path d="M16 6.5L7.5 23h17zM16 6.5V17M7.5 23l8.5-6 8.5 6"/><circle cx="16" cy="6.5" r="1.6" class="f"/><circle cx="7.5" cy="23" r="1.6" class="f"/><circle cx="24.5" cy="23" r="1.6" class="f"/><circle cx="16" cy="17" r="1.6" class="f"/>'
   };
   /* what to do, said plainly in a few words, now and then: each line comes for a moment (longer for a longer one) and goes for a while.
@@ -1673,21 +1673,24 @@
   $('#au-seed').addEventListener('click', bang);
   /* either side of the rings wound tight: to the left, making an island (second-hand parts, a card, a printer); to the right, the network
      of islands. The rings themselves are novel.global's own island, as they always were */
-  var ISLE = [['pi', 'A second-hand Raspberry Pi 3'], ['printer', 'A second-hand Epson TM-T88V receipt printer'], ['card', 'A microSD card, 8 GB or more'],
-    ['imager', 'Raspberry Pi Imager', 'https://www.raspberrypi.com/software/'], ['image', 'The island card', 'https://github.com/novelglobal/island-kit/releases/latest'],
-    ['write', 'In Imager: the card, then Use custom, then the island file'], ['on', 'Card in the Pi, printer on its USB, power on. Scan the code it prints']];
+  /* making an island, in order: the parts (second-hand only), then the card, then the printer. Each a tick kept on this phone */
+  var ISLE = [['pi', 'Raspberry Pi 3'], ['printer', 'Epson TM-T88V'], ['card', 'microSD card, 8 GB'], 0,
+    ['imager', 'Raspberry Pi Imager', 'https://www.raspberrypi.com/software/'], ['image', 'Island card', 'https://github.com/novelglobal/island-kit/releases/latest'],
+    ['write', 'Imager › card › Use custom › island card'], ['on', 'Printer on the Pi’s USB, power on'], ['scan', 'Scan the slip it prints']];
   function sideOpen(id, title, body) { var was = $('#' + id); [].forEach.call(document.querySelectorAll('.au-side'), function (q) { q.remove(); }); if (was) return null; closeDev();
     var el = document.createElement('section'); el.id = id; el.className = 'au-side'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', title);
     el.innerHTML = '<header><i class="led"></i><b>' + title + '</b><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header>' + body; root.appendChild(el);
     el.querySelector('.au-wx').addEventListener('click', function () { el.remove(); bell(1, 0.08); }); bell(3, 0.1); return el; }
   var SIDEK = document.createElement('nav'); SIDEK.className = 'au-sidek'; SIDEK.innerHTML = '<button id="au-islk" aria-label="Make an island">' + svgI('fist') + '</button><button id="au-netk" aria-label="The network">' + svgI('net') + '</button>'; root.appendChild(SIDEK);
   $('#au-islk').addEventListener('click', function (e) { e.stopPropagation(); beat('island'); var got = store.get('da.isle.v1', []) || [];
-    var el = sideOpen('au-isle', 'AN ISLAND', '<p class="au-warn">Second-hand parts only: a Raspberry Pi 3 and an Epson TM-T88V. Newer models will not work.</p><ol class="au-chk">' + ISLE.map(function (s) { return '<li><label><input type="checkbox" data-k="' + s[0] + '"' + (got.indexOf(s[0]) >= 0 ? ' checked' : '') + '><span>' + (s[2] ? '<a href="' + s[2] + '" rel="noopener">' + esc(s[1]) + ' ↗</a>' : esc(s[1])) + '</span></label></li>'; }).join('') + '</ol>');
-    if (el) [].forEach.call(el.querySelectorAll('input'), function (b) { b.addEventListener('change', function () { var l = [].map.call(el.querySelectorAll('input:checked'), function (q) { return q.dataset.k; }); store.set('da.isle.v1', l); bell(b.checked ? 4 : 2, 0.08); }); }); });
+    var el = sideOpen('au-isle', 'AN ISLAND', '<p class="au-warn">Second-hand only. Newer models will not work.</p><ol class="au-chk">' + ISLE.map(function (s) { if (!s) return '<li class="gap" aria-hidden="true"></li>';
+      return '<li role="checkbox" tabindex="0" data-k="' + s[0] + '" aria-checked="' + (got.indexOf(s[0]) >= 0) + '"><i></i><span>' + (s[2] ? '<a href="' + s[2] + '" rel="noopener">' + esc(s[1]) + ' ↗</a>' : esc(s[1])) + '</span></li>'; }).join('') + '</ol>');
+    if (el) [].forEach.call(el.querySelectorAll('[data-k]'), function (b) { var flip = function () { var on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', String(on)); store.set('da.isle.v1', [].map.call(el.querySelectorAll('[aria-checked="true"]'), function (q) { return q.dataset.k; })); bell(on ? 4 : 2, 0.08); };
+      b.addEventListener('click', function (ev) { if (!ev.target.closest('a')) flip(); }); b.addEventListener('keydown', function (ev) { if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); flip(); } }); }); });
   /* the network: every island paired with novel.global, its light lit while it listens. novel.global may print on any of them, always */
   $('#au-netk').addEventListener('click', function (e) { e.stopPropagation(); beat('network');
-    var el = sideOpen('au-net', 'NETWORK', '<p>Every island, open to all: make, share, mod, swap, show, build, deploy.</p><ol class="au-isles"><li>· · ·</li></ol><a class="au-src" href="https://github.com/novelglobal" rel="noopener">SOURCE ↗</a>');
-    if (el) NG.printers().then(function (l) { var ol = el.querySelector('.au-isles'); if (ol) ol.innerHTML = l.map(function (p) { return '<li class="' + (p.ready ? 'on' : '') + '"><i></i><b>' + esc(NG.prnWord(p)) + '</b><small>' + (p.printed || 0) + ' ⎙</small></li>'; }).join(''); }); });
+    var el = sideOpen('au-net', 'NETWORK', '<ol class="au-isles"><li>· · ·</li></ol>');
+    if (el) NG.printers().then(function (l) { var ol = el.querySelector('.au-isles'); if (ol) ol.innerHTML = l.length ? l.map(function (p) { return '<li class="' + (p.ready ? 'on' : '') + '"><i></i><b>' + esc(NG.prnWord(p)) + '</b></li>'; }).join('') : '<li>—</li>'; }); });
   root.addEventListener('pointerdown', function (e) { if (S.mode !== 'seed' || e.target !== cv) return; var r = root.getBoundingClientRect(), dx = e.clientX - r.left - L.cx, dy = e.clientY - r.top - L.cy, k = Math.max(72, L.R0 * 0.9); if (dx * dx + dy * dy <= k * k) bang(); });
   orbs.forEach(function (o) { o.addEventListener('click', function () { if (S.mode === 'bang') setMode('globe'); var go = o.dataset.go;
     beat('disc-' + o.dataset.s); toIruk(+o.dataset.s); }); });

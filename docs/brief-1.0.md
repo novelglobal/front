@@ -33,26 +33,11 @@ The order: **C now** (the poster is why anyone makes; it lives here). **A at the
 
 **Done when:** a fresh card and a fresh TM-T88V print a welcome slip and pair with novel.global (or run offline) with nothing typed but the Wi-Fi password, on a phone.
 
-## 1.0 B: the island engine
+## 1.0 B: the archipelago engine
 
-An island is a **manifest** plus **packs**. The manifest says what the island is: its name, place, steps (any number, not always four, not always W.I.S.H.), what prints and how. Packs are everything it is made of, each swappable:
+How anyone with a second-hand receipt printer and a Pi makes, owns and shares a print experience without code or AI. It has three faces: STUDIO, a visual editor of pages, receipts and flows made from blocks (like Canva); LIBRARY, where every island's blocks and packs are found, installed and forked (like Steam and its workshop); and COMMONS, where everything published is open, versioned and curated (like Wikipedia). novel.global is island 0. The full plan, its decisions and stages, and the farm island (a companion game, planned only) are in `docs/brief-1.0-b.md`.
 
-- **Map pack:** the area, offline tiles (PMTiles, served by the Pi), its own data points and layers (CSV or GeoJSON in, cells out).
-- **Lives pack:** species and stories of the place.
-- **Sound pack:** the voices, moods and tempo.
-- **Steps pack:** the journey: notice, W.I.S.H. and direct action are novel.global's. A photo-sticker island might be one step: photo, frame, print.
-- **Style pack:** see 1.0 C.
-
-**The island builder** is the approval page grown into a dashboard for print experiences, not websites. It covers steps, packs, the printer, approvals and who may print. It also connects new devices without asking anyone.
-
-**Federation:** islands are found through novel.global's directory if they choose, talk over the mesh when near, and keep working alone.
-
-**Recommended path:**
-1. Write the manifest and pack format first, with novel.global itself described as an island. If it can't describe this site, it isn't ready.
-2. Pull the engine out of this repo piece by piece, behind the format, while novel.global keeps working.
-3. Run the same engine hosted (Cloudflare, as now) and on the Pi (the 1.0 A binary serving it, SQLite for D1, files for R2).
-
-**Done when:** a second island, the photo-sticker one, runs from packs alone, offline on a Pi, while novel.global runs from its own packs online.
+**Done when:** a second island runs from blocks alone, offline on a Pi, while novel.global runs from its own packs online.
 
 ## 1.0 C: receipts worth keeping
 

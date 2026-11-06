@@ -183,7 +183,7 @@ const snd = (() => {
   /* ───────── the sound watched over. A phone can leave its sound "running" with its clock stopped, or give it back silent
      after something else took it; a voice can blow the mix up. Any of these, and the whole of it is built again at the next
      touch, as a reload would, instead of staying quiet until one ───────── */
-  let sick = false, ctSeen = -1, ctAt = 0; const MONB = new Float32Array(512);
+  let sick = false, OFF = false, ctSeen = -1, ctAt = 0; const MONB = new Float32Array(512);
   function clockOK() {
     if (!ctx || ctx.state !== 'running') return false; const now = performance.now();
     if (ctx.currentTime !== ctSeen) { ctSeen = ctx.currentTime; ctAt = now; return true; } return now - ctAt < 1500;
@@ -200,7 +200,7 @@ const snd = (() => {
     if (sick && S.radio) ready();
   }, 1000);
   function ready() {
-    if (!prefs.sound || !active()) return null;
+    if (OFF) return ctx; if (!prefs.sound || !active()) return null;
     try {
       if (ctx && (sick || ctx.state === 'closed')) rebuild();
       if (!ctx) {
@@ -212,13 +212,7 @@ const snd = (() => {
         const dip = ctx.createBiquadFilter(); dip.type = 'peaking'; dip.frequency.value = 2800; dip.Q.value = 1.1; dip.gain.value = -7;
         const shelf = ctx.createBiquadFilter(); shelf.type = 'highshelf'; shelf.frequency.value = 4800; shelf.gain.value = -6;
         bus.connect(dip); dip.connect(shelf); shelf.connect(heatWS); heatWS.connect(mixLP); mixLP.connect(comp); comp.connect(ctx.destination); heatSet(!!prefs.nino, true);
-        mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon); tap = comp;
-        /* a small, soft room: two short delays fed back through a low-pass */
-        wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
-        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
-        wet.connect(d1); wet.connect(d2); d1.connect(lp); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(bus);
-        /* and a long, dark hall behind it: every sound that goes into the room also drifts into it */
-        hall = ctx.createConvolver(); hall.buffer = hallBuffer(LITE ? 1.6 : 3.8); const hg = ctx.createGain(); hg.gain.value = 0.6; wet.connect(hall); hall.connect(hg); hg.connect(bus);
+        mon = ctx.createAnalyser(); mon.fftSize = 1024; comp.connect(mon); tap = comp; rooms();
         /* the Moog ladder (ladder.js), once it has loaded; a plain low-pass until then */
         try { if (ctx.audioWorklet) ctx.audioWorklet.addModule('ladder.js').then(() => { hasLadder = true; }).catch(() => {}); } catch (e) { /* a plain low-pass */ }
       }
@@ -227,6 +221,14 @@ const snd = (() => {
       if (ctx.state !== 'running' && ctx.state !== 'closed') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
       return ctx;
     } catch (e) { return null; }
+  }
+  /* a small, soft room: two short delays fed back through a low-pass; and a long, dark hall behind it: every sound that goes
+     into the room also drifts into it. Built on whichever context is sounding: the speaker's, or one making a song ahead */
+  function rooms() {
+    wet = ctx.createGain(); wet.gain.value = 0.14; const d1 = ctx.createDelay(1), d2 = ctx.createDelay(1); d1.delayTime.value = 0.113; d2.delayTime.value = 0.171;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; const fb = ctx.createGain(); fb.gain.value = 0.42;
+    wet.connect(d1); wet.connect(d2); d1.connect(lp); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(bus);
+    hall = ctx.createConvolver(); hall.buffer = hallBuffer(LITE ? 1.6 : 3.8); const hg = ctx.createGain(); hg.gain.value = 0.6; wet.connect(hall); hall.connect(hg); hg.connect(bus);
   }
   function heatSet(on, now) {
     if (!drive) { drive = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; drive[i] = Math.tanh(x * 2.4) / Math.tanh(2.4); } }
@@ -557,6 +559,31 @@ const snd = (() => {
     describe,
     /* woken inside a touch itself, as phones require: true once sound can play */
     lite: LITE,
+    get ac() { return ctx; },
+    /* a kept song made ahead, off the speaker: the same voices, rooms, echoes and ladder, rendered faster than they play, so four
+       songs sound as four recordings instead of hundreds of live voices at once. fn places every note (ping with at: seconds from
+       the start); the tail (echo, hall) is laid back over the head, as it rings into the next turn, so the recording loops unbroken */
+    async bake(sec, tail, fn) {
+      const c = ready(); if (!c || OFF || !window.OfflineAudioContext) return null; const sr = c.sampleRate, N = Math.round(sec * sr);
+      const off = new OfflineAudioContext(2, N + Math.round(tail * sr), sr); let lad = false;
+      try { if (hasLadder && off.audioWorklet) { await off.audioWorklet.addModule('ladder.js'); lad = true; } } catch (e) { /* a plain low-pass */ }
+      if (OFF) return null; const keep = { ctx, bus, wet, hall, hasLadder, dubIn, stabLad, fxNow, FX: { ...FXB }, SL: new Map(SLOTS) };
+      for (const k of Object.keys(FXB)) delete FXB[k];
+      OFF = true; ctx = off; hasLadder = lad; dubIn = stabLad = fxNow = null; bus = off.createGain(); bus.connect(off.destination); rooms(); SLOTS.clear();
+      try { fn(); } finally {
+        OFF = false; ({ ctx, bus, wet, hall, hasLadder, dubIn, stabLad, fxNow } = keep);
+        for (const k of Object.keys(FXB)) delete FXB[k]; Object.assign(FXB, keep.FX); SLOTS.clear(); keep.SL.forEach((v, k) => SLOTS.set(k, v));
+      }
+      const r = await off.startRendering(), c2 = ctx; if (!c2) return null; const b = c2.createBuffer(2, N, sr);
+      for (let ch = 0; ch < 2; ch++) { const d = r.getChannelData(ch), o = d.slice(0, N); for (let i = N; i < d.length; i++) o[(i - N) % N] += d[i]; b.copyToChannel(o, ch); }
+      return b;
+    },
+    /* a made song going round, from `at` seconds into it, on the next sixteenth; into the bus, so the mix (El Niño's heat) still acts on it */
+    loopBuf(buf, at, gain) {
+      const c = ready(); if (!c || !buf) return null; const s = c.createBufferSource(); s.buffer = buf; s.loop = true; const g = c.createGain(); g.gain.value = gain;
+      s.connect(g); g.connect(bus); const t = onGrid(c.currentTime + 0.05), D = buf.duration; s.start(t, (((at + t - c.currentTime) % D) + D) % D);
+      return { s, g, c, stop() { try { g.gain.setTargetAtTime(0, c.currentTime, 0.05); s.stop(c.currentTime + 0.3); } catch (e) { /* gone */ } } };
+    },
     /* one turn of what reaches the speaker, as a WAV that loops on itself: the mix taken sample by sample (no encoder, so no gap at
        either end), one turn and its tail, the tail (echo, hall) laid back over the head as it would ring into the next turn, cut to the
        turn exactly; no fade. 32 kHz stereo, 16-bit: about a megabyte for an eight-second turn */
@@ -613,7 +640,7 @@ const snd = (() => {
     ping(spec, f, opt = {}) {
       /* sure: a kept song's note, already one of the few its sixteenth holds, never dropped for another */
       if (!ready()) return false; const now = performance.now(); if (!opt.sure && now - lastBlip < 55) return false;
-      const t = onGrid(ctx.currentTime + 0.03); if (!room(t, !!opt.sure)) return false; lastBlip = now;
+      const t = onGrid(opt.at != null ? opt.at : ctx.currentTime + 0.03); if (!room(t, !!opt.sure)) return false; lastBlip = now;
       const v = opt.v == null ? 0.05 : opt.v; const pan = opt.pan || 0; const md = opt.mood || 'dub'; const fq = qf(f); const bright = !!opt.bright || !!prefs.nino;
       /* the voices left after the move to one deep key: LIFE's dub stab, WATER's falling sub, COMMUNITY's dust, POLLUTION's stab,
          a breath of a voice, a buried one; the places in a breath sound as their own small real sounds */

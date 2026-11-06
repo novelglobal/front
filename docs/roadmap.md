@@ -59,7 +59,8 @@ Small stages. Each stage is built on the `staging` branch, checked on its previe
 | v0.2, approval page | The approval page as an official desk: an overview with counts of things (never people), an archive where nothing is lost, places brought in from a sheet, everything downloaded as one file, a guide; devices earned as set (or all open, or closed), calm or chaos motion, the base64 phreak, twelve portfolio curations; back to the base version without touching the printers | Built, on staging |
 | 1.0 C | Receipts worth keeping: thermal-first rendering (words 30% bigger on the printer's grid, solid blacks, photographs mapped for heat) and style packs behind one STYLE key (`docs/brief-1.0.md`) | Next |
 | 1.0 A | The one-click island: a card from Raspberry Pi Imager, the printer printing its own way in, a phone finishing it, pairing without tokens, online or offline (a new repo) | Next, alongside C |
-| 1.0 B | The island engine: a manifest and packs (map, lives, sound, steps, style) per island, an island builder, the same engine hosted or on the Pi | Designed; built after C |
+| 1.0 B | The archipelago engine: STUDIO (pages, receipts, flows from blocks), LIBRARY (install, fork, credit), COMMONS (open, versioned, curated); the till as an input; novel.global as island 0 (`docs/brief-1.0-b.md`) | Designed; E1 next |
+| 1.0 D | The farm island: a companion learning game on its own island and its own AMOLED screen, built from blocks after E4. Planned only; nothing of it on novel.global | Planned |
 | 4 | Live data through Cloudflare | New species and sightings since the last visit; photographs that always dither; no browser calling iNaturalist or OpenStreetMap directly | Built, on staging |
 | 5 | More places and people | More local brands, designers, businesses and new places, added without a code change | Built, on staging |
 | 6 | Gigs and gatherings | 3RRR and Resident Advisor gigs of the week as pins, alongside sightings |

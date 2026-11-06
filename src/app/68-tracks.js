@@ -290,20 +290,50 @@ function loopTick() {
     const i = ((st % n) + n) % n; due.push({ tr, notes: sc[i], turn: Math.floor(st / n), figs: figs[i], st });
   }
   if (late && now - LOAD.at > 1500) { LOAD.lv = Math.min(LOAD_B.length - 1, LOAD.lv + 1); LOAD.at = now; } else if (LOAD.lv && now - LOAD.at > 8000) { LOAD.lv--; LOAD.at = now; }
+  bakedSync(hold, now, share);
   let left = LOAD_B[LOAD.lv]; const r0 = due.length ? due[0].st % due.length : 0;
-  for (let j = 0; j < due.length; j++) { const d = due[(j + r0) % due.length]; left -= loopStep(d.tr, d.notes, d.turn, share, Math.min(B, Math.max(0, left))); for (const id of d.figs) strings.playFig(id); }
+  for (let j = 0; j < due.length; j++) { const d = due[(j + r0) % due.length], bk = d.tr.bk; if (bk) loopStep(d.tr, d.notes, d.turn, share, B, null, true);
+    else left -= loopStep(d.tr, d.notes, d.turn, share, Math.min(B, Math.max(0, left))); for (const id of d.figs) strings.playFig(id); }
 }
+/* two kept songs or more, each made once ahead (snd.bake) and played as that recording going round: every note, voice, echo and
+   hall as the live loop sounds it, at no cost while it plays. Until it is made, and for the live loop, the notes play live */
+const BAKED = new WeakMap(), BAKE_KEEP = []; let baking = null;
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const bakeKey = m => [loopDur(m), +!!prefs.nino, ...Object.entries(m.layers || {}).map(([k, L]) => [k, +!!L.on, L.lvl, L.mood || moodOfLayer(k), fxOf(k)].join(':'))].join('|');
+async function bakeOf(m, key) {
+  /* as many turns as it takes the notes to come round again (each sixteenth turns through its notes), sixteen seconds at most */
+  const D = loopDur(m) / 1000, { n, sc } = scoreOf(m), Ls = m.layers || {}, B = snd.lite ? 1 : 2; let P = 1;
+  for (const s of sc) { const k = s.filter(x => (Ls[x.k] || {}).on).length; if (k > B) { const q = k / gcd(k, B); P = P * q / gcd(P, q); } }
+  const turns = Math.max(1, Math.min(P, Math.floor(16 / D))), tr = { m, live: false };
+  return snd.bake(turns * D, 6, () => { for (let t = 0; t < turns; t++) for (let i = 0; i < n; i++) loopStep(tr, sc[i], t, 1, B, t * D + (i * D) / n + 0.03, true); })
+    .then(buf => buf, () => false).then(buf => { if (buf === null) return; BAKED.set(m, { key, buf: buf || null }); BAKE_KEEP.splice(0, BAKE_KEEP.length, ...BAKE_KEEP.filter(x => x !== m), m); while (BAKE_KEEP.length > 6) BAKED.delete(BAKE_KEEP.shift()); });
+}
+function bakedSync(hold, now, share) {
+  const kept = LOOP.ms.filter(t => !t.live), on = !hold && kept.length > 1;
+  for (const tr of LOOP.ms) {
+    const got = BAKED.get(tr.m), key = on && !tr.live ? bakeKey(tr.m) : null, fit = key && got && got.key === key;
+    if (tr.bk && (!fit || tr.bk.c !== snd.ac || tr.bk.buf !== got.buf)) { tr.bk.stop(); tr.bk = null; }
+    if (fit && !tr.bk) { const b = snd.loopBuf(got.buf, (now - tr.t0) / 1000, share); if (b) { tr.bk = b; b.buf = got.buf; } }
+    else if (tr.bk && Math.abs(tr.bk.g.gain.value - share) > 0.01) tr.bk.g.gain.setTargetAtTime(share, tr.bk.c.currentTime, 0.1);
+    if (key && !fit && !baking) baking = bakeOf(tr.m, key).catch(() => {}).then(() => { baking = null; });
+  }
+}
+/* songs taken off: their recordings stop with them */
+function bakedStop() { for (const t of BAKED_ON) if (!LOOP.ms.includes(t) && t.bk) { t.bk.stop(); t.bk = null; } BAKED_ON.length = 0; BAKED_ON.push(...LOOP.ms); }
+const BAKED_ON = [];
 /* one sixteenth of one track: up to B of its notes (one on a slower phone), turning through them turn by turn; each sounded as
-   the radar sounds it, at the level and mood it was kept with (the live loop with the layer keys as they are now) */
-function loopStep(tr, notes, turn, share, B) {
+   the radar sounds it, at the level and mood it was kept with (the live loop with the layer keys as they are now). at: where in a
+   song being made ahead; quiet: its layer meters only, the song already sounding as a recording */
+function loopStep(tr, notes, turn, share, B, at = null, quiet = false) {
   const Ls = tr.m.layers || {}, on = notes.filter(x => (tr.live ? trackOn(x.k) : (Ls[x.k] || {}).on)); if (!on.length || B < 1) return 0; let n = 0;
+  if (quiet && at == null) { for (let j = 0; j < Math.min(B, on.length); j++) flashLayer(on[(turn * B + j) % on.length].k); return 0; }
   for (let j = 0; j < Math.min(B, on.length); j++) {
     const { k, c } = on[(turn * B + j) % on.length], L = Ls[k] || {}; const lvl = tr.live ? lvlOf(k) : (L.lvl == null ? 0.7 : +L.lvl); if (lvl < 0.02) continue;
     const v = lvl * share, mood = tr.live ? moodOfLayer(k) : L.mood || moodOfLayer(k), pan = Math.sin(c.b * Math.PI / 180) * 0.7; let ok = false;
-    if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * v * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life'), sure: true }); }
-    else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * v, pan, fx: fxOf('water'), sure: true });
-    else ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * v, pan, fx: fxOf(k), sure: true });
-    if (ok) { flashLayer(k); n++; }
+    if (k === 'life') { const g = c.g || 'paw', pp = c.p || partialOf(g); ok = snd.ping({ g }, F0 * pp * (c.fl ? 2 : 1), { mood, v: 0.05 * v * 0.6 * (c.fa || 1), pan, bright: !!c.br, danger: !!c.dz, vi: pp % 8, fx: fxOf('life'), sure: true, at }); }
+    else if (k === 'water') ok = snd.ping({ g: 'aquatic' }, F0 * (c.p || 6), { mood, v: 0.045 * v, pan, fx: fxOf('water'), sure: true, at });
+    else ok = snd.ping({ fam: c.fam || 'service' }, F0 * (c.p || 4), { mood, vi: partialOf(c.n || c.fam || '') % 8, v: 0.04 * v, pan, fx: fxOf(k), sure: true, at });
+    if (ok) { if (at == null) flashLayer(k); n++; }
   }
   return n;
 }
@@ -338,7 +368,7 @@ function comeBack() {
 /* the tracks going round, said to every key that shows them, the ring on the map and the timer */
 function loopSync(on) {
   LOOP.on = LOOP.ms.length > 0; LOOP.live = LOOP.ms.some(t => t.live); LOOP.m = LOOP.on ? LOOP.ms[0].m : null; LOOP.t0 = LOOP.on ? LOOP.ms[0].t0 : 0;
-  clearInterval(LOOP.timer); if (LOOP.on) { LOOP.timer = setInterval(loopTick, snd.lite ? 60 : 30); if (!S.radio) setRadio(true); }
+  bakedStop(); clearInterval(LOOP.timer); if (LOOP.on) { LOOP.timer = setInterval(loopTick, snd.lite ? 60 : 30); if (!S.radio) setRadio(true); }
   const four = inFour(), all = four && FOUR().length > 1 && FOUR().every(l => going(l.id));
   $$('[data-loop]').forEach(b => { b.setAttribute('aria-pressed', String(LOOP.live)); b.classList.toggle('on', LOOP.live); });
   $$('[data-t4k]').forEach(b => { const o = going(b.dataset.t4k); b.setAttribute('aria-pressed', String(o)); b.classList.toggle('on', o); });
