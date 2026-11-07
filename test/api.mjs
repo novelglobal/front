@@ -377,6 +377,13 @@ try {
     const no1 = (await up('who=&name=novel-global-tape-x-ab12.wav')).status, no2 = (await up('who=K7Q&name=song.wav')).status, no3 = (await up('who=K7Q&name=novel-global-tape-x-ab12.wav', 'text/html')).status;
     const cd = g ? g.headers.get('content-disposition') : '', len = g ? (await g.arrayBuffer()).byteLength : 0;
     check('a tape is kept for half a moon and saved under its one name; without a code, a proper name or a sound it is refused', a.status === 201 && aj.until - Date.now() > 13 * 864e5 && g && g.status === 200 && /novel-global-tape-carlton-ab12.wav/.test(cd) && len === 2048 && no1 === 400 && no2 === 400 && no3 === 400, JSON.stringify({ s: a.status, cd, len, no1, no2, no3 })); }
+  /* a card's pictures: only the approval page puts them up; a picture or nothing, kept in its slot, listed with how fast they turn */
+  { const put = (p, b, k) => server.fetch(new URL(p, O), { method: 'PUT', headers: { origin: O, ...(k ? { authorization: `Bearer ${k}` } : {}) }, body: b });
+    const no = (await put('/api/admin/cards/wish/0', JPEG_B)).status, bad = (await put('/api/admin/cards/wish/0', Buffer.from('<html>'), KEY)).status, ok = (await put('/api/admin/cards/wish/3', JPEG_B, KEY)).status;
+    await call('/api/admin/cards/wish', { method: 'POST', key: KEY, body: { speed: 8 } });
+    const l = (await call('/api/cards')).json.cards.wish || {}, pic = l.pics && l.pics[0] ? await call(l.pics[0]) : {};
+    const del = (await call('/api/admin/cards/wish/3', { method: 'DELETE', key: KEY })).status, after = ((await call('/api/cards')).json.cards.wish || {}).pics || [];
+    check('a card\'s pictures: only the approval page puts them up, only pictures, listed by slot with their speed, and taken down again', (no === 401 || no === 429) && bad === 415 && ok === 200 && /\/api\/cards\/wish\/3\?/.test(l.pics[0]) && l.speed === 8 && pic.status === 200 && del === 200 && after.length === 0, JSON.stringify({ no, bad, ok, l, p: pic.status, del, after })); }
   let last = 0; for (let i = 0; i < 21; i++) last = (await call('/api/stories', { method: 'POST', body: story('DA-2' + 'ABCDEFGHJKMNPQRSTVWXY'[i] + 'QR') })).status;
   check('a visitor sending too many in ten minutes is asked to wait', last === 429, String(last));
 } catch (e) { results.push(`FAIL  api: ${e.stack || e.message}`); }

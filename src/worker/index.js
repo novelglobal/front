@@ -57,11 +57,14 @@ const SCHEMA = [
   /* species: every kind of life the devices have met, told once by the first device to meet it (iNaturalist's id, names, group, mark, a photograph) */
   `CREATE TABLE IF NOT EXISTS species (id INTEGER PRIMARY KEY, n TEXT NOT NULL, cn TEXT, ic TEXT, g TEXT, ph TEXT, first INTEGER NOT NULL)`,
   /* tapes: a loop recorded on the radio, its file kept in R2 for half a moon to be saved from any phone, then cleared */
+  /* a card's own pictures, kept in R2 (card/<card>/<slot>): up to ten to turn through, or one behind it; and how fast they turn, how strongly it shows */
+  `CREATE TABLE IF NOT EXISTS cardpics (card TEXT NOT NULL, slot INTEGER NOT NULL, type TEXT NOT NULL, bytes INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (card, slot))`,
+  `CREATE TABLE IF NOT EXISTS cardset (card TEXT PRIMARY KEY, speed REAL, shade REAL)`,
   `CREATE TABLE IF NOT EXISTS tapes (id TEXT PRIMARY KEY, who TEXT, name TEXT NOT NULL, type TEXT NOT NULL, bytes INTEGER NOT NULL, at INTEGER NOT NULL)`,
 ];
 /* SCHEMA_V: the database's version. Raise it by one whenever a table or a column is added below: each database (the live one and the
    preview's) then makes the changes once and keeps the number, and every start after is one read */
-const SCHEMA_V = 8;
+const SCHEMA_V = 9;
 const readied = new WeakMap();
 function ready(db) {
   if (!readied.has(db)) readied.set(db, (async () => {
@@ -448,7 +451,7 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* groups: the portfolio's groups a piece can be filed under on the approval page, one to a line (kept here; not on the site yet) */
 const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 800, sources: 8000, epoch: 40, styles: 100000, cards: 8000 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
-async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); const tp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM tapes').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0) + ((tp && tp.b) || 0); }
+async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); const tp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM tapes').first().catch(() => null); const cp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM cardpics').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0) + ((tp && tp.b) || 0) + ((cp && cp.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
 async function posters(db) {
   if (!(await madeOn(db))) return json({ posters: [] });
@@ -572,6 +575,44 @@ async function pairPoll(db, req) {
   await numberPrinters(db); const p = await db.prepare('SELECT number FROM printers WHERE id = ?').bind(r.printer).first();
   return json({ printer: r.printer, token: tok, key, number: (p && p.number) || null });
 }
+/* ───────── a card's own pictures: the approval page sets novel.global's cards; an island keeper sets their own island's card (its printer's id) ───────── */
+const CARD_ID = /^[a-z0-9-]{1,24}$/, PICS = 10, PIC_MAX = 1.6e6;
+const picType = b => b[0] === 0xFF && b[1] === 0xD8 ? 'image/jpeg' : b[0] === 0x89 && b[1] === 0x50 ? 'image/png' : b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b[9] === 0x45 ? 'image/webp' : null;
+async function cardSet(db, card, b) {
+  const was = (await db.prepare('SELECT speed, shade FROM cardset WHERE card = ?').bind(card).first()) || {};
+  const speed = b.speed != null && isFinite(+b.speed) ? Math.max(1, Math.min(60, +b.speed)) : was.speed == null ? null : was.speed;
+  const shade = b.shade != null && isFinite(+b.shade) ? Math.max(0, Math.min(1, +b.shade)) : was.shade == null ? null : was.shade;
+  await db.prepare('INSERT INTO cardset (card, speed, shade) VALUES (?, ?, ?) ON CONFLICT(card) DO UPDATE SET speed = excluded.speed, shade = excluded.shade').bind(card, speed, shade).run();
+  return { ok: true, card, speed, shade };
+}
+async function cardPut(db, env, req, card, slot) {
+  const n = +slot; if (!/^\d$/.test(String(slot)) || n >= PICS) return fail(400, 'slot');
+  if (req.method === 'DELETE') { if (env.MEDIA) await env.MEDIA.delete(`card/${card}/${n}`).catch(() => {}); await db.prepare('DELETE FROM cardpics WHERE card = ? AND slot = ?').bind(card, n).run(); return json({ ok: true }); }
+  if (!env.MEDIA) return fail(503, 'no media');
+  const b = new Uint8Array(await req.arrayBuffer()); if (!b.length || b.length > PIC_MAX) return fail(413, 'too big'); const type = picType(b); if (!type) return fail(415, 'not a picture');
+  if ((await r2Bytes(db)) + b.length >= CAP.r2 * 0.8) return fail(507, 'full');
+  await env.MEDIA.put(`card/${card}/${n}`, b, { httpMetadata: { contentType: type } });
+  await db.prepare('INSERT INTO cardpics (card, slot, type, bytes, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(card, slot) DO UPDATE SET type = excluded.type, bytes = excluded.bytes, at = excluded.at').bind(card, n, type, b.length, now()).run();
+  return json({ ok: true, card, slot: n });
+}
+async function cardList(db) {
+  const { results: pics } = await db.prepare('SELECT card, slot, at FROM cardpics ORDER BY card, slot').all(), { results: set } = await db.prepare('SELECT card, speed, shade FROM cardset').all();
+  const out = {}; const of = c => out[c] || (out[c] = { pics: [], speed: null, shade: null });
+  for (const r of pics) of(r.card).pics.push(`/api/cards/${r.card}/${r.slot}?v=${r.at}`);
+  for (const r of set) { const o = of(r.card); o.speed = r.speed; o.shade = r.shade; }
+  return new Response(JSON.stringify({ cards: out }), { headers: { ...JSON_H, 'cache-control': 'public, max-age=60' } });
+}
+async function cardPic(db, env, card, slot) {
+  if (!CARD_ID.test(card) || !/^\d$/.test(slot) || !env.MEDIA) return fail(404, 'not found');
+  const o = await env.MEDIA.get(`card/${card}/${slot}`); if (!o) return fail(404, 'not found');
+  return new Response(o.body, { headers: { 'content-type': (o.httpMetadata && o.httpMetadata.contentType) || 'image/jpeg', 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
+}
+async function keeperPic(db, env, req, slot) {
+  if (await tooMany(db, env, req, 'keeper', 60, 10 * 60e3)) return fail(429, 'too many');
+  const k = bearer(req); if (!/^[A-Za-z0-9_-]{16,64}$/.test(k)) return fail(401, 'key');
+  const p = await db.prepare('SELECT id FROM printers WHERE owner = ?').bind(await sha256(k)).first(); if (!p || p.id === 'novelglobal' || !CARD_ID.test(p.id)) return fail(401, 'key');
+  return cardPut(db, env, req, p.id, slot);
+}
 /* the island keeper's own door: their key opens their one printer's row, never novel.global's, another island's, or any story */
 async function keeper(db, env, req) {
   if (await tooMany(db, env, req, 'keeper', 60, 10 * 60e3)) return fail(429, 'too many');
@@ -579,8 +620,10 @@ async function keeper(db, env, req) {
   const p = await db.prepare('SELECT id, name, paper, number, two, links, seen, (SELECT count(*) FROM jobs j WHERE j.printer = printers.id AND j.status IN (\'queued\', \'held\')) AS queued, (SELECT count(*) FROM jobs j WHERE j.printer = printers.id AND j.status = \'printed\') AS printed FROM printers WHERE owner = ?').bind(await sha256(k)).first();
   if (!p || p.id === 'novelglobal') return fail(401, 'key');
   if (req.method === 'POST') { const b = await body(req, 2048), name = String(b.name || '').replace(/[^\w .·'&-]/g, '').trim().slice(0, 40); if (name) { await db.prepare('UPDATE printers SET name = ? WHERE id = ?').bind(name, p.id).run(); p.name = name; }
+    if (b.speed != null) await cardSet(db, p.id, { speed: b.speed });
     if (Array.isArray(b.links)) { p.links = linksIn(b.links.map(String)); await db.prepare('UPDATE printers SET links = ? WHERE id = ?').bind(p.links, p.id).run(); } }
-  return json({ id: p.id, name: p.name, paper: p.paper, number: p.number, two: !!p.two, links: linksOf(p.links), all: LINKS, ready: !!p.seen && now() - p.seen < 120e3, queued: p.queued, printed: p.printed });
+  const cps = (await db.prepare('SELECT slot, at FROM cardpics WHERE card = ? ORDER BY slot').bind(p.id).all()).results, cst = (await db.prepare('SELECT speed FROM cardset WHERE card = ?').bind(p.id).first()) || {};
+  return json({ id: p.id, name: p.name, paper: p.paper, number: p.number, two: !!p.two, links: linksOf(p.links), all: LINKS, pics: cps.map(r => ({ slot: r.slot, url: `/api/cards/${p.id}/${r.slot}?v=${r.at}` })), speed: cst.speed == null ? null : cst.speed, ready: !!p.seen && now() - p.seen < 120e3, queued: p.queued, printed: p.printed });
 }
 /* the approval page: a code looked up (from the island's slip, scanned), then approved for a printer here or a new one by the island's name */
 async function adminPair(db, req, code) {
@@ -604,6 +647,7 @@ async function adminAuth(db, env, req) {
 async function admin(db, env, req, parts) {
   const no = await adminAuth(db, env, req); if (no) return no;
   const [what, id] = parts;
+  if (what === 'cards' && id && CARD_ID.test(id)) { if (parts[2] != null && !parts[3] && (req.method === 'PUT' || req.method === 'DELETE')) return cardPut(db, env, req, id, parts[2]); if (!parts[2] && req.method === 'POST') { const b = await body(req, 1024); return json(await cardSet(db, id, b)); } }
   if (what === 'stories' && !id && req.method === 'GET') {
     const st = ['waiting', 'shown', 'refused', 'deleted'].includes(new URL(req.url).searchParams.get('status')) ? new URL(req.url).searchParams.get('status') : 'waiting';
     const { results } = await db.prepare(`SELECT s.id, s.code, s.kind, s.status, s.body, s.lat, s.lng, s.dest, s.created, s.decided, (s.photo IS NOT NULL OR s.pic IS NOT NULL) AS has_photo, s.full, s.star, s.who, s.gone, s.origin, s.art, s.quiet, s.grp, (SELECT count(*) FROM talk t WHERE t.sec = 'p.' || s.code) AS said,
@@ -966,6 +1010,9 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'pair' && !p[1] && m === 'POST') return pairAsk(db, env, req);
   if (p[0] === 'pair' && p[1] === 'poll' && !p[2] && m === 'POST') return pairPoll(db, req);
   if (p[0] === 'island' && !p[1] && (m === 'GET' || m === 'POST')) return keeper(db, env, req);
+  if (p[0] === 'island' && p[1] === 'pics' && p[2] && !p[3] && (m === 'PUT' || m === 'DELETE')) return keeperPic(db, env, req, p[2]);
+  if (p[0] === 'cards' && !p[1] && m === 'GET') return cardList(db);
+  if (p[0] === 'cards' && p[1] && p[2] && !p[3] && m === 'GET') return cardPic(db, env, p[1], p[2]);
   if (p[0] === 'touch' && p[1] && !p[2] && m === 'GET') return touchList(db, req, p[1]);
   if (p[0] === 'touch' && p[1] && p[2] && m === 'POST') return touchAct(db, req, p[1], p[2]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));

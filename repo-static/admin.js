@@ -339,7 +339,7 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(...head('Words and boards'), card, lr, mo, ex, tp, wordsCard(st), citiesCard(st), cardsCard(st));
+    main.replaceChildren(...head('Words and boards'), card, lr, mo, ex, tp, wordsCard(st), citiesCard(st), cardsCard(st), picsCard());
   }
   /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
      or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
@@ -376,6 +376,28 @@
     ...['w', 'i', 's', 'h'].flatMap(l => [[`${l}.word`, `${l.toUpperCase()} · ITS QUICK WORD`], [`${l}.head`, `${l.toUpperCase()} · ITS HEADING (ON HOVER)`], [`${l}.how`, `${l.toUpperCase()} · WHAT GOES ON ITS LINE (ON HOVER)`]])];
   /* the home's cards: each card's words, place and look, in the order they stand on novel.global; a card not written here keeps its own */
   const CARD_EG = '# wish\ntitle: I W.I.S.H.\nafter: helps you tell stories of change\ntag: STRATEGIC INNOVATION\nkey: MORE LIFE\nwhere: -37.8136, 144.9631\nmotion: shadow\n\n# zine\ntitle: PICKLES LANDSCAPE ZINE MAKER\nisland: pickles\nopens: stack:tall\n\n# radio\nhide';
+  /* a card's own pictures: the photographs CIRCULAR STRATEGY turns through (up to ten) and how fast; the picture behind DIRECT ACTION RADIO and how strongly it shows */
+  function picsCard() {
+    const sec = el('section', { class: 'printer ed' }), box = el('div');
+    sec.append(el('h3', { text: 'CARD PICTURES' }), el('div', { class: 'note', text: 'CIRCULAR STRATEGY TURNS THROUGH UP TO TEN PHOTOGRAPHS, SHOWN IN GREY. DIRECT ACTION RADIO HAS ONE PICTURE BEHIND ITS WORDS. EACH IS MADE SMALLER HERE BEFORE IT IS SENT.' }), box);
+    const shrink = file => new Promise((ok, no) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(b => (b ? ok(b) : no(new Error('shrink'))), 'image/jpeg', 0.84); }; im.onerror = no; im.src = u; });
+    const pick = () => new Promise(ok => { const i = el('input', { type: 'file', accept: 'image/*' }); i.addEventListener('change', () => ok(i.files && i.files[0])); i.click(); });
+    const slotOf = u => +(/\/(\d)\?/.exec(u) || [0, -1])[1];
+    async function fill() {
+      const cs = ((await (await fetch('/api/cards', { cache: 'no-store' })).json()).cards) || {}, w = cs.wish || { pics: [] }, r = cs.radio || { pics: [] };
+      const slot = (card, n, u) => el('button', { type: 'button', class: 'pslot' + (u ? ' on' : ''), 'aria-label': u ? 'Take this picture away' : 'Add a picture', onclick: async () => {
+        if (u) { if (!confirm('Take this picture off the card?')) return; await api(`cards/${card}/${n}`, { method: 'DELETE' }); return fill(); }
+        const file = await pick(); if (!file) return; await api(`cards/${card}/${n}`, { method: 'PUT', body: await shrink(file) }); fill(); } }, u ? el('img', { alt: '', src: u }) : '+');
+      const ws = Array.from({ length: 10 }, (_, n) => slot('wish', n, (w.pics || []).find(u => slotOf(u) === n)));
+      const speed = el('select', { 'aria-label': 'How often the photographs turn', onchange: async () => { await api('cards/wish', { method: 'POST', body: JSON.stringify({ speed: +speed.value }) }); } }, [1, 2, 3, 5, 8, 12].map(n => el('option', { value: n, text: `EVERY ${n} S` })));
+      speed.value = String(w.speed || 2);
+      const shade = el('input', { type: 'range', min: 0, max: 100, step: 5, value: Math.round((r.shade == null ? 0.35 : r.shade) * 100), 'aria-label': 'How strongly the radio picture shows', onchange: async () => { await api('cards/radio', { method: 'POST', body: JSON.stringify({ shade: shade.value / 100 }) }); } });
+      box.replaceChildren(el('div', { class: 'note', text: 'CIRCULAR STRATEGY' }), el('div', { class: 'pgrid' }, ws), el('div', { class: 'acts' }, speed),
+        el('div', { class: 'note', text: 'DIRECT ACTION RADIO' }), el('div', { class: 'pgrid' }, slot('radio', 0, (r.pics || [])[0])), el('div', { class: 'acts' }, el('span', { text: 'SHOWS AT ' }), shade));
+    }
+    fill().catch(() => box.replaceChildren(el('div', { class: 'note', text: 'THE PICTURES COULD NOT BE READ' })));
+    return sec;
+  }
   function cardsCard(st) {
     const ta = el('textarea', { class: 'body', maxlength: 8000, spellcheck: 'false', 'aria-label': 'The cards on the home', placeholder: CARD_EG }); ta.value = st.cards || '';
     const sec = el('section', { class: 'printer ed' }); sec.append(el('h3', { text: 'CARDS' }),

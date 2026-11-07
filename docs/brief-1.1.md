@@ -32,17 +32,19 @@ The top toggles from today (sound, light or dark, the network) get smaller and s
 
 ### Each card in its own look
 
-The cards share the line, the paper and the Irukandji, and each one has its own colour, type and layout to match what it is.
+One blueprint-blue band, grainy and flawed, flows from card to card and changes form on each (solid, stepped blocks, dots, torn tape, a glossy tube). About half of each card is greyscale or black and white, a fifth to a third is the blue, and each card owns one colour of its own.
 
-| Card | Look |
-|---|---|
-| I W.I.S.H. | The blueprint: blue paper, white line, condensed capitals. Blueprint blue belongs to I W.I.S.H. alone. |
-| RADIO | A pale VFD glass on black, in monospace type with a soft glow |
-| ZINE MAKER | Newsprint and black ink, with a thin, wide title like the poster it prints |
-| ISLAND KIT | A field manual: clay paper with a stamp, in typewriter type |
-| ARCHIPELAGOS ENGINE | A 1-bit workstation window: a black title bar over white |
+| Card | Look | Its colour |
+|---|---|---|
+| CIRCULAR STRATEGY | Photographs above, in grey, turning every 2 s (the site's own nine chairs in `repo-static/cards/` until others are put up); a dark patchy green below with nothing on it; the title in a heavy serif across the seam | deep green |
+| DIRECT ACTION RADIO | Block type in a cascade, each row smaller; a picture behind it at a set strength (`cards/radio.jpg` until one is put up) | lavender row |
+| ZINE MAKER | White paper, everything in dots: the words, a ridge, a sun. TALL lives here | tomato |
+| ISLAND | BUILD A THERMAL SOLAR PRINTER, ONE CLICK INSTALL: the TM-T88V photo, its light breathing when the printer is live, paper feeding | amber |
+| ISLAND ARCHIPELAGOS by novel.global | Rounded forms on soft grey, a link to the building hub | coral |
 
-The home around the cards is a neutral near-black, so each card carries its own colour.
+Every card has three layers: the picture stays still, the words drift down a little as the card passes, and the top layer (band, dots, forms) moves fastest; on some the middle layer breathes. The page and the top bar change with DAY / NIGHT (blueprint sea or dark sea); the cards never do. The banner and the switchboard are in full colour.
+
+Pictures: CARD PICTURES on the approval page (up to ten for CIRCULAR STRATEGY with how fast they turn, one for the radio with how strongly it shows); an island keeper puts up to ten on their own island's card from `/island`. Each is made at most 1600 px and a JPEG on the phone before it is sent (which drops where it was taken). All of them load before the turning starts, so each change is instant.
 
 ## The reef (A.2)
 
