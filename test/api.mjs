@@ -140,12 +140,12 @@ try {
   await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'live', on: false } });
   const lv2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
   check('a printer is switched online on the map from the approval page, and off again; nobody else can', lv0.live === false && lvx.status === 401 && lv1.live === true && lv2.live === false, JSON.stringify({ lv0, lvx: lvx.status, lv1, lv2 }));
-  /* one-way by default: novel.global prints on an island; TWO-WAY, set only on the approval page, lets the island print on novel.global's */
-  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'two', on: true } });
-  const tw1 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  /* the starting printers are two-way with every connection on, for remixing; TWO-WAY is switched on the approval page */
   await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'two', on: false } });
+  const tw1 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
+  await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'two', on: true } });
   const tw2 = (await call('/api/partners')).json.partners.find(p => p.id === 'elsie');
-  check('an island is one-way until the approval page makes it two-way, and one-way again', lv0.two === false && tw1.two === true && tw2.two === false, JSON.stringify({ tw1: tw1.two, tw2: tw2.two }));
+  check('a starting island is two-way with every connection on; the approval page makes it one-way, and two-way again', lv0.two === true && lv0.links.length === 6 && tw1.two === false && tw2.two === true, JSON.stringify({ lv0: lv0.two, links: lv0.links, tw1: tw1.two, tw2: tw2.two }));
 
   /* renamed on the approval page: the name changes everywhere, the id (and every link and token) stays; nobody else can */
   const nm1 = await call('/api/admin/printers/elsie', { method: 'POST', key: KEY, body: { action: 'name', name: '  Elsie   Corner  Bar ' } });
@@ -283,6 +283,7 @@ try {
     fs.rmSync(dir2, { recursive: true, force: true });
   } else results.push('SKIP  the receiver: no Python here');
   /* an island pairs without a token typed: a code asked for, looked up and approved here, then its token handed over once and working */
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { openJoin: false } });
   { const pk = await call('/api/pair', { method: 'POST', ip: '192.0.2.40', body: { name: 'Laundromate', paper: '58' } }), D = pk.json && pk.json.device, C = pk.json && pk.json.code;
     const w0 = await call('/api/pair/poll', { method: 'POST', body: { device: D } }), bad = await call('/api/pair/poll', { method: 'POST', body: { device: 'nope' } });
     const lk = await call(`/api/admin/pair/${C.slice(0, 4)}-${C.slice(4).toLowerCase()}`, { key: KEY }), lkNo = await call(`/api/admin/pair/${C}`);
@@ -299,6 +300,25 @@ try {
       (pl.find(p => p.id === 'novelglobal') || {}).number === 1 && pl.every(p => p.id === 'novelglobal' || (p.paired ? p.number >= 2 : true)) && pl.some(p => !p.paired && p.number == null) && new Set(nums).size === nums.length
       && mine.number === Math.max(...nums) && mine.number >= 2 && got.json.number === mine.number && nx.island === String(mine.number) && mv.status === 200 && nx9.island === '9' && taken.status === 409,
       JSON.stringify({ nums, got: got.json && got.json.number, header: nx.island, mv: mv.status, nx9: nx9.island, taken: taken.status })); }
+  /* open joining (the pilot): an island is in at its first ask, with a token and its keeper's key; it starts one-way with no connections */
+  await call('/api/admin/settings', { method: 'POST', key: KEY, body: { openJoin: true } });
+  { const pk = await call('/api/pair', { method: 'POST', ip: '192.0.2.41', body: { name: 'Tide Pool', paper: '80' } }), D = pk.json && pk.json.device;
+    const got = await call('/api/pair/poll', { method: 'POST', body: { device: D } }), K = got.json && got.json.key, id = got.json && got.json.printer;
+    const mine = await call('/api/island', { token: K }), wrong = await call('/api/island', { token: 'x'.repeat(32) }), none = await call('/api/island');
+    const ng = await call('/api/island', { token: 'nope' }), pt = (await call('/api/partners')).json.partners.find(p => p.id === id) || {};
+    check('open joining: a new island is in at its first ask, handed its token and its keeper\'s key once; one-way with no connections; the key opens its own island and nothing else',
+      got.status === 200 && id === 'tide-pool' && got.json.token.length === 32 && K.length === 32 && mine.status === 200 && mine.json.id === id && mine.json.two === false && mine.json.links.length === 0
+      && wrong.status === 401 && none.status === 401 && ng.status === 401 && pt.two === false && pt.links.length === 0, JSON.stringify([got.status, id, mine.status, mine.json, wrong.status, none.status, pt]));
+    /* a W.I.S.H. piece prints there only once its keeper switches W.I.S.H. on; its own stacks always do */
+    const esc = Buffer.from([0x1B, 0x40, 65, 10]).toString('base64');
+    const no = await call('/api/stories', { method: 'POST', ip: '10.0.0.77', body: story('DA-4TPX', { kind: 'record', body: JSON.stringify(WISH), dest: id, escpos: esc }) }), own = await call('/api/stories', { method: 'POST', ip: '10.0.0.77', body: story('DA-4TPY', { kind: 'record', body: JSON.stringify(WISH), dest: id, escpos: esc, stage: 'stack' }) });
+    const on = await call('/api/island', { method: 'POST', token: K, body: { links: ['wish', 'nonsense'] } }), yes = await call('/api/stories', { method: 'POST', ip: '10.0.0.77', body: story('DA-4TPZ', { kind: 'record', body: JSON.stringify(WISH), dest: id, escpos: esc }) });
+    check('connections: a W.I.S.H. piece is refused by an island without W.I.S.H. on and printed once its keeper switches it on; its own stacks print either way; nothing but the six connections is kept',
+      no.status === 403 && [200, 201].includes(own.status) && on.json.links.join() === 'wish' && [200, 201].includes(yes.status), JSON.stringify([no.status, own.status, on.json && on.json.links, yes.status]));
+    await call('/api/admin/settings', { method: 'POST', key: KEY, body: { openJoin: false } });
+    const pk2 = await call('/api/pair', { method: 'POST', ip: '192.0.2.42', body: { name: 'Shut Gate' } }), w2 = await call('/api/pair/poll', { method: 'POST', body: { device: pk2.json && pk2.json.device } });
+    check('with open joining off, a new island waits for the approval page again', w2.status === 202, String(w2.status));
+    await call('/api/admin/settings', { method: 'POST', key: KEY, body: { openJoin: true } }); }
   /* a message to novel.global, from the portfolio: approved, it prints; it is never listed for anyone, nor its photograph */
   const ms = await call('/api/stories', { method: 'POST', ip: '203.0.113.77', body: story('DA-3MSG', { kind: 'message', dest: 'novelglobal', escpos: Buffer.from([0x1B, 0x40, 72, 10]).toString('base64'), photo: JPEG }) });
   await call(`/api/admin/stories/${ms.json.id}`, { method: 'POST', key: KEY, body: { action: 'show' } });

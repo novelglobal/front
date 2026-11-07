@@ -61,14 +61,14 @@ const SCHEMA = [
 ];
 /* SCHEMA_V: the database's version. Raise it by one whenever a table or a column is added below: each database (the live one and the
    preview's) then makes the changes once and keeps the number, and every start after is one read */
-const SCHEMA_V = 6;
+const SCHEMA_V = 8;
 const readied = new WeakMap();
 function ready(db) {
   if (!readied.has(db)) readied.set(db, (async () => {
     const at = await db.prepare("SELECT v FROM settings WHERE k = '~schema'").first().catch(() => null);
     if (!at || +at.v < SCHEMA_V) await upgrade(db);
     /* every partner place has a print queue from the start; a printer joins it when its token is made on the approval page */
-    if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)').bind(p.id, p.n, p.paper, now())));
+    if (PARTNERS.length) await db.batch(PARTNERS.map(p => db.prepare('INSERT OR IGNORE INTO printers (id, name, paper, created, links, two) VALUES (?, ?, ?, ?, ?, 1)').bind(p.id, p.n, p.paper, now(), '*')));
     await numberPrinters(db);
   })().catch(e => { readied.delete(db); throw e; }));
   return readied.get(db);
@@ -118,6 +118,12 @@ async function upgrade(db) {
     try { await db.prepare('ALTER TABLE printers ADD COLUMN two INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
     /* version 6. number: its island number on the novel.global network (numberPrinters) */
     try { await db.prepare('ALTER TABLE printers ADD COLUMN number INTEGER').run(); } catch (e) { /* already there */ }
+    /* version 7. owner: the hash of the island keeper's key (handed over once, at pairing); self: it joined by itself, while joining was open */
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN owner TEXT').run(); } catch (e) { /* already there */ }
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN self INTEGER DEFAULT 0').run(); } catch (e) { /* already there */ }
+    /* version 8. links: the connections it has switched on (LINKS, or * for all). novel.global's printers and the starting ones have every one, and two-way */
+    try { await db.prepare('ALTER TABLE printers ADD COLUMN links TEXT').run(); } catch (e) { /* already there */ }
+    await db.prepare("UPDATE printers SET links = '*', two = 1 WHERE links IS NULL AND COALESCE(self, 0) = 0").run();
     /* version 2. pic, cov: a photograph or a portfolio cover kept in R2 (its size), no longer inside the database */
     try { await db.prepare('ALTER TABLE stories ADD COLUMN pic INTEGER').run(); } catch (e) { /* already there */ }
     try { await db.prepare('ALTER TABLE posts ADD COLUMN cov INTEGER').run(); } catch (e) { /* already there */ }
@@ -362,6 +368,7 @@ async function send(db, env, req) {
   const dest = typeof b.dest === 'string' && b.dest ? b.dest : ''; const toMesh = dest === 'mesh';
   const P = dest && !toMesh ? await db.prepare('SELECT * FROM printers WHERE id = ?').bind(dest).first() : null;
   if (dest && !toMesh && !P) return fail(400, 'dest');
+  if (P && P.id !== 'novelglobal' && b.stage !== 'stack' && !linksOf(P.links).includes('wish')) return refuse(403, 'this island has not switched on W.I.S.H.');
   if (toMesh && !(typeof b.mesh === 'string' && b.mesh)) return fail(400, 'mesh');
   if (dest && b.escpos != null && !b64ok(b.escpos, LIMIT.escpos)) return refuse(400, 'the print is too long');
   if (b.mesh != null && (typeof b.mesh !== 'string' || enc.encode(b.mesh).length > LIMIT.mesh)) return fail(400, 'mesh');
@@ -425,7 +432,7 @@ async function learnKinds(db, env, req) {
 /* moonShow: the moon tonight beside SOUND in the dark, and the moon each thing was made under in the corner of every print and piece kept */
 /* sendLive: a piece sent to novel.global with no printer (and no mesh) shown on the site at once; off, it waits here for approval. A print
    is the only thing that opens the devices, either way */
-const SETTINGS = { lifeLock: true, exampleEdit: false, phreak: false, lowRes: false, madeShow: false, exampleShow: true, moonShow: true, sendLive: false };
+const SETTINGS = { openJoin: true, lifeLock: true, exampleEdit: false, phreak: false, lowRes: false, madeShow: false, exampleShow: true, moonShow: true, sendLive: false };
 const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* and words: the first board's template, as rewritten on the approval page (empty: the site's own, in config.js) */
 /* gates: how the devices are earned (JSON: mode earn | open | closed, at: the posters for each); fx: the aura's motion (calm | base | chaos);
@@ -439,7 +446,7 @@ const madeOn = async db => !!(await settingsOf(db)).madeShow;
 /* styles: the artists' mod packs added on the approval page (JSON: { packs: [{ name, by, styles: [...], off: [style ids not shown] }] };
    every style is checked again on each phone by thermal.js before it is used) */
 /* groups: the portfolio's groups a piece can be filed under on the approval page, one to a line (kept here; not on the site yet) */
-const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 800, sources: 8000, epoch: 40, styles: 100000 };
+const TEXTS = { template: 6000, words: 4000, cities: 40000, gates: 300, fx: 20, curations: 6000, start: 600, notice: 1500, country: 600, groups: 600, printq: 800, sources: 8000, epoch: 40, styles: 100000, cards: 8000 };
 /* what the full-size photographs take in R2: full holds each one's size (1, for those kept before sizes were, counts as the largest) */
 async function r2Bytes(db) { const r = await db.prepare(`SELECT coalesce(sum(CASE WHEN full = 1 THEN ${LIMIT.full} ELSE coalesce(full, 0) END), 0) + coalesce(sum(art), 0) + coalesce(sum(pic), 0) AS b FROM stories WHERE full IS NOT NULL OR art IS NOT NULL OR pic IS NOT NULL`).first(); const c = await db.prepare('SELECT coalesce(sum(cov), 0) AS b FROM posts').first().catch(() => null); const tp = await db.prepare('SELECT coalesce(sum(bytes), 0) AS b FROM tapes').first().catch(() => null); return ((r && r.b) || 0) + ((c && c.b) || 0) + ((tp && tp.b) || 0); }
 /* the wall of posters: every poster shown on the site, as designed, the starred first; each with how much its talk has said */
@@ -457,10 +464,10 @@ async function posterArt(db, env, id, any) {
 async function settingsOf(db) { const { results } = await db.prepare('SELECT k, v FROM settings').all(); const out = { ...SETTINGS, ...Object.fromEntries(Object.keys(TEXTS).map(k => [k, ''])) }; for (const r of results) { if (r.k in SETTINGS) out[r.k] = r.v === '1'; else if (r.k in TEXTS) out[r.k] = r.v; } return out; }
 /* the partner places: whether a printer is there and listening, and how much it has printed */
 async function partners(db) {
-  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.live, p.two, p.token IS NOT NULL AS paired, p.seen,
+  const { results } = await db.prepare(`SELECT p.id, p.name, p.paper, p.mesh, p.live, p.two, p.links, p.token IS NOT NULL AS paired, p.seen,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
       (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'printed') AS printed FROM printers p ORDER BY p.created`).all();
-  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, mesh: !!p.mesh && !!p.paired, live: !!p.live, two: !!p.two, ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
+  return json({ partners: results.map(p => ({ id: p.id, name: p.name, paper: p.paper, paired: !!p.paired, mesh: !!p.mesh && !!p.paired, live: !!p.live, two: !!p.two, links: p.id === 'novelglobal' ? LINKS : linksOf(p.links), ready: !!p.seen && now() - p.seen < 2 * 60e3, queued: p.queued, printed: p.printed })) });
 }
 
 /* ───────── a printer's receiver: it asks for the next job, prints it, and says how it went ───────── */
@@ -538,15 +545,42 @@ async function pairAsk(db, env, req) {
   await db.batch([db.prepare('DELETE FROM pairs WHERE created < ?').bind(t - PAIR_FOR), db.prepare('INSERT INTO pairs (code, device, name, paper, created) VALUES (?, ?, ?, ?, ?)').bind(code, await sha256(device), name, paper, t)]);
   return json({ code, device, every: 5, expires: t + PAIR_FOR }, 201);
 }
+const ISLANDS_MAX = 160;
+/* the connections a printer can switch on: each lets one kind of thing from the network work on it, or its own be shared out.
+   wish: W.I.S.H. pieces and their codes print here; radio: songs; art: styles, stamps and icons; words: copy; cards: its experiences
+   shown and wired on the switchboard; codes: its find-codes open the other islands in the same connections */
+const LINKS = ['wish', 'radio', 'art', 'words', 'cards', 'codes'];
+const linksOf = v => v === '*' || v == null ? LINKS.slice() : String(v || '').split(',').filter(x => LINKS.includes(x));
+const linksIn = a => { const l = LINKS.filter(x => (a || []).includes(x)); return l.length === LINKS.length ? '*' : l.join(','); };
+async function newPrinter(db, name, paper, self) {
+  const base = String(name || 'island').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'island';
+  let id = base; for (let i = 2; await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first(); i++) id = `${base}-${i}`;
+  await db.prepare('INSERT INTO printers (id, name, paper, created, self, links, two) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, String(name || id).slice(0, 40), paper || '80', now(), self ? 1 : 0, self ? '' : '*', self ? 0 : 1).run();
+  return id;
+}
 async function pairPoll(db, req) {
   await pairs(db); const b = await body(req, 2048); if (typeof b.device !== 'string' || b.device.length > 64) return fail(400, 'device');
   const r = await db.prepare('SELECT * FROM pairs WHERE device = ? AND created > ?').bind(await sha256(b.device), now() - PAIR_FOR).first();
   if (!r) return fail(404, 'gone');
-  if (!r.printer) return json({ waiting: true, every: 5 }, 202);
-  const tok = rid(32);
-  await db.batch([db.prepare('UPDATE printers SET token = ?, seen = NULL, can = NULL, off = NULL, paper = COALESCE(?, paper) WHERE id = ?').bind(await sha256(tok), r.paper || null, r.printer), db.prepare('DELETE FROM pairs WHERE code = ?').bind(r.code)]);
+  if (!r.printer) {
+    const open = (await settingsOf(db)).openJoin, n = await db.prepare('SELECT count(*) AS n FROM printers').first();
+    if (!open || (n && n.n >= ISLANDS_MAX)) return json({ waiting: true, every: 5 }, 202);
+    r.printer = await newPrinter(db, r.name || 'island', r.paper, true);
+  }
+  const tok = rid(32), key = rid(32);
+  await db.batch([db.prepare('UPDATE printers SET token = ?, owner = ?, seen = NULL, can = NULL, off = NULL, paper = COALESCE(?, paper) WHERE id = ?').bind(await sha256(tok), await sha256(key), r.paper || null, r.printer), db.prepare('DELETE FROM pairs WHERE code = ?').bind(r.code)]);
   await numberPrinters(db); const p = await db.prepare('SELECT number FROM printers WHERE id = ?').bind(r.printer).first();
-  return json({ printer: r.printer, token: tok, number: (p && p.number) || null });
+  return json({ printer: r.printer, token: tok, key, number: (p && p.number) || null });
+}
+/* the island keeper's own door: their key opens their one printer's row, never novel.global's, another island's, or any story */
+async function keeper(db, env, req) {
+  if (await tooMany(db, env, req, 'keeper', 60, 10 * 60e3)) return fail(429, 'too many');
+  const k = bearer(req); if (!/^[A-Za-z0-9_-]{16,64}$/.test(k)) return fail(401, 'key');
+  const p = await db.prepare('SELECT id, name, paper, number, two, links, seen, (SELECT count(*) FROM jobs j WHERE j.printer = printers.id AND j.status IN (\'queued\', \'held\')) AS queued, (SELECT count(*) FROM jobs j WHERE j.printer = printers.id AND j.status = \'printed\') AS printed FROM printers WHERE owner = ?').bind(await sha256(k)).first();
+  if (!p || p.id === 'novelglobal') return fail(401, 'key');
+  if (req.method === 'POST') { const b = await body(req, 2048), name = String(b.name || '').replace(/[^\w .·'&-]/g, '').trim().slice(0, 40); if (name) { await db.prepare('UPDATE printers SET name = ? WHERE id = ?').bind(name, p.id).run(); p.name = name; }
+    if (Array.isArray(b.links)) { p.links = linksIn(b.links.map(String)); await db.prepare('UPDATE printers SET links = ? WHERE id = ?').bind(p.links, p.id).run(); } }
+  return json({ id: p.id, name: p.name, paper: p.paper, number: p.number, two: !!p.two, links: linksOf(p.links), all: LINKS, ready: !!p.seen && now() - p.seen < 120e3, queued: p.queued, printed: p.printed });
 }
 /* the approval page: a code looked up (from the island's slip, scanned), then approved for a printer here or a new one by the island's name */
 async function adminPair(db, req, code) {
@@ -555,11 +589,7 @@ async function adminPair(db, req, code) {
   if (!r) return fail(404, 'no such code, or it is older than a quarter of an hour');
   if (req.method === 'GET') return json(r);
   const b = await body(req); let id = String(b.printer || '');
-  if (!id) {
-    const base = String(b.name || r.name || 'island').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'island';
-    id = base; for (let i = 2; await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first(); i++) id = `${base}-${i}`;
-    await db.prepare("INSERT INTO printers (id, name, paper, created) VALUES (?, ?, ?, ?)").bind(id, String(b.name || r.name || id).slice(0, 40), r.paper || '80', now()).run();
-  } else if (!(await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first())) return fail(404, 'no such printer');
+  if (!id) id = await newPrinter(db, b.name || r.name || 'island', r.paper, false); else if (!(await db.prepare('SELECT 1 FROM printers WHERE id = ?').bind(id).first())) return fail(404, 'no such printer');
   await db.prepare('UPDATE pairs SET printer = ? WHERE code = ?').bind(id, code).run();
   return json({ ok: true, printer: id });
 }
@@ -649,7 +679,7 @@ async function admin(db, env, req, parts) {
   if (what === 'reset' && req.method === 'POST') return resetSite(db, env, req);
   if (what === 'pair' && id && (req.method === 'GET' || req.method === 'POST')) return adminPair(db, req, id);
   if (what === 'printers' && !id) {
-    const { results } = await db.prepare(`SELECT p.id, p.name, p.number, p.paper, p.mesh, p.auto, p.live, p.two, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
+    const { results } = await db.prepare(`SELECT p.id, p.name, p.number, p.paper, p.mesh, p.auto, p.live, p.two, p.links, p.self, p.token IS NOT NULL AS paired, p.touch IS NOT NULL AS touch, p.touch_seen, p.refused, p.seen, p.can, p.off, p.net, p.touch_net, p.wifi,
         (SELECT json_object('code', j.code, 'status', j.status, 'at', j.created, 'error', j.error, 'mesh', j.mesh IS NOT NULL, 'paper', j.escpos IS NOT NULL) FROM jobs j WHERE j.printer = p.id ORDER BY j.created DESC LIMIT 1) AS last,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status = 'held') AS held,
         (SELECT count(*) FROM jobs j WHERE j.printer = p.id AND j.status IN ('queued', 'printing')) AS queued,
@@ -670,6 +700,7 @@ async function admin(db, env, req, parts) {
     /* TURN OFF: the receiver is handed it the next time it asks, if that is within two minutes */
     if (b.action === 'wifi') { await db.prepare('UPDATE printers SET wifi = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
     if (b.action === 'off') { await db.prepare('UPDATE printers SET off = ? WHERE id = ? AND token IS NOT NULL').bind(now(), id).run(); return json({ ok: true }); }
+    if (b.action === 'links' && Array.isArray(b.links)) { await db.prepare('UPDATE printers SET links = ? WHERE id = ?').bind(linksIn(b.links.map(String)), id).run(); return json({ ok: true }); }
     if (b.action === 'auto' || b.action === 'mesh' || b.action === 'live' || b.action === 'two') { await db.prepare(`UPDATE printers SET ${b.action} = ? WHERE id = ?`).bind(b.on ? 1 : 0, id).run(); return json({ ok: true }); }
     /* its name, said everywhere it is shown (the site shows its first word); its id, and so every link and token, stays as it is */
     if (b.action === 'name') { const n = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 40); if (!n) return fail(400, 'name'); await db.prepare('UPDATE printers SET name = ? WHERE id = ?').bind(n, id).run(); return json({ ok: true, name: n }); }
@@ -934,6 +965,7 @@ async function api(req, env, url, ctx) {
   if (p[0] === 'printers' && p[1] && p[2] === 'jobs' && p[3] && m === 'POST') return report(db, req, p[1], p[3]);
   if (p[0] === 'pair' && !p[1] && m === 'POST') return pairAsk(db, env, req);
   if (p[0] === 'pair' && p[1] === 'poll' && !p[2] && m === 'POST') return pairPoll(db, req);
+  if (p[0] === 'island' && !p[1] && (m === 'GET' || m === 'POST')) return keeper(db, env, req);
   if (p[0] === 'touch' && p[1] && !p[2] && m === 'GET') return touchList(db, req, p[1]);
   if (p[0] === 'touch' && p[1] && p[2] && m === 'POST') return touchAct(db, req, p[1], p[2]);
   if (p[0] === 'admin') return admin(db, env, req, p.slice(1));

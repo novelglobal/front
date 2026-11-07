@@ -1181,6 +1181,8 @@ if (run('board')) try {
 
 // ───────── sharing: NOTICED, RESPONSE with nothing written, DIRECT ACTION to a partner; approval; the board; RECEIVE by code ─────────
 if (run('share')) try {
+  /* what people make is shown to visitors once the approval page switches it on */
+  await admin('settings', { madeShow: true });
   const ctx = await newCtx(); await wire(ctx); const page = await ctx.newPage(); watch(page, 'share');
   await page.goto('https://oan.test/studio'); await ready(page); await settle(page);
   await openNear(page);
@@ -1858,7 +1860,7 @@ if (run('base')) try {
   await page.goto('https://oan.test/?base#print'); await page.waitForSelector('#s-wipe'); await page.click('#s-wipe'); await sleep(200);
   const w1 = await page.evaluate(() => ({ sure: document.querySelector('#s-wipe').classList.contains('sure'), notes: window.__base.notes().length }));
   await Promise.all([page.waitForNavigation({ timeout: 10000 }).catch(() => null), page.click('#s-wipe')]); await sleep(1200);
-  const w2 = await page.evaluate(() => ({ keys: Object.keys(localStorage).filter(k => /^da\.base\./.test(k) && k !== 'da.base.theme'), hash: location.hash, start: (document.querySelector('#aura') ? !document.querySelector('#aura').hidden : getComputedStyle(document.querySelector('#home')).display !== 'none') }));
+  const w2 = await page.evaluate(() => ({ keys: Object.keys(localStorage).filter(k => /^da\.base\./.test(k) && k !== 'da.base.theme'), hash: location.hash, start: !!document.querySelector('html.hm-on #hm') || (document.querySelector('#aura') ? !document.querySelector('#aura').hidden : getComputedStyle(document.querySelector('#home')).display !== 'none') }));
   check('wipe asks first (✓), then everything this device made is gone and the start returns', w1.sure && w1.notes > 0 && !w2.keys.filter(k => !/da\.base\.(packs|song|web)$/.test(k)).length && !w2.hash && w2.start, JSON.stringify({ w1, w2 }));
   /* a radio song's link opens in the aura, in the radio's window, the song tuned in */
   await page.goto('https://oan.test/#mix=-37.7712,144.9601,750,121000010128'); await page.waitForFunction(() => /#mix=-37\.7712/.test((document.querySelector('.au-win iframe') || {}).src || ''), null, { timeout: 8000 }).catch(() => {});
@@ -1939,7 +1941,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   await ctx.setExtraHTTPHeaders({ 'cf-connecting-ip': AD ? '10.9.0.2' : '10.9.0.1' }); await wire(ctx, { plain: true });
   /* the journey from its very start, once: only the eye in the middle; a photo taken opens the map's disc alone */
   if (!AD) { const jc = await newCtx({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await wire(jc, { plain: true }); const jp = await jc.newPage(); watch(jp, 'aura-journey');
-    await jp.goto('https://oan.test/'); await jp.waitForSelector('#aura'); await sleep(900); await jp.mouse.click(195, 422); await sleep(3200);
+    await jp.goto('https://oan.test/?aura'); await jp.waitForSelector('#aura'); await sleep(900); await jp.mouse.click(195, 422); await sleep(3200);
     const j0 = await jp.evaluate(() => ({ orbs: [...document.querySelectorAll('.au-orb')].filter(o => getComputedStyle(o).display !== 'none').length, eye: getComputedStyle(document.querySelector('#au-eyec')).display, snd: getComputedStyle(document.querySelector('#au-snd')).display, yours: document.querySelector('#au-yours').hidden }));
     await jp.evaluate(() => { localStorage.setItem('da.who.pass', '1'); window.dispatchEvent(new Event('ng-level')); }); await sleep(600);
     const j1 = await jp.evaluate(() => ({ orbs: [...document.querySelectorAll('.au-orb')].map(o => getComputedStyle(o).display !== 'none'), yours: document.querySelector('#au-yours').hidden, lv: localStorage.getItem('da.lv') }));
@@ -1947,7 +1949,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
     await jc.close(); }
   /* proof of presence: without a printed code the devices are seen, locked, and open nothing; with one they open */
   if (!AD) { const nc = await newCtx({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); await wire(nc, { plain: true, nocode: true }); await nc.addInitScript(() => { try { if (!localStorage.getItem('da.lv')) localStorage.setItem('da.lv', '6'); } catch (e) { /* no storage */ } });
-    const np = await nc.newPage(); watch(np, 'aura-nocode'); await np.goto('https://oan.test/'); await np.waitForSelector('#aura'); await sleep(1200);
+    const np = await nc.newPage(); watch(np, 'aura-nocode'); await np.goto('https://oan.test/?aura'); await np.waitForSelector('#aura'); await sleep(1200);
     const n0 = await np.evaluate(async () => { document.querySelector('.au-tab[data-s="0"]').click(); await new Promise(r => setTimeout(r, 500)); const ks = [...document.querySelectorAll('.au-dev:not(.au-chatk):not([hidden])')]; window.AURA.dev(0); await new Promise(r => setTimeout(r, 400));
       const shut = !document.querySelector('.au-win:not(.away)'); localStorage.setItem('da.who.ok', '1'); window.AURA.dev(0); await new Promise(r => setTimeout(r, 600));
       return { seen: ks.length, locked: ks.every(k => k.classList.contains('locked')), shut, open: !!document.querySelector('.au-win:not(.away)') }; });
@@ -1961,7 +1963,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   const st = () => page.evaluate(() => window.AURA.state());
   const panelText = () => page.evaluate(() => document.querySelector('#au-panel').innerText.trim());
   const toIruk = async s => { await page.mouse.click(AD ? 720 : 195, AD ? 450 : 422); await sleep(3000); await page.evaluate(n => document.querySelector(`.au-orb[data-s="${n}"]`).click(), s); await page.waitForFunction(() => window.AURA.state().mode === 'iruk', null, { timeout: 5000 }); await sleep(600); };
-  await page.goto('https://oan.test/'); await page.waitForSelector('#aura'); await sleep(900); await shot(page, `${P}01-seed.png`);
+  await page.goto('https://oan.test/?aura'); await page.waitForSelector('#aura'); await sleep(900); await shot(page, `${P}01-seed.png`);
   const s0 = await st(); const vis0 = await page.evaluate(() => ({ home: getComputedStyle(document.querySelector('#home')).display, orbs: [...document.querySelectorAll('.au-orb')].filter(o => getComputedStyle(o).display !== 'none').length, top: getComputedStyle(document.querySelector('#top')).display }));
   /* either side of the seed: making an island (its checklist, kept), and the network of islands */
   const sk = await page.evaluate(async () => { const s = id => { const b = document.getElementById(id); return b ? getComputedStyle(b).display : 'none'; }; const v = { isl: s('au-islk'), net: s('au-netk') };
@@ -1984,7 +1986,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
     keys: [...document.querySelectorAll('#au-panel button:not(.au-go)')].length, go: !!document.querySelector('#au-panel .au-go[data-go="1"] .au-arrow') && document.querySelector('#au-panel .au-go').textContent.trim() === '', nums: document.querySelectorAll('.au-tab .au-n').length, titles: document.querySelectorAll('#aura [title]').length, ask: document.querySelector('.au-ask').textContent, ask0: document.querySelector('.au-ask').dataset.on + '/' + document.querySelector('.au-ask').dataset.off,
     gap: (() => { const b = document.querySelector('#au-bell').getBoundingClientRect(), c = document.querySelector('#au-catch').getBoundingClientRect(); return Math.round(c.top - b.bottom); })() }));
   await page.mouse.move(150, 300); const qt0 = Date.now(); await page.waitForFunction(() => document.querySelector('.au-ask').classList.contains('on'), null, { timeout: 22000 }).catch(() => {}); const ask1 = await page.evaluate(() => ({ on: document.querySelector('.au-ask').classList.contains('on'), hint: document.querySelector('#au-panel p.au-hint').textContent, many: document.querySelectorAll('#aura .au-hint.on').length })); await shot(page, `${P}05-iruk.png`);
-  check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held below it, no words on hover`, sm.mode === 'morph' && s3.mode === 'iruk' && ik.url === 'https://oan.test/' && ik.tabs.join() === 'notice*,story,make,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.keys === 0 && ik.titles === 0, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
+  check(`aura (${tag}): a page touched draws the rings in as the irukandji on the same paper: the bell is the eye, four steps at the tips as icons alone, one thing held below it, no words on hover`, sm.mode === 'morph' && s3.mode === 'iruk' && ['https://oan.test/', 'https://oan.test/?aura'].includes(ik.url) && ik.tabs.join() === 'notice*,story,make,print' && ik.words === '' && ik.held.join() === 'au-catch' && ik.eye && ik.keys === 0 && ik.titles === 0, JSON.stringify({ sm: sm.mode, s3: s3.mode, ik }));
   { const h0 = (await st()).halo; await page.mouse.move(300, 300); await sleep(700); await page.mouse.move(320, 310); await sleep(700); const h1 = (await st()).halo;
     check(`aura (${tag}): the thing held turns slowly round the tentacles, on a halo no one sees`, h1 > h0, JSON.stringify({ h0, h1 })); }
   check(`aura (${tag}): "what’s your intention?" and what to do come one at a time, after ten seconds of quiet, said plainly; the next step waits at the foot as a sign alone; no numbers by the steps`, ik.nums === 0 && ik.ask === 'what’s your intention?' && ik.ask0 === '7/20' && ask1.on && ask1.many === 1 && /write what you want to happen/.test(ask1.hint) && ik.go, JSON.stringify({ ask0: ik.ask0, ask1, go: ik.go }));
@@ -2148,7 +2150,7 @@ for (const AD of (process.env.AURA_DESK ? [true] : [false, true])) if (run('aura
   check(`aura (${tag}): the close sits on the poster's own corner, small and still easy to touch`, near < 40 && pr.x.w >= 30 && pr.x.w <= 36, JSON.stringify({ near, x: pr.x }));
   const zb = (await st()).zoom;
   await page.mouse.click(pr.img.right - pr.img.rw / 2, pr.img.top + pr.img.rh / 2); await page.waitForFunction(() => window.AURA.state().zoom > 1.5, null, { timeout: 3000 }).catch(() => {}); await sleep(400); const za = (await st()).zoom; await shot(page, `${P}14-zoom.png`);
-  check(`aura (${tag}): the portfolio zooms in place, no new window`, Math.abs(zb - 1) < 0.01 && za > 1.5 && page.url() === 'https://oan.test/', zb + ' → ' + za);
+  check(`aura (${tag}): the portfolio zooms in place, no new window`, Math.abs(zb - 1) < 0.01 && za > 1.5 && ['https://oan.test/', 'https://oan.test/?aura'].includes(page.url()), zb + ' → ' + za);
   await page.keyboard.press('Escape'); await page.waitForFunction(() => !window.AURA.state().showing, null, { timeout: 4000 }).catch(() => {}); await sleep(300);
   const rec = (((await admin('stories?status=waiting')).stories) || []).filter(x => x.kind === 'record').map(x => JSON.parse(x.body)).find(b => b.text === 'rainbow lorikeet fledgling on the path');
   check(`aura (${tag}): the record carries one's own lines and only what was caught`, rec && JSON.stringify(rec.wish) === JSON.stringify(L4) && rec.tx && /Lorikeet/.test(rec.tx.cn), JSON.stringify(rec || {}).slice(0, 300));

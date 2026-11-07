@@ -131,6 +131,8 @@ fs.writeFileSync(path.join(out, 'admin.js'), thermal + '\n' + read(path.join(roo
 fs.writeFileSync(path.join(out, 'x.js'), min(thermal + '\n' + read(path.join(root, 'repo-static', 'x.js')), 'js'));
 fs.writeFileSync(path.join(out, 'aura.css'), min(read(path.join(src, 'base', 'aura.css')), 'css'));
 fs.writeFileSync(path.join(out, 'aura.js'), min(read(path.join(src, 'base', 'aura.js')), 'js'));
+fs.writeFileSync(path.join(out, 'home.css'), min(read(path.join(src, 'base', 'home.css')), 'css'));
+fs.writeFileSync(path.join(out, 'home.js'), min([path.join(src, 'base', 'slips-home.js'), path.join(src, 'base', 'home.js')].filter(p => fs.existsSync(p)).map(read).join('\n'), 'js'));
 fs.writeFileSync(path.join(out, 'index.html'), read(path.join(src, 'base', 'index.html')).replace('/*BASE*/', 'window.BASE = ' + JSON.stringify(BASE).replace(/</g, '\\u003c') + ';').replace('%BUILD%', sha + (preview ? ` ${branch}` : '')));
 /* the security policy for every page (stage 4). Scripts only from novel.global, and the few small ones written into the pages, each
    allowed by its fingerprint (taken as a browser reads it, every line ending a plain newline); data from novel.global (which asks iNaturalist and OpenStreetMap for everyone, the browser going round to them only when it cannot) and the open

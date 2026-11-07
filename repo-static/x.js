@@ -125,6 +125,10 @@
     printers();
   }
 
+  /* played on novel.global and wired to W.I.S.H. on its switchboard: W.I.S.H.'s photograph and intention arrive as the strip's own */
+  addEventListener('message', function (e) { var d = e.data || {}; if (e.origin !== location.origin || d.hm !== 'fill' || !stage) return;
+    if (d.words && $('#w')) { $('#w').value = String(d.words).toUpperCase().slice(0, 22); S.words = $('#w').value; }
+    if (d.img) fetch(d.img).then(function (r) { return r.blob(); }).then(take).catch(function () { draw(true); }); else draw(true); });
   document.addEventListener('DOMContentLoaded', function () {
     if (IN) document.documentElement.className = 'in';
     var id = (location.hash.slice(1) || 'tall').replace(/[^a-z0-9-]/g, '');

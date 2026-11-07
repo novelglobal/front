@@ -292,6 +292,7 @@
         p.id !== 'novelglobal' && p.number ? el('button', { type: 'button', text: `ISLAND ${p.number}`, onclick: async () => { const n = prompt('Its island number, 2 or more. Each number belongs to one island; the island takes it within a minute.', p.number); if (n == null || !/^\d+$/.test(n.trim())) return; try { await setP(p.id, { action: 'number', number: +n.trim() }); } catch (e) { alert('THAT NUMBER BELONGS TO ANOTHER ISLAND, OR IS BELOW 2.'); } show('printers'); } }) : null,
         el('button', { type: 'button', text: 'RENAME', onclick: async () => { const n = prompt('Its name. The site shows the first word; links and tokens stay as they are.', p.name || p.id); if (n == null || !n.trim()) return; await setP(p.id, { action: 'name', name: n.trim() }); show('printers'); } }),
         p.paired ? el('button', { type: 'button', class: 'no', text: 'UNPAIR', onclick: async () => { await setP(p.id, { action: 'unpair' }); show('printers'); } }) : null,
+        p.id !== 'novelglobal' ? el('button', { type: 'button', class: p.links === '*' ? 'on' : '', text: 'CONNECTIONS: ' + (p.links === '*' ? 'ALL' : (p.links || 'NONE').toUpperCase()), onclick: async () => { const n = prompt('Its connections, by name with commas: wish, radio, art, words, cards, codes. Or all.', p.links === '*' ? 'all' : (p.links || '')); if (n == null) return; const l = /^\s*all\s*$/i.test(n) ? ['wish', 'radio', 'art', 'words', 'cards', 'codes'] : n.toLowerCase().split(/[\s,]+/); await setP(p.id, { action: 'links', links: l }); show('printers'); } }) : null,
         el('button', { type: 'button', class: p.auto ? 'on' : '', text: p.auto ? 'PRINTS WITHOUT APPROVAL' : 'PRINTS AFTER APPROVAL', onclick: async () => { await setP(p.id, { action: 'auto', on: !p.auto }); show('printers'); } }),
         el('button', { type: 'button', class: p.mesh ? 'on' : '', text: p.mesh ? 'MESH ON' : 'MESH OFF', onclick: async () => { await setP(p.id, { action: 'mesh', on: !p.mesh }); show('printers'); } }),
         /* a small touch screen beside the printer: every slip waits on it; one press of the jellyfish prints, a long press squashes it */
@@ -338,7 +339,7 @@
       el('div', { class: 'note', text: `EVERY NEW VISITOR'S FIRST BOARD: A BOX FOR EACH OF W, I, S AND H, AND A NOTE ON EACH TOOL. A BLANK LINE BETWEEN NOTES; A NOTE'S FIRST LINE IS ITS TITLE, AND ITS TITLE HOLDS ITS KEY (W, I, S, H, HOW, NOTE, SECT, LINK, IMG, ZOOM, LOCK, OUT). ${st.template ? 'REWRITTEN HERE.' : "THE SITE'S OWN WORDS."}` }), ta,
       el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ template: ta.value.trim() === own.trim() ? '' : ta.value }) }); show('stations'); } }),
         el('button', { type: 'button', text: "THE SITE'S OWN WORDS", onclick: async () => { if (!confirm("Go back to the site's own words for the template?")) return; await api('settings', { method: 'POST', body: JSON.stringify({ template: '' }) }); show('stations'); } })));
-    main.replaceChildren(...head('Words and boards'), card, lr, mo, ex, tp, wordsCard(st), citiesCard(st));
+    main.replaceChildren(...head('Words and boards'), card, lr, mo, ex, tp, wordsCard(st), citiesCard(st), cardsCard(st));
   }
   /* ───────── places (stage 5): the listed places beyond the ones written into the site. Suggestions from visitors wait here, to show
      or refuse; places shown can be changed or deleted; a new one can be added, shown at once ───────── */
@@ -373,6 +374,16 @@
   const WORD_LABELS = [['intention.tab', 'INTENTION · ITS QUICK WORD'], ['intention.ask', 'INTENTION · THE QUESTION ON ITS LINE'], ['intention.say', 'INTENTION · THE LINE THAT COMES AND GOES'],
     ['wish.tab', 'W.I.S.H. · ITS QUICK WORD'], ['wish.say', 'W.I.S.H. · THE LINE THAT COMES AND GOES'],
     ...['w', 'i', 's', 'h'].flatMap(l => [[`${l}.word`, `${l.toUpperCase()} · ITS QUICK WORD`], [`${l}.head`, `${l.toUpperCase()} · ITS HEADING (ON HOVER)`], [`${l}.how`, `${l.toUpperCase()} · WHAT GOES ON ITS LINE (ON HOVER)`]])];
+  /* the home's cards: each card's words, place and look, in the order they stand on novel.global; a card not written here keeps its own */
+  const CARD_EG = '# wish\ntitle: I W.I.S.H.\nafter: helps you tell stories of change\ntag: STRATEGIC INNOVATION\nkey: MORE LIFE\nwhere: -37.8136, 144.9631\nmotion: shadow\n\n# zine\ntitle: PICKLES LANDSCAPE ZINE MAKER\nisland: pickles\nopens: stack:tall\n\n# radio\nhide';
+  function cardsCard(st) {
+    const ta = el('textarea', { class: 'body', maxlength: 8000, spellcheck: 'false', 'aria-label': 'The cards on the home', placeholder: CARD_EG }); ta.value = st.cards || '';
+    const sec = el('section', { class: 'printer ed' }); sec.append(el('h3', { text: 'CARDS' }),
+      el('div', { class: 'note', text: 'THE CARDS ON NOVEL.GLOBAL, IN THEIR ORDER. # AND A CARD\'S NAME (wish, radio, zine, kit, space, or a new one), THEN ITS LINES: title, line, after, tag, key, island, opens (aura, radio, kit, panel or stack:NAME), where (lat, lng: its radar\'s beacon), motion (shadow or speed), art (rings, radar, strip, kit, isles), skin (wish, radio, zine, kit, space: its look), size (full or half), hide. A CARD NOT WRITTEN HERE STAYS AS IT IS, AFTER THESE.' }), ta,
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: 'on', text: 'SAVE', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ cards: ta.value.trim() }) }); show('stations'); } }),
+        el('button', { type: 'button', text: 'AS THEY STARTED', onclick: async () => { if (!confirm('Put every card back as it started?')) return; await api('settings', { method: 'POST', body: JSON.stringify({ cards: '' }) }); show('stations'); } })));
+    return sec;
+  }
   /* cities and data packs: another place to make in, written plainly; the aura reads them, a chip each in its intel */
   const CITY_EG = '# Sydney\ncentre, -33.8688, 151.2093\nPaddington Reservoir Gardens, -33.8843, 151.2262\nThe Rocks, -33.8599, 151.2090';
   function citiesCard(st) {
@@ -410,7 +421,11 @@
     sec.append(el('h3', { text: 'PAIR AN ISLAND' }), el('div', { class: 'note', text: "SCAN THE CODE ON THE ISLAND'S SLIP, OR TYPE ITS EIGHT LETTERS HERE." }), el('div', { class: 'acts' }, code, el('button', { type: 'button', text: 'LOOK UP', onclick: look })), out);
     if (want) look(); return sec;
   }
-  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head('Printers'), pairCard(list), ...list.map(printerCard)); }
+  /* OPEN JOINING: while on (the pilot), a new island joins by itself the moment it asks, and its keeper gets their key; off, each waits for PAIR AN ISLAND here */
+  async function joinCard() { const st = await (await api('settings')).json(); const c = el('section', { class: 'printer' });
+    c.append(el('h3', { text: 'OPEN JOINING' }), el('div', { class: 'note', text: st.openJoin ? 'ON: A NEW ISLAND JOINS BY ITSELF (UP TO 160), WITHOUT APPROVAL HERE. IT PRINTS ONLY ON ITS OWN PRINTER UNTIL IT IS MADE TWO-WAY.' : 'OFF: EACH NEW ISLAND WAITS FOR ITS CODE TO BE APPROVED BELOW.' }),
+      el('div', { class: 'acts' }, el('button', { type: 'button', class: st.openJoin ? 'on' : '', text: st.openJoin ? 'OPEN JOINING ON' : 'OPEN JOINING OFF', onclick: async () => { await api('settings', { method: 'POST', body: JSON.stringify({ openJoin: !st.openJoin }) }); show('printers'); } }))); return c; }
+  async function printers() { const r = await api('printers'); const { printers: list } = await r.json(); main.replaceChildren(...head("Printers"), pairCard(list), await joinCard(), ...list.map(printerCard)); }
 
   /* ───────── the portfolio: posts written here, kept as drafts until published; a cover, a category, links ───────── */
   async function coverOf(id, img) { try { const r = await api(`posts/${id}/cover`); img.src = URL.createObjectURL(await r.blob()); } catch (e) { /* none */ } }

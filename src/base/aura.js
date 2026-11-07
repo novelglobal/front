@@ -1678,6 +1678,7 @@
   var ISLE = [['pi', 'Raspberry Pi 3'], ['printer', 'Epson TM-T88V'], ['card', 'microSD card, 8 GB'], 0,
     ['imager', 'Raspberry Pi Imager', 'https://www.raspberrypi.com/software/'], ['image', 'Island card', 'https://github.com/novelglobal/island-kit/releases/latest'],
     ['write', 'Imager › card › Use custom › island card'], ['on', 'Printer on the Pi’s USB, power on'], ['scan', 'Scan the slip it prints']];
+  api.isle = function () { return ISLE; };
   function sideOpen(id, title, body) { var was = $('#' + id); [].forEach.call(document.querySelectorAll('.au-side'), function (q) { q.remove(); }); if (was) return null; closeDev();
     var el = document.createElement('section'); el.id = id; el.className = 'au-side'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', title);
     el.innerHTML = '<header><i class="led"></i><b>' + title + '</b><button class="au-wx" aria-label="Back to novel.global">' + svgI('eyet') + '</button></header>' + body; root.appendChild(el);
@@ -2753,6 +2754,8 @@
   /* the receipt as it would print, drawn without sending it (for checking it against the poster) */
   /* back to the very start, the notice with it: where the booth leaves someone once their print is made */
   api.home = function () { try { closeDev(); } catch (e) { /* none open */ } if (S.deep) { S.deep = false; deep.hidden = true; } FIRSTV = true; noticeSet(store.get('da.aura.notice', null)); S.stage = 0; setMode('seed'); };
+  /* the piece in hand, for a card wired to W.I.S.H. on the home's switchboard */
+  api.piece = function () { return P ? { photo: P.photo || P.spPhoto || '', say: P.say || '', lines: (P.lines || []).slice() } : null; };
   api.pixSubs = ['jelly', 'coral', 'trash', 'st0', 'st1', 'st3'];
   api.pixKinds = PIX_SUBS.slice();
   /* the pixel maker lent to the booth: a kind (or a stamp, st0 to st5) at a size and a moment of its swim, its icon, the stamps' thumbnails */
